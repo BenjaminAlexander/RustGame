@@ -1,9 +1,11 @@
 use std::net::TcpStream;
+
 use log::info;
-use crate::threading::{Consumer, Sender, ChannelThread, ChannelDrivenThread};
-use crate::server::tcpinput::{TcpInput, TestConsumer};
 use serde::export::PhantomData;
-use crate::interface::{State, Input};
+
+use crate::interface::{Input, State};
+use crate::server::tcpinput::{TcpInput, TestConsumer};
+use crate::threading::{ChannelDrivenThread, ChannelThread, Consumer, Sender};
 
 pub struct Core<StateType, InputType>
     where StateType: State,
@@ -39,11 +41,11 @@ impl<StateType, InputType> Consumer<TcpStream> for Sender<Core<StateType, InputT
 
             let (sender, thread_builder) = TcpInput::new(tcp_stream).build();
 
-            sender.add_input_consumer(TestConsumer{});
+            sender.add_input_consumer(TestConsumer{}).unwrap();
             thread_builder.name("TcpInput".to_string()).start().unwrap();
 
             core.tcp_inputs.push(sender);
-        });
+        }).unwrap();
     }
 }
 

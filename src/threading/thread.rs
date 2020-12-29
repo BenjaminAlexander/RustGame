@@ -1,7 +1,5 @@
-use std::thread::{Builder, JoinHandle};
-use std::marker::PhantomData;
 use std::io;
-use crate::threading::Receiver;
+use std::thread::{Builder, JoinHandle};
 
 pub trait Thread<T> : Sized + Send + 'static
     where T: Send + 'static {

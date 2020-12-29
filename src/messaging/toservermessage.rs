@@ -1,4 +1,5 @@
-use serde::{Serialize, Deserialize};
+use serde::{Deserialize, Serialize};
+
 use super::InputMessage;
 
 #[derive(Serialize, Deserialize, Debug)]

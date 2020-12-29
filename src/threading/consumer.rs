@@ -1,4 +1,7 @@
 pub trait Consumer<T>: Send + 'static {
+
+    //TODO: should accept return a Result?
+    //That would let consumers notify producers that they are dead
     fn accept(&self, t: T);
 }
 

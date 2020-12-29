@@ -1,18 +1,14 @@
 use std::net::TcpStream;
-use log::{info, error};
-use crate::threading::{Sender, ReceiverBundle, Consumer, ConsumerList, ChannelThread, Receiver};
-use crate::threading;
-use crate::simplegame::Vector2;
-use crate::messaging::{Message, ToServerMessage};
-use rmp_serde::decode::{Error, ReadReader};
-use rmp_serde::Deserializer as RmpDeserializer;
-use serde::de::{Deserializer as SerdeDeserializer, DeserializeOwned};
-use std::io::{Read, BufReader, BufRead};
-use std::marker::PhantomData;
-use std::fmt::Debug;
 use std::time::SystemTime;
-use crate::server::timedinputmessage::TimedInputMessage;
+
+use log::{error, info};
+use rmp_serde::decode::Error;
+
 use crate::interface::Input;
+use crate::messaging::ToServerMessage;
+use crate::server::timedinputmessage::TimedInputMessage;
+use crate::threading::{ChannelThread, Consumer, ConsumerList, Receiver, Sender};
+use std::sync::mpsc::SendError;
 
 pub struct TcpInput<InputType>
     where InputType: Input {
@@ -35,7 +31,7 @@ impl<InputType> ChannelThread<()> for TcpInput<InputType>
     fn run(mut self, receiver: Receiver<Self>) {
         info!("Starting");
 
-        let mut receiver = receiver;
+        let receiver = receiver;
 
         loop {
             let result: Result<ToServerMessage<InputType>, Error> = rmp_serde::from_read(&self.tcp_stream);
@@ -47,9 +43,9 @@ impl<InputType> ChannelThread<()> for TcpInput<InputType>
                     receiver.try_iter(&mut self);
 
                     match message {
-                        ToServerMessage::Input(inputMessage) => {
+                        ToServerMessage::Input(input_message) => {
 
-                            let timed_message = TimedInputMessage::new(inputMessage, time_received);
+                            let timed_message = TimedInputMessage::new(input_message, time_received);
 
                             self.input_consumers.accept(&timed_message);
                         }
@@ -62,23 +58,19 @@ impl<InputType> ChannelThread<()> for TcpInput<InputType>
             }
 
             receiver.try_iter(&mut self);
-
-
         }
-
-        info!("Ending");
     }
 }
 
 impl<InputType> Sender<TcpInput<InputType>>
     where InputType: Input
 {
-    pub fn add_input_consumer<T>(&self, consumer: T)
+    pub fn add_input_consumer<T>(&self, consumer: T) -> Result<(), SendError<Box<dyn FnOnce(&mut TcpInput<InputType>) + Send>>>
         where T: Consumer<TimedInputMessage<InputType>>
     {
         self.send(|tcp_input|{
             tcp_input.input_consumers.add_consumer(consumer);
-        });
+        })
     }
 }
 

@@ -1,5 +1,6 @@
+use log::info;
+
 use crate::threading::{ChannelThread, Receiver};
-use log::{info, warn, error};
 
 pub trait ChannelDrivenThread: Send + 'static {
 
@@ -15,7 +16,5 @@ impl<T: ChannelDrivenThread> ChannelThread<()> for T {
             receiver.recv_try_iter(&mut self).unwrap();
             self.on_none_pending();
         }
-
-        info!("Ending");
     }
 }

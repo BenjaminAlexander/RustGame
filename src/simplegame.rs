@@ -1,3 +1,4 @@
+pub use crate::simplegame::vector2::*;
+
 mod vector2;
 
-pub use crate::simplegame::vector2::*;

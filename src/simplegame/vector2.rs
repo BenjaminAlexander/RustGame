@@ -1,5 +1,6 @@
-use serde::{Serialize, Deserialize};
-use crate::interface::{State, Input};
+use serde::{Deserialize, Serialize};
+
+use crate::interface::{Input, State};
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Vector2 {
@@ -20,15 +21,15 @@ impl Vector2 {
         Vector2 { x, y }
     }
 
-    pub fn get_x(&self) -> f32 {
-        self.x
-    }
-
-    pub fn get_y(&self) -> f32 {
-        self.y
-    }
-
-    pub fn add(&self, other: Vector2) -> Vector2 {
-        Vector2::new(self.x + other.x, self.y + other.y)
-    }
+    // pub fn get_x(&self) -> f32 {
+    //     self.x
+    // }
+    //
+    // pub fn get_y(&self) -> f32 {
+    //     self.y
+    // }
+    //
+    // pub fn add(&self, other: Vector2) -> Vector2 {
+    //     Vector2::new(self.x + other.x, self.y + other.y)
+    // }
 }

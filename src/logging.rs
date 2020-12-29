@@ -1,10 +1,10 @@
-use log::LevelFilter;
 use log4rs::append::console::ConsoleAppender;
 use log4rs::append::file::FileAppender;
-use log4rs::encode::pattern::PatternEncoder;
 use log4rs::config::{Appender, Config, Logger, Root};
+use log4rs::encode::pattern::PatternEncoder;
+use log::{LevelFilter, info};
 
-pub fn initLogging() {
+pub fn init_logging() {
     let stdout = ConsoleAppender::builder().build();
 
     let requests = FileAppender::builder()
@@ -12,13 +12,13 @@ pub fn initLogging() {
         .build("log/requests.log")
         .unwrap();
 
-    let consoleAppender = ConsoleAppender::builder()
+    let console_appender = ConsoleAppender::builder()
         .encoder(Box::new(PatternEncoder::new("[{h({l})}][{d}][{T}-{I}][{M} {f}:{L}]{n}{m}{n}{n}")))
         .build();
 
     let config = Config::builder()
         .appender(Appender::builder().build("stdout", Box::new(stdout)))
-        .appender(Appender::builder().build("consoleAppender", Box::new(consoleAppender)))
+        .appender(Appender::builder().build("console_appender", Box::new(console_appender)))
         .appender(Appender::builder().build("requests", Box::new(requests)))
         .logger(Logger::builder().build("app::backend::db", LevelFilter::Info))
         .logger(Logger::builder()
@@ -26,10 +26,10 @@ pub fn initLogging() {
             .additive(false)
             .build("app::requests", LevelFilter::Info))
         //This is the level:
-        .build(Root::builder().appender("consoleAppender").build(LevelFilter::Trace))
+        .build(Root::builder().appender("console_appender").build(LevelFilter::Trace))
         .unwrap();
 
-    let handle = log4rs::init_config(config).unwrap();
+    log4rs::init_config(config).unwrap();
 
-    println!("Logging is set up");
+    info!("Logging is set up");
 }

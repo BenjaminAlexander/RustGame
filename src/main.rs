@@ -1,3 +1,14 @@
+use std::{thread, time};
+use std::io::Write;
+use std::net::TcpStream;
+
+use log::info;
+
+use crate::messaging::*;
+use crate::server::*;
+use crate::simplegame::Vector2;
+use crate::threading::{ChannelThread, Thread};
+
 mod simplegame;
 mod messaging;
 mod server;
@@ -5,20 +16,9 @@ mod logging;
 mod threading;
 mod interface;
 
-use crate::simplegame::Vector2;
-use crate::messaging::*;
-use crate::server::*;
-use rmp_serde::*;
-use std::net::{TcpStream, SocketAddr};
-use log::{SetLoggerError, LevelFilter};
-use std::{thread, time};
-use log::{info, warn, error};
-use std::io::{BufWriter, Write, LineWriter};
-use crate::threading::{Thread, ChannelThread};
-
 pub fn main() {
 
-    logging::initLogging();
+    logging::init_logging();
 
     info!("Hello, world!");
 
@@ -39,7 +39,7 @@ pub fn main() {
 
     let mut stream = TcpStream::connect("127.0.0.1:3456").unwrap();
     rmp_serde::encode::write(&mut stream, &my_message).unwrap();
-    stream.flush();
+    stream.flush().unwrap();
 
     let ten_millis = time::Duration::from_millis(5000);
     thread::sleep(ten_millis);

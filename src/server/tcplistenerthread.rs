@@ -1,6 +1,8 @@
-use crate::threading::{Thread, Consumer};
-use std::net::{TcpStream, SocketAddrV4, Ipv4Addr, TcpListener, SocketAddr};
-use log::{info, warn, error};
+use std::net::{Ipv4Addr, SocketAddr, SocketAddrV4, TcpListener, TcpStream};
+
+use log::{error, info};
+
+use crate::threading::{Consumer, Thread};
 
 pub struct TcpListenerThread<T: Consumer<TcpStream>> {
     port:u16,

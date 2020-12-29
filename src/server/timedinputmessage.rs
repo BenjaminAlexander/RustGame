@@ -1,6 +1,7 @@
-use crate::messaging::InputMessage;
 use std::time::SystemTime;
+
 use crate::interface::Input;
+use crate::messaging::InputMessage;
 
 #[derive(Debug)]
 pub struct TimedInputMessage<InputType>

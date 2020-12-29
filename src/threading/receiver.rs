@@ -1,4 +1,4 @@
-use std::sync::mpsc::{Receiver as MpscReceiver, RecvError, TryRecvError};
+use std::sync::mpsc::{Receiver as MpscReceiver, RecvError};
 
 pub struct Receiver<T: ?Sized> {
     receiver: MpscReceiver<Box<dyn FnOnce(&mut T) + Send + 'static>>
@@ -14,20 +14,20 @@ impl<T> Receiver<T> {
         Self::apply_message(message, t)
     }
 
-    pub fn try_recv(&self, t: &mut T) -> Result<(), TryRecvError> {
-        let message = self.receiver.try_recv()?;
-        Self::apply_message(message, t)
-    }
+    // pub fn try_recv(&self, t: &mut T) -> Result<(), TryRecvError> {
+    //     let message = self.receiver.try_recv()?;
+    //     Self::apply_message(message, t)
+    // }
 
-    pub fn iter(&self, t: &mut T) {
-        for message in self.receiver.iter() {
-            Self::apply_message::<()>(message, t);
-        }
-    }
+    // pub fn iter(&self, t: &mut T) {
+    //     for message in self.receiver.iter() {
+    //         message(t);
+    //     }
+    // }
 
     pub fn try_iter(&self, t: &mut T) {
         for message in self.receiver.try_iter() {
-            Self::apply_message::<()>(message, t);
+            message(t);
         }
     }
 
@@ -42,49 +42,49 @@ impl<T> Receiver<T> {
         Ok(())
     }
 
-    pub fn bundle(self, t: T) -> ReceiverBundle<T> {
-        ReceiverBundle::new(t, self)
-    }
+    // pub fn bundle(self, t: T) -> ReceiverBundle<T> {
+    //     ReceiverBundle::new(t, self)
+    // }
 }
 
-pub struct ReceiverBundle<T> {
-    receiver: Receiver<T>,
-    val: T
-}
-
-impl<T> ReceiverBundle<T> {
-    fn new(val: T, receiver: Receiver<T>) -> Self {
-        ReceiverBundle{val, receiver}
-    }
-
-    pub fn recv(&mut self) -> Result<(), RecvError> {
-        self.receiver.recv(&mut self.val)?;
-        Ok(())
-    }
-
-    pub fn try_recv(&mut self) -> Result<(), TryRecvError> {
-        self.receiver.try_recv(&mut self.val)?;
-        Ok(())
-    }
-
-    pub fn iter(&mut self) {
-        self.receiver.iter(&mut self.val);
-    }
-
-    pub fn try_iter(&mut self) {
-        self.receiver.try_iter(&mut self.val);
-    }
-
-    pub fn recv_try_iter(&mut self) -> Result<(), RecvError> {
-        self.receiver.recv_try_iter(&mut self.val)?;
-        Ok(())
-    }
-
-    pub fn get_receiver(&self) -> &Receiver<T> {
-        & self.receiver
-    }
-
-    pub fn get(&mut self) -> &mut T {
-        &mut self.val
-    }
-}
+// pub struct ReceiverBundle<T> {
+//     receiver: Receiver<T>,
+//     val: T
+// }
+//
+// impl<T> ReceiverBundle<T> {
+//     fn new(val: T, receiver: Receiver<T>) -> Self {
+//         ReceiverBundle{val, receiver}
+//     }
+//
+//     pub fn recv(&mut self) -> Result<(), RecvError> {
+//         self.receiver.recv(&mut self.val)?;
+//         Ok(())
+//     }
+//
+//     pub fn try_recv(&mut self) -> Result<(), TryRecvError> {
+//         self.receiver.try_recv(&mut self.val)?;
+//         Ok(())
+//     }
+//
+//     pub fn iter(&mut self) {
+//         self.receiver.iter(&mut self.val);
+//     }
+//
+//     pub fn try_iter(&mut self) {
+//         self.receiver.try_iter(&mut self.val);
+//     }
+//
+//     pub fn recv_try_iter(&mut self) -> Result<(), RecvError> {
+//         self.receiver.recv_try_iter(&mut self.val)?;
+//         Ok(())
+//     }
+//
+//     pub fn get_receiver(&self) -> &Receiver<T> {
+//         & self.receiver
+//     }
+//
+//     pub fn get(&mut self) -> &mut T {
+//         &mut self.val
+//     }
+// }
