@@ -8,7 +8,7 @@ use crate::interface::Input;
 use crate::messaging::ToServerMessage;
 use crate::server::timedinputmessage::TimedInputMessage;
 use crate::threading::{ChannelThread, Consumer, ConsumerList, Receiver, Sender};
-use std::sync::mpsc::SendError;
+use crate::threading::sender::SendError;
 
 pub struct TcpInput<InputType>
     where InputType: Input {
@@ -65,9 +65,8 @@ impl<InputType> ChannelThread<()> for TcpInput<InputType>
 impl<InputType> Sender<TcpInput<InputType>>
     where InputType: Input
 {
-    pub fn add_input_consumer<T>(&self, consumer: T) -> Result<(), SendError<Box<dyn FnOnce(&mut TcpInput<InputType>) + Send>>>
-        where T: Consumer<TimedInputMessage<InputType>>
-    {
+    pub fn add_input_consumer<T>(&self, consumer: T) -> Result<(), SendError<TcpInput<InputType>>>
+        where T: Consumer<TimedInputMessage<InputType>> {
         self.send(|tcp_input|{
             tcp_input.input_consumers.add_consumer(consumer);
         })

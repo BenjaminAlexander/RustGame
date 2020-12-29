@@ -6,7 +6,7 @@ pub use self::sender::Sender;
 pub use self::thread::{Thread, ThreadBuilder};
 
 mod consumer;
-mod sender;
+pub(crate) mod sender;
 mod receiver;
 mod channelthread;
 mod thread;
