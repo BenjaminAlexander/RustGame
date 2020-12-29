@@ -10,13 +10,13 @@ pub use self::inputmessage::InputMessage;
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct InitialInformation<StateType, InputType> {
-    playerIndex: i8,
-    stateMessage: StateMessage<StateType, InputType>
+    player_index: i8,
+    state_message: StateMessage<StateType, InputType>
 }
 
 impl<StateType, InputType> InitialInformation<StateType, InputType> {
-    pub fn new(playerIndex: i8,  stateMessage: StateMessage<StateType, InputType>) -> InitialInformation<StateType, InputType> {
-        InitialInformation{ playerIndex, stateMessage }
+    pub fn new(player_index: i8, state_message: StateMessage<StateType, InputType>) -> InitialInformation<StateType, InputType> {
+        InitialInformation{ player_index, state_message }
     }
 }
 
@@ -35,14 +35,14 @@ impl<StateType, InputType> StateMessage<StateType, InputType> {
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct TimeSyncMessage {
-    scheduledTime: i32,
-    actualTime: i32,
+    scheduled_time: i32,
+    actual_time: i32,
     sequence: i32,
 }
 
 impl TimeSyncMessage {
-    pub fn new(scheduledTime: i32, actualTime: i32, sequence: i32) -> TimeSyncMessage {
-        TimeSyncMessage{ scheduledTime, actualTime, sequence }
+    pub fn new(scheduled_time: i32, actual_time: i32, sequence: i32) -> TimeSyncMessage {
+        TimeSyncMessage{ scheduled_time, actual_time, sequence }
     }
 }
 

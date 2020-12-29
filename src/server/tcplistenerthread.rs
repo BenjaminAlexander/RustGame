@@ -22,12 +22,12 @@ impl<T: Consumer<TcpStream>> Thread<()> for TcpListenerThread<T> {
         // accept connections and process them serially
         for result in listener.incoming() {
             match result {
-                Ok(tcpStream) => {
-                    info!("New TCP connection from {:?}", tcpStream.peer_addr().unwrap().ip().to_string());
+                Ok(tcp_stream) => {
+                    info!("New TCP connection from {:?}", tcp_stream.peer_addr().unwrap().ip().to_string());
                     //core.addTcpStream(tcpStream);
 
-                    self.consumer.accept(tcpStream);
-                },
+                    self.consumer.accept(tcp_stream);
+                }
                 Err(error) => {
                     error!("{:?}", error);
                     return;

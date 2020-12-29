@@ -6,15 +6,15 @@ use crate::interface::Input;
 pub struct TimedInputMessage<InputType>
     where InputType: Input {
 
-    inputMessage: InputMessage<InputType>,
-    timeReceived: SystemTime
+    input_message: InputMessage<InputType>,
+    time_received: SystemTime
 }
 
 impl<InputType> TimedInputMessage<InputType>
     where InputType: Input {
 
     pub fn new(inputMessage: InputMessage<InputType>, timeReceived: SystemTime) -> Self {
-        TimedInputMessage{inputMessage, timeReceived}
+        TimedInputMessage{ input_message: inputMessage, time_received: timeReceived }
     }
 }
 
@@ -23,8 +23,8 @@ impl<InputType> Clone for TimedInputMessage<InputType>
 
     fn clone(&self) -> Self {
         Self {
-            inputMessage: self.inputMessage.clone(),
-            timeReceived: self.timeReceived.clone()
+            input_message: self.input_message.clone(),
+            time_received: self.time_received.clone()
         }
     }
 }

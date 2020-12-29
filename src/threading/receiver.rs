@@ -80,7 +80,7 @@ impl<T> ReceiverBundle<T> {
         Ok(())
     }
 
-    pub fn getReceiver(&self) -> &Receiver<T> {
+    pub fn get_receiver(&self) -> &Receiver<T> {
         & self.receiver
     }
 
