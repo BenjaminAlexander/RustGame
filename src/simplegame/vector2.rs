@@ -1,9 +1,18 @@
 use serde::{Serialize, Deserialize};
+use crate::interface::{State, Input};
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Vector2 {
     x: f32,
     y: f32,
+}
+
+impl State for Vector2 {
+
+}
+
+impl Input for Vector2 {
+
 }
 
 impl Vector2 {

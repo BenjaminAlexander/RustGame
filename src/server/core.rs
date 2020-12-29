@@ -8,17 +8,18 @@ use serde::de::DeserializeOwned;
 use std::fmt::Debug;
 use serde::export::PhantomData;
 use crate::threading::Thread;
+use crate::interface::{State, Input};
 
 pub struct Core<StateType, InputType>
-    where StateType: Debug + DeserializeOwned + Send + 'static,
-          InputType: Clone + Debug + DeserializeOwned + Send + 'static {
+    where StateType: State,
+          InputType: Input {
     tcpInputs: Vec<Sender<TcpInput<InputType>>>,
     phantom: PhantomData<StateType>
 }
 
 impl<StateType, InputType> ChannelDrivenThread for Core<StateType, InputType>
-    where StateType: Debug + DeserializeOwned + Send + 'static,
-          InputType: Clone + Debug + DeserializeOwned + Send + 'static {
+    where StateType: State,
+          InputType: Input {
 
     fn onNonePending(&mut self) {
         info!("onNonePending.");
@@ -26,8 +27,8 @@ impl<StateType, InputType> ChannelDrivenThread for Core<StateType, InputType>
 }
 
 impl<StateType, InputType> Core<StateType, InputType>
-    where StateType: Debug + DeserializeOwned + Send + 'static,
-          InputType: Clone + Debug + DeserializeOwned + Send + 'static {
+    where StateType: State,
+          InputType: Input {
 
     pub fn new() -> Self {
         Core { tcpInputs: Vec::new(), phantom: PhantomData }
@@ -35,8 +36,8 @@ impl<StateType, InputType> Core<StateType, InputType>
 }
 
 impl<StateType, InputType> Consumer<TcpStream> for Sender<Core<StateType, InputType>>
-    where StateType: Debug + DeserializeOwned + Send + 'static,
-          InputType: Clone + Debug + DeserializeOwned + Send + 'static {
+    where StateType: State,
+          InputType: Input {
 
     fn accept(&self, tcpStream: TcpStream) {
         self.send(|core|{

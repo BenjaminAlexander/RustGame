@@ -1,10 +1,12 @@
 mod toservermessage;
+mod inputmessage;
 
 use crate::simplegame::Vector2;
 use serde::{Serialize, Deserialize};
 use std::sync::mpsc::Sender;
 
 pub use self::toservermessage::ToServerMessage;
+pub use self::inputmessage::InputMessage;
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct InitialInformation<StateType, InputType> {
@@ -28,35 +30,6 @@ pub struct StateMessage<StateType, InputType> {
 impl<StateType, InputType> StateMessage<StateType, InputType> {
     pub fn new(sequence: i32, inputs: Vec<Option<InputType>>, state: Option<StateType>) -> StateMessage<StateType, InputType> {
         StateMessage{ sequence, inputs, state }
-    }
-}
-
-#[derive(Serialize, Deserialize, Debug)]
-pub struct InputMessage<InputType>
-    where InputType: Clone {
-
-    sequence: i32,
-    playerIndex: i8,
-    input: InputType
-}
-
-impl<InputType> InputMessage<InputType>
-    where InputType: Clone {
-
-    pub fn new(sequence: i32, playerIndex: i8, input: InputType) -> InputMessage<InputType> {
-        InputMessage{ sequence, playerIndex, input }
-    }
-}
-
-impl<InputType> Clone for InputMessage<InputType>
-    where InputType: Clone {
-
-    fn clone(&self) -> Self {
-        Self{
-            sequence: self.sequence,
-            playerIndex: self.playerIndex,
-            input: self.input.clone()
-        }
     }
 }
 

@@ -1,5 +1,5 @@
-use crate::messaging::InputMessage;
 use serde::{Serialize, Deserialize};
+use super::InputMessage;
 
 #[derive(Serialize, Deserialize, Debug)]
 pub enum ToServerMessage<InputType>

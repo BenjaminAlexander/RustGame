@@ -12,16 +12,17 @@ use std::marker::PhantomData;
 use std::fmt::Debug;
 use std::time::SystemTime;
 use crate::server::timedinputmessage::TimedInputMessage;
+use crate::interface::Input;
 
 pub struct TcpInput<InputType>
-    where InputType: Clone + Debug + DeserializeOwned + Send + 'static {
+    where InputType: Input {
 
     tcpStream: TcpStream,
     inputConsumers: ConsumerList<TimedInputMessage<InputType>>
 }
 
 impl<InputType> TcpInput<InputType>
-    where InputType: Clone + Debug + DeserializeOwned + Send + 'static {
+    where InputType: Input {
 
     pub fn new(tcpStream: TcpStream) -> Self {
         Self { tcpStream, inputConsumers: ConsumerList::new() }
@@ -29,7 +30,7 @@ impl<InputType> TcpInput<InputType>
 }
 
 impl<InputType> ChannelThread<()> for TcpInput<InputType>
-    where InputType: Clone + Debug + DeserializeOwned + Send + 'static {
+    where InputType: Input {
 
     fn run(mut self, receiver: Receiver<Self>) {
         info!("Starting");
@@ -70,7 +71,7 @@ impl<InputType> ChannelThread<()> for TcpInput<InputType>
 }
 
 impl<InputType> Sender<TcpInput<InputType>>
-    where InputType: Clone + Debug + DeserializeOwned + Send + 'static
+    where InputType: Input
 {
     pub fn add_input_consumer<T>(&self, consumer: T)
         where T: Consumer<TimedInputMessage<InputType>>
@@ -84,7 +85,7 @@ impl<InputType> Sender<TcpInput<InputType>>
 pub struct TestConsumer;
 
 impl<InputType> Consumer<TimedInputMessage<InputType>> for TestConsumer
-    where InputType: Clone + Debug {
+    where InputType: Input {
     fn accept(&self, t: TimedInputMessage<InputType>) {
         info!("Consume {:?}", t);
     }

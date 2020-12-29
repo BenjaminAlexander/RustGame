@@ -1,9 +1,9 @@
 mod simplegame;
 mod messaging;
 mod server;
-mod runnablethread;
 mod logging;
 mod threading;
+mod interface;
 
 use crate::simplegame::Vector2;
 use crate::messaging::*;
@@ -11,19 +11,10 @@ use crate::server::*;
 use rmp_serde::*;
 use std::net::{TcpStream, SocketAddr};
 use log::{SetLoggerError, LevelFilter};
-use crate::runnablethread::{RunnableThread, MessageHandler};
 use std::{thread, time};
 use log::{info, warn, error};
 use std::io::{BufWriter, Write, LineWriter};
 use crate::threading::{Thread, ChannelThread};
-
-struct SimpleHandler;
-
-impl MessageHandler<fn()> for SimpleHandler{
-    fn handle(&self, message: fn()) {
-        message();
-    }
-}
 
 pub fn main() {
 
