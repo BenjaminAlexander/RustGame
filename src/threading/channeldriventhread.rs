@@ -3,7 +3,7 @@ use log::{info, warn, error};
 
 pub trait ChannelDrivenThread: Send + 'static {
 
-    fn onNonePending(&mut self);
+    fn on_none_pending(&mut self);
 
 }
 
@@ -11,9 +11,9 @@ impl<T: ChannelDrivenThread> ChannelThread<()> for T {
     fn run(mut self, receiver: Receiver<Self>) -> () {
         info!("Starting");
 
-        while true {
+        loop {
             receiver.recv_try_iter(&mut self).unwrap();
-            self.onNonePending();
+            self.on_none_pending();
         }
 
         info!("Ending");

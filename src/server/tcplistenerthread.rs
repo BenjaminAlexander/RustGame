@@ -15,9 +15,9 @@ impl<T: Consumer<TcpStream>> TcpListenerThread<T> {
 
 impl<T: Consumer<TcpStream>> Thread<()> for TcpListenerThread<T> {
     fn run(self) -> () {
-        let socketAddrV4:SocketAddrV4 = SocketAddrV4::new(Ipv4Addr::new(127, 0, 0, 1), self.port);
-        let socketAddr:SocketAddr = SocketAddr::from(socketAddrV4);
-        let listener:TcpListener = TcpListener::bind(socketAddr).unwrap();
+        let socket_addr_v4:SocketAddrV4 = SocketAddrV4::new(Ipv4Addr::new(127, 0, 0, 1), self.port);
+        let socket_addr:SocketAddr = SocketAddr::from(socket_addr_v4);
+        let listener:TcpListener = TcpListener::bind(socket_addr).unwrap();
 
         // accept connections and process them serially
         for result in listener.incoming() {

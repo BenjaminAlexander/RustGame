@@ -20,11 +20,11 @@ impl Vector2 {
         Vector2 { x, y }
     }
 
-    pub fn getX(&self) -> f32 {
+    pub fn get_x(&self) -> f32 {
         self.x
     }
 
-    pub fn getY(&self) -> f32 {
+    pub fn get_y(&self) -> f32 {
         self.y
     }
 

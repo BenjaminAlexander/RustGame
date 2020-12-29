@@ -23,6 +23,9 @@
   <component name="MacroExpansionManager">
     <option name="directoryName" value="i9at9t4b" />
   </component>
+  <component name="ProblemsViewState">
+    <option name="selectedIndex" value="1" />
+  </component>
   <component name="ProjectId" id="1m9hawpBBdIqK3HaNd6svQnCVlU" />
   <component name="ProjectViewState">
     <option name="hideEmptyMiddlePackages" value="true" />
@@ -30,10 +33,11 @@
   </component>
   <component name="PropertiesComponent">
     <property name="RunOnceActivity.OpenProjectViewOnStart" value="true" />
+    <property name="RunOnceActivity.ShowReadmeOnStart" value="true" />
     <property name="last_opened_file_path" value="$PROJECT_DIR$" />
     <property name="org.rust.cargo.project.model.PROJECT_DISCOVERY" value="true" />
     <property name="run.code.analysis.last.selected.profile" value="pProject Default" />
-    <property name="settings.editor.selected.configurable" value="preferences.updates" />
+    <property name="settings.editor.selected.configurable" value="preferences.customizations" />
   </component>
   <component name="RecentsManager">
     <key name="MoveFile.RECENT_KEYS">
@@ -54,6 +58,7 @@
       <option name="redirectInputPath" value="" />
       <method v="2">
         <option name="CARGO.BUILD_TASK_PROVIDER" enabled="true" />
+        <option name="CARGO.BUILD_TASK_PROVIDER" enabled="true" />
       </method>
     </configuration>
   </component>
@@ -71,59 +76,5 @@
       <updated>1608911793139</updated>
     </task>
     <servers />
-  </component>
-  <component name="WindowStateProjectService">
-    <state x="96" y="0" key="#com.intellij.execution.impl.EditConfigurationsDialog" timestamp="1609267513264">
-      <screen x="0" y="0" width="1280" height="680" />
-    </state>
-    <state x="96" y="0" key="#com.intellij.execution.impl.EditConfigurationsDialog/0.0.1280.680@0.0.1280.680" timestamp="1609267513264" />
-    <state x="402" y="142" key="#com.intellij.fileTypes.FileTypeChooser" timestamp="1609013609486">
-      <screen x="0" y="0" width="1280" height="680" />
-    </state>
-    <state x="402" y="142" key="#com.intellij.fileTypes.FileTypeChooser/0.0.1280.680@0.0.1280.680" timestamp="1609013609486" />
-    <state x="446" y="56" key="#com.intellij.ide.util.MemberChooser" timestamp="1609266214064">
-      <screen x="0" y="0" width="1280" height="680" />
-    </state>
-    <state x="446" y="56" key="#com.intellij.ide.util.MemberChooser/0.0.1280.680@0.0.1280.680" timestamp="1609266214064" />
-    <state x="284" y="76" key="#com.intellij.openapi.updateSettings.impl.PluginUpdateInfoDialog" timestamp="1609268551166">
-      <screen x="0" y="0" width="1280" height="680" />
-    </state>
-    <state x="284" y="76" key="#com.intellij.openapi.updateSettings.impl.PluginUpdateInfoDialog/0.0.1280.680@0.0.1280.680" timestamp="1609268551166" />
-    <state x="371" y="87" key="#com.intellij.refactoring.safeDelete.UnsafeUsagesDialog" timestamp="1609266706635">
-      <screen x="0" y="0" width="1280" height="680" />
-    </state>
-    <state x="371" y="87" key="#com.intellij.refactoring.safeDelete.UnsafeUsagesDialog/0.0.1280.680@0.0.1280.680" timestamp="1609266706635" />
-    <state x="399" y="210" key="ANALYSIS_DLG_com.intellij.analysis.BaseAnalysisAction$1" timestamp="1609263517361">
-      <screen x="0" y="0" width="1280" height="680" />
-    </state>
-    <state x="399" y="210" key="ANALYSIS_DLG_com.intellij.analysis.BaseAnalysisAction$1/0.0.1280.680@0.0.1280.680" timestamp="1609263517361" />
-    <state x="421" y="95" key="FileChooserDialogImpl" timestamp="1609012304360">
-      <screen x="0" y="0" width="1280" height="680" />
-    </state>
-    <state x="421" y="95" key="FileChooserDialogImpl/0.0.1280.680@0.0.1280.680" timestamp="1609012304360" />
-    <state width="1237" height="173" key="GridCell.Tab.0.bottom" timestamp="1609268485951">
-      <screen x="0" y="0" width="1280" height="680" />
-    </state>
-    <state width="1237" height="173" key="GridCell.Tab.0.bottom/0.0.1280.680@0.0.1280.680" timestamp="1609268485951" />
-    <state width="1237" height="173" key="GridCell.Tab.0.center" timestamp="1609268485951">
-      <screen x="0" y="0" width="1280" height="680" />
-    </state>
-    <state width="1237" height="173" key="GridCell.Tab.0.center/0.0.1280.680@0.0.1280.680" timestamp="1609268485951" />
-    <state width="1237" height="173" key="GridCell.Tab.0.left" timestamp="1609268485951">
-      <screen x="0" y="0" width="1280" height="680" />
-    </state>
-    <state width="1237" height="173" key="GridCell.Tab.0.left/0.0.1280.680@0.0.1280.680" timestamp="1609268485951" />
-    <state width="1237" height="173" key="GridCell.Tab.0.right" timestamp="1609268485951">
-      <screen x="0" y="0" width="1280" height="680" />
-    </state>
-    <state width="1237" height="173" key="GridCell.Tab.0.right/0.0.1280.680@0.0.1280.680" timestamp="1609268485951" />
-    <state x="105" y="0" key="SettingsEditor" timestamp="1609268560529">
-      <screen x="0" y="0" width="1280" height="680" />
-    </state>
-    <state x="105" y="0" key="SettingsEditor/0.0.1280.680@0.0.1280.680" timestamp="1609268560529" />
-    <state x="297" y="151" key="run.anything.popup" timestamp="1609022910053">
-      <screen x="0" y="0" width="1280" height="680" />
-    </state>
-    <state x="297" y="151" key="run.anything.popup/0.0.1280.680@0.0.1280.680" timestamp="1609022910053" />
   </component>
 </project>

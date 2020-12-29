@@ -13,8 +13,8 @@ pub struct TimedInputMessage<InputType>
 impl<InputType> TimedInputMessage<InputType>
     where InputType: Input {
 
-    pub fn new(inputMessage: InputMessage<InputType>, timeReceived: SystemTime) -> Self {
-        TimedInputMessage{ input_message: inputMessage, time_received: timeReceived }
+    pub fn new(input_message: InputMessage<InputType>, time_received: SystemTime) -> Self {
+        TimedInputMessage{ input_message, time_received }
     }
 }
 

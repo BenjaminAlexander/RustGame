@@ -22,23 +22,23 @@ pub fn main() {
 
     info!("Hello, world!");
 
-    let inputMessage:InputMessage<Vector2> = InputMessage::new(0, 0, Vector2::new(1.0, 12.0));
-    let myMessage:ToServerMessage<Vector2> = ToServerMessage::Input(inputMessage);
+    let input_message:InputMessage<Vector2> = InputMessage::new(0, 0, Vector2::new(1.0, 12.0));
+    let my_message:ToServerMessage<Vector2> = ToServerMessage::Input(input_message);
 
 
-    let (coreSender, coreThreadBuilder) =
+    let (core_sender, core_thread_builder) =
         Core::<Vector2, Vector2>::new().build();
 
-    let listenerBuilder = TcpListenerThread::new(3456, coreSender).build();
+    let listener_builder = TcpListenerThread::new(3456, core_sender).build();
 
-    coreThreadBuilder.name("ServerCore".to_string()).start().unwrap();
-    listenerBuilder.name("TcpListener".to_string()).start().unwrap();
+    core_thread_builder.name("ServerCore".to_string()).start().unwrap();
+    listener_builder.name("TcpListener".to_string()).start().unwrap();
 
     let millis = time::Duration::from_millis(500);
     thread::sleep(millis);
 
     let mut stream = TcpStream::connect("127.0.0.1:3456").unwrap();
-    rmp_serde::encode::write(&mut stream, &myMessage).unwrap();
+    rmp_serde::encode::write(&mut stream, &my_message).unwrap();
     stream.flush();
 
     let ten_millis = time::Duration::from_millis(5000);

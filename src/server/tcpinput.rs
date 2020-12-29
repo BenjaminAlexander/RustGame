@@ -17,15 +17,15 @@ use crate::interface::Input;
 pub struct TcpInput<InputType>
     where InputType: Input {
 
-    tcpStream: TcpStream,
-    inputConsumers: ConsumerList<TimedInputMessage<InputType>>
+    tcp_stream: TcpStream,
+    input_consumers: ConsumerList<TimedInputMessage<InputType>>
 }
 
 impl<InputType> TcpInput<InputType>
     where InputType: Input {
 
-    pub fn new(tcpStream: TcpStream) -> Self {
-        Self { tcpStream, inputConsumers: ConsumerList::new() }
+    pub fn new(tcp_stream: TcpStream) -> Self {
+        Self { tcp_stream, input_consumers: ConsumerList::new() }
     }
 }
 
@@ -38,20 +38,20 @@ impl<InputType> ChannelThread<()> for TcpInput<InputType>
         let mut receiver = receiver;
 
         loop {
-            let result: Result<ToServerMessage<InputType>, Error> = rmp_serde::from_read(&self.tcpStream);
+            let result: Result<ToServerMessage<InputType>, Error> = rmp_serde::from_read(&self.tcp_stream);
 
             match result {
                 Ok(message) => {
-                    let timeReceived = SystemTime::now();
+                    let time_received = SystemTime::now();
 
                     receiver.try_iter(&mut self);
 
                     match message {
                         ToServerMessage::Input(inputMessage) => {
 
-                            let timedMessage = TimedInputMessage::new(inputMessage, timeReceived);
+                            let timed_message = TimedInputMessage::new(inputMessage, time_received);
 
-                            self.inputConsumers.accept(&timedMessage);
+                            self.input_consumers.accept(&timed_message);
                         }
                     }
                 }
@@ -76,8 +76,8 @@ impl<InputType> Sender<TcpInput<InputType>>
     pub fn add_input_consumer<T>(&self, consumer: T)
         where T: Consumer<TimedInputMessage<InputType>>
     {
-        self.send(|tcpInput|{
-            tcpInput.inputConsumers.add_consumer(consumer);
+        self.send(|tcp_input|{
+            tcp_input.input_consumers.add_consumer(consumer);
         });
     }
 }
