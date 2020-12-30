@@ -1,4 +1,4 @@
-use std::sync::mpsc::{Receiver as MpscReceiver, RecvError};
+use std::sync::mpsc::{Receiver as MpscReceiver, RecvError, TryRecvError};
 
 pub struct Receiver<T: ?Sized> {
     receiver: MpscReceiver<Box<dyn FnOnce(&mut T) + Send + 'static>>
@@ -14,10 +14,10 @@ impl<T> Receiver<T> {
         Self::apply_message(message, t)
     }
 
-    // pub fn try_recv(&self, t: &mut T) -> Result<(), TryRecvError> {
-    //     let message = self.receiver.try_recv()?;
-    //     Self::apply_message(message, t)
-    // }
+    pub fn try_recv(&self, t: &mut T) -> Result<(), TryRecvError> {
+        let message = self.receiver.try_recv()?;
+        Self::apply_message(message, t)
+    }
 
     // pub fn iter(&self, t: &mut T) {
     //     for message in self.receiver.iter() {
@@ -31,11 +31,11 @@ impl<T> Receiver<T> {
         }
     }
 
-    pub fn recv_try_iter(&self, t: &mut T) -> Result<(), RecvError> {
-        self.recv(t)?;
-        self.try_iter(t);
-        Ok(())
-    }
+    // pub fn recv_try_iter(&self, t: &mut T) -> Result<(), RecvError> {
+    //     self.recv(t)?;
+    //     self.try_iter(t);
+    //     Ok(())
+    // }
 
     fn apply_message<U>(message: Box<dyn FnOnce(&mut T) + Send + 'static>, t: &mut T) -> Result<(), U> {
         message(t);

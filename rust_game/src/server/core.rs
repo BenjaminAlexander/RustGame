@@ -14,12 +14,13 @@ pub struct Core<StateType, InputType>
     phantom: PhantomData<StateType>
 }
 
-impl<StateType, InputType> ChannelDrivenThread for Core<StateType, InputType>
+impl<StateType, InputType> ChannelDrivenThread<()> for Core<StateType, InputType>
     where StateType: State,
           InputType: Input {
 
-    fn on_none_pending(&mut self) {
+    fn on_none_pending(&mut self) -> Option<()> {
         info!("on_none_pending.");
+        None
     }
 }
 

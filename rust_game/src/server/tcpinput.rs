@@ -5,16 +5,16 @@ use log::{error, info};
 use rmp_serde::decode::Error;
 
 use crate::interface::Input;
-use crate::messaging::ToServerMessage;
-use crate::server::timedinputmessage::TimedInputMessage;
+use crate::messaging::{ToServerMessage, InputMessage};
 use crate::threading::{ChannelThread, Consumer, ConsumerList, Receiver, Sender};
 use crate::threading::sender::SendError;
+use crate::gametime::TimeReceived;
 
 pub struct TcpInput<InputType>
     where InputType: Input {
 
     tcp_stream: TcpStream,
-    input_consumers: ConsumerList<TimedInputMessage<InputType>>
+    input_consumers: ConsumerList<TimeReceived<InputMessage<InputType>>>
 }
 
 impl<InputType> TcpInput<InputType>
@@ -45,7 +45,7 @@ impl<InputType> ChannelThread<()> for TcpInput<InputType>
                     match message {
                         ToServerMessage::Input(input_message) => {
 
-                            let timed_message = TimedInputMessage::new(input_message, time_received);
+                            let timed_message = TimeReceived::new(time_received, input_message);
 
                             self.input_consumers.accept(&timed_message);
                         }
@@ -66,7 +66,7 @@ impl<InputType> Sender<TcpInput<InputType>>
     where InputType: Input
 {
     pub fn add_input_consumer<T>(&self, consumer: T) -> Result<(), SendError<TcpInput<InputType>>>
-        where T: Consumer<TimedInputMessage<InputType>> {
+        where T: Consumer<TimeReceived<InputMessage<InputType>>> {
         self.send(|tcp_input|{
             tcp_input.input_consumers.add_consumer(consumer);
         })
@@ -75,9 +75,9 @@ impl<InputType> Sender<TcpInput<InputType>>
 
 pub struct TestConsumer;
 
-impl<InputType> Consumer<TimedInputMessage<InputType>> for TestConsumer
+impl<InputType> Consumer<TimeReceived<InputMessage<InputType>>> for TestConsumer
     where InputType: Input {
-    fn accept(&self, t: TimedInputMessage<InputType>) {
+    fn accept(&self, t: TimeReceived<InputMessage<InputType>>) {
         info!("Consume {:?}", t);
     }
 }
