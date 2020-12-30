@@ -8,6 +8,7 @@ use crate::messaging::*;
 use crate::server::*;
 use crate::simplegame::Vector2;
 use crate::threading::{ChannelThread, Thread};
+use crate::gametime::GameTimer;
 
 mod simplegame;
 mod messaging;
@@ -15,12 +16,17 @@ mod server;
 mod logging;
 mod threading;
 mod interface;
+mod gametime;
 
 pub fn main() {
 
     logging::init_logging();
 
     info!("Hello, world!");
+
+    let (sender, builder) = GameTimer::new(chrono::Duration::milliseconds(50)).build();
+    builder.name("Timer".to_string()).start().unwrap();
+    sender.start();
 
     let input_message:InputMessage<Vector2> = InputMessage::new(0, 0, Vector2::new(1.0, 12.0));
     let my_message:ToServerMessage<Vector2> = ToServerMessage::Input(input_message);

@@ -9,19 +9,26 @@ pub trait ChannelThread<T> : Sized + Send + 'static
     where T: Send + 'static {
 
     fn build(self) -> (Sender<Self>, ThreadBuilder<T>) {
+        let (sender, receiver) = Self::channel();
+        self.build_from_channel(sender, receiver)
+    }
 
+    fn channel() -> (Sender<Self>, Receiver<Self>) {
         let (sender, receiver): (MpscSender<Box<dyn FnOnce(&mut Self) + Send + 'static>>, MpscReceiver<Box<dyn FnOnce(&mut Self) + Send + 'static>>) = mpsc::channel();
+        (Sender::<Self>::new(sender), Receiver::<Self>::new(receiver))
+    }
+
+    fn build_from_channel(self, sender: Sender<Self>, receiver: Receiver<Self>) -> (Sender<Self>, ThreadBuilder<T>) {
 
         let thread = RawChannelThread{
-            receiver: Receiver::<Self>::new(receiver),
+            receiver,
             channel_thread: self,
             u_phantom: PhantomData
         };
 
         let builder = thread.build();
 
-        (Sender::<Self>::new(sender), builder)
-
+        (sender, builder)
     }
 
     fn run(self, receiver: Receiver<Self>) -> T;
