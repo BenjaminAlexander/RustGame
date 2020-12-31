@@ -8,7 +8,7 @@ use crate::interface::Input;
 use crate::messaging::{ToServerMessage, InputMessage};
 use crate::threading::{ChannelThread, Consumer, ConsumerList, Receiver, Sender};
 use crate::threading::sender::SendError;
-use crate::gametime::TimeReceived;
+use crate::gametime::{TimeReceived, TimeValue};
 
 pub struct TcpInput<InputType>
     where InputType: Input {
@@ -38,7 +38,7 @@ impl<InputType> ChannelThread<()> for TcpInput<InputType>
 
             match result {
                 Ok(message) => {
-                    let time_received = SystemTime::now();
+                    let time_received = TimeValue::now();
 
                     receiver.try_iter(&mut self);
 

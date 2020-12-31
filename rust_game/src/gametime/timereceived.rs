@@ -1,18 +1,27 @@
 use std::time::SystemTime;
+use crate::gametime::timevalue::TimeValue;
 
 #[derive(Debug)]
 pub struct TimeReceived<T> {
     t: T,
-    time_received: SystemTime
+    time_received: TimeValue
 }
 
 impl<T> TimeReceived<T> {
     pub fn now(t: T) -> Self {
-        Self{t, time_received: SystemTime::now() }
+        Self{t, time_received: TimeValue::now() }
     }
 
-    pub fn new(time_received: SystemTime, t: T) -> Self {
+    pub fn new(time_received: TimeValue, t: T) -> Self {
         Self{ t, time_received }
+    }
+
+    pub fn get_time_received(&self) -> TimeValue {
+        self.time_received
+    }
+
+    pub fn get(&self) -> &T {
+        &self.t
     }
 }
 

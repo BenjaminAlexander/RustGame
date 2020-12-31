@@ -11,7 +11,7 @@ use crate::util::RollingAverage;
 use std::ops::Add;
 use chrono::Local;
 pub use self::timereceived::TimeReceived;
-use crate::gametime::timevalue::TimeValue;
+pub use crate::gametime::timevalue::TimeValue;
 pub use crate::gametime::timeduration::TimeDuration;
 
 pub struct GameTimer {
@@ -19,7 +19,6 @@ pub struct GameTimer {
     duration: TimeDuration,
     start: Option<TimeValue>,
     guard: Option<Guard>,
-    instantToHandle: Option<TimeValue>,
     consumer_list: ConsumerList<TimeMessage>,
     rollingAverage: RollingAverage<u64>
 }
@@ -32,7 +31,6 @@ impl GameTimer {
             duration,
             start: Option::None,
             guard: Option::None,
-            instantToHandle: Option::None,
             consumer_list: ConsumerList::new(),
             rollingAverage: RollingAverage::new(rollingAverageSize)
         }
@@ -40,23 +38,7 @@ impl GameTimer {
 }
 
 impl ChannelDrivenThread<()> for GameTimer {
-    fn on_none_pending(&mut self) -> Option<()> {
 
-        if self.start.is_some() &&
-            self.instantToHandle.is_some() {
-            let time_message = TimeMessage{
-                start: self.start.clone().unwrap(),
-                duration: self.duration,
-                actual_time: self.instantToHandle.unwrap(),
-            };
-
-            self.instantToHandle = None;
-
-            self.consumer_list.accept(&time_message);
-        }
-
-        None
-    }
 }
 
 impl Sender<GameTimer> {
@@ -91,17 +73,49 @@ impl Sender<GameTimer> {
     //Called from timer thread
     fn tick(&self) {
         let now = TimeValue::now();
-        trace!("tick: {:?}", now);
 
         self.send(move |game_timer|{
-            game_timer.instantToHandle = Some(now);
+            let time_message = TimeMessage{
+                start: game_timer.start.clone().unwrap(),
+                duration: game_timer.duration,
+                actual_time: now,
+            };
+
+            game_timer.consumer_list.accept(&time_message);
+
         }).unwrap();
     }
 
     pub fn on_time_message(&self, time_message: TimeReceived<TimeMessage>) {
+        let clone = self.clone();
         self.send(move |game_timer|{
 
+            //Calculate the start time of the remote clock in local time and add it to the rolling average
+            let remote_start = time_message.get_time_received()
+                .subtract(time_message.get().get_lateness())
+                .subtract(game_timer.duration * time_message.get().get_sequence());
 
+            game_timer.rollingAverage.add_value(remote_start.get_millis_since_epoch() as u64);
+
+            let average = game_timer.rollingAverage.get_average();
+
+            if game_timer.start.is_none() ||
+                game_timer.start.unwrap().get_millis_since_epoch() as u64 != average {
+
+                game_timer.start = Some(TimeValue::from_millis(average as i64));
+
+                let next_tick = game_timer.start.unwrap()
+                    .add(game_timer.duration * ((TimeValue::now().duration_since(game_timer.start.unwrap()) / game_timer.duration)
+                    .floor() as i64 + 1));
+
+                game_timer.guard = Some(
+                    game_timer.timer.schedule(
+                        chrono::DateTime::<Local>::from(next_tick.to_system_time()),
+                        Some(chrono::Duration::from_std(game_timer.duration.to_std()).unwrap()),
+                        move ||clone.tick()
+                    )
+                );
+            }
         }).unwrap();
     }
 }
@@ -123,7 +137,7 @@ impl TimeMessage {
         self.start.add(self.duration * self.get_sequence())
     }
 
-    //pub fn get_lateness(&self) -> Duration {
-        //let x = self.get_scheduled_time().duration_since()
-    //}
+    pub fn get_lateness(&self) -> TimeDuration {
+        self.get_scheduled_time().duration_since(self.actual_time)
+    }
 }
