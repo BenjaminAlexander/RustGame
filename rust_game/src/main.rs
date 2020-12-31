@@ -19,6 +19,7 @@ mod threading;
 mod interface;
 mod gametime;
 mod util;
+mod client;
 
 pub fn main() {
 
@@ -27,7 +28,7 @@ pub fn main() {
     info!("Hello, world!");
 
     let (sender, builder) = GameTimer::new(TimeDuration::from_millis(500), 50).build();
-    builder.name("Timer".to_string()).start().unwrap();
+    builder.name("Timer").start().unwrap();
     sender.start().unwrap();
 
     let input_message:InputMessage<Vector2> = InputMessage::new(0, 0, Vector2::new(1.0, 12.0));
@@ -39,8 +40,8 @@ pub fn main() {
 
     let listener_builder = TcpListenerThread::new(3456, core_sender).build();
 
-    core_thread_builder.name("ServerCore".to_string()).start().unwrap();
-    listener_builder.name("TcpListener".to_string()).start().unwrap();
+    core_thread_builder.name("ServerCore").start().unwrap();
+    listener_builder.name("TcpListener").start().unwrap();
 
     let millis = time::Duration::from_millis(500);
     thread::sleep(millis);

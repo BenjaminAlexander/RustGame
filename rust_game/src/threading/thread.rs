@@ -24,8 +24,8 @@ pub struct ThreadBuilder<T>
 impl<T> ThreadBuilder<T>
     where T: Send + 'static {
 
-    pub fn name(mut self, name: String) -> Self {
-        self.builder = self.builder.name(name);
+    pub fn name(mut self, name: &str) -> Self {
+        self.builder = self.builder.name(name.to_string());
         self
     }
 

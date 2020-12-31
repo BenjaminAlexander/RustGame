@@ -43,7 +43,7 @@ impl<StateType, InputType> Consumer<TcpStream> for Sender<Core<StateType, InputT
             let (sender, thread_builder) = TcpInput::new(tcp_stream).build();
 
             sender.add_input_consumer(TestConsumer{}).unwrap();
-            thread_builder.name("TcpInput".to_string()).start().unwrap();
+            thread_builder.name("TcpInput").start().unwrap();
 
             core.tcp_inputs.push(sender);
         }).unwrap();
