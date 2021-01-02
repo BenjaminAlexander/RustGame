@@ -9,6 +9,7 @@ use crate::messaging::{ToServerMessage, InputMessage};
 use crate::threading::{ChannelThread, Consumer, ConsumerList, Receiver, Sender};
 use crate::threading::sender::SendError;
 use crate::gametime::{TimeReceived, TimeValue};
+use std::io;
 
 pub struct TcpInput<InputType>
     where InputType: Input {
@@ -20,8 +21,8 @@ pub struct TcpInput<InputType>
 impl<InputType> TcpInput<InputType>
     where InputType: Input {
 
-    pub fn new(tcp_stream: TcpStream) -> Self {
-        Self { tcp_stream, input_consumers: ConsumerList::new() }
+    pub fn new(tcp_stream: &TcpStream) -> io::Result<Self> {
+        Ok(Self {tcp_stream: tcp_stream.try_clone()?, input_consumers: ConsumerList::new()})
     }
 }
 

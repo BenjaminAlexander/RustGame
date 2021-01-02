@@ -2,11 +2,12 @@ mod timereceived;
 mod timevalue;
 mod timeduration;
 
+use serde::{Deserialize, Serialize};
 use crate::threading::{ChannelDrivenThread, ChannelThread, Sender, ThreadBuilder, ConsumerList, Consumer};
 use timer::{Timer, Guard};
 use std::time::{Instant, Duration, UNIX_EPOCH, SystemTime};
 use crate::threading::sender::SendError;
-use log::{trace, info};
+use log::{trace, info, debug};
 use crate::util::RollingAverage;
 use std::ops::Add;
 use chrono::Local;
@@ -75,6 +76,8 @@ impl Sender<GameTimer> {
         let now = TimeValue::now();
 
         self.send(move |game_timer|{
+            debug!("Handling Tick from {:?}", now);
+
             let time_message = TimeMessage{
                 start: game_timer.start.clone().unwrap(),
                 duration: game_timer.duration,
@@ -85,10 +88,13 @@ impl Sender<GameTimer> {
 
         }).unwrap();
     }
+}
 
-    pub fn on_time_message(&self, time_message: TimeReceived<TimeMessage>) {
+impl Consumer<TimeReceived<TimeMessage>> for Sender<GameTimer> {
+    fn accept(&self, time_message: TimeReceived<TimeMessage>) {
         let clone = self.clone();
         self.send(move |game_timer|{
+            debug!("Handling TimeMessage: {:?}", time_message);
 
             //Calculate the start time of the remote clock in local time and add it to the rolling average
             let remote_start = time_message.get_time_received()
@@ -102,11 +108,18 @@ impl Sender<GameTimer> {
             if game_timer.start.is_none() ||
                 game_timer.start.unwrap().get_millis_since_epoch() as u64 != average {
 
+                if game_timer.start.is_none() {
+                    debug!("Start client clock from signal from server clock.");
+                } else {
+                    let error = game_timer.start.unwrap().get_millis_since_epoch() - average as i64;
+                    debug!("Syncing client clock to server clock.\nError in millis: {:?}", error);
+                }
+
                 game_timer.start = Some(TimeValue::from_millis(average as i64));
 
                 let next_tick = game_timer.start.unwrap()
                     .add(game_timer.duration * ((TimeValue::now().duration_since(game_timer.start.unwrap()) / game_timer.duration)
-                    .floor() as i64 + 1));
+                        .floor() as i64 + 1));
 
                 game_timer.guard = Some(
                     game_timer.timer.schedule(
@@ -120,7 +133,7 @@ impl Sender<GameTimer> {
     }
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Serialize, Deserialize, Debug, Clone, Copy)]
 pub struct TimeMessage {
     start: TimeValue,
     duration: TimeDuration,
@@ -128,6 +141,14 @@ pub struct TimeMessage {
 }
 
 impl TimeMessage {
+    pub fn get_actual_time(&self) -> &TimeValue {
+        &self.actual_time
+    }
+
+    pub fn is_after(&self, other: &TimeMessage) -> bool {
+        self.actual_time.is_after(&other.actual_time)
+    }
+
     pub fn get_sequence(&self) -> i64 {
         let duration_since_start = self.actual_time.duration_since(self.start);
         (duration_since_start / self.duration).round() as i64

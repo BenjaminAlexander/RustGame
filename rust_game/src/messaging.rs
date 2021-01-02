@@ -2,9 +2,11 @@ use serde::{Deserialize, Serialize};
 
 pub use self::inputmessage::InputMessage;
 pub use self::toservermessage::ToServerMessage;
+pub use self::toclientmessage::ToClientMessage;
 
 mod toservermessage;
 mod inputmessage;
+mod toclientmessage;
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct InitialInformation<StateType, InputType> {

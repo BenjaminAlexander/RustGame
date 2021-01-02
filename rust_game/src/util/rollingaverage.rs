@@ -23,10 +23,12 @@ impl<T> RollingAverage<T>
     pub fn add_value(&mut self, value: T) {
         if self.values.len() == self.values.capacity() {
             self.sum = self.sum - self.values[self.next_index];
+            self.values[self.next_index] = value;
+        } else {
+            self.values.insert(self.next_index, value);
         }
 
         self.sum = self.sum + value;
-        self.values.insert(self.next_index, value);
         self.next_index = (self.next_index + 1) % self.values.capacity();
     }
 

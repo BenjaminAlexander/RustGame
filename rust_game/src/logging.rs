@@ -26,7 +26,7 @@ pub fn init_logging() {
             .additive(false)
             .build("app::requests", LevelFilter::Info))
         //This is the level:
-        .build(Root::builder().appender("console_appender").build(LevelFilter::Trace))
+        .build(Root::builder().appender("console_appender").build(LevelFilter::Debug))
         .unwrap();
 
     log4rs::init_config(config).unwrap();

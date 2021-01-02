@@ -2,21 +2,23 @@ use std::net::{Ipv4Addr, SocketAddr, SocketAddrV4, TcpListener, TcpStream};
 
 use log::{error, info};
 
-use crate::threading::{Consumer, Thread};
+use crate::threading::{Consumer, Thread, ChannelDrivenThread, Sender, ChannelThread, Receiver};
+use crate::threading::sender::SendError;
 
-pub struct TcpListenerThread<T: Consumer<TcpStream>> {
-    port:u16,
-    consumer: T
+pub struct TcpListenerThread {
+    port: u16,
+    consumer: Option<Box<dyn Consumer<TcpStream>>>
 }
 
-impl<T: Consumer<TcpStream>> TcpListenerThread<T> {
-    pub fn new(port:u16, consumer: T) -> TcpListenerThread<T> {
-        TcpListenerThread{port, consumer}
+impl TcpListenerThread {
+    pub fn new(port:u16) -> TcpListenerThread {
+        TcpListenerThread{port, consumer: None}
     }
 }
 
-impl<T: Consumer<TcpStream>> Thread<()> for TcpListenerThread<T> {
-    fn run(self) -> () {
+impl ChannelThread<()> for TcpListenerThread {
+
+    fn run(mut self, receiver: Receiver<Self>) {
         let socket_addr_v4:SocketAddrV4 = SocketAddrV4::new(Ipv4Addr::new(127, 0, 0, 1), self.port);
         let socket_addr:SocketAddr = SocketAddr::from(socket_addr_v4);
         let listener:TcpListener = TcpListener::bind(socket_addr).unwrap();
@@ -28,7 +30,12 @@ impl<T: Consumer<TcpStream>> Thread<()> for TcpListenerThread<T> {
                     info!("New TCP connection from {:?}", tcp_stream.peer_addr().unwrap().ip().to_string());
                     //core.addTcpStream(tcpStream);
 
-                    self.consumer.accept(tcp_stream);
+                    receiver.try_iter(&mut self);
+
+                    if self.consumer.is_some() {
+
+                        self.consumer.as_ref().unwrap().accept(tcp_stream);
+                    }
                 }
                 Err(error) => {
                     error!("{:?}", error);
@@ -36,5 +43,15 @@ impl<T: Consumer<TcpStream>> Thread<()> for TcpListenerThread<T> {
                 }
             }
         };
+    }
+}
+
+impl Sender<TcpListenerThread> {
+    pub fn set_consumer<T>(&self, t: T) -> Result<(), SendError<TcpListenerThread>>
+        where T: Consumer<TcpStream> {
+
+        self.send(|tcp_listener_thread|{
+            tcp_listener_thread.consumer = Some(Box::new(t));
+        })
     }
 }

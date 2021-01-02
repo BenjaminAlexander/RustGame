@@ -10,6 +10,7 @@ use crate::simplegame::Vector2;
 use crate::threading::{ChannelThread, Thread};
 use crate::gametime::{GameTimer, TimeDuration};
 use std::time::{Instant, Duration};
+use crate::util::RollingAverage;
 
 mod simplegame;
 mod messaging;
@@ -27,29 +28,35 @@ pub fn main() {
 
     info!("Hello, world!");
 
-    let (sender, builder) = GameTimer::new(TimeDuration::from_millis(500), 50).build();
-    builder.name("Timer").start().unwrap();
-    sender.start().unwrap();
-
     let input_message:InputMessage<Vector2> = InputMessage::new(0, 0, Vector2::new(1.0, 12.0));
     let my_message:ToServerMessage<Vector2> = ToServerMessage::Input(input_message);
 
+    let server_core  = server::Core::<Vector2, Vector2>::new(3456, TimeDuration::from_millis(50));
+    let (server_core_sender, server_core_builder) = server_core.build();
 
-    let (core_sender, core_thread_builder) =
-        Core::<Vector2, Vector2>::new().build();
+    server_core_sender.start_listener();
+    server_core_builder.name("ServerCore").start().unwrap();
 
-    let listener_builder = TcpListenerThread::new(3456, core_sender).build();
+    let client_core = client::Core::new(
+        "127.0.0.1",
+        3456,
+        TimeDuration::from_millis(50),
+        50);
 
-    core_thread_builder.name("ServerCore").start().unwrap();
-    listener_builder.name("TcpListener").start().unwrap();
+    let (client_core_sender, client_core_builder) = client_core.build();
 
-    let millis = time::Duration::from_millis(500);
+    client_core_sender.connect();
+    client_core_builder.name("ClientCore").start().unwrap();
+
+    let millis = time::Duration::from_millis(5000);
     thread::sleep(millis);
 
-    let mut stream = TcpStream::connect("127.0.0.1:3456").unwrap();
-    rmp_serde::encode::write(&mut stream, &my_message).unwrap();
-    stream.flush().unwrap();
+    server_core_sender.start_game();
 
-    let ten_millis = time::Duration::from_millis(5000);
+    // let mut stream = TcpStream::connect("127.0.0.1:3456").unwrap();
+    // rmp_serde::encode::write(&mut stream, &my_message).unwrap();
+    // stream.flush().unwrap();
+
+    let ten_millis = time::Duration::from_millis(10000);
     thread::sleep(ten_millis);
 }

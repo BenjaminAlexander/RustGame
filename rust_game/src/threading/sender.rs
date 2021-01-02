@@ -28,7 +28,6 @@ impl<T> Sender<T> {
 }
 
 impl<T> Clone for Sender<T> {
-
     fn clone(&self) -> Self {
         Self {sender: self.sender.clone()}
     }

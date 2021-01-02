@@ -1,7 +1,8 @@
+use serde::{Deserialize, Serialize};
 use std::time::{Instant, UNIX_EPOCH, SystemTime, Duration};
 use std::ops::{Div, Mul};
 
-#[derive(Clone, Copy, Debug)]
+#[derive(Serialize, Deserialize, Clone, Copy, Debug)]
 pub struct TimeDuration {
     millis: i64
 }

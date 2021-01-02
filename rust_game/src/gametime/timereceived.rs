@@ -1,7 +1,8 @@
+use serde::{Deserialize, Serialize};
 use std::time::SystemTime;
 use crate::gametime::timevalue::TimeValue;
 
-#[derive(Debug)]
+#[derive(Serialize, Deserialize, Debug)]
 pub struct TimeReceived<T> {
     t: T,
     time_received: TimeValue
