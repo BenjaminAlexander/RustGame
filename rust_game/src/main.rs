@@ -1,16 +1,9 @@
 use std::{thread, time};
-use std::io::Write;
-use std::net::TcpStream;
-
 use log::info;
-
 use crate::messaging::*;
-use crate::server::*;
 use crate::simplegame::Vector2;
-use crate::threading::{ChannelThread, Thread};
-use crate::gametime::{GameTimer, TimeDuration};
-use std::time::{Instant, Duration};
-use crate::util::RollingAverage;
+use crate::threading::ChannelThread;
+use crate::gametime::TimeDuration;
 
 mod simplegame;
 mod messaging;
@@ -29,7 +22,7 @@ pub fn main() {
     info!("Hello, world!");
 
     let input_message:InputMessage<Vector2> = InputMessage::new(0, 0, Vector2::new(1.0, 12.0));
-    let my_message:ToServerMessage<Vector2> = ToServerMessage::Input(input_message);
+    let _my_message:ToServerMessage<Vector2> = ToServerMessage::Input(input_message);
 
     let server_core  = server::Core::<Vector2, Vector2>::new(3456, TimeDuration::from_millis(50));
     let (server_core_sender, server_core_builder) = server_core.build();
@@ -48,7 +41,7 @@ pub fn main() {
     client_core_sender.connect();
     client_core_builder.name("ClientCore").start().unwrap();
 
-    let millis = time::Duration::from_millis(5000);
+    let millis = time::Duration::from_millis(1000);
     thread::sleep(millis);
 
     server_core_sender.start_game();

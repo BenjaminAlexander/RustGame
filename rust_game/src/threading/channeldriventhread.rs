@@ -1,7 +1,7 @@
 use log::{trace};
 
 use crate::threading::{ChannelThread, Receiver};
-use std::sync::mpsc::TryRecvError;
+use std::sync::mpsc::{TryRecvError};
 
 pub trait ChannelDrivenThread<T>: Send + 'static
     where T: Send + 'static {
@@ -10,21 +10,27 @@ pub trait ChannelDrivenThread<T>: Send + 'static
         None
     }
 
-    fn on_none_pending(&mut self)-> Option<T> {
+    fn on_none_pending(&mut self) -> Option<T> {
         None
     }
 
+    fn on_channel_disconnect(&mut self) -> T;
 }
 
-impl<T, U: ChannelDrivenThread<T>> ChannelThread<Result<T, TryRecvError>> for U
+impl<T, U: ChannelDrivenThread<T>> ChannelThread<T> for U
     where T: Send + 'static {
 
-    fn run(mut self, receiver: Receiver<Self>) -> Result<T, TryRecvError> {
+    fn run(mut self, receiver: Receiver<Self>) -> T {
         trace!("Starting");
 
         loop {
             trace!("Waiting.");
-            receiver.recv(&mut self).unwrap();
+            match receiver.recv(&mut self) {
+                Err(_error) => {
+                    return self.on_channel_disconnect();
+                }
+                _ => {}
+            }
 
             match self.after_message() {
                 None => {
@@ -33,19 +39,17 @@ impl<T, U: ChannelDrivenThread<T>> ChannelThread<Result<T, TryRecvError>> for U
                         match receiver.try_recv(&mut self) {
                             Ok(()) => {
                                 match self.after_message() {
-                                    None => {
-                                        /*Continue*/
-                                    }
                                     Some(return_value) => {
                                         trace!("Returning.");
-                                        return Ok(return_value);
+                                        return return_value;
                                     }
+                                    _=>{}
                                 }
                             }
                             Err(error) => {
                                 match error {
                                     TryRecvError::Empty => break,
-                                    TryRecvError::Disconnected => return Err(error)
+                                    TryRecvError::Disconnected => return self.on_channel_disconnect()
                                 }
                             }
                         }
@@ -53,7 +57,7 @@ impl<T, U: ChannelDrivenThread<T>> ChannelThread<Result<T, TryRecvError>> for U
                 }
                 Some(return_value) => {
                     trace!("Returning.");
-                    return Ok(return_value);
+                    return return_value;
                 }
             }
 
@@ -62,7 +66,8 @@ impl<T, U: ChannelDrivenThread<T>> ChannelThread<Result<T, TryRecvError>> for U
                 None => {/*continue*/}
                 Some(return_value) => {
                     trace!("Returning.");
-                    return Ok(return_value);}
+                    return return_value;
+                }
             }
         }
     }

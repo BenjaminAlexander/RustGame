@@ -6,7 +6,6 @@ use crate::messaging::ToClientMessage;
 use rmp_serde::decode::Error;
 use crate::threading::sender::SendError;
 use std::io;
-use std::convert::TryInto;
 
 pub struct TcpInput {
 
@@ -16,8 +15,8 @@ pub struct TcpInput {
 
 impl TcpInput {
 
-    pub fn new(tcp_stream: TcpStream) -> io::Result<Self> {
-        Ok(Self {tcp_stream, time_message_consumers: ConsumerList::new()})
+    pub fn new(tcp_stream: &TcpStream) -> io::Result<Self> {
+        Ok(Self {tcp_stream: tcp_stream.try_clone()?, time_message_consumers: ConsumerList::new()})
     }
 }
 
@@ -47,7 +46,7 @@ impl ChannelThread<()> for TcpInput {
                 }
                 Err(error) => {
                     error!("Error: {:?}", error);
-                    //return;
+                    return;
                 }
             }
         }

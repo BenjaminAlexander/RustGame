@@ -4,7 +4,7 @@ use log::info;
 use serde::export::PhantomData;
 
 use crate::interface::{Input, State};
-use crate::server::tcpinput::{TcpInput, TestConsumer};
+use crate::server::tcpinput::TcpInput;
 use crate::threading::{ChannelDrivenThread, ChannelThread, Consumer, Sender};
 use crate::server::TcpListenerThread;
 use crate::server::tcpoutput::TcpOutput;
@@ -25,6 +25,10 @@ pub struct Core<StateType, InputType>
 impl<StateType, InputType> ChannelDrivenThread<()> for Core<StateType, InputType>
     where StateType: State,
           InputType: Input {
+
+    fn on_channel_disconnect(&mut self) -> () {
+        ()
+    }
 }
 
 impl<StateType, InputType> Core<StateType, InputType>
@@ -50,9 +54,9 @@ impl<StateType, InputType> Sender<Core<StateType, InputType>>
 
         self.send(|core| {
             let (listener_sender, listener_builder) = TcpListenerThread::new(core.port).build();
-            listener_sender.set_consumer(clone);
+            listener_sender.set_consumer(clone).unwrap();
             listener_builder.name("ServerTcpListener").start().unwrap();
-        });
+        }).unwrap();
     }
 
     pub fn start_game(&self) {
@@ -88,6 +92,11 @@ impl<StateType, InputType> Consumer<TcpStream> for Sender<Core<StateType, InputT
                 let (out_sender, out_thread_builder) = TcpOutput::new(&tcp_stream).unwrap().build();
                 out_thread_builder.name("ServerTcpOutput").start().unwrap();
                 core.tcp_outputs.push(out_sender);
+
+                info!("TcpStream accepted: {:?}", tcp_stream);
+
+            } else {
+                info!("TcpStream connected after the core has stated and will be dropped. {:?}", tcp_stream);
             }
         }).unwrap();
     }

@@ -1,5 +1,4 @@
 use serde::{Deserialize, Serialize};
-use std::time::SystemTime;
 use crate::gametime::timevalue::TimeValue;
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -9,9 +8,9 @@ pub struct TimeReceived<T> {
 }
 
 impl<T> TimeReceived<T> {
-    pub fn now(t: T) -> Self {
-        Self{t, time_received: TimeValue::now() }
-    }
+    // pub fn now(t: T) -> Self {
+    //     Self{t, time_received: TimeValue::now() }
+    // }
 
     pub fn new(time_received: TimeValue, t: T) -> Self {
         Self{ t, time_received }

@@ -26,6 +26,9 @@ impl Core {
 }
 
 impl ChannelDrivenThread<()> for Core {
+    fn on_channel_disconnect(&mut self) -> () {
+        ()
+    }
 }
 
 impl Sender<Core> {
@@ -37,12 +40,12 @@ impl Sender<Core> {
             let tcp_stream = TcpStream::connect(socket_addr).unwrap();
 
             let (game_timer_sender, game_timer_builder) = GameTimer::new(core.step_duration, core.clock_average_size).build();
-            let (tcp_input_sender, tcp_input_builder) = TcpInput::new(tcp_stream).unwrap().build();
+            let (tcp_input_sender, tcp_input_builder) = TcpInput::new(&tcp_stream).unwrap().build();
 
             tcp_input_sender.add_time_message_consumer(game_timer_sender).unwrap();
 
-            let tcp_input_join_handle = tcp_input_builder.name("ClientTcpInput").start().unwrap();
-            let game_timer_join_handle = game_timer_builder.name("ClientGameTimer").start().unwrap();
-        });
+            let _tcp_input_join_handle = tcp_input_builder.name("ClientTcpInput").start().unwrap();
+            let _game_timer_join_handle = game_timer_builder.name("ClientGameTimer").start().unwrap();
+        }).unwrap();
     }
 }

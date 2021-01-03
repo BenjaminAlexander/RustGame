@@ -24,6 +24,10 @@ impl ChannelDrivenThread<()> for TcpOutput {
         }
         None
     }
+
+    fn on_channel_disconnect(&mut self) -> () {
+        ()
+    }
 }
 
 impl TcpOutput {

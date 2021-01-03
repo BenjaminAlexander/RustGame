@@ -1,5 +1,4 @@
 use std::ops::{Sub, Add, Div};
-use serde::export::PhantomData;
 
 pub struct RollingAverage<T>
     where T: Default + Copy + Sub<Output = T> + Add<Output = T> + Div<u64, Output = T> + 'static {

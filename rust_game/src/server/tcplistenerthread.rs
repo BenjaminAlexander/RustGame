@@ -2,7 +2,7 @@ use std::net::{Ipv4Addr, SocketAddr, SocketAddrV4, TcpListener, TcpStream};
 
 use log::{error, info};
 
-use crate::threading::{Consumer, Thread, ChannelDrivenThread, Sender, ChannelThread, Receiver};
+use crate::threading::{Consumer, Sender, ChannelThread, Receiver};
 use crate::threading::sender::SendError;
 
 pub struct TcpListenerThread {
