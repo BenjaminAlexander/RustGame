@@ -15,11 +15,29 @@ mod gametime;
 mod util;
 mod client;
 
+pub fn insert(v: &mut Vec<i32>, val: i32) {
+
+    match v.binary_search_by(|elem| { val.cmp(elem) }) {
+        Ok(pos) => v[pos] = val,
+        Err(pos) => v.insert(pos, val)
+    }
+}
+
 pub fn main() {
 
     logging::init_logging();
 
     info!("Hello, world!");
+
+    let mut v = Vec::<i32>::new();
+
+    insert(&mut v, 6);
+    insert(&mut v, 4);
+    insert(&mut v, 5);
+
+    info!("test {:?}", v);
+    info!("test {:?}", v.pop().unwrap());
+    info!("test {:?}", v);
 
     let input_message:InputMessage<Vector2> = InputMessage::new(0, 0, Vector2::new(1.0, 12.0));
     let _my_message:ToServerMessage<Vector2> = ToServerMessage::Input(input_message);
@@ -30,7 +48,7 @@ pub fn main() {
     server_core_sender.start_listener();
     server_core_builder.name("ServerCore").start().unwrap();
 
-    let client_core = client::Core::new(
+    let client_core = client::Core::<Vector2>::new(
         "127.0.0.1",
         3456,
         TimeDuration::from_millis(50),

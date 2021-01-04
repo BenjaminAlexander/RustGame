@@ -18,7 +18,7 @@ pub struct Core<StateType, InputType>
     port: u16,
     step_duration: TimeDuration,
     tcp_inputs: Vec<Sender<TcpInput<InputType>>>,
-    tcp_outputs: Vec<Sender<TcpOutput>>,
+    tcp_outputs: Vec<Sender<TcpOutput<InputType>>>,
     phantom: PhantomData<StateType>
 }
 

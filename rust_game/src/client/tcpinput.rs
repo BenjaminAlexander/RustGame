@@ -6,21 +6,31 @@ use crate::messaging::ToClientMessage;
 use rmp_serde::decode::Error;
 use crate::threading::sender::SendError;
 use std::io;
+use crate::interface::Input;
+use std::marker::PhantomData;
 
-pub struct TcpInput {
+pub struct TcpInput <InputType>
+    where InputType: Input {
 
     tcp_stream: TcpStream,
-    time_message_consumers: ConsumerList<TimeReceived<TimeMessage>>
+    time_message_consumers: ConsumerList<TimeReceived<TimeMessage>>,
+    phantom: PhantomData<InputType>
 }
 
-impl TcpInput {
+impl<InputType> TcpInput<InputType>
+    where InputType: Input {
 
     pub fn new(tcp_stream: &TcpStream) -> io::Result<Self> {
-        Ok(Self {tcp_stream: tcp_stream.try_clone()?, time_message_consumers: ConsumerList::new()})
+        Ok(Self {
+            tcp_stream: tcp_stream.try_clone()?,
+            time_message_consumers: ConsumerList::new(),
+            phantom: PhantomData
+        })
     }
 }
 
-impl ChannelThread<()> for TcpInput {
+impl<InputType> ChannelThread<()> for TcpInput<InputType>
+    where InputType: Input {
 
     fn run(mut self, receiver: Receiver<Self>) {
         info!("Starting");
@@ -28,7 +38,7 @@ impl ChannelThread<()> for TcpInput {
         let receiver = receiver;
 
         loop {
-            let result: Result<ToClientMessage, Error> = rmp_serde::from_read(&self.tcp_stream);
+            let result: Result<ToClientMessage::<InputType>, Error> = rmp_serde::from_read(&self.tcp_stream);
 
             match result {
                 Ok(message) => {
@@ -42,6 +52,9 @@ impl ChannelThread<()> for TcpInput {
                             let timed_message = TimeReceived::new(time_received, time_message);
                             self.time_message_consumers.accept(&timed_message);
                         }
+                        ToClientMessage::InputMessage(input_message) => {
+                            //TODO: handle input message
+                        }
                     }
                 }
                 Err(error) => {
@@ -53,9 +66,10 @@ impl ChannelThread<()> for TcpInput {
     }
 }
 
-impl Sender<TcpInput> {
+impl<InputType> Sender<TcpInput<InputType>>
+    where InputType: Input {
 
-    pub fn add_time_message_consumer<T>(&self, consumer: T) -> Result<(), SendError<TcpInput>>
+    pub fn add_time_message_consumer<T>(&self, consumer: T) -> Result<(), SendError<TcpInput<InputType>>>
         where T: Consumer<TimeReceived<TimeMessage>> {
 
         self.send(|tcp_input|{

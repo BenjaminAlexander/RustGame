@@ -1,4 +1,4 @@
-use log::{trace};
+use log::{trace, info};
 
 use crate::threading::{ChannelThread, Receiver};
 use std::sync::mpsc::{TryRecvError};
@@ -40,7 +40,7 @@ impl<T, U: ChannelDrivenThread<T>> ChannelThread<T> for U
                             Ok(()) => {
                                 match self.after_message() {
                                     Some(return_value) => {
-                                        trace!("Returning.");
+                                        info!("Thread is returning.");
                                         return return_value;
                                     }
                                     _=>{}
@@ -56,7 +56,7 @@ impl<T, U: ChannelDrivenThread<T>> ChannelThread<T> for U
                     }
                 }
                 Some(return_value) => {
-                    trace!("Returning.");
+                    info!("Thread is returning.");
                     return return_value;
                 }
             }
@@ -65,7 +65,7 @@ impl<T, U: ChannelDrivenThread<T>> ChannelThread<T> for U
             match self.on_none_pending() {
                 None => {/*continue*/}
                 Some(return_value) => {
-                    trace!("Returning.");
+                    info!("Thread is returning.");
                     return return_value;
                 }
             }

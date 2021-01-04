@@ -32,24 +32,3 @@ impl<StateType, InputType> StateMessage<StateType, InputType> {
     //     StateMessage{ sequence, inputs, state }
     // }
 }
-
-#[derive(Serialize, Deserialize, Debug)]
-pub struct TimeSyncMessage {
-    scheduled_time: i32,
-    actual_time: i32,
-    sequence: i32,
-}
-
-impl TimeSyncMessage {
-    // pub fn new(scheduled_time: i32, actual_time: i32, sequence: i32) -> TimeSyncMessage {
-    //     TimeSyncMessage{ scheduled_time, actual_time, sequence }
-    // }
-}
-
-#[derive(Serialize, Deserialize, Debug)]
-pub enum Message<StateType, InputType>
-    where InputType: Clone {
-
-    Input(InputMessage<InputType>),
-    State(StateMessage<StateType, InputType>)
-}
