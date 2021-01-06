@@ -9,6 +9,9 @@ use crate::server::TcpListenerThread;
 use crate::server::tcpoutput::TcpOutput;
 use crate::gametime::{GameTimer, TimeDuration};
 
+//TODO: route game timer and player inputs through the core to
+// get synchronous enforcement of the grace period
+
 pub struct Core<StateType, InputType>
     where StateType: State,
           InputType: Input {

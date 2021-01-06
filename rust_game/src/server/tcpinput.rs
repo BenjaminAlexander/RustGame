@@ -36,6 +36,8 @@ impl<InputType> ChannelThread<()> for TcpInput<InputType>
         loop {
             let result: Result<ToServerMessage<InputType>, Error> = rmp_serde::from_read(&self.tcp_stream);
 
+            //TODO: check player ID on message
+
             match result {
                 Ok(message) => {
                     let time_received = TimeValue::now();

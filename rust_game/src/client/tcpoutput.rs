@@ -5,6 +5,8 @@ use crate::messaging::{InputMessage, ToServerMessage};
 use std::io;
 use std::marker::PhantomData;
 
+//TODO: Send response to time messages to calculate ping
+
 pub struct TcpOutput<InputType>
     where InputType: Input {
     tcp_stream: TcpStream,
