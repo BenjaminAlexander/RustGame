@@ -5,15 +5,16 @@ use rmp_serde::decode::Error;
 
 use crate::interface::Input;
 use crate::messaging::{ToServerMessage, InputMessage};
-use crate::threading::{ChannelThread, Consumer, ConsumerList, Receiver};
+use crate::threading::{ChannelThread, Consumer, ConsumerList, Receiver, Sender};
 use crate::gametime::{TimeReceived, TimeValue};
 use std::io;
+use crate::threading::sender::SendError;
 
 pub struct TcpInput<InputType>
     where InputType: Input {
 
     tcp_stream: TcpStream,
-    input_consumers: ConsumerList<TimeReceived<InputMessage<InputType>>>
+    input_consumers: ConsumerList<InputMessage<InputType>>
 }
 
 impl<InputType> TcpInput<InputType>
@@ -43,10 +44,7 @@ impl<InputType> ChannelThread<()> for TcpInput<InputType>
 
                     match message {
                         ToServerMessage::Input(input_message) => {
-
-                            let timed_message = TimeReceived::new(time_received, input_message);
-
-                            self.input_consumers.accept(&timed_message);
+                            self.input_consumers.accept(&input_message);
                         }
                     }
                 }
@@ -61,22 +59,14 @@ impl<InputType> ChannelThread<()> for TcpInput<InputType>
     }
 }
 
-// impl<InputType> Sender<TcpInput<InputType>>
-//     where InputType: Input
-// {
-//     pub fn add_input_consumer<T>(&self, consumer: T) -> Result<(), SendError<TcpInput<InputType>>>
-//         where T: Consumer<TimeReceived<InputMessage<InputType>>> {
-//         self.send(|tcp_input|{
-//             tcp_input.input_consumers.add_consumer(consumer);
-//         })
-//     }
-// }
+impl<InputType> Sender<TcpInput<InputType>>
+    where InputType: Input
+{
+    pub fn add_input_consumer<T>(&self, consumer: T) -> Result<(), SendError<TcpInput<InputType>>>
+        where T: Consumer<InputMessage<InputType>> {
 
-pub struct TestConsumer;
-
-impl<InputType> Consumer<TimeReceived<InputMessage<InputType>>> for TestConsumer
-    where InputType: Input {
-    fn accept(&self, t: TimeReceived<InputMessage<InputType>>) {
-        info!("Consume {:?}", t);
+        self.send(|tcp_input|{
+            tcp_input.input_consumers.add_consumer(consumer);
+        })
     }
 }

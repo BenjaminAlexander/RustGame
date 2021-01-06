@@ -16,6 +16,10 @@ impl<InputType> InputMessage<InputType>
     pub fn new(sequence: i32, player_index: i8, input: InputType) -> InputMessage<InputType> {
         InputMessage{ sequence, player_index, input }
     }
+
+    pub fn get_sequence(&self) -> i32 {
+        self.sequence
+    }
 }
 
 impl<InputType> Clone for InputMessage<InputType>

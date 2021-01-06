@@ -6,5 +6,6 @@ use super::InputMessage;
 pub enum ToServerMessage<InputType>
     where InputType: Clone {
 
+    //TODO: see if these can be borrowed
     Input(InputMessage<InputType>)
 }

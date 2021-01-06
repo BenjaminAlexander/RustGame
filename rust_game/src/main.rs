@@ -48,7 +48,7 @@ pub fn main() {
     server_core_sender.start_listener();
     server_core_builder.name("ServerCore").start().unwrap();
 
-    let client_core = client::Core::<Vector2>::new(
+    let client_core = client::Core::<Vector2, Vector2>::new(
         "127.0.0.1",
         3456,
         TimeDuration::from_millis(50),

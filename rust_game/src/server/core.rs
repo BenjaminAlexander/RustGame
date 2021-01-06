@@ -1,7 +1,6 @@
 use std::net::TcpStream;
 
 use log::info;
-use serde::export::PhantomData;
 
 use crate::interface::{Input, State};
 use crate::server::tcpinput::TcpInput;
@@ -18,8 +17,7 @@ pub struct Core<StateType, InputType>
     port: u16,
     step_duration: TimeDuration,
     tcp_inputs: Vec<Sender<TcpInput<InputType>>>,
-    tcp_outputs: Vec<Sender<TcpOutput<InputType>>>,
-    phantom: PhantomData<StateType>
+    tcp_outputs: Vec<Sender<TcpOutput<StateType, InputType>>>
 }
 
 impl<StateType, InputType> ChannelDrivenThread<()> for Core<StateType, InputType>
@@ -36,12 +34,13 @@ impl<StateType, InputType> Core<StateType, InputType>
           InputType: Input {
 
     pub fn new(port: u16, step_duration: TimeDuration) -> Self {
-        Self {game_is_started: false,
+        Self {
+            game_is_started: false,
             port,
             step_duration,
             tcp_inputs: Vec::new(),
-            tcp_outputs: Vec::new(),
-            phantom: PhantomData}
+            tcp_outputs: Vec::new()
+        }
     }
 }
 

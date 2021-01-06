@@ -3,21 +3,24 @@ use std::str::FromStr;
 use crate::gametime::{TimeDuration, GameTimer};
 use crate::threading::{ChannelThread, Sender, ChannelDrivenThread};
 use crate::client::tcpinput::TcpInput;
-use crate::interface::Input;
+use crate::interface::{Input, State};
 use std::marker::PhantomData;
 
-pub struct Core<InputType>
-    where InputType: Input {
+pub struct Core<StateType, InputType>
+    where InputType: Input,
+          StateType: State {
 
     server_ip: String,
     port: u16,
     step_duration: TimeDuration,
     clock_average_size: usize,
-    phantom: PhantomData<InputType>
+    phantom: PhantomData<InputType>,
+    state_phantom: PhantomData<StateType>
 }
 
-impl<InputType> Core<InputType>
-    where InputType: Input {
+impl<StateType, InputType> Core<StateType, InputType>
+    where InputType: Input,
+          StateType: State {
 
     pub fn new(server_ip: &str,
                port: u16,
@@ -28,21 +31,24 @@ impl<InputType> Core<InputType>
             port,
             step_duration,
             clock_average_size,
-            phantom: PhantomData
+            phantom: PhantomData,
+            state_phantom: PhantomData
         }
     }
 }
 
-impl<InputType> ChannelDrivenThread<()> for Core<InputType>
-    where InputType: Input {
+impl<StateType, InputType> ChannelDrivenThread<()> for Core<StateType, InputType>
+    where InputType: Input,
+          StateType: State {
 
     fn on_channel_disconnect(&mut self) -> () {
         ()
     }
 }
 
-impl<InputType> Sender<Core<InputType>>
-    where InputType: Input {
+impl<StateType, InputType> Sender<Core<StateType, InputType>>
+    where InputType: Input,
+          StateType: State {
 
     pub fn connect(&self) {
         self.send(|core|{
@@ -52,7 +58,7 @@ impl<InputType> Sender<Core<InputType>>
             let tcp_stream = TcpStream::connect(socket_addr).unwrap();
 
             let (game_timer_sender, game_timer_builder) = GameTimer::new(core.step_duration, core.clock_average_size).build();
-            let (tcp_input_sender, tcp_input_builder) = TcpInput::<InputType>::new(&tcp_stream).unwrap().build();
+            let (tcp_input_sender, tcp_input_builder) = TcpInput::<StateType, InputType>::new(&tcp_stream).unwrap().build();
 
             tcp_input_sender.add_time_message_consumer(game_timer_sender).unwrap();
 
