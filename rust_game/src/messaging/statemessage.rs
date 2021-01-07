@@ -1,36 +1,37 @@
 use serde::{Deserialize, Serialize};
+use crate::messaging::InputMessage;
 
 #[derive(Serialize, Deserialize, Debug)]
-pub struct StateMessage<StateType, InputType>
-    where InputType: Clone,
-          StateType: Clone {
+pub struct StateMessage<StateType>
+    where StateType: Clone {
 
-    sequence: i32,
-    inputs: Vec<Option<InputType>>,
-    state: Option<StateType>
+    sequence: usize,
+    state: StateType,
 }
 
-impl<StateType, InputType> StateMessage<StateType, InputType>
-    where InputType: Clone,
-          StateType: Clone {
+impl<StateType> StateMessage<StateType>
+    where StateType: Clone {
 
-    pub fn new(sequence: i32, inputs: Vec<Option<InputType>>, state: Option<StateType>) -> StateMessage<StateType, InputType> {
-        StateMessage{ sequence, inputs, state }
+    pub fn new(sequence: usize, state: StateType) -> Self {
+        Self{ sequence, state }
     }
 
-    pub fn get_sequence(&self) -> i32 {
+    pub fn get_state(self) -> StateType {
+        self.state
+    }
+
+    pub fn get_sequence(&self) -> usize {
         self.sequence
     }
 }
 
-impl<StateType, InputType> Clone for StateMessage<StateType, InputType>
-    where InputType: Clone,
-          StateType: Clone {
+impl<StateType> Clone for StateMessage<StateType>
+    where StateType: Clone {
+
     fn clone(&self) -> Self {
         Self{
             sequence: self.sequence,
-            inputs: self.inputs.clone(),
-            state: self.state.clone()
+            state: self.state.clone(),
         }
     }
 }

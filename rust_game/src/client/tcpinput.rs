@@ -16,7 +16,7 @@ pub struct TcpInput <StateType, InputType>
     tcp_stream: TcpStream,
     time_message_consumers: ConsumerList<TimeReceived<TimeMessage>>,
     input_message_consumers: ConsumerList<InputMessage<InputType>>,
-    state_message_consumers: ConsumerList<StateMessage<StateType, InputType>>,
+    state_message_consumers: ConsumerList<StateMessage<StateType>>,
     phantom: PhantomData<InputType>,
     state_phantom: PhantomData<StateType>,
 }
@@ -100,7 +100,7 @@ impl<StateType, InputType> Sender<TcpInput<StateType, InputType>>
     }
 
     pub fn add_state_message_consumer<T>(&self, consumer: T) -> Result<(), SendError<TcpInput<StateType, InputType>>>
-        where T: Consumer<StateMessage<StateType, InputType>> {
+        where T: Consumer<StateMessage<StateType>> {
 
         self.send(|tcp_input|{
             tcp_input.state_message_consumers.add_consumer(consumer);

@@ -11,5 +11,5 @@ pub enum ToClientMessage<StateType, InputType>
     //TODO: see if these can be borrowed
     TimeMessage(TimeMessage),
     InputMessage(InputMessage<InputType>),
-    StateMessage(StateMessage<StateType, InputType>)
+    StateMessage(StateMessage<StateType>)
 }

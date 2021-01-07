@@ -14,6 +14,7 @@ mod interface;
 mod gametime;
 mod util;
 mod client;
+mod gamemanager;
 
 pub fn insert(v: &mut Vec<i32>, val: i32) {
 

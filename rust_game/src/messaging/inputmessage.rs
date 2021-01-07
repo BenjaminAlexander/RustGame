@@ -5,20 +5,28 @@ use std::cmp::Ordering;
 pub struct InputMessage<InputType>
     where InputType: Clone {
 
-    sequence: i32,
-    player_index: i8,
+    sequence: usize,
+    player_index: usize,
     input: InputType
 }
 
 impl<InputType> InputMessage<InputType>
     where InputType: Clone {
 
-    pub fn new(sequence: i32, player_index: i8, input: InputType) -> InputMessage<InputType> {
+    pub fn new(sequence: usize, player_index: usize, input: InputType) -> InputMessage<InputType> {
         InputMessage{ sequence, player_index, input }
     }
 
-    pub fn get_sequence(&self) -> i32 {
+    pub fn get_sequence(&self) -> usize {
         self.sequence
+    }
+
+    pub fn get_player_index(&self) -> usize {
+        self.player_index
+    }
+
+    pub fn get_input(self) -> InputType {
+        self.input
     }
 }
 

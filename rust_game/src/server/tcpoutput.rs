@@ -12,9 +12,9 @@ pub struct TcpOutput<StateType, InputType>
 
     tcp_stream: TcpStream,
     time_message: Option<TimeMessage>,
-    last_state_sequence: Option<i32>,
+    last_state_sequence: Option<usize>,
     input_queue: Vec<InputMessage<InputType>>,
-    state_message: Option<StateMessage<StateType, InputType>>
+    state_message: Option<StateMessage<StateType>>
 }
 
 impl<StateType, InputType> TcpOutput<StateType, InputType>
@@ -109,11 +109,11 @@ impl<StateType, InputType> Consumer<InputMessage<InputType>> for Sender<TcpOutpu
     }
 }
 
-impl<StateType, InputType> Consumer<StateMessage<StateType, InputType>> for Sender<TcpOutput<StateType, InputType>>
+impl<StateType, InputType> Consumer<StateMessage<StateType>> for Sender<TcpOutput<StateType, InputType>>
     where InputType: Input,
           StateType: State {
 
-    fn accept(&self, state_message: StateMessage<StateType, InputType>) {
+    fn accept(&self, state_message: StateMessage<StateType>) {
         self.send(move |tcp_output|{
 
             if tcp_output.last_state_sequence.is_none() ||

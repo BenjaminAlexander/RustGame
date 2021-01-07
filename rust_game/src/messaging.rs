@@ -11,17 +11,15 @@ mod toclientmessage;
 mod statemessage;
 
 #[derive(Serialize, Deserialize, Debug)]
-pub struct InitialInformation<StateType, InputType>
-    where InputType: Clone,
-          StateType: Clone {
+pub struct InitialInformation<StateType>
+    where StateType: Clone {
 
-    player_index: i8,
-    state_message: StateMessage<StateType, InputType>
+    player_count: i8,
+    state_message: StateMessage<StateType>
 }
 
-impl<StateType, InputType> InitialInformation<StateType, InputType>
-    where InputType: Clone,
-          StateType: Clone {
+impl<StateType> InitialInformation<StateType>
+    where StateType: Clone {
 
     // pub fn new(player_index: i8, state_message: StateMessage<StateType, InputType>) -> InitialInformation<StateType, InputType> {
     //     InitialInformation{ player_index, state_message }
