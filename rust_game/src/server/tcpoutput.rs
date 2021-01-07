@@ -8,7 +8,7 @@ use crate::interface::{Input, State};
 
 pub struct TcpOutput<StateType, InputType>
     where InputType: Input,
-          StateType: State {
+          StateType: State<InputType> {
 
     tcp_stream: TcpStream,
     time_message: Option<TimeMessage>,
@@ -19,7 +19,7 @@ pub struct TcpOutput<StateType, InputType>
 
 impl<StateType, InputType> TcpOutput<StateType, InputType>
     where InputType: Input,
-          StateType: State {
+          StateType: State<InputType> {
 
     pub fn new(tcp_stream: &TcpStream) -> io::Result<Self> {
         Ok(TcpOutput{
@@ -34,7 +34,7 @@ impl<StateType, InputType> TcpOutput<StateType, InputType>
 
 impl<StateType, InputType> ChannelDrivenThread<()> for TcpOutput<StateType, InputType>
     where InputType: Input,
-          StateType: State {
+          StateType: State<InputType> {
 
     fn on_none_pending(&mut self) -> Option<()> {
 
@@ -77,7 +77,7 @@ impl<StateType, InputType> ChannelDrivenThread<()> for TcpOutput<StateType, Inpu
 
 impl<StateType, InputType> Consumer<TimeMessage> for Sender<TcpOutput<StateType, InputType>>
     where InputType: Input,
-          StateType: State {
+          StateType: State<InputType> {
 
     fn accept(&self, time_message: TimeMessage) {
         self.send(move |tcp_output|{
@@ -91,7 +91,7 @@ impl<StateType, InputType> Consumer<TimeMessage> for Sender<TcpOutput<StateType,
 
 impl<StateType, InputType> Consumer<InputMessage<InputType>> for Sender<TcpOutput<StateType, InputType>>
     where InputType: Input,
-          StateType: State {
+          StateType: State<InputType> {
 
     fn accept(&self, input_message: InputMessage<InputType>) {
 
@@ -111,7 +111,7 @@ impl<StateType, InputType> Consumer<InputMessage<InputType>> for Sender<TcpOutpu
 
 impl<StateType, InputType> Consumer<StateMessage<StateType>> for Sender<TcpOutput<StateType, InputType>>
     where InputType: Input,
-          StateType: State {
+          StateType: State<InputType> {
 
     fn accept(&self, state_message: StateMessage<StateType>) {
         self.send(move |tcp_output|{

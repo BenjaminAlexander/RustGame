@@ -11,7 +11,7 @@ use std::marker::PhantomData;
 
 pub struct TcpInput <StateType, InputType>
     where InputType: Input,
-          StateType: State {
+          StateType: State<InputType> {
 
     tcp_stream: TcpStream,
     time_message_consumers: ConsumerList<TimeReceived<TimeMessage>>,
@@ -23,7 +23,7 @@ pub struct TcpInput <StateType, InputType>
 
 impl<StateType, InputType> TcpInput<StateType, InputType>
     where InputType: Input,
-          StateType: State {
+          StateType: State<InputType> {
 
     pub fn new(tcp_stream: &TcpStream) -> io::Result<Self> {
         Ok(Self {
@@ -39,7 +39,7 @@ impl<StateType, InputType> TcpInput<StateType, InputType>
 
 impl<StateType, InputType> ChannelThread<()> for TcpInput<StateType, InputType>
     where InputType: Input,
-          StateType: State {
+          StateType: State<InputType> {
 
     fn run(mut self, receiver: Receiver<Self>) {
         info!("Starting");
@@ -81,7 +81,7 @@ impl<StateType, InputType> ChannelThread<()> for TcpInput<StateType, InputType>
 
 impl<StateType, InputType> Sender<TcpInput<StateType, InputType>>
     where InputType: Input,
-          StateType: State {
+          StateType: State<InputType> {
 
     pub fn add_time_message_consumer<T>(&self, consumer: T) -> Result<(), SendError<TcpInput<StateType, InputType>>>
         where T: Consumer<TimeReceived<TimeMessage>> {

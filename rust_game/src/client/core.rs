@@ -8,7 +8,7 @@ use std::marker::PhantomData;
 
 pub struct Core<StateType, InputType>
     where InputType: Input,
-          StateType: State {
+          StateType: State<InputType> {
 
     server_ip: String,
     port: u16,
@@ -20,7 +20,7 @@ pub struct Core<StateType, InputType>
 
 impl<StateType, InputType> Core<StateType, InputType>
     where InputType: Input,
-          StateType: State {
+          StateType: State<InputType> {
 
     pub fn new(server_ip: &str,
                port: u16,
@@ -39,7 +39,7 @@ impl<StateType, InputType> Core<StateType, InputType>
 
 impl<StateType, InputType> ChannelDrivenThread<()> for Core<StateType, InputType>
     where InputType: Input,
-          StateType: State {
+          StateType: State<InputType> {
 
     fn on_channel_disconnect(&mut self) -> () {
         ()
@@ -48,7 +48,7 @@ impl<StateType, InputType> ChannelDrivenThread<()> for Core<StateType, InputType
 
 impl<StateType, InputType> Sender<Core<StateType, InputType>>
     where InputType: Input,
-          StateType: State {
+          StateType: State<InputType> {
 
     pub fn connect(&self) {
         self.send(|core|{

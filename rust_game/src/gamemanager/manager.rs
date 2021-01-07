@@ -7,7 +7,7 @@ use crate::gamemanager::step::Step;
 
 pub struct Manager<StateType, InputType>
     where InputType: Input,
-          StateType: State {
+          StateType: State<InputType> {
 
     sequence_of_queue_index_0: usize,
     sequence_to_update_to: usize,
@@ -18,7 +18,7 @@ pub struct Manager<StateType, InputType>
 
 impl<StateType, InputType> Manager<StateType, InputType>
     where InputType: Input,
-          StateType: State {
+          StateType: State<InputType> {
 
     pub fn new(player_count: usize, initialState: StateMessage<StateType>) -> Self {
         let mut new_manager: Self = Self{
@@ -65,7 +65,7 @@ impl<StateType, InputType> Manager<StateType, InputType>
 
 impl<StateType, InputType> ChannelDrivenThread<()> for Manager<StateType, InputType>
     where InputType: Input,
-          StateType: State {
+          StateType: State<InputType> {
 
     fn on_none_pending(&mut self) -> Option<()> {
         None
@@ -78,13 +78,13 @@ impl<StateType, InputType> ChannelDrivenThread<()> for Manager<StateType, InputT
 
 impl<StateType, InputType> Sender<Manager<StateType, InputType>>
     where InputType: Input,
-          StateType: State {
+          StateType: State<InputType> {
 
 }
 
 impl<StateType, InputType> Consumer<InputMessage<InputType>> for Sender<Manager<StateType, InputType>>
     where InputType: Input,
-          StateType: State {
+          StateType: State<InputType> {
 
     fn accept(&self, input_message: InputMessage<InputType>) {
         self.send(move |manager|{
@@ -98,7 +98,7 @@ impl<StateType, InputType> Consumer<InputMessage<InputType>> for Sender<Manager<
 
 impl<StateType, InputType> Consumer<StateMessage<StateType>> for Sender<Manager<StateType, InputType>>
     where InputType: Input,
-          StateType: State {
+          StateType: State<InputType> {
 
     fn accept(&self, mut state_message: StateMessage<StateType>) {
         self.send(move |manager|{

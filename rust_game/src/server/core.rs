@@ -13,7 +13,7 @@ use crate::gametime::{GameTimer, TimeDuration};
 // get synchronous enforcement of the grace period
 
 pub struct Core<StateType, InputType>
-    where StateType: State,
+    where StateType: State<InputType>,
           InputType: Input {
 
     game_is_started: bool,
@@ -24,7 +24,7 @@ pub struct Core<StateType, InputType>
 }
 
 impl<StateType, InputType> ChannelDrivenThread<()> for Core<StateType, InputType>
-    where StateType: State,
+    where StateType: State<InputType>,
           InputType: Input {
 
     fn on_channel_disconnect(&mut self) -> () {
@@ -33,7 +33,7 @@ impl<StateType, InputType> ChannelDrivenThread<()> for Core<StateType, InputType
 }
 
 impl<StateType, InputType> Core<StateType, InputType>
-    where StateType: State,
+    where StateType: State<InputType>,
           InputType: Input {
 
     pub fn new(port: u16, step_duration: TimeDuration) -> Self {
@@ -48,7 +48,7 @@ impl<StateType, InputType> Core<StateType, InputType>
 }
 
 impl<StateType, InputType> Sender<Core<StateType, InputType>>
-    where StateType: State,
+    where StateType: State<InputType>,
           InputType: Input {
 
     pub fn start_listener(&self) {
@@ -81,7 +81,7 @@ impl<StateType, InputType> Sender<Core<StateType, InputType>>
 }
 
 impl<StateType, InputType> Consumer<TcpStream> for Sender<Core<StateType, InputType>>
-    where StateType: State,
+    where StateType: State<InputType>,
           InputType: Input {
 
     fn accept(&self, tcp_stream: TcpStream) {

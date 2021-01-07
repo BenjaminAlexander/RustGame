@@ -3,7 +3,7 @@ use crate::messaging::{InputMessage, StateMessage};
 
 pub struct Step<StateType, InputType>
     where InputType: Input,
-          StateType: State {
+          StateType: State<InputType> {
 
     step_index: usize,
     inputs: Vec<Option<InputType>>,
@@ -14,7 +14,7 @@ pub struct Step<StateType, InputType>
 
 impl<StateType, InputType> Step<StateType, InputType>
     where InputType: Input,
-          StateType: State {
+          StateType: State<InputType> {
 
     pub fn blank(sequence: usize, player_count: usize) -> Self {
         let mut inputs = Vec::<Option<InputType>>::with_capacity(player_count);
@@ -42,14 +42,19 @@ impl<StateType, InputType> Step<StateType, InputType>
         self.is_state_final = true;
     }
 
-    pub fn update_next(&mut self,  next: &mut Self) {
-        if self.has_changed_since_last_calculation &&
+    pub fn update_next(&mut self,  next: &mut Self) -> bool {
+        if self.state.is_some() &&
+            self.has_changed_since_last_calculation &&
             !next.is_state_final {
 
             self.has_changed_since_last_calculation = false;
             next.has_changed_since_last_calculation = true;
 
-            //TODO: call update
+            next.state = Some(self.state.as_ref().unwrap().get_next_state(&self.inputs));
+            
+            return true;
+        } else {
+            return false;
         }
     }
 
@@ -61,7 +66,7 @@ impl<StateType, InputType> Step<StateType, InputType>
 
 impl<StateType, InputType> Clone for Step<StateType, InputType>
     where InputType: Input,
-          StateType: State {
+          StateType: State<InputType> {
 
     fn clone(&self) -> Self {
         Self{
