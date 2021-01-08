@@ -8,6 +8,7 @@ pub struct Step<StateType, InputType>
     step_index: usize,
     inputs: Vec<Option<InputType>>,
     state: Option<StateType>,
+    missing_input_count: usize,
     is_state_final: bool,
     has_changed_since_last_calculation: bool
 }
@@ -25,6 +26,7 @@ impl<StateType, InputType> Step<StateType, InputType>
             step_index: sequence,
             inputs,
             state: None,
+            missing_input_count: player_count,
             is_state_final: false,
             has_changed_since_last_calculation: false
         };
@@ -32,6 +34,9 @@ impl<StateType, InputType> Step<StateType, InputType>
 
     pub fn set_input(&mut self, input_message: InputMessage<InputType>) {
         let index = input_message.get_player_index();
+        if self.inputs[index].is_none() {
+            self.missing_input_count = self.missing_input_count - 1;
+        }
         self.inputs[index] = Some(input_message.get_input());
         self.has_changed_since_last_calculation = true;
     }
@@ -42,24 +47,35 @@ impl<StateType, InputType> Step<StateType, InputType>
         self.is_state_final = true;
     }
 
-    pub fn update_next(&mut self,  next: &mut Self) -> bool {
+    pub fn calculate_next_state(&mut self) -> Option<StateType> {
         if self.state.is_some() &&
-            self.has_changed_since_last_calculation &&
-            !next.is_state_final {
+            self.has_changed_since_last_calculation {
 
             self.has_changed_since_last_calculation = false;
-            next.has_changed_since_last_calculation = true;
 
-            next.state = Some(self.state.as_ref().unwrap().get_next_state(&self.inputs));
-            
-            return true;
+            let next_state = self.state.as_ref().unwrap().get_next_state(&self.inputs);
+
+            return Some(next_state);
         } else {
-            return false;
+            return None;
         }
+    }
+
+    pub fn set_calculated_state(&mut self,  state: StateType) {
+        self.has_changed_since_last_calculation = true;
+        self.state = Some(state);
     }
 
     pub fn get_step_index(&self) -> usize {
         self.step_index
+    }
+
+    pub fn has_all_inputs(&self) -> bool {
+        self.missing_input_count == 0
+    }
+
+    pub fn is_state_final(&self) -> bool {
+        self.is_state_final
     }
 
 }
@@ -73,6 +89,7 @@ impl<StateType, InputType> Clone for Step<StateType, InputType>
             step_index: self.step_index,
             inputs: self.inputs.clone(),
             state: self.state.clone(),
+            missing_input_count: self.missing_input_count,
             is_state_final: self.is_state_final,
             has_changed_since_last_calculation: self.has_changed_since_last_calculation
         }

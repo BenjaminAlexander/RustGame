@@ -10,6 +10,8 @@ pub struct Manager<StateType, InputType>
           StateType: State<InputType> {
 
     sequence_of_queue_index_0: usize,
+
+    //TODO: send requested state emediately if available
     sequence_to_update_to: usize,
     player_count: usize,
     //New states at the back, old at the front (index 0)
@@ -68,6 +70,47 @@ impl<StateType, InputType> ChannelDrivenThread<()> for Manager<StateType, InputT
           StateType: State<InputType> {
 
     fn on_none_pending(&mut self) -> Option<()> {
+
+        let index_to_update_to = self.get_index_of_sequence(self.sequence_to_update_to).unwrap();
+
+        let mut requested_state_changed = false;
+        let mut send_completed_index = false;
+        let mut newest_completed_index = 0;
+        let mut i = 0;
+
+        while (i == newest_completed_index && self.states[i].has_all_inputs()) ||
+                (i < index_to_update_to) {
+
+            //Make sure the next state exists
+            if  self.states.len() <= i + 1 {
+                self.states.push_back(Step::blank(i + 1 + self.sequence_of_queue_index_0, self.player_count))
+            }
+
+            let mut was_updated = false;
+            if !self.states[i + 1].is_state_final() {
+                let next_step = self.states[i].calculate_next_state();
+                if next_step.is_some() {
+                    self.states[i + 1].set_calculated_state(next_step.unwrap());
+                    was_updated = true;
+                }
+            }
+
+            if i + 1 == index_to_update_to && was_updated {
+                requested_state_changed = true;
+                //TODO: send requested state
+            }
+
+            if newest_completed_index == i && self.states[i].has_all_inputs() {
+                newest_completed_index = i + 1;
+
+                if was_updated {
+                    send_completed_index = true;
+                    //TODO: Send completed state
+                }
+            }
+
+            i = i + 1;
+        }
         None
     }
 
@@ -89,7 +132,7 @@ impl<StateType, InputType> Consumer<InputMessage<InputType>> for Sender<Manager<
     fn accept(&self, input_message: InputMessage<InputType>) {
         self.send(move |manager|{
             match manager.get_state(input_message.get_sequence()) {
-                None => warn!("Failed to add state."),
+                None => warn!("A input from past was received.  The buffer can only extend into the future.  This input will be dropped."),
                 Some(sequence) => sequence.set_input(input_message)
             }
         }).unwrap();
