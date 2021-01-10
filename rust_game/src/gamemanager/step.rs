@@ -1,5 +1,6 @@
 use crate::interface::{Input, State};
 use crate::messaging::{InputMessage, StateMessage};
+use crate::gamemanager::stepmessage::StepMessage;
 
 pub struct Step<StateType, InputType>
     where InputType: Input,
@@ -78,8 +79,20 @@ impl<StateType, InputType> Step<StateType, InputType>
         self.is_state_final
     }
 
+    pub fn get_message(&self) -> StepMessage<StateType, InputType> {
+        StepMessage::new(
+            self.step_index,
+            self.inputs.clone(),
+            self.state.as_ref().unwrap().clone()
+        )
+    }
+
+    pub fn get_state(&self) -> Option<&StateType> {
+        self.state.as_ref()
+    }
 }
 
+//TODO: is this needed?
 impl<StateType, InputType> Clone for Step<StateType, InputType>
     where InputType: Input,
           StateType: State<InputType> {
