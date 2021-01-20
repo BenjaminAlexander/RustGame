@@ -140,7 +140,11 @@ impl<StateType, InputType> Sender<Manager<StateType, InputType>>
         }).unwrap();
     }
 
-    pub fn drop_step(sequence :usize)
+    pub fn drop_step(sequence :usize) {
+        self.send(move |manager|{
+            manager.completed_step_consumer_list.add_consumer(consumer);
+        }).unwrap();
+    }
 }
 
 impl<StateType, InputType> Consumer<InputMessage<InputType>> for Sender<Manager<StateType, InputType>>
