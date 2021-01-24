@@ -1,5 +1,4 @@
 use serde::{Deserialize, Serialize};
-use crate::messaging::InputMessage;
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct StateMessage<StateType>

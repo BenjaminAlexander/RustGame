@@ -1,5 +1,5 @@
 use log::{warn};
-use crate::messaging::{StateMessage, InputMessage};
+use crate::messaging::{StateMessage, InputMessage, InitialInformation};
 use std::collections::VecDeque;
 use crate::interface::{Input, State};
 use crate::threading::{ConsumerList, ChannelDrivenThread, Sender, Consumer};
@@ -10,64 +10,58 @@ pub struct Manager<StateType, InputType>
     where InputType: Input,
           StateType: State<InputType> {
 
-    sequence_of_queue_index_0: usize,
-
+    drop_steps_before: usize,
     //TODO: send requested state immediately if available
     requested_sequence: usize,
-    player_count: usize,
+    player_count: Option<usize>,
     //New states at the back, old at the front (index 0)
     steps: VecDeque<Step<StateType, InputType>>,
     requested_step_consumer_list: ConsumerList<StepMessage<StateType, InputType>>,
     completed_step_consumer_list: ConsumerList<StateMessage<StateType>>
-
 }
 
 impl<StateType, InputType> Manager<StateType, InputType>
     where InputType: Input,
           StateType: State<InputType> {
 
-    pub fn new(player_count: usize, initialState: StateMessage<StateType>) -> Self {
-        let mut new_manager: Self = Self{
-            player_count,
+    pub fn new() -> Self {
+        Self{
+            player_count: None,
             steps: VecDeque::new(),
-            sequence_of_queue_index_0: initialState.get_sequence(),
             requested_sequence: 0,
+            drop_steps_before: 0,
             requested_step_consumer_list: ConsumerList::new(),
             completed_step_consumer_list: ConsumerList::new()
-        };
-
-        let mut first_state = Step::blank(initialState.get_sequence(), player_count);
-        first_state.set_final_state(initialState);
-        new_manager.steps.push_back(first_state);
-
-        return new_manager;
-    }
-
-    fn get_index_of_sequence(&self, sequence: usize) -> Option<usize> {
-        if sequence < self.sequence_of_queue_index_0 {
-            None
-        } else {
-            Some(sequence - self.sequence_of_queue_index_0)
         }
     }
 
-    fn pad_to_index(&mut self, index: usize) {
-        while self.steps.len() <= index {
-            let blank = Step::blank(self.steps.len() + self.sequence_of_queue_index_0, self.player_count);
-            self.steps.push_back(blank);
-        }
-    }
+    fn get_state(&mut self, step_index: usize) -> &mut Step<StateType, InputType> {
 
-    fn get_state(&mut self, sequence: usize) -> Option<&mut Step<StateType, InputType>> {
-        match self.get_index_of_sequence(sequence) {
-            None => {
-                warn!("Cannot get a state from the past.");
-                None
-            } Some(index) => {
-                self.pad_to_index(index);
-                Some(&mut self.steps[index])
+        if self.steps.is_empty() {
+            let step = Step::blank(step_index);
+            self.steps.push_back(step);
+            return &mut self.steps[0];
+        } else if step_index <= self.steps[0].get_step_index() {
+            loop {
+                let zero_index = self.steps[0].get_step_index();
+                if zero_index == step_index {
+                    return &mut self.steps[0];
+                } else {
+                    self.steps.push_front(Step::blank(zero_index - 1))
+                }
             }
+        } else {
+            let index_to_get = step_index - self.steps[0].get_step_index();
+            while self.steps.len() <= index_to_get {
+                self.steps.push_back(Step::blank(self.steps[self.steps.len() - 1].get_step_index() + 1));
+            }
+            return &mut self.steps[index_to_get];
         }
+    }
+
+    fn handle_state_message(&mut self, state_message: StateMessage<StateType>) {
+        let step = self.get_state(state_message.get_sequence());
+        step.set_final_state(state_message);
     }
 }
 
@@ -77,42 +71,65 @@ impl<StateType, InputType> ChannelDrivenThread<()> for Manager<StateType, InputT
 
     fn on_none_pending(&mut self) -> Option<()> {
 
-        let index_to_update_to = self.get_index_of_sequence(self.requested_sequence).unwrap();
+        if self.steps.is_empty() {
+            return Some(());
+        }
 
-        let mut newest_completed_index = 0;
-        let mut i = 0;
+        let requested_sequence = self.requested_sequence;
 
-        while (i == newest_completed_index && self.steps[i].has_all_inputs()) ||
-                (i < index_to_update_to + 1) {
+        let mut is_current_step_complete = true;
+        let mut current: usize = 0;
 
-            //Make sure the next state exists
-            if  self.steps.len() <= i + 1 {
-                self.steps.push_back(Step::blank(i + 1 + self.sequence_of_queue_index_0, self.player_count))
-            }
+        if self.steps[current].has_state_changed() {
+            self.completed_step_consumer_list.accept(&self.steps[current].get_state_message());
+            self.requested_step_consumer_list.accept(&self.steps[current].get_message());
+        }
+
+        let player_count = match self.player_count {
+            None => usize::MAX,
+            Some(count) => count
+        };
+
+        while (is_current_step_complete && self.steps[current].get_input_count() == player_count) ||
+                (self.steps[current].get_step_index() <= self.requested_sequence) {
+
+            let next = current + 1;
+            self.get_state(self.steps[current].get_step_index() + 1);
 
             let mut was_updated = false;
-            if !self.steps[i + 1].is_state_final() {
-                let next_step = self.steps[i].calculate_next_state();
-                if next_step.is_some() {
-                    self.steps[i + 1].set_calculated_state(next_step.unwrap());
+            if !self.steps[next].is_state_final() {
+                let next_state = self.steps[current].calculate_next_state();
+                if next_state.is_some() {
+                    self.steps[next].set_calculated_state(next_state.unwrap());
                     was_updated = true;
                 }
             }
 
-            if i + 1 >= index_to_update_to && was_updated {
-                self.requested_step_consumer_list.accept(&self.steps[i + 1].get_message());
+            self.steps[current].mark_as_unchanged();
+
+            if was_updated && self.steps[next].get_step_index() <= self.requested_sequence {
+                self.requested_step_consumer_list.accept(&self.steps[next].get_message());
             }
 
-            if newest_completed_index == i && self.steps[i].has_all_inputs() {
-                newest_completed_index = i + 1;
+            let current_has_all_inputs = self.steps[current].get_input_count() == player_count;
+            let should_drop_current = current == 0 &&
+                self.steps[current].get_step_index() < self.drop_steps_before;
 
-                if was_updated {
-                    let message = StateMessage::new(i + 1, self.steps[i + 1].get_state().unwrap().clone());
-                    self.completed_step_consumer_list.accept(&message)
-                }
+            let is_next_complete = should_drop_current || (is_current_step_complete && current_has_all_inputs);
+            let is_next_newly_completed = is_next_complete && (was_updated || (should_drop_current && !current_has_all_inputs));
+
+            if is_next_newly_completed {
+                self.completed_step_consumer_list.accept(&self.steps[next].get_state_message());
             }
 
-            i = i + 1;
+            if should_drop_current {
+                self.steps.pop_front().unwrap();
+            } else {
+                current = current + 1;
+            }
+
+            is_current_step_complete = is_next_complete;
+            
         }
         None
     }
@@ -140,9 +157,13 @@ impl<StateType, InputType> Sender<Manager<StateType, InputType>>
         }).unwrap();
     }
 
-    pub fn drop_step(sequence :usize) {
+    pub fn drop_steps_before(&self, step :usize) {
         self.send(move |manager|{
-            manager.completed_step_consumer_list.add_consumer(consumer);
+            manager.drop_steps_before = step;
+            if manager.requested_sequence < manager.drop_steps_before {
+                warn!{"Requested step is earlier than drop step: {:?}", manager.drop_steps_before};
+                manager.requested_sequence = manager.drop_steps_before;
+            }
         }).unwrap();
     }
 }
@@ -153,10 +174,8 @@ impl<StateType, InputType> Consumer<InputMessage<InputType>> for Sender<Manager<
 
     fn accept(&self, input_message: InputMessage<InputType>) {
         self.send(move |manager|{
-            match manager.get_state(input_message.get_sequence()) {
-                None => warn!("A input from past was received.  The buffer can only extend into the future.  This input will be dropped."),
-                Some(step) => step.set_input(input_message)
-            }
+            let step = manager.get_state(input_message.get_sequence());
+            step.set_input(input_message);
         }).unwrap();
     }
 }
@@ -167,10 +186,19 @@ impl<StateType, InputType> Consumer<StateMessage<StateType>> for Sender<Manager<
 
     fn accept(&self, mut state_message: StateMessage<StateType>) {
         self.send(move |manager|{
-            match manager.get_state(state_message.get_sequence()) {
-                None => warn!("A state from past was received.  The buffer can only extend into the future.  This state will be dropped."),
-                Some(step) => step.set_final_state(state_message),
-            }
+            manager.handle_state_message(state_message);
+        }).unwrap();
+    }
+}
+
+impl<StateType, InputType> Consumer<InitialInformation<StateType>> for Sender<Manager<StateType, InputType>>
+    where InputType: Input,
+          StateType: State<InputType> {
+
+    fn accept(&self, initial_information: InitialInformation<StateType>) {
+        self.send(move |manager|{
+            manager.player_count = Some(initial_information.get_player_count());
+            manager.handle_state_message(StateMessage::new(0, initial_information.get_state()));
         }).unwrap();
     }
 }
