@@ -2,7 +2,7 @@ use std::net::TcpStream;
 use crate::gametime::TimeMessage;
 use crate::threading::{ChannelDrivenThread, Consumer, Sender};
 use std::io;
-use crate::messaging::{ToClientMessage, InputMessage, StateMessage};
+use crate::messaging::{ToClientMessage, InputMessage, StateMessage, InitialInformation};
 use std::io::Write;
 use crate::interface::{Input, State};
 
@@ -10,6 +10,7 @@ pub struct TcpOutput<StateType, InputType>
     where InputType: Input,
           StateType: State<InputType> {
 
+    player_index: usize,
     tcp_stream: TcpStream,
     time_message: Option<TimeMessage>,
     last_state_sequence: Option<usize>,
@@ -21,8 +22,9 @@ impl<StateType, InputType> TcpOutput<StateType, InputType>
     where InputType: Input,
           StateType: State<InputType> {
 
-    pub fn new(tcp_stream: &TcpStream) -> io::Result<Self> {
+    pub fn new(player_index: usize, tcp_stream: &TcpStream) -> io::Result<Self> {
         Ok(TcpOutput{
+            player_index,
             tcp_stream: tcp_stream.try_clone()?,
             time_message: None,
             last_state_sequence: None,
@@ -97,8 +99,9 @@ impl<StateType, InputType> Consumer<InputMessage<InputType>> for Sender<TcpOutpu
 
         self.send(move |tcp_output|{
 
-            if tcp_output.last_state_sequence.is_none() ||
-                tcp_output.last_state_sequence.as_ref().unwrap() < &input_message.get_sequence() {
+            if tcp_output.player_index != input_message.get_player_index() &&
+                (tcp_output.last_state_sequence.is_none() ||
+                tcp_output.last_state_sequence.as_ref().unwrap() < &input_message.get_step()) {
                 //insert in reverse sorted order
                 match tcp_output.input_queue.binary_search_by(|elem| { input_message.cmp(elem) }) {
                     Ok(pos) => tcp_output.input_queue[pos] = input_message,
@@ -126,13 +129,33 @@ impl<StateType, InputType> Consumer<StateMessage<StateType>> for Sender<TcpOutpu
                     match tcp_output.input_queue.last() {
                         None => break,
                         Some(last) => {
-                            if last.get_sequence() < tcp_output.last_state_sequence.unwrap() {
+                            if last.get_step() < tcp_output.last_state_sequence.unwrap() {
                                 tcp_output.input_queue.pop();
                             }
                         }
                     }
                 }
             }
+        }).unwrap();
+    }
+}
+
+impl<StateType, InputType> Sender<TcpOutput<StateType, InputType>>
+    where InputType: Input,
+          StateType: State<InputType> {
+
+    pub fn send_initial_information(&self, player_count: usize, initial_state: StateType) {
+        self.send(move |tcp_output|{
+
+            let initial_information = InitialInformation::<StateType>::new(
+                player_count,
+                tcp_output.player_index,
+                initial_state);
+
+            let message = ToClientMessage::<StateType, InputType>::InitialInformation(initial_information);
+            rmp_serde::encode::write(&mut tcp_output.tcp_stream, &message).unwrap();
+            tcp_output.tcp_stream.flush().unwrap();
+
         }).unwrap();
     }
 }

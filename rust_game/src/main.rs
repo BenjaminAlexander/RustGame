@@ -43,7 +43,7 @@ pub fn main() {
     let input_message:InputMessage<Vector2> = InputMessage::new(0, 0, Vector2::new(1.0, 12.0));
     let _my_message:ToServerMessage<Vector2> = ToServerMessage::Input(input_message);
 
-    let server_core  = server::Core::<Vector2, Vector2>::new(3456, TimeDuration::from_millis(50));
+    let server_core  = server::Core::<Vector2, Vector2>::new(3456, TimeDuration::from_millis(50), TimeDuration::from_millis(500));
     let (server_core_sender, server_core_builder) = server_core.build();
 
     server_core_sender.start_listener();
@@ -53,6 +53,7 @@ pub fn main() {
         "127.0.0.1",
         3456,
         TimeDuration::from_millis(50),
+        TimeDuration::from_millis(500),
         50);
 
     let (client_core_sender, client_core_builder) = client_core.build();
@@ -63,7 +64,7 @@ pub fn main() {
     let millis = time::Duration::from_millis(1000);
     thread::sleep(millis);
 
-    server_core_sender.start_game();
+    server_core_sender.start_game(Vector2::new(1.0, 12.0));
 
     // let mut stream = TcpStream::connect("127.0.0.1:3456").unwrap();
     // rmp_serde::encode::write(&mut stream, &my_message).unwrap();

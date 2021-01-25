@@ -1,10 +1,11 @@
-use log::{warn};
+use log::{warn, trace, info};
 use crate::messaging::{StateMessage, InputMessage, InitialInformation};
 use std::collections::VecDeque;
 use crate::interface::{Input, State};
 use crate::threading::{ConsumerList, ChannelDrivenThread, Sender, Consumer};
 use crate::gamemanager::step::Step;
 use crate::gamemanager::stepmessage::StepMessage;
+use crate::gametime::{TimeMessage, TimeReceived, TimeDuration};
 
 pub struct Manager<StateType, InputType>
     where InputType: Input,
@@ -12,26 +13,28 @@ pub struct Manager<StateType, InputType>
 
     drop_steps_before: usize,
     //TODO: send requested state immediately if available
-    requested_sequence: usize,
+    requested_step: usize,
     player_count: Option<usize>,
     //New states at the back, old at the front (index 0)
     steps: VecDeque<Step<StateType, InputType>>,
     requested_step_consumer_list: ConsumerList<StepMessage<StateType, InputType>>,
-    completed_step_consumer_list: ConsumerList<StateMessage<StateType>>
+    completed_step_consumer_list: ConsumerList<StateMessage<StateType>>,
+    grace_period: TimeDuration
 }
 
 impl<StateType, InputType> Manager<StateType, InputType>
     where InputType: Input,
           StateType: State<InputType> {
 
-    pub fn new() -> Self {
+    pub fn new(grace_period: TimeDuration) -> Self {
         Self{
             player_count: None,
             steps: VecDeque::new(),
-            requested_sequence: 0,
+            requested_step: 0,
             drop_steps_before: 0,
             requested_step_consumer_list: ConsumerList::new(),
-            completed_step_consumer_list: ConsumerList::new()
+            completed_step_consumer_list: ConsumerList::new(),
+            grace_period
         }
     }
 
@@ -63,6 +66,20 @@ impl<StateType, InputType> Manager<StateType, InputType>
         let step = self.get_state(state_message.get_sequence());
         step.set_final_state(state_message);
     }
+
+    pub fn drop_steps_before(&mut self, step :usize) {
+        trace!("Setting drop_steps_before: {:?}", step);
+        self.drop_steps_before = step;
+        if self.requested_step < self.drop_steps_before {
+            warn!{"Requested step is earlier than drop step: {:?}", self.drop_steps_before};
+            self.set_requested_step(step);
+        }
+    }
+
+    pub fn set_requested_step(&mut self, step: usize) {
+        trace!("Setting requested_step: {:?}", step);
+        self.requested_step = step;
+    }
 }
 
 impl<StateType, InputType> ChannelDrivenThread<()> for Manager<StateType, InputType>
@@ -72,10 +89,8 @@ impl<StateType, InputType> ChannelDrivenThread<()> for Manager<StateType, InputT
     fn on_none_pending(&mut self) -> Option<()> {
 
         if self.steps.is_empty() {
-            return Some(());
+            return None;
         }
-
-        let requested_sequence = self.requested_sequence;
 
         let mut is_current_step_complete = true;
         let mut current: usize = 0;
@@ -91,7 +106,7 @@ impl<StateType, InputType> ChannelDrivenThread<()> for Manager<StateType, InputT
         };
 
         while (is_current_step_complete && self.steps[current].get_input_count() == player_count) ||
-                (self.steps[current].get_step_index() <= self.requested_sequence) {
+                (self.steps[current].get_step_index() <= self.requested_step) {
 
             let next = current + 1;
             self.get_state(self.steps[current].get_step_index() + 1);
@@ -107,7 +122,8 @@ impl<StateType, InputType> ChannelDrivenThread<()> for Manager<StateType, InputT
 
             self.steps[current].mark_as_unchanged();
 
-            if was_updated && self.steps[next].get_step_index() <= self.requested_sequence {
+            if was_updated && self.steps[next].get_step_index() <= self.requested_step {
+                trace!("Sending updated state: {:?}", self.steps[next].get_step_index());
                 self.requested_step_consumer_list.accept(&self.steps[next].get_message());
             }
 
@@ -119,6 +135,7 @@ impl<StateType, InputType> ChannelDrivenThread<()> for Manager<StateType, InputT
             let is_next_newly_completed = is_next_complete && (was_updated || (should_drop_current && !current_has_all_inputs));
 
             if is_next_newly_completed {
+                trace!("Sending newly completed state: {:?}", self.steps[next].get_step_index());
                 self.completed_step_consumer_list.accept(&self.steps[next].get_state_message());
             }
 
@@ -129,7 +146,7 @@ impl<StateType, InputType> ChannelDrivenThread<()> for Manager<StateType, InputT
             }
 
             is_current_step_complete = is_next_complete;
-            
+
         }
         None
     }
@@ -159,12 +176,14 @@ impl<StateType, InputType> Sender<Manager<StateType, InputType>>
 
     pub fn drop_steps_before(&self, step :usize) {
         self.send(move |manager|{
-            manager.drop_steps_before = step;
-            if manager.requested_sequence < manager.drop_steps_before {
-                warn!{"Requested step is earlier than drop step: {:?}", manager.drop_steps_before};
-                manager.requested_sequence = manager.drop_steps_before;
-            }
+            manager.drop_steps_before(step);
         }).unwrap();
+    }
+
+    pub fn set_requested_step(&self, step: usize) {
+        self.send(move |manager|{
+            manager.set_requested_step(step);
+        });
     }
 }
 
@@ -174,7 +193,7 @@ impl<StateType, InputType> Consumer<InputMessage<InputType>> for Sender<Manager<
 
     fn accept(&self, input_message: InputMessage<InputType>) {
         self.send(move |manager|{
-            let step = manager.get_state(input_message.get_sequence());
+            let step = manager.get_state(input_message.get_step());
             step.set_input(input_message);
         }).unwrap();
     }
@@ -199,6 +218,22 @@ impl<StateType, InputType> Consumer<InitialInformation<StateType>> for Sender<Ma
         self.send(move |manager|{
             manager.player_count = Some(initial_information.get_player_count());
             manager.handle_state_message(StateMessage::new(0, initial_information.get_state()));
+        }).unwrap();
+    }
+}
+
+//Used by the client only
+impl<StateType, InputType> Consumer<TimeMessage> for Sender<Manager<StateType, InputType>>
+    where InputType: Input,
+          StateType: State<InputType> {
+
+    fn accept(&self, time_message: TimeMessage) {
+        self.send(move |manager|{
+            let client_drop_time = time_message.get_scheduled_time().subtract(manager.grace_period).subtract(manager.grace_period);
+            let drop_step = time_message.get_step_from_actual_time(client_drop_time);
+
+            manager.drop_steps_before(drop_step);
+            manager.set_requested_step(time_message.get_step())
         }).unwrap();
     }
 }

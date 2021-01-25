@@ -21,7 +21,7 @@ impl<T, U: ChannelDrivenThread<T>> ChannelThread<T> for U
     where T: Send + 'static {
 
     fn run(mut self, receiver: Receiver<Self>) -> T {
-        trace!("Starting");
+        info!("Starting");
 
         loop {
             trace!("Waiting.");

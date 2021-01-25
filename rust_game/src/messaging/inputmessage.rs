@@ -17,7 +17,7 @@ impl<InputType> InputMessage<InputType>
         InputMessage{ sequence, player_index, input }
     }
 
-    pub fn get_sequence(&self) -> usize {
+    pub fn get_step(&self) -> usize {
         self.sequence
     }
 

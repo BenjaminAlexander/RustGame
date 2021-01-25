@@ -16,6 +16,7 @@ pub struct Core<StateType, InputType>
     server_ip: String,
     port: u16,
     step_duration: TimeDuration,
+    grace_period: TimeDuration,
     clock_average_size: usize,
     phantom: PhantomData<InputType>,
     state_phantom: PhantomData<StateType>
@@ -28,11 +29,13 @@ impl<StateType, InputType> Core<StateType, InputType>
     pub fn new(server_ip: &str,
                port: u16,
                step_duration: TimeDuration,
+               grace_period: TimeDuration,
                clock_average_size: usize) -> Self {
 
         Core{server_ip: server_ip.to_string(),
             port,
             step_duration,
+            grace_period,
             clock_average_size,
             phantom: PhantomData,
             state_phantom: PhantomData
@@ -61,15 +64,17 @@ impl<StateType, InputType> Sender<Core<StateType, InputType>>
             let socket_addr:SocketAddr = SocketAddr::from(socket_addr_v4);
             let tcp_stream = TcpStream::connect(socket_addr).unwrap();
 
-            let (manager_sender, manager_builder) = Manager::<StateType, InputType>::new().build();
+            let (manager_sender, manager_builder) = Manager::<StateType, InputType>::new(core.grace_period).build();
             let (game_timer_sender, game_timer_builder) = GameTimer::new(core.step_duration, core.clock_average_size).build();
             let (tcp_input_sender, tcp_input_builder) = TcpInput::<StateType, InputType>::new(&tcp_stream).unwrap().build();
             let (tcp_output_sender, tcp_output_builder) = TcpOutput::<InputType>::new(&tcp_stream).unwrap().build();
 
-            tcp_input_sender.add_time_message_consumer(game_timer_sender).unwrap();
+            tcp_input_sender.add_time_message_consumer(game_timer_sender.clone()).unwrap();
             tcp_input_sender.add_initial_information_message_consumer(manager_sender.clone());
             tcp_input_sender.add_input_message_consumer(manager_sender.clone());
             tcp_input_sender.add_state_message_consumer(manager_sender.clone());
+
+            game_timer_sender.add_timer_message_consumer(manager_sender.clone());
 
             let _manager_join_handle = manager_builder.name("ClientManager").start().unwrap();
             let _tcp_input_join_handle = tcp_input_builder.name("ClientTcpInput").start().unwrap();

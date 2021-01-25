@@ -98,7 +98,7 @@ impl Consumer<TimeReceived<TimeMessage>> for Sender<GameTimer> {
             //Calculate the start time of the remote clock in local time and add it to the rolling average
             let remote_start = time_message.get_time_received()
                 .subtract(time_message.get().get_lateness())
-                .subtract(game_timer.duration * time_message.get().get_sequence());
+                .subtract(game_timer.duration * time_message.get().get_step() as i64);
 
             game_timer.rolling_average.add_value(remote_start.get_millis_since_epoch() as u64);
 
