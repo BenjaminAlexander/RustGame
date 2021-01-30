@@ -221,19 +221,3 @@ impl<StateType, InputType> Consumer<InitialInformation<StateType>> for Sender<Ma
         }).unwrap();
     }
 }
-
-//Used by the client only
-impl<StateType, InputType> Consumer<TimeMessage> for Sender<Manager<StateType, InputType>>
-    where InputType: Input,
-          StateType: State<InputType> {
-
-    fn accept(&self, time_message: TimeMessage) {
-        self.send(move |manager|{
-            let client_drop_time = time_message.get_scheduled_time().subtract(manager.grace_period).subtract(manager.grace_period);
-            let drop_step = time_message.get_step_from_actual_time(client_drop_time);
-
-            manager.drop_steps_before(drop_step);
-            manager.set_requested_step(time_message.get_step())
-        }).unwrap();
-    }
-}

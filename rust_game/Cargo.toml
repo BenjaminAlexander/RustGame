@@ -3,6 +3,7 @@ name = "rust_game"
 version = "0.1.0"
 authors = ["benal"]
 edition = "2018"
+build = "build.rs"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
@@ -14,3 +15,11 @@ log4rs = { version = "1"}
 timer = "0.2.0"
 chrono = "0.4.19"
 num = "0.3.1"
+
+glutin = "0.26.0"
+winit = "0.24.0"
+takeable-option = "0.4"
+image = "0.21"
+
+[build-dependencies]
+gl_generator = "0.14"
