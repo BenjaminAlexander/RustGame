@@ -27,6 +27,10 @@ impl<StateType> InitialInformation<StateType>
     pub fn get_player_count(&self) -> usize {
         self.player_count
     }
+
+    pub fn get_player_index(&self) -> usize {
+        self.player_index
+    }
 }
 
 impl<StateType> Clone for InitialInformation<StateType>

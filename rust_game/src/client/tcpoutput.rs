@@ -12,7 +12,7 @@ pub struct TcpOutput<InputType, InputEventType>
           InputEventType: InputEvent {
 
     tcp_stream: TcpStream,
-    phantom: PhantomData<InputType>,
+    input_queue: Vec<InputMessage<InputType>>,
     event_phantom: PhantomData<InputEventType>
 }
 
@@ -21,7 +21,7 @@ impl<InputType, InputEventType> TcpOutput<InputType, InputEventType>
           InputEventType: InputEvent {
 
     pub fn new(tcp_stream: &TcpStream) -> io::Result<Self> {
-        Ok(Self{tcp_stream: tcp_stream.try_clone()?, phantom: PhantomData, event_phantom: PhantomData})
+        Ok(Self{tcp_stream: tcp_stream.try_clone()?, input_queue: Vec::new(), event_phantom: PhantomData})
     }
 }
 
