@@ -1,10 +1,12 @@
-use crate::interface::{Input, State};
+use crate::interface::{Input, State, InputEvent};
 use crate::messaging::{InputMessage, StateMessage};
 use crate::gamemanager::stepmessage::StepMessage;
+use std::marker::PhantomData;
 
-pub struct Step<StateType, InputType>
-    where InputType: Input,
-          StateType: State<InputType> {
+pub struct Step<StateType, InputType, InputEventType>
+    where StateType: State<InputType, InputEventType>,
+          InputType: Input<InputEventType>,
+          InputEventType: InputEvent {
 
     step_index: usize,
     inputs: Vec<Option<InputType>>,
@@ -12,12 +14,14 @@ pub struct Step<StateType, InputType>
     input_count: usize,
     is_state_final: bool,
     has_input_changed: bool,
-    has_state_changed: bool
+    has_state_changed: bool,
+    phantom: PhantomData<InputEventType>
 }
 
-impl<StateType, InputType> Step<StateType, InputType>
-    where InputType: Input,
-          StateType: State<InputType> {
+impl<StateType, InputType, InputEventType> Step<StateType, InputType, InputEventType>
+    where StateType: State<InputType, InputEventType>,
+          InputType: Input<InputEventType>,
+          InputEventType: InputEvent {
 
     pub fn blank(step_index: usize) -> Self {
 
@@ -28,7 +32,8 @@ impl<StateType, InputType> Step<StateType, InputType>
             input_count: 0,
             is_state_final: false,
             has_input_changed: false,
-            has_state_changed: false
+            has_state_changed: false,
+            phantom: PhantomData
         };
     }
 
@@ -80,7 +85,7 @@ impl<StateType, InputType> Step<StateType, InputType>
         self.is_state_final
     }
 
-    pub fn get_message(&self) -> StepMessage<StateType, InputType> {
+    pub fn get_message(&self) -> StepMessage<StateType, InputType, InputEventType> {
         StepMessage::new(
             self.step_index,
             self.inputs.clone(),
@@ -107,9 +112,10 @@ impl<StateType, InputType> Step<StateType, InputType>
 }
 
 //TODO: is this needed?
-impl<StateType, InputType> Clone for Step<StateType, InputType>
-    where InputType: Input,
-          StateType: State<InputType> {
+impl<StateType, InputType, InputEventType> Clone for Step<StateType, InputType, InputEventType>
+    where StateType: State<InputType, InputEventType>,
+          InputType: Input<InputEventType>,
+          InputEventType: InputEvent {
 
     fn clone(&self) -> Self {
         Self{
@@ -119,7 +125,8 @@ impl<StateType, InputType> Clone for Step<StateType, InputType>
             input_count: self.input_count,
             is_state_final: self.is_state_final,
             has_input_changed: self.has_input_changed,
-            has_state_changed: self.has_state_changed
+            has_state_changed: self.has_state_changed,
+            phantom: PhantomData
         }
     }
 }

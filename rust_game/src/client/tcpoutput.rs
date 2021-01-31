@@ -1,36 +1,42 @@
 use std::net::TcpStream;
 use crate::threading::{ChannelDrivenThread, Consumer, Sender};
-use crate::interface::Input;
+use crate::interface::{Input, InputEvent};
 use crate::messaging::{InputMessage, ToServerMessage};
 use std::io;
 use std::marker::PhantomData;
 
 //TODO: Send response to time messages to calculate ping
 
-pub struct TcpOutput<InputType>
-    where InputType: Input {
+pub struct TcpOutput<InputType, InputEventType>
+    where InputType: Input<InputEventType>,
+          InputEventType: InputEvent {
+
     tcp_stream: TcpStream,
-    phantom: PhantomData<InputType>
+    phantom: PhantomData<InputType>,
+    event_phantom: PhantomData<InputEventType>
 }
 
-impl<InputType> TcpOutput<InputType>
-    where InputType: Input {
+impl<InputType, InputEventType> TcpOutput<InputType, InputEventType>
+    where InputType: Input<InputEventType>,
+          InputEventType: InputEvent {
 
     pub fn new(tcp_stream: &TcpStream) -> io::Result<Self> {
-        Ok(Self{tcp_stream: tcp_stream.try_clone()?, phantom: PhantomData})
+        Ok(Self{tcp_stream: tcp_stream.try_clone()?, phantom: PhantomData, event_phantom: PhantomData})
     }
 }
 
-impl<InputType> ChannelDrivenThread<()> for TcpOutput<InputType>
-    where InputType: Input {
+impl<InputType, InputEventType> ChannelDrivenThread<()> for TcpOutput<InputType, InputEventType>
+    where InputType: Input<InputEventType>,
+          InputEventType: InputEvent {
 
     fn on_channel_disconnect(&mut self) -> () {
         ()
     }
 }
 
-impl<InputType> Consumer<InputMessage<InputType>> for Sender<TcpOutput<InputType>>
-    where InputType: Input {
+impl<InputType, InputEventType> Consumer<InputMessage<InputType>> for Sender<TcpOutput<InputType, InputEventType>>
+    where InputType: Input<InputEventType>,
+          InputEventType: InputEvent {
 
     fn accept(&self, input_message: InputMessage<InputType>) {
         self.send(move |tcp_output|{

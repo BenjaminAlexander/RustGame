@@ -3,27 +3,29 @@ use std::str::FromStr;
 use crate::gametime::{TimeDuration, GameTimer, TimeMessage};
 use crate::threading::{ChannelThread, Sender, ChannelDrivenThread, Consumer};
 use crate::client::tcpinput::TcpInput;
-use crate::interface::{Input, State};
+use crate::interface::{Input, State, InputEvent};
 use std::marker::PhantomData;
 use crate::client::tcpoutput::TcpOutput;
 use crate::messaging::{StateMessage, InitialInformation};
 use crate::gamemanager::Manager;
 
-pub struct Core<StateType, InputType>
-    where InputType: Input,
-          StateType: State<InputType> {
+pub struct Core<StateType, InputType, InputEventType>
+    where StateType: State<InputType, InputEventType>,
+          InputType: Input<InputEventType>,
+          InputEventType: InputEvent {
 
     server_ip: String,
     port: u16,
     step_duration: TimeDuration,
     grace_period: TimeDuration,
     clock_average_size: usize,
-    manager_sender: Option<Sender<Manager<StateType, InputType>>>,
+    manager_sender: Option<Sender<Manager<StateType, InputType, InputEventType>>>,
 }
 
-impl<StateType, InputType> Core<StateType, InputType>
-    where InputType: Input,
-          StateType: State<InputType> {
+impl<StateType, InputType, InputEventType> Core<StateType, InputType, InputEventType>
+    where StateType: State<InputType, InputEventType>,
+          InputType: Input<InputEventType>,
+          InputEventType: InputEvent {
 
     pub fn new(server_ip: &str,
                port: u16,
@@ -41,18 +43,20 @@ impl<StateType, InputType> Core<StateType, InputType>
     }
 }
 
-impl<StateType, InputType> ChannelDrivenThread<()> for Core<StateType, InputType>
-    where InputType: Input,
-          StateType: State<InputType> {
+impl<StateType, InputType, InputEventType> ChannelDrivenThread<()> for Core<StateType, InputType, InputEventType>
+    where StateType: State<InputType, InputEventType>,
+          InputType: Input<InputEventType>,
+          InputEventType: InputEvent {
 
     fn on_channel_disconnect(&mut self) -> () {
         ()
     }
 }
 
-impl<StateType, InputType> Sender<Core<StateType, InputType>>
-    where InputType: Input,
-          StateType: State<InputType> {
+impl<StateType, InputType, InputEventType> Sender<Core<StateType, InputType, InputEventType>>
+    where StateType: State<InputType, InputEventType>,
+          InputType: Input<InputEventType>,
+          InputEventType: InputEvent {
 
     pub fn connect(&self) {
         let core_sender = self.clone();
@@ -62,10 +66,10 @@ impl<StateType, InputType> Sender<Core<StateType, InputType>>
             let socket_addr:SocketAddr = SocketAddr::from(socket_addr_v4);
             let tcp_stream = TcpStream::connect(socket_addr).unwrap();
 
-            let (manager_sender, manager_builder) = Manager::<StateType, InputType>::new(core.grace_period).build();
+            let (manager_sender, manager_builder) = Manager::<StateType, InputType, InputEventType>::new(core.grace_period).build();
             let (game_timer_sender, game_timer_builder) = GameTimer::new(core.step_duration, core.clock_average_size).build();
-            let (tcp_input_sender, tcp_input_builder) = TcpInput::<StateType, InputType>::new(&tcp_stream).unwrap().build();
-            let (tcp_output_sender, tcp_output_builder) = TcpOutput::<InputType>::new(&tcp_stream).unwrap().build();
+            let (tcp_input_sender, tcp_input_builder) = TcpInput::<StateType, InputType, InputEventType>::new(&tcp_stream).unwrap().build();
+            let (tcp_output_sender, tcp_output_builder) = TcpOutput::<InputType, InputEventType>::new(&tcp_stream).unwrap().build();
 
             tcp_input_sender.add_time_message_consumer(game_timer_sender.clone()).unwrap();
             tcp_input_sender.add_initial_information_message_consumer(manager_sender.clone());
@@ -84,9 +88,10 @@ impl<StateType, InputType> Sender<Core<StateType, InputType>>
     }
 }
 
-impl<StateType, InputType> Consumer<TimeMessage> for Sender<Core<StateType, InputType>>
-    where InputType: Input,
-          StateType: State<InputType> {
+impl<StateType, InputType, InputEventType> Consumer<TimeMessage> for Sender<Core<StateType, InputType, InputEventType>>
+    where StateType: State<InputType, InputEventType>,
+          InputType: Input<InputEventType>,
+          InputEventType: InputEvent {
 
     fn accept(&self, time_message: TimeMessage) {
         self.send(move |core|{
