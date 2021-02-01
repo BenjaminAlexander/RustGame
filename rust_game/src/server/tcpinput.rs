@@ -51,6 +51,7 @@ impl<InputType, InputEventType> ChannelThread<()> for TcpInput<InputType, InputE
 
                     match message {
                         ToServerMessage::Input(input_message) => {
+                            error!("Recieved Message!!!!!!!!!!!!!");
                             self.input_consumers.accept(&input_message);
                         }
                     }

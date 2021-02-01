@@ -31,11 +31,11 @@ impl<T> Receiver<T> {
         }
     }
 
-    // pub fn recv_try_iter(&self, t: &mut T) -> Result<(), RecvError> {
-    //     self.recv(t)?;
-    //     self.try_iter(t);
-    //     Ok(())
-    // }
+    pub fn recv_try_iter(&self, t: &mut T) -> Result<(), RecvError> {
+        self.recv(t)?;
+        self.try_iter(t);
+        Ok(())
+    }
 
     fn apply_message<U>(message: Box<dyn FnOnce(&mut T) + Send + 'static>, t: &mut T) -> Result<(), U> {
         message(t);
