@@ -8,6 +8,7 @@ use std::marker::PhantomData;
 use crate::client::tcpoutput::TcpOutput;
 use crate::messaging::{StateMessage, InitialInformation, InputMessage};
 use crate::gamemanager::Manager;
+use log::info;
 
 pub struct Core<StateType, InputType, InputEventType>
     where StateType: State<InputType, InputEventType>,
@@ -89,6 +90,7 @@ impl<StateType, InputType, InputEventType> Sender<Core<StateType, InputType, Inp
 
             let _manager_join_handle = manager_builder.name("ClientManager").start().unwrap();
             let _tcp_input_join_handle = tcp_input_builder.name("ClientTcpInput").start().unwrap();
+            let _tcp_output_join_handle = tcp_output_builder.name("ClientTcpOutput").start().unwrap();
             let _game_timer_join_handle = game_timer_builder.name("ClientGameTimer").start().unwrap();
 
             core.manager_sender = Some(manager_sender);
@@ -105,6 +107,7 @@ impl<StateType, InputType, InputEventType> Consumer<InitialInformation<StateType
 
     fn accept(&self, initial_information: InitialInformation<StateType>) {
         self.send(move |core|{
+            info!("InitialInformation Received.");
             core.initial_information = Some(initial_information);
         }).unwrap();
     }
@@ -117,19 +120,48 @@ impl<StateType, InputType, InputEventType> Consumer<TimeMessage> for Sender<Core
 
     fn accept(&self, time_message: TimeMessage) {
         self.send(move |core|{
+
+            if core.last_time_message.is_some() &&
+                core.tcp_output_sender.is_some() &&
+                core.initial_information.is_some() {
+
+                let time_message = core.last_time_message.as_ref().unwrap();
+                let tcp_output_sender = core.tcp_output_sender.as_ref().unwrap();
+                let initial_information = core.initial_information.as_ref().unwrap();
+
+                let message = InputMessage::<InputType>::new(
+                    time_message.get_step(),
+                    initial_information.get_player_index(),
+                    core.input.clone()
+                );
+
+                tcp_output_sender.accept(message);
+            }
+
             core.last_time_message = Some(time_message);
             core.input = InputType::new();
             let time_message = core.last_time_message.as_ref().unwrap();
 
-            if core.manager_sender.is_some() {
+            if core.manager_sender.is_some() &&
+                core.initial_information.is_some() {
+
+                let manager_sender = core.manager_sender.as_ref().unwrap();
+                let initial_information = core.initial_information.as_ref().unwrap();
+
+                let message = InputMessage::<InputType>::new(
+                    time_message.get_step(),
+                    initial_information.get_player_index(),
+                    core.input.clone()
+                );
+
+                manager_sender.accept(message.clone());
+
                 let client_drop_time = time_message.get_scheduled_time().subtract(core.grace_period * 2);
                 let drop_step = time_message.get_step_from_actual_time(client_drop_time);
-                let manager_sender = core.manager_sender.as_ref().unwrap();
 
                 manager_sender.drop_steps_before(drop_step);
                 manager_sender.set_requested_step(time_message.get_step());
             }
-
         }).unwrap();
     }
 }
@@ -143,14 +175,12 @@ impl<StateType, InputType, InputEventType> Consumer<InputEventType> for Sender<C
         self.send(move |core|{
             if core.manager_sender.is_some() &&
                 core.last_time_message.is_some() &&
-                core.initial_information.is_some() &&
-                core.tcp_output_sender.is_some() {
+                core.initial_information.is_some() {
 
                 core.input.accumulate(input_event);
 
                 let time_message = core.last_time_message.as_ref().unwrap();
                 let manager_sender = core.manager_sender.as_ref().unwrap();
-                let tcp_output_sender = core.tcp_output_sender.as_ref().unwrap();
                 let initial_information = core.initial_information.as_ref().unwrap();
 
                 let message = InputMessage::<InputType>::new(
@@ -160,7 +190,6 @@ impl<StateType, InputType, InputEventType> Consumer<InputEventType> for Sender<C
                 );
 
                 manager_sender.accept(message.clone());
-                tcp_output_sender.accept(message);
             }
         }).unwrap();
     }
