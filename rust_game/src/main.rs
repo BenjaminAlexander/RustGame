@@ -63,7 +63,7 @@ pub fn main() {
 
     let (client_core_sender, client_core_builder) = client_core.build();
 
-    client_core_sender.connect();
+    let mut render_receiver = client_core_sender.connect();
     client_core_builder.name("ClientCore").start().unwrap();
 
     let millis = time::Duration::from_millis(1000);
@@ -113,6 +113,14 @@ pub fn main() {
             },
             Event::RedrawRequested(_) => {
                 //gl.draw_frame([1.0, 0.5, 0.7, 1.0]);
+                let step_message = render_receiver.get_step_message();
+
+                if step_message.is_some() {
+                    //info!("Draw: {:?}", step_message.unwrap().get_step_index());
+                } else {
+                    //info!("Draw: None");
+                }
+
                 windowed_context.swap_buffers().unwrap();
             }
             Event::DeviceEvent{
@@ -120,6 +128,15 @@ pub fn main() {
                 event,
             } => {
                 //info!("{:?}", event);
+
+                let step_message = render_receiver.get_step_message();
+
+                if step_message.is_some() {
+                    //info!("NotDraw: {:?}", step_message.unwrap().get_step_index());
+                } else {
+                    //info!("NotDraw: None");
+                }
+
                 match event {
                     DeviceEvent::MouseMotion { delta } => {
                         let (x, y) = delta;

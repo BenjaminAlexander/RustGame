@@ -1,6 +1,6 @@
 use std::net::TcpStream;
 
-use log::{error, info};
+use log::{error, info, trace};
 use rmp_serde::decode::Error;
 
 use crate::interface::{Input, InputEvent};
@@ -51,7 +51,6 @@ impl<InputType, InputEventType> ChannelThread<()> for TcpInput<InputType, InputE
 
                     match message {
                         ToServerMessage::Input(input_message) => {
-                            error!("Recieved Message!!!!!!!!!!!!!");
                             self.input_consumers.accept(&input_message);
                         }
                     }

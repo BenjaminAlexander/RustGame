@@ -92,8 +92,11 @@ impl<StateType, InputType, InputEventType> ChannelDrivenThread<()> for Manager<S
     fn on_none_pending(&mut self) -> Option<()> {
 
         if self.steps.is_empty() {
+            info!("Steps is empty");
             return None;
         }
+
+        info!("Starting Calc requested: {:?}", self.requested_step);
 
         let mut is_current_step_complete = true;
         let mut current: usize = 0;
@@ -114,6 +117,8 @@ impl<StateType, InputType, InputEventType> ChannelDrivenThread<()> for Manager<S
             let next = current + 1;
             self.get_state(self.steps[current].get_step_index() + 1);
 
+            trace!("Trying update current: {:?}, next: {:?}", self.steps[current].get_step_index(), self.steps[next].get_step_index());
+
             let mut was_updated = false;
             if !self.steps[next].is_state_final() {
                 let next_state = self.steps[current].calculate_next_state();
@@ -122,6 +127,7 @@ impl<StateType, InputType, InputEventType> ChannelDrivenThread<()> for Manager<S
                     was_updated = true;
                 }
             }
+            //TODO: if next is newly final, it causes a bug
 
             self.steps[current].mark_as_unchanged();
 
@@ -143,7 +149,8 @@ impl<StateType, InputType, InputEventType> ChannelDrivenThread<()> for Manager<S
             }
 
             if should_drop_current {
-                self.steps.pop_front().unwrap();
+                let dropped = self.steps.pop_front().unwrap();
+                trace!("Dropped step: {:?}", dropped.get_step_index());
             } else {
                 current = current + 1;
             }
@@ -151,6 +158,9 @@ impl<StateType, InputType, InputEventType> ChannelDrivenThread<()> for Manager<S
             is_current_step_complete = is_next_complete;
 
         }
+
+        trace!("End Calc");
+
         None
     }
 
@@ -211,6 +221,7 @@ impl<StateType, InputType, InputEventType> Consumer<StateMessage<StateType>> for
 
     fn accept(&self, mut state_message: StateMessage<StateType>) {
         self.send(move |manager|{
+            info!("Final Step: {:?}", state_message.get_sequence());
             manager.handle_state_message(state_message);
         }).unwrap();
     }

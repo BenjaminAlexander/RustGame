@@ -7,8 +7,8 @@ use crate::interface::{Input, State, InputEvent};
 use std::marker::PhantomData;
 use crate::client::tcpoutput::TcpOutput;
 use crate::messaging::{StateMessage, InitialInformation, InputMessage};
-use crate::gamemanager::Manager;
-use log::info;
+use crate::gamemanager::{Manager, RenderReceiver};
+use log::{info, trace};
 
 pub struct Core<StateType, InputType, InputEventType>
     where StateType: State<InputType, InputEventType>,
@@ -67,8 +67,10 @@ impl<StateType, InputType, InputEventType> Sender<Core<StateType, InputType, Inp
           InputType: Input<InputEventType>,
           InputEventType: InputEvent {
 
-    pub fn connect(&self) {
+    pub fn connect(&self) -> RenderReceiver<StateType, InputType, InputEventType> {
+        let (sender, render_receiver) = RenderReceiver::<StateType, InputType, InputEventType>::new();
         let core_sender = self.clone();
+
         self.send(move |core|{
             let ip_addr_v4 = Ipv4Addr::from_str(core.server_ip.as_str()).unwrap();
             let socket_addr_v4 = SocketAddrV4::new(ip_addr_v4, core.port);
@@ -87,6 +89,9 @@ impl<StateType, InputType, InputEventType> Sender<Core<StateType, InputType, Inp
             tcp_input_sender.add_state_message_consumer(manager_sender.clone());
 
             game_timer_sender.add_timer_message_consumer(core_sender.clone());
+            game_timer_sender.add_timer_message_consumer(sender.clone());
+
+            manager_sender.add_requested_step_consumer(sender.clone());
 
             let _manager_join_handle = manager_builder.name("ClientManager").start().unwrap();
             let _tcp_input_join_handle = tcp_input_builder.name("ClientTcpInput").start().unwrap();
@@ -97,6 +102,8 @@ impl<StateType, InputType, InputEventType> Sender<Core<StateType, InputType, Inp
             core.tcp_output_sender = Some(tcp_output_sender);
 
         }).unwrap();
+
+        return render_receiver;
     }
 }
 
@@ -119,6 +126,9 @@ impl<StateType, InputType, InputEventType> Consumer<TimeMessage> for Sender<Core
           InputEventType: InputEvent {
 
     fn accept(&self, time_message: TimeMessage) {
+
+        info!("TimeMessage: {:?}", time_message.get_step());
+
         self.send(move |core|{
 
             if core.last_time_message.is_some() &&
@@ -142,6 +152,8 @@ impl<StateType, InputType, InputEventType> Consumer<TimeMessage> for Sender<Core
             core.input = InputType::new();
             let time_message = core.last_time_message.as_ref().unwrap();
 
+            trace!("TimeMessage step_index: {:?}", time_message.get_step());
+
             if core.manager_sender.is_some() &&
                 core.initial_information.is_some() {
 
@@ -161,6 +173,8 @@ impl<StateType, InputType, InputEventType> Consumer<TimeMessage> for Sender<Core
 
                 manager_sender.drop_steps_before(drop_step);
                 manager_sender.set_requested_step(time_message.get_step());
+
+                trace!("Requested step_index: {:?}", time_message.get_step());
             }
         }).unwrap();
     }
