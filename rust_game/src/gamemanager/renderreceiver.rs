@@ -1,4 +1,4 @@
-use log::info;
+use log::{warn, info};
 use crate::interface::{State, Input, InputEvent};
 use crate::gamemanager::stepmessage::StepMessage;
 use crate::threading::{Consumer, Sender, Receiver, channel};
@@ -53,15 +53,9 @@ impl<StateType, InputType, InputEventType> RenderReceiver<StateType, InputType, 
             return None;
 
         } else if self.data.latest_time_message.is_some() {
-           // for step_message in &self.data.step_queue {
-            //    info!("Que: {:?}", step_message.get_step_index());
-           // }
 
             let latest_time_message = self.data.latest_time_message.as_ref().unwrap();
             let step = latest_time_message.get_step_from_actual_time(now);
-
-            //info!("I need step: {:?}", step);
-            //info!("TimeMessage step: {:?}", latest_time_message.get_step());
 
             loop {
                 if self.data.step_queue.len() == 1 ||

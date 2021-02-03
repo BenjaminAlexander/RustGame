@@ -20,6 +20,7 @@ mod gametime;
 mod util;
 mod client;
 mod gamemanager;
+mod support;
 
 pub fn insert(v: &mut Vec<i32>, val: i32) {
 
@@ -98,7 +99,7 @@ pub fn main() {
 
     info!("Pixel format of the window's GL context: {:?}", windowed_context.get_pixel_format());
 
-    //let gl = support::load(&windowed_context.context());
+    let gl = support::load(&windowed_context.context());
 
     el.run(move |event, _, control_flow| {
         //info!("{:?}", event);
@@ -112,13 +113,13 @@ pub fn main() {
                 _ => (),
             },
             Event::RedrawRequested(_) => {
-                //gl.draw_frame([1.0, 0.5, 0.7, 1.0]);
+                gl.draw_frame([1.0, 0.5, 0.7, 1.0]);
                 let step_message = render_receiver.get_step_message();
 
                 if step_message.is_some() {
-                    //info!("Draw: {:?}", step_message.unwrap().get_step_index());
+                    info!("Draw: {:?}", step_message.unwrap().get_step_index());
                 } else {
-                    //info!("Draw: None");
+                    info!("Draw: None");
                 }
 
                 windowed_context.swap_buffers().unwrap();
