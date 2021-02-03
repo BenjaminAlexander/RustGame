@@ -69,7 +69,7 @@ impl<StateType, InputType, InputEventType> Manager<StateType, InputType, InputEv
         step.set_final_state(state_message);
     }
 
-    pub fn drop_steps_before(&mut self, step :usize) {
+    fn drop_steps_before(&mut self, step :usize) {
         trace!("Setting drop_steps_before: {:?}", step);
         self.drop_steps_before = step;
         if self.requested_step < self.drop_steps_before {
@@ -78,9 +78,21 @@ impl<StateType, InputType, InputEventType> Manager<StateType, InputType, InputEv
         }
     }
 
-    pub fn set_requested_step(&mut self, step: usize) {
+    fn set_requested_step(&mut self, step: usize) {
         trace!("Setting requested_step: {:?}", step);
         self.requested_step = step;
+    }
+
+    fn send_messages(&mut self, step_index: usize) {
+        let changed_message_option = self.steps[step_index].get_changed_message();
+        if changed_message_option.is_some() {
+            self.requested_step_consumer_list.accept(&changed_message_option.unwrap());
+        }
+
+        let complete_message_option = self.steps[step_index].get_complete_message();
+        if complete_message_option.is_some() {
+            self.completed_step_consumer_list.accept(&complete_message_option.unwrap());
+        }
     }
 }
 
@@ -92,26 +104,20 @@ impl<StateType, InputType, InputEventType> ChannelDrivenThread<()> for Manager<S
     fn on_none_pending(&mut self) -> Option<()> {
 
         if self.steps.is_empty() {
-            info!("Steps is empty");
+            trace!("Steps is empty");
             return None;
         }
 
-        info!("Starting Calc requested: {:?}", self.requested_step);
-
-        let mut is_current_step_complete = true;
         let mut current: usize = 0;
 
-        if self.steps[current].has_state_changed() {
-            self.completed_step_consumer_list.accept(&self.steps[current].get_state_message());
-            self.requested_step_consumer_list.accept(&self.steps[current].get_message());
-        }
+        self.send_messages(current);
 
         let player_count = match self.player_count {
             None => usize::MAX,
             Some(count) => count
         };
 
-        while (is_current_step_complete && self.steps[current].get_input_count() == player_count) ||
+        while (self.steps[current].is_complete() && self.steps[current].get_input_count() == player_count) ||
                 (self.steps[current].get_step_index() <= self.requested_step) {
 
             let next = current + 1;
@@ -124,42 +130,26 @@ impl<StateType, InputType, InputEventType> ChannelDrivenThread<()> for Manager<S
                 let next_state = self.steps[current].calculate_next_state();
                 if next_state.is_some() {
                     self.steps[next].set_calculated_state(next_state.unwrap());
-                    was_updated = true;
+
+                    if self.steps[current].is_complete() && self.steps[current].get_input_count() == player_count {
+                        self.steps[next].mark_as_complete();
+                    }
+
                 }
-            }
-            //TODO: if next is newly final, it causes a bug
-
-            self.steps[current].mark_as_unchanged();
-
-            if was_updated && self.steps[next].get_step_index() <= self.requested_step {
-                trace!("Sending updated state: {:?}", self.steps[next].get_step_index());
-                self.requested_step_consumer_list.accept(&self.steps[next].get_message());
+            } else {
+                self.steps[current].mark_as_calculation_not_needed();
             }
 
-            let current_has_all_inputs = self.steps[current].get_input_count() == player_count;
-            let should_drop_current = current == 0 &&
-                self.steps[current].get_step_index() < self.drop_steps_before;
-
-            let is_next_complete = should_drop_current || (is_current_step_complete && current_has_all_inputs);
-            let is_next_newly_completed = is_next_complete && (was_updated || (should_drop_current && !current_has_all_inputs));
-
-            if is_next_newly_completed {
-                trace!("Sending newly completed state: {:?}", self.steps[next].get_step_index());
-                self.completed_step_consumer_list.accept(&self.steps[next].get_state_message());
-            }
-
-            if should_drop_current {
+            if current == 0 && self.steps[current].get_step_index() < self.drop_steps_before {
+                self.steps[next].mark_as_complete();
                 let dropped = self.steps.pop_front().unwrap();
                 trace!("Dropped step: {:?}", dropped.get_step_index());
             } else {
                 current = current + 1;
             }
 
-            is_current_step_complete = is_next_complete;
-
+            self.send_messages(current);
         }
-
-        trace!("End Calc");
 
         None
     }
@@ -221,7 +211,6 @@ impl<StateType, InputType, InputEventType> Consumer<StateMessage<StateType>> for
 
     fn accept(&self, mut state_message: StateMessage<StateType>) {
         self.send(move |manager|{
-            info!("Final Step: {:?}", state_message.get_sequence());
             manager.handle_state_message(state_message);
         }).unwrap();
     }

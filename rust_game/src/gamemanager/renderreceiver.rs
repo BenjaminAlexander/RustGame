@@ -69,7 +69,7 @@ impl<StateType, InputType, InputEventType> RenderReceiver<StateType, InputType, 
                     let this_step = self.data.step_queue[self.data.step_queue.len() - 1].get_step_index();
 
                     if (step as i64 - this_step as i64).abs() > 3 {
-                        //info!("Needed step: {:?}, Gotten step: {:?}", step, this_step);
+                        warn!("Needed step: {:?}, Gotten step: {:?}", step, this_step);
                     }
                     return Some(&self.data.step_queue[self.data.step_queue.len() - 1]);
                 } else {
@@ -90,7 +90,7 @@ impl<StateType, InputType, InputEventType> Consumer<StepMessage<StateType, Input
 
     fn accept(&self, step_message: StepMessage<StateType, InputType, InputEventType>) {
 
-        info!("StepMessage: {:?}", step_message.get_step_index());
+        //info!("StepMessage: {:?}", step_message.get_step_index());
         self.send(|data|{
             //info!("StepMessage: {:?}", step_message.get_step_index());
             //insert in reverse sorted order

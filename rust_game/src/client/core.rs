@@ -127,8 +127,6 @@ impl<StateType, InputType, InputEventType> Consumer<TimeMessage> for Sender<Core
 
     fn accept(&self, time_message: TimeMessage) {
 
-        info!("TimeMessage: {:?}", time_message.get_step());
-
         self.send(move |core|{
 
             if core.last_time_message.is_some() &&
