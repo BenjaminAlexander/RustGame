@@ -30,6 +30,9 @@ impl<StateType, InputType, InputEventType> StepMessage<StateType, InputType, Inp
         return self.step_index;
     }
 
+    pub fn get_state(&self) -> &StateType {
+        return &self.state;
+    }
 }
 
 impl<StateType, InputType, InputEventType> Clone for StepMessage<StateType, InputType, InputEventType>
