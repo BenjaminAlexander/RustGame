@@ -1,4 +1,4 @@
-use crate::interface::{Input, State, InputEvent};
+use crate::interface::{Input, State, InputEvent, NextStateArg};
 use crate::messaging::{InputMessage, StateMessage};
 use std::marker::PhantomData;
 use std::cmp::Ordering;
@@ -9,7 +9,7 @@ pub struct StepMessage<StateType, InputType, InputEventType>
           InputEventType: InputEvent {
 
     step_index: usize,
-    inputs: Vec<Option<InputType>>,
+    next_state_arg: NextStateArg<InputType, InputEventType>,
     state: StateType,
     phantom: PhantomData<InputEventType>
 }
@@ -20,10 +20,10 @@ impl<StateType, InputType, InputEventType> StepMessage<StateType, InputType, Inp
           InputEventType: InputEvent {
 
     pub fn new(step_index: usize,
-           inputs: Vec<Option<InputType>>,
+               next_state_arg: NextStateArg<InputType, InputEventType>,
            state: StateType) -> Self {
 
-        Self{step_index, inputs, state, phantom: PhantomData}
+        Self{step_index, next_state_arg, state, phantom: PhantomData}
     }
 
     pub fn get_step_index(&self) -> usize {
@@ -43,7 +43,7 @@ impl<StateType, InputType, InputEventType> Clone for StepMessage<StateType, Inpu
     fn clone(&self) -> Self {
         Self{
             step_index: self.step_index,
-            inputs: self.inputs.clone(),
+            next_state_arg: self.next_state_arg.clone(),
             state: self.state.clone(),
             phantom: PhantomData
         }

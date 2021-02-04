@@ -72,11 +72,13 @@ impl<StateType, InputType, InputEventType> Sender<Core<StateType, InputType, Inp
         }).unwrap();
     }
 
-    pub fn start_game(&self, initial_state: StateType) {
+    pub fn start_game(&self) {
         let core_sender = self.clone();
         self.send(move |core| {
             if !core.game_is_started {
                 core.game_is_started = true;
+
+                let initial_state = StateType::new(core.tcp_outputs.len());
 
                 let (manager_sender, manager_builder) = Manager::<StateType, InputType, InputEventType>::new(core.grace_period).build();
                 let (timer_sender, timer_builder) = GameTimer::new(core.step_duration, 0).build();

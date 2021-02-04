@@ -1,7 +1,7 @@
 use std::{thread, time};
 use log::info;
 use crate::messaging::*;
-use crate::simplegame::{Vector2, SimpleInput, SimpleState};
+use crate::simplegame::{Vector2, SimpleInput, SimpleState, SimpleInputEvent, STEP_DURATION};
 use crate::threading::{ChannelThread, Consumer};
 use crate::gametime::TimeDuration;
 
@@ -13,6 +13,7 @@ use piston::window::WindowSettings;
 use piston::{Event, MouseRelativeEvent, MouseCursorEvent};
 use crate::gamemanager::RenderReceiver;
 use graphics::*;
+use piston::input::Input as PistonInput;
 
 mod simplegame;
 mod messaging;
@@ -52,16 +53,16 @@ pub fn main() {
     let input_message:InputMessage<Vector2> = InputMessage::new(0, 0, Vector2::new(1.0, 12.0));
     let _my_message:ToServerMessage<Vector2> = ToServerMessage::Input(input_message);
 
-    let server_core  = server::Core::<SimpleState, SimpleInput, Vector2>::new(3456, TimeDuration::from_millis(50), TimeDuration::from_millis(500));
+    let server_core  = server::Core::<SimpleState, SimpleInput, SimpleInputEvent>::new(3456, STEP_DURATION, TimeDuration::from_millis(500));
     let (server_core_sender, server_core_builder) = server_core.build();
 
     server_core_sender.start_listener();
     server_core_builder.name("ServerCore").start().unwrap();
 
-    let client_core = client::Core::<SimpleState, SimpleInput, Vector2>::new(
+    let client_core = client::Core::<SimpleState, SimpleInput, SimpleInputEvent>::new(
         "127.0.0.1",
         3456,
-        TimeDuration::from_millis(50),
+        STEP_DURATION,
         TimeDuration::from_millis(500),
         50);
 
@@ -73,7 +74,7 @@ pub fn main() {
     let millis = time::Duration::from_millis(1000);
     thread::sleep(millis);
 
-    server_core_sender.start_game(SimpleState::new(1));
+    server_core_sender.start_game();
 
     // let mut stream = TcpStream::connect("127.0.0.1:3456").unwrap();
     // rmp_serde::encode::write(&mut stream, &my_message).unwrap();
@@ -107,17 +108,20 @@ pub fn main() {
     let mut events = Events::new(EventSettings::new());
     while let Some(e) = events.next(&mut window) {
 
+
+
         if let Some(args) = e.render_args() {
             app.render(&args);
-        }
-
-        if let Some(args) = e.update_args() {
+        } else if let Some(args) = e.update_args() {
             app.update(&args);
-        }
+        } else {
 
-        if let Some(args) = e.mouse_cursor_args() {
-            //info!("args: {:?}", args);
-            client_core_sender.accept(Vector2::new(args[0] as f32, args[1] as f32));
+            match e {
+                Event::Input(input, _) => {
+                    client_core_sender.accept(SimpleInputEvent::new(input));
+                }
+                _ => {}
+            }
         }
     }
 
@@ -129,49 +133,25 @@ pub fn main() {
 
 pub struct App {
     gl: GlGraphics, // OpenGL drawing backend.
-    render_receiver: RenderReceiver<SimpleState, SimpleInput, Vector2>,  // Rotation for the square.
+    render_receiver: RenderReceiver<SimpleState, SimpleInput, SimpleInputEvent>,  // Rotation for the square.
 }
 
 impl App {
     fn render(&mut self, args: &RenderArgs) {
 
         let step_message = self.render_receiver.get_step_message();
-        let mut x = 0 as f64;
-        let mut y = 0 as f64;
-
-        if step_message.is_some() {
-            let (sx, sy) = step_message.unwrap().get_state().vectors[0].get();
-
-            //info!("state: {:?}, {:?}", x, y);
-            x = (sx as f64 / args.draw_size[0] as f64) * args.window_size[0];
-            y = (sy as f64 / args.draw_size[1] as f64) * args.window_size[1];
-        }
-
-        const GREEN: [f32; 4] = [0.0, 1.0, 0.0, 1.0];
-        const RED: [f32; 4] = [1.0, 0.0, 0.0, 1.0];
-
-        let square = rectangle::square(0.0, 0.0, 50.0);
-
-
-        //info!("state: {:?}, {:?}", x, y);
-        //info!("window_size: {:?}", args.window_size);
-        //info!("draw_size: {:?}", args.draw_size);
-
-
-        let rotation = 0 as f64;
 
         self.gl.draw(args.viewport(), |c, gl| {
+
+            const GREEN: [f32; 4] = [0.0, 1.0, 0.0, 1.0];
+
             // Clear the screen.
             clear(GREEN, gl);
 
-            let transform = c
-                .transform
-                .trans(x, y)
-                .rot_rad(rotation)
-                .trans(-25.0, -25.0);
+            if step_message.is_some() {
+                step_message.unwrap().get_state().draw(args, c, gl);
+            }
 
-            // Draw a box rotating around the middle of the screen.
-            rectangle(RED, square, transform, gl);
         });
     }
 

@@ -8,7 +8,7 @@ use std::cmp::Ordering;
 pub struct TimeDuration(pub i64);
 
 impl TimeDuration {
-    pub fn from_millis(millis: i64) -> TimeDuration {
+    pub const fn from_millis(millis: i64) -> TimeDuration {
         TimeDuration(millis)
     }
 

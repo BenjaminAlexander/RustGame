@@ -1,4 +1,4 @@
-use crate::interface::{Input, State, InputEvent};
+use crate::interface::{Input, State, InputEvent, NextStateArg};
 use crate::messaging::{InputMessage, StateMessage};
 use crate::gamemanager::stepmessage::StepMessage;
 use std::marker::PhantomData;
@@ -9,9 +9,8 @@ pub struct Step<StateType, InputType, InputEventType>
           InputEventType: InputEvent {
 
     step_index: usize,
-    inputs: Vec<Option<InputType>>,
+    next_state_arg: NextStateArg<InputType, InputEventType>,
     state: Option<StateType>,
-    input_count: usize,
     is_state_final: bool,
     is_state_complete: bool,
     need_to_compute_next_state: bool,
@@ -29,9 +28,8 @@ impl<StateType, InputType, InputEventType> Step<StateType, InputType, InputEvent
 
         return Self{
             step_index,
-            inputs: Vec::new(),
+            next_state_arg: NextStateArg::new(),
             state: None,
-            input_count: 0,
             is_state_final: false,
             is_state_complete: false,
             need_to_compute_next_state: false,
@@ -42,16 +40,7 @@ impl<StateType, InputType, InputEventType> Step<StateType, InputType, InputEvent
     }
 
     pub fn set_input(&mut self, input_message: InputMessage<InputType>) {
-        let index = input_message.get_player_index();
-        while self.inputs.len() <= index {
-            self.inputs.push(None);
-        }
-
-        if self.inputs[index].is_none() {
-            self.input_count = self.input_count + 1;
-        }
-
-        self.inputs[index] = Some(input_message.get_input());
+        self.next_state_arg.set_input(input_message);
 
         if self.state.is_some() {
             self.need_to_compute_next_state = true;
@@ -70,7 +59,7 @@ impl<StateType, InputType, InputEventType> Step<StateType, InputType, InputEvent
     pub fn calculate_next_state(&mut self) -> Option<StateType> {
         if self.need_to_compute_next_state {
 
-            let next_state = self.state.as_ref().unwrap().get_next_state(&self.inputs);
+            let next_state = self.state.as_ref().unwrap().get_next_state(&self.next_state_arg);
             self.mark_as_calculation_not_needed();
 
             return Some(next_state);
@@ -103,7 +92,7 @@ impl<StateType, InputType, InputEventType> Step<StateType, InputType, InputEvent
     }
 
     pub fn get_input_count(&self) -> usize {
-        self.input_count
+        return self.next_state_arg.get_input_count();
     }
 
     pub fn is_state_final(&self) -> bool {
@@ -120,7 +109,7 @@ impl<StateType, InputType, InputEventType> Step<StateType, InputType, InputEvent
 
             return Some(StepMessage::new(
                 self.step_index,
-                self.inputs.clone(),
+                self.next_state_arg.clone(),
                 self.state.as_ref().unwrap().clone()
             ));
         } else {
@@ -153,9 +142,8 @@ impl<StateType, InputType, InputEventType> Clone for Step<StateType, InputType, 
     fn clone(&self) -> Self {
         Self{
             step_index: self.step_index,
-            inputs: self.inputs.clone(),
+            next_state_arg: self.next_state_arg.clone(),
             state: self.state.clone(),
-            input_count: self.input_count,
             is_state_final: self.is_state_final,
             is_state_complete: self.is_state_complete,
             need_to_compute_next_state: self.need_to_compute_next_state,
