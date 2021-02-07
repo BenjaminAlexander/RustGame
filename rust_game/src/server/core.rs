@@ -7,7 +7,7 @@ use crate::threading::{ChannelDrivenThread, ChannelThread, Consumer, Sender};
 use crate::server::TcpListenerThread;
 use crate::server::tcpoutput::TcpOutput;
 use crate::gametime::{GameTimer, TimeDuration, TimeMessage};
-use crate::gamemanager::Manager;
+use crate::gamemanager::{Manager, RenderReceiver};
 use crate::messaging::{InputMessage, InitialInformation};
 
 //TODO: route game timer and player inputs through the core to
@@ -68,7 +68,8 @@ impl<StateType, InputType> Sender<Core<StateType, InputType>>
         }).unwrap();
     }
 
-    pub fn start_game(&self) {
+    pub fn start_game(&self) -> RenderReceiver<StateType, InputType> {
+        let (render_receiver_sender, render_receiver) = RenderReceiver::<StateType, InputType>::new();
         let core_sender = self.clone();
         self.send(move |core| {
             if !core.game_is_started {
@@ -108,6 +109,8 @@ impl<StateType, InputType> Sender<Core<StateType, InputType>>
                 manager_builder.name("ServerManager").start().unwrap();
             }
         }).unwrap();
+
+        return render_receiver;
     }
 
 }

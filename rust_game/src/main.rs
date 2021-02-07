@@ -1,8 +1,8 @@
 use std::{thread, time};
 use log::info;
 use crate::messaging::*;
-use crate::simplegame::{Vector2, SimpleInput, SimpleState, SimpleInputEvent, STEP_DURATION, SimpleInputEventHandler};
-use crate::threading::{ChannelThread, Consumer};
+use crate::simplegame::{Vector2, SimpleInput, SimpleState, SimpleInputEvent, STEP_DURATION, SimpleInputEventHandler, SimpleWindow};
+use crate::threading::{ChannelThread, Consumer, Thread};
 use crate::gametime::TimeDuration;
 
 use glutin_window::GlutinWindow as Window;
@@ -84,79 +84,12 @@ pub fn main() {
     let millis = time::Duration::from_millis(1000);
     thread::sleep(millis);
 
+    let client_window = SimpleWindow::new(render_receiver, Some(client_core_sender));
+    client_window.run();
 
-    //client_core_sender.accept(Vector2::new(3 as f32, 4 as f32));
-
-    // Change this to OpenGL::V2_1 if not working.
-    let opengl = OpenGL::V3_2;
-
-    // Create an Glutin window.
-    let mut window: Window = WindowSettings::new("spinning-square", [200, 200])
-        .graphics_api(opengl)
-        .exit_on_esc(true)
-        .build()
-        .unwrap();
-
-    let gl = GlGraphics::new(opengl);
-
-    // Create a new game and run it.
-    let mut app = App {
-        gl: GlGraphics::new(opengl),
-        render_receiver: render_receiver,
-    };
-
-    let mut events = Events::new(EventSettings::new());
-    while let Some(e) = events.next(&mut window) {
-
-
-
-        if let Some(args) = e.render_args() {
-            app.render(&args);
-        } else if let Some(args) = e.update_args() {
-            app.update(&args);
-        } else {
-
-            match e {
-                Event::Input(input, _) => {
-                    client_core_sender.accept(SimpleInputEvent::new(input));
-                }
-                _ => {}
-            }
-        }
-    }
 
 
     let ten_millis = time::Duration::from_millis(10000);
     thread::sleep(ten_millis);
 
-}
-
-pub struct App {
-    gl: GlGraphics, // OpenGL drawing backend.
-    render_receiver: RenderReceiver<SimpleState, SimpleInput>,  // Rotation for the square.
-}
-
-impl App {
-    fn render(&mut self, args: &RenderArgs) {
-
-        let step_message = self.render_receiver.get_step_message();
-
-        self.gl.draw(args.viewport(), |c, gl| {
-
-            const GREEN: [f32; 4] = [0.0, 1.0, 0.0, 1.0];
-
-            // Clear the screen.
-            clear(GREEN, gl);
-
-            if step_message.is_some() {
-                step_message.unwrap().get_state().draw(args, c, gl);
-            }
-
-        });
-    }
-
-    fn update(&mut self, args: &UpdateArgs) {
-        // Rotate 2 radians per second.
-        //self.rotation += 2.0 * args.dt;
-    }
 }

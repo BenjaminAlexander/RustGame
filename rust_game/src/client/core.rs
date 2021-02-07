@@ -74,7 +74,7 @@ impl<StateType, InputEventHandlerType, InputType, InputEventType> Sender<Core<St
           InputEventType: InputEvent {
 
     pub fn connect(&self) -> RenderReceiver<StateType, InputType> {
-        let (sender, render_receiver) = RenderReceiver::<StateType, InputType>::new();
+        let (render_receiver_sender, render_receiver) = RenderReceiver::<StateType, InputType>::new();
         let core_sender = self.clone();
 
         self.send(move |core|{
@@ -95,9 +95,9 @@ impl<StateType, InputEventHandlerType, InputType, InputEventType> Sender<Core<St
             tcp_input_sender.add_state_message_consumer(manager_sender.clone());
 
             game_timer_sender.add_timer_message_consumer(core_sender.clone());
-            game_timer_sender.add_timer_message_consumer(sender.clone());
+            game_timer_sender.add_timer_message_consumer(render_receiver_sender.clone());
 
-            manager_sender.add_requested_step_consumer(sender.clone());
+            manager_sender.add_requested_step_consumer(render_receiver_sender.clone());
 
             let _manager_join_handle = manager_builder.name("ClientManager").start().unwrap();
             let _tcp_input_join_handle = tcp_input_builder.name("ClientTcpInput").start().unwrap();

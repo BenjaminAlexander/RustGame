@@ -29,7 +29,7 @@ impl<T> ThreadBuilder<T>
         self
     }
 
-    pub fn start(self) -> io::Result<JoinHandle<T>> {
+    pub fn start(mut self) -> io::Result<JoinHandle<T>> {
         let builder = self.builder;
         let thread = self.thread;
 

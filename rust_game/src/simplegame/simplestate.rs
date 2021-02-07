@@ -7,7 +7,7 @@ use graphics::Context;
 use piston::RenderArgs;
 use crate::gametime::TimeDuration;
 
-pub const STEP_DURATION: TimeDuration = TimeDuration::from_millis(16);
+pub const STEP_DURATION: TimeDuration = TimeDuration::from_millis(100);
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct SimpleState {

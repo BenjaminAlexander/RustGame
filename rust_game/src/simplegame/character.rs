@@ -33,7 +33,7 @@ impl Character {
             self.velocity = input.get_velocity();
         }
 
-        self.position = self.position.add(self.velocity.multiply(STEP_DURATION.get_millis() as f64));
+        self.position = self.position.add(self.velocity.multiply(STEP_DURATION.get_millis() as f64 * 0.5 as f64));
     }
 
     pub fn draw(&self, args: &RenderArgs, context: Context, gl: &mut GlGraphics) {

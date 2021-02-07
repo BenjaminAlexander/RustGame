@@ -3,10 +3,14 @@ use piston::input::Input as PistonInput;
 use crate::interface::InputEventHandler;
 use crate::simplegame::{SimpleInput, SimpleInputEvent, Vector2};
 use log::info;
+use num::integer::Roots;
 
 pub struct SimpleInputEventHandler {
     vector_option: Option<Vector2>,
-    d_state: ButtonState
+    d_state: ButtonState,
+    a_state: ButtonState,
+    s_state: ButtonState,
+    w_state: ButtonState
 }
 
 impl SimpleInputEventHandler {
@@ -22,14 +26,13 @@ impl SimpleInputEventHandler {
 
     fn accumulate_button(&mut self, button: &ButtonArgs) {
 
-
         match button.button {
             Button::Keyboard(key) => {
-
-                info!("{:?}", button);
-
                 match key {
                     Key::D => self.d_state = button.state,
+                    Key::A => self.a_state = button.state,
+                    Key::S => self.s_state = button.state,
+                    Key::W => self.w_state = button.state,
                     _ => {}
                 }
             }
@@ -42,7 +45,10 @@ impl InputEventHandler<SimpleInput, SimpleInputEvent> for SimpleInputEventHandle
     fn new() -> Self {
         Self{
             vector_option: None,
-            d_state: ButtonState::Release
+            d_state: ButtonState::Release,
+            a_state: ButtonState::Release,
+            s_state: ButtonState::Release,
+            w_state: ButtonState::Release
         }
     }
 
@@ -65,13 +71,31 @@ impl InputEventHandler<SimpleInput, SimpleInputEvent> for SimpleInputEventHandle
 
     fn get_input(&mut self) -> SimpleInput {
 
-        let velocity = if self.d_state == ButtonState::Press {
-            Vector2::new(1 as f64, 0 as f64)
-        } else {
-            Vector2::new(0 as f64, 0 as f64)
-        };
+        let mut x = match (self.d_state, self.a_state) {
+            (ButtonState::Press, ButtonState::Press) => 0,
+            (ButtonState::Release, ButtonState::Press) => -1,
+            (ButtonState::Press, ButtonState::Release) => 1,
+            (ButtonState::Release, ButtonState::Release) => 0,
+        } as f64;
 
-        let input = SimpleInput::new(self.vector_option, velocity);
+        let mut y = match (self.s_state, self.w_state) {
+            (ButtonState::Press, ButtonState::Press) => 0,
+            (ButtonState::Release, ButtonState::Press) => -1,
+            (ButtonState::Press, ButtonState::Release) => 1,
+            (ButtonState::Release, ButtonState::Release) => 0,
+        } as f64;
+
+        let h = (x.powf(2 as f64) + y.powf(2 as f64)).sqrt();
+
+        if h != 0 as f64 {
+            let cos = x / h;
+            let sin = y / h;
+
+            x = cos;
+            y = sin;
+        }
+
+        let input = SimpleInput::new(self.vector_option, Vector2::new(x as f64, y as f64));
 
         self.vector_option = None;
 
