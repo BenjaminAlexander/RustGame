@@ -25,13 +25,13 @@ impl TimeMessage {
         self.actual_time.is_after(&other.actual_time)
     }
 
-    pub fn get_step_from_actual_time(&self, actual_time: TimeValue) -> usize {
+    pub fn get_step_from_actual_time(&self, actual_time: TimeValue) -> f64 {
         let duration_since_start = actual_time.duration_since(self.start);
-        (duration_since_start / self.step_duration).round() as usize
+        return duration_since_start / self.step_duration;
     }
 
     pub fn get_step(&self) -> usize {
-        self.get_step_from_actual_time(self.actual_time)
+        return self.get_step_from_actual_time(self.actual_time).round() as usize;
     }
 
     pub fn get_scheduled_time(&self) -> TimeValue {

@@ -4,31 +4,28 @@ use crate::gamemanager::stepmessage::StepMessage;
 use crate::threading::{Consumer, Sender, Receiver, channel};
 use crate::gametime::{TimeMessage, TimeValue};
 
-pub struct RenderReceiver<StateType, InputType, InputEventType>
-    where StateType: State<InputType, InputEventType>,
-          InputType: Input<InputEventType>,
-          InputEventType: InputEvent {
+pub struct RenderReceiver<StateType, InputType>
+    where StateType: State<InputType>,
+          InputType: Input {
 
-    receiver: Receiver<Data<StateType, InputType, InputEventType>>,
-    data: Data<StateType, InputType, InputEventType>
+    receiver: Receiver<Data<StateType, InputType>>,
+    data: Data<StateType, InputType>
 }
 
-pub struct Data<StateType, InputType, InputEventType>
-    where StateType: State<InputType, InputEventType>,
-          InputType: Input<InputEventType>,
-          InputEventType: InputEvent {
+pub struct Data<StateType, InputType>
+    where StateType: State<InputType>,
+          InputType: Input {
 
-    step_queue: Vec<StepMessage<StateType, InputType, InputEventType>>,
+    step_queue: Vec<StepMessage<StateType, InputType>>,
     latest_time_message: Option<TimeMessage>
 }
 
-impl<StateType, InputType, InputEventType> RenderReceiver<StateType, InputType, InputEventType>
-    where StateType: State<InputType, InputEventType>,
-          InputType: Input<InputEventType>,
-          InputEventType: InputEvent {
+impl<StateType, InputType> RenderReceiver<StateType, InputType>
+    where StateType: State<InputType>,
+          InputType: Input {
 
-    pub fn new() -> (Sender<Data<StateType, InputType, InputEventType>>, Self) {
-        let (sender, receiver) = channel::<Data<StateType, InputType, InputEventType>>();
+    pub fn new() -> (Sender<Data<StateType, InputType>>, Self) {
+        let (sender, receiver) = channel::<Data<StateType, InputType>>();
 
         let render_receiver = Self{
             receiver,
@@ -41,7 +38,7 @@ impl<StateType, InputType, InputEventType> RenderReceiver<StateType, InputType, 
         return (sender, render_receiver);
     }
 
-    pub fn get_step_message(&mut self) -> Option<&StepMessage<StateType, InputType, InputEventType>> {
+    pub fn get_step_message(&mut self) -> Option<&StepMessage<StateType, InputType>> {
 
         self.receiver.try_iter(&mut self.data);
 
@@ -55,7 +52,7 @@ impl<StateType, InputType, InputEventType> RenderReceiver<StateType, InputType, 
         } else if self.data.latest_time_message.is_some() {
 
             let latest_time_message = self.data.latest_time_message.as_ref().unwrap();
-            let step = latest_time_message.get_step_from_actual_time(now);
+            let step = latest_time_message.get_step_from_actual_time(now).floor() as usize;
 
             loop {
                 if self.data.step_queue.len() == 1 ||
@@ -77,12 +74,11 @@ impl<StateType, InputType, InputEventType> RenderReceiver<StateType, InputType, 
 
 }
 
-impl<StateType, InputType, InputEventType> Consumer<StepMessage<StateType, InputType, InputEventType>> for Sender<Data<StateType, InputType, InputEventType>>
-    where StateType: State<InputType, InputEventType>,
-          InputType: Input<InputEventType>,
-          InputEventType: InputEvent {
+impl<StateType, InputType> Consumer<StepMessage<StateType, InputType>> for Sender<Data<StateType, InputType>>
+    where StateType: State<InputType>,
+          InputType: Input {
 
-    fn accept(&self, step_message: StepMessage<StateType, InputType, InputEventType>) {
+    fn accept(&self, step_message: StepMessage<StateType, InputType>) {
 
         //info!("StepMessage: {:?}", step_message.get_step_index());
         self.send(|data|{
@@ -97,10 +93,9 @@ impl<StateType, InputType, InputEventType> Consumer<StepMessage<StateType, Input
 
 }
 
-impl<StateType, InputType, InputEventType> Consumer<TimeMessage> for Sender<Data<StateType, InputType, InputEventType>>
-    where StateType: State<InputType, InputEventType>,
-          InputType: Input<InputEventType>,
-          InputEventType: InputEvent {
+impl<StateType, InputType> Consumer<TimeMessage> for Sender<Data<StateType, InputType>>
+    where StateType: State<InputType>,
+          InputType: Input {
 
     fn accept(&self, time_message: TimeMessage) {
         self.send(move |data|{

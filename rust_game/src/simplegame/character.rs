@@ -19,10 +19,6 @@ impl Character {
         };
     }
 
-    pub fn set_velocity(&mut self, velocity: Vector2) {
-        self.velocity = velocity;
-    }
-
     pub fn get_position(&self) -> &Vector2 {
         return &self.position;
     }
@@ -34,15 +30,7 @@ impl Character {
     pub fn update(&mut self, input_option: Option<&SimpleInput>) {
 
         if let Some(input) = input_option {
-
-            if let Some(button_state) = input.get_d_option() {
-                match button_state {
-                    ButtonState::Press => self.velocity.x = (self.velocity.x + 1 as f64).min(1 as f64),
-                    ButtonState::Release => self.velocity.x = (self.velocity.x - 1 as f64).max(-1 as f64),
-                }
-            }
-
-
+            self.velocity = input.get_velocity();
         }
 
         self.position = self.position.add(self.velocity.multiply(STEP_DURATION.get_millis() as f64));

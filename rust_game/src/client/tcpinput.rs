@@ -9,44 +9,37 @@ use std::io;
 use crate::interface::{Input, State, InputEvent};
 use std::marker::PhantomData;
 
-pub struct TcpInput <StateType, InputType, InputEventType>
-    where StateType: State<InputType, InputEventType>,
-          InputType: Input<InputEventType>,
-          InputEventType: InputEvent {
+pub struct TcpInput <StateType, InputType>
+    where StateType: State<InputType>,
+          InputType: Input {
 
+    player_index: Option<usize>,
     tcp_stream: TcpStream,
     time_message_consumers: ConsumerList<TimeReceived<TimeMessage>>,
     input_message_consumers: ConsumerList<InputMessage<InputType>>,
     state_message_consumers: ConsumerList<StateMessage<StateType>>,
-    initial_information_message_consumers: ConsumerList<InitialInformation<StateType>>,
-    phantom: PhantomData<InputType>,
-    state_phantom: PhantomData<StateType>,
-    event_phantom: PhantomData<InputEventType>,
+    initial_information_message_consumers: ConsumerList<InitialInformation<StateType>>
 }
 
-impl<StateType, InputType, InputEventType> TcpInput<StateType, InputType, InputEventType>
-    where StateType: State<InputType, InputEventType>,
-          InputType: Input<InputEventType>,
-          InputEventType: InputEvent {
+impl<StateType, InputType> TcpInput<StateType, InputType>
+    where StateType: State<InputType>,
+          InputType: Input {
 
     pub fn new(tcp_stream: &TcpStream) -> io::Result<Self> {
         Ok(Self {
+            player_index: None,
             tcp_stream: tcp_stream.try_clone()?,
             time_message_consumers: ConsumerList::new(),
             input_message_consumers: ConsumerList::new(),
             state_message_consumers: ConsumerList::new(),
-            initial_information_message_consumers: ConsumerList::new(),
-            phantom: PhantomData,
-            state_phantom: PhantomData,
-            event_phantom: PhantomData
+            initial_information_message_consumers: ConsumerList::new()
         })
     }
 }
 
-impl<StateType, InputType, InputEventType> ChannelThread<()> for TcpInput<StateType, InputType, InputEventType>
-    where StateType: State<InputType, InputEventType>,
-          InputType: Input<InputEventType>,
-          InputEventType: InputEvent {
+impl<StateType, InputType> ChannelThread<()> for TcpInput<StateType, InputType>
+    where StateType: State<InputType>,
+          InputType: Input {
 
     fn run(mut self, receiver: Receiver<Self>) {
         info!("Starting");
@@ -68,6 +61,7 @@ impl<StateType, InputType, InputEventType> ChannelThread<()> for TcpInput<StateT
 
                         }
                         ToClientMessage::InputMessage(input_message) => {
+                            //TODO: ignore input messages from this player
                             self.input_message_consumers.accept(&input_message);
 
                         }
@@ -76,6 +70,7 @@ impl<StateType, InputType, InputEventType> ChannelThread<()> for TcpInput<StateT
 
                         }
                         ToClientMessage::InitialInformation(initial_information_message) => {
+                            self.player_index = Some(initial_information_message.get_player_index());
                             self.initial_information_message_consumers.accept(&initial_information_message);
                         }
                     }
@@ -89,12 +84,11 @@ impl<StateType, InputType, InputEventType> ChannelThread<()> for TcpInput<StateT
     }
 }
 
-impl<StateType, InputType, InputEventType> Sender<TcpInput<StateType, InputType, InputEventType>>
-    where StateType: State<InputType, InputEventType>,
-          InputType: Input<InputEventType>,
-          InputEventType: InputEvent {
+impl<StateType, InputType> Sender<TcpInput<StateType, InputType>>
+    where StateType: State<InputType>,
+          InputType: Input {
 
-    pub fn add_time_message_consumer<T>(&self, consumer: T) -> Result<(), SendError<TcpInput<StateType, InputType, InputEventType>>>
+    pub fn add_time_message_consumer<T>(&self, consumer: T) -> Result<(), SendError<TcpInput<StateType, InputType>>>
         where T: Consumer<TimeReceived<TimeMessage>> {
 
         self.send(|tcp_input|{
@@ -102,7 +96,7 @@ impl<StateType, InputType, InputEventType> Sender<TcpInput<StateType, InputType,
         })
     }
 
-    pub fn add_input_message_consumer<T>(&self, consumer: T) -> Result<(), SendError<TcpInput<StateType, InputType, InputEventType>>>
+    pub fn add_input_message_consumer<T>(&self, consumer: T) -> Result<(), SendError<TcpInput<StateType, InputType>>>
         where T: Consumer<InputMessage<InputType>> {
 
         self.send(|tcp_input|{
@@ -110,7 +104,7 @@ impl<StateType, InputType, InputEventType> Sender<TcpInput<StateType, InputType,
         })
     }
 
-    pub fn add_state_message_consumer<T>(&self, consumer: T) -> Result<(), SendError<TcpInput<StateType, InputType, InputEventType>>>
+    pub fn add_state_message_consumer<T>(&self, consumer: T) -> Result<(), SendError<TcpInput<StateType, InputType>>>
         where T: Consumer<StateMessage<StateType>> {
 
         self.send(|tcp_input|{
@@ -118,7 +112,7 @@ impl<StateType, InputType, InputEventType> Sender<TcpInput<StateType, InputType,
         })
     }
 
-    pub fn add_initial_information_message_consumer<T>(&self, consumer: T) -> Result<(), SendError<TcpInput<StateType, InputType, InputEventType>>>
+    pub fn add_initial_information_message_consumer<T>(&self, consumer: T) -> Result<(), SendError<TcpInput<StateType, InputType>>>
         where T: Consumer<InitialInformation<StateType>> {
 
         self.send(|tcp_input|{

@@ -8,24 +8,21 @@ use std::io::Write;
 use crate::interface::{Input, State, InputEvent};
 use std::marker::PhantomData;
 
-pub struct TcpOutput<StateType, InputType, InputEventType>
-    where InputType: Input<InputEventType>,
-          StateType: State<InputType, InputEventType>,
-          InputEventType: InputEvent {
+pub struct TcpOutput<StateType, InputType>
+    where InputType: Input,
+          StateType: State<InputType> {
 
     player_index: usize,
     tcp_stream: TcpStream,
     time_message: Option<TimeMessage>,
     last_state_sequence: Option<usize>,
     input_queue: Vec<InputMessage<InputType>>,
-    state_message: Option<StateMessage<StateType>>,
-    phantom: PhantomData<InputEventType>
+    state_message: Option<StateMessage<StateType>>
 }
 
-impl<StateType, InputType, InputEventType> TcpOutput<StateType, InputType, InputEventType>
-    where InputType: Input<InputEventType>,
-          StateType: State<InputType, InputEventType>,
-          InputEventType: InputEvent {
+impl<StateType, InputType> TcpOutput<StateType, InputType>
+    where InputType: Input,
+          StateType: State<InputType> {
 
     pub fn new(player_index: usize, tcp_stream: &TcpStream) -> io::Result<Self> {
         Ok(TcpOutput{
@@ -34,16 +31,14 @@ impl<StateType, InputType, InputEventType> TcpOutput<StateType, InputType, Input
             time_message: None,
             last_state_sequence: None,
             input_queue: Vec::new(),
-            state_message: None,
-            phantom: PhantomData
+            state_message: None
         })
     }
 }
 
-impl<StateType, InputType, InputEventType> ChannelThread<()> for TcpOutput<StateType, InputType, InputEventType>
-    where InputType: Input<InputEventType>,
-          StateType: State<InputType, InputEventType>,
-          InputEventType: InputEvent {
+impl<StateType, InputType> ChannelThread<()> for TcpOutput<StateType, InputType>
+    where InputType: Input,
+          StateType: State<InputType> {
 
     fn run(mut self, receiver: Receiver<Self>) -> () {
 
@@ -92,10 +87,9 @@ impl<StateType, InputType, InputEventType> ChannelThread<()> for TcpOutput<State
     }
 }
 
-impl<StateType, InputType, InputEventType> Consumer<TimeMessage> for Sender<TcpOutput<StateType, InputType, InputEventType>>
-    where InputType: Input<InputEventType>,
-          StateType: State<InputType, InputEventType>,
-          InputEventType: InputEvent {
+impl<StateType, InputType> Consumer<TimeMessage> for Sender<TcpOutput<StateType, InputType>>
+    where InputType: Input,
+          StateType: State<InputType> {
 
     fn accept(&self, time_message: TimeMessage) {
         self.send(move |tcp_output|{
@@ -107,10 +101,9 @@ impl<StateType, InputType, InputEventType> Consumer<TimeMessage> for Sender<TcpO
     }
 }
 
-impl<StateType, InputType, InputEventType> Consumer<InputMessage<InputType>> for Sender<TcpOutput<StateType, InputType, InputEventType>>
-    where InputType: Input<InputEventType>,
-          StateType: State<InputType, InputEventType>,
-          InputEventType: InputEvent {
+impl<StateType, InputType> Consumer<InputMessage<InputType>> for Sender<TcpOutput<StateType, InputType>>
+    where InputType: Input,
+          StateType: State<InputType> {
 
     fn accept(&self, input_message: InputMessage<InputType>) {
 
@@ -129,10 +122,9 @@ impl<StateType, InputType, InputEventType> Consumer<InputMessage<InputType>> for
     }
 }
 
-impl<StateType, InputType, InputEventType> Consumer<StateMessage<StateType>> for Sender<TcpOutput<StateType, InputType, InputEventType>>
-    where InputType: Input<InputEventType>,
-          StateType: State<InputType, InputEventType>,
-          InputEventType: InputEvent {
+impl<StateType, InputType> Consumer<StateMessage<StateType>> for Sender<TcpOutput<StateType, InputType>>
+    where InputType: Input,
+          StateType: State<InputType> {
 
     fn accept(&self, state_message: StateMessage<StateType>) {
         self.send(move |tcp_output|{
@@ -158,10 +150,9 @@ impl<StateType, InputType, InputEventType> Consumer<StateMessage<StateType>> for
     }
 }
 
-impl<StateType, InputType, InputEventType> Sender<TcpOutput<StateType, InputType, InputEventType>>
-    where InputType: Input<InputEventType>,
-          StateType: State<InputType, InputEventType>,
-          InputEventType: InputEvent {
+impl<StateType, InputType> Sender<TcpOutput<StateType, InputType>>
+    where InputType: Input,
+          StateType: State<InputType> {
 
     pub fn send_initial_information(&self, player_count: usize, initial_state: StateType) {
         self.send(move |tcp_output|{

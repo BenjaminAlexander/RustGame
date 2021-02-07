@@ -11,27 +11,19 @@ use std::io;
 use crate::threading::sender::SendError;
 use serde::export::PhantomData;
 
-pub struct TcpInput<InputType, InputEventType>
-    where InputType: Input<InputEventType>,
-          InputEventType: InputEvent {
-
+pub struct TcpInput<InputType: Input> {
     tcp_stream: TcpStream,
-    input_consumers: ConsumerList<InputMessage<InputType>>,
-    phantom: PhantomData<InputEventType>
+    input_consumers: ConsumerList<InputMessage<InputType>>
 }
 
-impl<InputType, InputEventType> TcpInput<InputType, InputEventType>
-    where InputType: Input<InputEventType>,
-          InputEventType: InputEvent {
+impl<InputType: Input> TcpInput<InputType> {
 
     pub fn new(tcp_stream: &TcpStream) -> io::Result<Self> {
-        Ok(Self {tcp_stream: tcp_stream.try_clone()?, input_consumers: ConsumerList::new(), phantom: PhantomData})
+        Ok(Self {tcp_stream: tcp_stream.try_clone()?, input_consumers: ConsumerList::new()})
     }
 }
 
-impl<InputType, InputEventType> ChannelThread<()> for TcpInput<InputType, InputEventType>
-    where InputType: Input<InputEventType>,
-          InputEventType: InputEvent {
+impl<InputType: Input> ChannelThread<()> for TcpInput<InputType> {
 
     fn run(mut self, receiver: Receiver<Self>) {
         info!("Starting");
@@ -66,11 +58,9 @@ impl<InputType, InputEventType> ChannelThread<()> for TcpInput<InputType, InputE
     }
 }
 
-impl<InputType, InputEventType> Sender<TcpInput<InputType, InputEventType>>
-    where InputType: Input<InputEventType>,
-          InputEventType: InputEvent {
+impl<InputType: Input> Sender<TcpInput<InputType>> {
 
-    pub fn add_input_consumer<T>(&self, consumer: T) -> Result<(), SendError<TcpInput<InputType, InputEventType>>>
+    pub fn add_input_consumer<T>(&self, consumer: T) -> Result<(), SendError<TcpInput<InputType>>>
         where T: Consumer<InputMessage<InputType>> {
 
         self.send(|tcp_input|{

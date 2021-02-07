@@ -1,7 +1,7 @@
 use std::{thread, time};
 use log::info;
 use crate::messaging::*;
-use crate::simplegame::{Vector2, SimpleInput, SimpleState, SimpleInputEvent, STEP_DURATION};
+use crate::simplegame::{Vector2, SimpleInput, SimpleState, SimpleInputEvent, STEP_DURATION, SimpleInputEventHandler};
 use crate::threading::{ChannelThread, Consumer};
 use crate::gametime::TimeDuration;
 
@@ -53,13 +53,13 @@ pub fn main() {
     let input_message:InputMessage<Vector2> = InputMessage::new(0, 0, Vector2::new(1.0, 12.0));
     let _my_message:ToServerMessage<Vector2> = ToServerMessage::Input(input_message);
 
-    let server_core  = server::Core::<SimpleState, SimpleInput, SimpleInputEvent>::new(3456, STEP_DURATION, TimeDuration::from_millis(500));
+    let server_core  = server::Core::<SimpleState, SimpleInput>::new(3456, STEP_DURATION, TimeDuration::from_millis(500));
     let (server_core_sender, server_core_builder) = server_core.build();
 
     server_core_sender.start_listener();
     server_core_builder.name("ServerCore").start().unwrap();
 
-    let client_core = client::Core::<SimpleState, SimpleInput, SimpleInputEvent>::new(
+    let client_core = client::Core::<SimpleState, SimpleInput, SimpleInputEventHandler, SimpleInputEvent>::new(
         "127.0.0.1",
         3456,
         STEP_DURATION,
@@ -133,7 +133,7 @@ pub fn main() {
 
 pub struct App {
     gl: GlGraphics, // OpenGL drawing backend.
-    render_receiver: RenderReceiver<SimpleState, SimpleInput, SimpleInputEvent>,  // Rotation for the square.
+    render_receiver: RenderReceiver<SimpleState, SimpleInput>,  // Rotation for the square.
 }
 
 impl App {

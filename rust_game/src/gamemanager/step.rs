@@ -3,26 +3,23 @@ use crate::messaging::{InputMessage, StateMessage};
 use crate::gamemanager::stepmessage::StepMessage;
 use std::marker::PhantomData;
 
-pub struct Step<StateType, InputType, InputEventType>
-    where StateType: State<InputType, InputEventType>,
-          InputType: Input<InputEventType>,
-          InputEventType: InputEvent {
+pub struct Step<StateType, InputType>
+    where StateType: State<InputType>,
+          InputType: Input {
 
     step_index: usize,
-    next_state_arg: NextStateArg<InputType, InputEventType>,
+    next_state_arg: NextStateArg<InputType>,
     state: Option<StateType>,
     is_state_final: bool,
     is_state_complete: bool,
     need_to_compute_next_state: bool,
     need_to_send_as_complete: bool,
-    need_to_send_as_changed: bool,
-    phantom: PhantomData<InputEventType>
+    need_to_send_as_changed: bool
 }
 
-impl<StateType, InputType, InputEventType> Step<StateType, InputType, InputEventType>
-    where StateType: State<InputType, InputEventType>,
-          InputType: Input<InputEventType>,
-          InputEventType: InputEvent {
+impl<StateType, InputType> Step<StateType, InputType>
+    where StateType: State<InputType>,
+          InputType: Input {
 
     pub fn blank(step_index: usize) -> Self {
 
@@ -34,8 +31,7 @@ impl<StateType, InputType, InputEventType> Step<StateType, InputType, InputEvent
             is_state_complete: false,
             need_to_compute_next_state: false,
             need_to_send_as_complete: false,
-            need_to_send_as_changed: false,
-            phantom: PhantomData
+            need_to_send_as_changed: false
         };
     }
 
@@ -103,7 +99,7 @@ impl<StateType, InputType, InputEventType> Step<StateType, InputType, InputEvent
         self.state.as_ref()
     }
 
-    pub fn get_changed_message(&mut self) -> Option<StepMessage<StateType, InputType, InputEventType>> {
+    pub fn get_changed_message(&mut self) -> Option<StepMessage<StateType, InputType>> {
         if self.need_to_send_as_changed {
             self.need_to_send_as_changed = false;
 
@@ -134,10 +130,9 @@ impl<StateType, InputType, InputEventType> Step<StateType, InputType, InputEvent
 }
 
 //TODO: is this needed?
-impl<StateType, InputType, InputEventType> Clone for Step<StateType, InputType, InputEventType>
-    where StateType: State<InputType, InputEventType>,
-          InputType: Input<InputEventType>,
-          InputEventType: InputEvent {
+impl<StateType, InputType> Clone for Step<StateType, InputType>
+    where StateType: State<InputType>,
+          InputType: Input {
 
     fn clone(&self) -> Self {
         Self{
@@ -148,8 +143,7 @@ impl<StateType, InputType, InputEventType> Clone for Step<StateType, InputType, 
             is_state_complete: self.is_state_complete,
             need_to_compute_next_state: self.need_to_compute_next_state,
             need_to_send_as_complete: self.need_to_send_as_complete,
-            need_to_send_as_changed: self.need_to_send_as_changed,
-            phantom: PhantomData
+            need_to_send_as_changed: self.need_to_send_as_changed
         }
     }
 }

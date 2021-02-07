@@ -3,16 +3,17 @@ use std::str::FromStr;
 use crate::gametime::{TimeDuration, GameTimer, TimeMessage};
 use crate::threading::{ChannelThread, Sender, ChannelDrivenThread, Consumer};
 use crate::client::tcpinput::TcpInput;
-use crate::interface::{Input, State, InputEvent};
+use crate::interface::{Input, State, InputEvent, InputEventHandler};
 use std::marker::PhantomData;
 use crate::client::tcpoutput::TcpOutput;
 use crate::messaging::{StateMessage, InitialInformation, InputMessage};
 use crate::gamemanager::{Manager, RenderReceiver};
 use log::{info, trace};
 
-pub struct Core<StateType, InputType, InputEventType>
-    where StateType: State<InputType, InputEventType>,
-          InputType: Input<InputEventType>,
+pub struct Core<StateType, InputType, InputEventHandlerType, InputEventType>
+    where StateType: State<InputType>,
+          InputEventHandlerType: InputEventHandler<InputType, InputEventType>,
+          InputType: Input,
           InputEventType: InputEvent {
 
     server_ip: String,
@@ -20,16 +21,18 @@ pub struct Core<StateType, InputType, InputEventType>
     step_duration: TimeDuration,
     grace_period: TimeDuration,
     clock_average_size: usize,
-    input: InputType,
-    manager_sender: Option<Sender<Manager<StateType, InputType, InputEventType>>>,
-    tcp_output_sender: Option<Sender<TcpOutput<InputType, InputEventType>>>,
+    input_event_handler: InputEventHandlerType,
+    manager_sender: Option<Sender<Manager<StateType, InputType>>>,
+    tcp_output_sender: Option<Sender<TcpOutput<InputType>>>,
     initial_information: Option<InitialInformation<StateType>>,
-    last_time_message: Option<TimeMessage>
+    last_time_message: Option<TimeMessage>,
+    phantom: PhantomData<InputEventType>
 }
 
-impl<StateType, InputType, InputEventType> Core<StateType, InputType, InputEventType>
-    where StateType: State<InputType, InputEventType>,
-          InputType: Input<InputEventType>,
+impl<StateType, InputEventHandlerType, InputType, InputEventType> Core<StateType, InputType, InputEventHandlerType, InputEventType>
+    where StateType: State<InputType>,
+          InputEventHandlerType: InputEventHandler<InputType, InputEventType>,
+          InputType: Input,
           InputEventType: InputEvent {
 
     pub fn new(server_ip: &str,
@@ -43,18 +46,20 @@ impl<StateType, InputType, InputEventType> Core<StateType, InputType, InputEvent
             step_duration,
             grace_period,
             clock_average_size,
-            input: InputType::new(),
+            input_event_handler: InputEventHandlerType::new(),
             manager_sender: None,
             tcp_output_sender: None,
             initial_information: None,
             last_time_message: None,
+            phantom: PhantomData
         }
     }
 }
 
-impl<StateType, InputType, InputEventType> ChannelDrivenThread<()> for Core<StateType, InputType, InputEventType>
-    where StateType: State<InputType, InputEventType>,
-          InputType: Input<InputEventType>,
+impl<StateType, InputEventHandlerType, InputType, InputEventType> ChannelDrivenThread<()> for Core<StateType, InputType, InputEventHandlerType, InputEventType>
+    where StateType: State<InputType>,
+          InputEventHandlerType: InputEventHandler<InputType, InputEventType>,
+          InputType: Input,
           InputEventType: InputEvent {
 
     fn on_channel_disconnect(&mut self) -> () {
@@ -62,13 +67,14 @@ impl<StateType, InputType, InputEventType> ChannelDrivenThread<()> for Core<Stat
     }
 }
 
-impl<StateType, InputType, InputEventType> Sender<Core<StateType, InputType, InputEventType>>
-    where StateType: State<InputType, InputEventType>,
-          InputType: Input<InputEventType>,
+impl<StateType, InputEventHandlerType, InputType, InputEventType> Sender<Core<StateType, InputType, InputEventHandlerType, InputEventType>>
+    where StateType: State<InputType>,
+          InputEventHandlerType: InputEventHandler<InputType, InputEventType>,
+          InputType: Input,
           InputEventType: InputEvent {
 
-    pub fn connect(&self) -> RenderReceiver<StateType, InputType, InputEventType> {
-        let (sender, render_receiver) = RenderReceiver::<StateType, InputType, InputEventType>::new();
+    pub fn connect(&self) -> RenderReceiver<StateType, InputType> {
+        let (sender, render_receiver) = RenderReceiver::<StateType, InputType>::new();
         let core_sender = self.clone();
 
         self.send(move |core|{
@@ -77,10 +83,10 @@ impl<StateType, InputType, InputEventType> Sender<Core<StateType, InputType, Inp
             let socket_addr:SocketAddr = SocketAddr::from(socket_addr_v4);
             let tcp_stream = TcpStream::connect(socket_addr).unwrap();
 
-            let (manager_sender, manager_builder) = Manager::<StateType, InputType, InputEventType>::new(core.grace_period).build();
+            let (manager_sender, manager_builder) = Manager::<StateType, InputType>::new(core.grace_period).build();
             let (game_timer_sender, game_timer_builder) = GameTimer::new(core.step_duration, core.clock_average_size).build();
-            let (tcp_input_sender, tcp_input_builder) = TcpInput::<StateType, InputType, InputEventType>::new(&tcp_stream).unwrap().build();
-            let (tcp_output_sender, tcp_output_builder) = TcpOutput::<InputType, InputEventType>::new(&tcp_stream).unwrap().build();
+            let (tcp_input_sender, tcp_input_builder) = TcpInput::<StateType, InputType>::new(&tcp_stream).unwrap().build();
+            let (tcp_output_sender, tcp_output_builder) = TcpOutput::<InputType>::new(&tcp_stream).unwrap().build();
 
             tcp_input_sender.add_time_message_consumer(game_timer_sender.clone()).unwrap();
             tcp_input_sender.add_initial_information_message_consumer(manager_sender.clone());
@@ -107,9 +113,10 @@ impl<StateType, InputType, InputEventType> Sender<Core<StateType, InputType, Inp
     }
 }
 
-impl<StateType, InputType, InputEventType> Consumer<InitialInformation<StateType>> for Sender<Core<StateType, InputType, InputEventType>>
-    where StateType: State<InputType, InputEventType>,
-          InputType: Input<InputEventType>,
+impl<StateType, InputEventHandlerType, InputType, InputEventType> Consumer<InitialInformation<StateType>> for Sender<Core<StateType, InputType, InputEventHandlerType, InputEventType>>
+    where StateType: State<InputType>,
+          InputEventHandlerType: InputEventHandler<InputType, InputEventType>,
+          InputType: Input,
           InputEventType: InputEvent {
 
     fn accept(&self, initial_information: InitialInformation<StateType>) {
@@ -120,67 +127,56 @@ impl<StateType, InputType, InputEventType> Consumer<InitialInformation<StateType
     }
 }
 
-impl<StateType, InputType, InputEventType> Consumer<TimeMessage> for Sender<Core<StateType, InputType, InputEventType>>
-    where StateType: State<InputType, InputEventType>,
-          InputType: Input<InputEventType>,
+impl<StateType, InputEventHandlerType, InputType, InputEventType> Consumer<TimeMessage> for Sender<Core<StateType, InputType, InputEventHandlerType, InputEventType>>
+    where StateType: State<InputType>,
+          InputEventHandlerType: InputEventHandler<InputType, InputEventType>,
+          InputType: Input,
           InputEventType: InputEvent {
 
     fn accept(&self, time_message: TimeMessage) {
 
         self.send(move |core|{
 
+            trace!("TimeMessage step_index: {:?}", time_message.get_step());
+
+            //TODO: check if this tick is really the next tick?
+            //TODO: log a warn if a tick is missed or out of order
             if core.last_time_message.is_some() &&
                 core.tcp_output_sender.is_some() &&
-                core.initial_information.is_some() {
+                core.initial_information.is_some() &&
+                core.manager_sender.is_some() {
 
-                let time_message = core.last_time_message.as_ref().unwrap();
+                let manager_sender = core.manager_sender.as_ref().unwrap();
+                let last_time_message = core.last_time_message.as_ref().unwrap();
                 let tcp_output_sender = core.tcp_output_sender.as_ref().unwrap();
                 let initial_information = core.initial_information.as_ref().unwrap();
 
                 let message = InputMessage::<InputType>::new(
-                    time_message.get_step(),
+                    last_time_message.get_step(),
                     initial_information.get_player_index(),
-                    core.input.clone()
-                );
-
-                tcp_output_sender.accept(message);
-            }
-
-            core.last_time_message = Some(time_message);
-            core.input = InputType::new();
-            let time_message = core.last_time_message.as_ref().unwrap();
-
-            trace!("TimeMessage step_index: {:?}", time_message.get_step());
-
-            if core.manager_sender.is_some() &&
-                core.initial_information.is_some() {
-
-                let manager_sender = core.manager_sender.as_ref().unwrap();
-                let initial_information = core.initial_information.as_ref().unwrap();
-
-                let message = InputMessage::<InputType>::new(
-                    time_message.get_step(),
-                    initial_information.get_player_index(),
-                    core.input.clone()
+                    core.input_event_handler.get_input()
                 );
 
                 manager_sender.accept(message.clone());
+                tcp_output_sender.accept(message);
 
                 let client_drop_time = time_message.get_scheduled_time().subtract(core.grace_period * 2);
-                let drop_step = time_message.get_step_from_actual_time(client_drop_time);
+                let drop_step = time_message.get_step_from_actual_time(client_drop_time).ceil() as usize;
 
                 manager_sender.drop_steps_before(drop_step);
                 manager_sender.set_requested_step(time_message.get_step());
-
-                trace!("Requested step_index: {:?}", time_message.get_step());
             }
+
+            core.last_time_message = Some(time_message);
+
         }).unwrap();
     }
 }
 
-impl<StateType, InputType, InputEventType> Consumer<InputEventType> for Sender<Core<StateType, InputType, InputEventType>>
-    where StateType: State<InputType, InputEventType>,
-          InputType: Input<InputEventType>,
+impl<StateType, InputEventHandlerType, InputType, InputEventType> Consumer<InputEventType> for Sender<Core<StateType, InputType, InputEventHandlerType, InputEventType>>
+    where StateType: State<InputType>,
+          InputEventHandlerType: InputEventHandler<InputType, InputEventType>,
+          InputType: Input,
           InputEventType: InputEvent {
 
     fn accept(&self, input_event: InputEventType) {
@@ -189,19 +185,8 @@ impl<StateType, InputType, InputEventType> Consumer<InputEventType> for Sender<C
                 core.last_time_message.is_some() &&
                 core.initial_information.is_some() {
 
-                core.input.accumulate(input_event);
+                core.input_event_handler.handle_event(input_event);
 
-                let time_message = core.last_time_message.as_ref().unwrap();
-                let manager_sender = core.manager_sender.as_ref().unwrap();
-                let initial_information = core.initial_information.as_ref().unwrap();
-
-                let message = InputMessage::<InputType>::new(
-                    time_message.get_step(),
-                    initial_information.get_player_index(),
-                    core.input.clone()
-                );
-
-                manager_sender.accept(message.clone());
             }
         }).unwrap();
     }

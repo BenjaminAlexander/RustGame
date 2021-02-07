@@ -3,24 +3,18 @@ use crate::messaging::InputMessage;
 use std::marker::PhantomData;
 
 #[derive(Debug)]
-pub struct NextStateArg<InputType, InputEventType>
-    where InputType: Input<InputEventType>,
-          InputEventType: InputEvent {
+pub struct NextStateArg<InputType: Input> {
 
     inputs: Vec<Option<InputType>>,
-    input_count: usize,
-    phantom: PhantomData<InputEventType>
+    input_count: usize
 }
 
-impl<InputType, InputEventType> NextStateArg<InputType, InputEventType>
-    where InputType: Input<InputEventType>,
-          InputEventType: InputEvent {
+impl<InputType: Input> NextStateArg<InputType> {
 
     pub fn new() -> Self {
         return Self{
             inputs: Vec::new(),
-            input_count: 0,
-            phantom: PhantomData
+            input_count: 0
         }
     }
 
@@ -50,15 +44,12 @@ impl<InputType, InputEventType> NextStateArg<InputType, InputEventType>
     }
 }
 
-impl<InputType, InputEventType> Clone for NextStateArg<InputType, InputEventType>
-    where InputType: Input<InputEventType>,
-          InputEventType: InputEvent {
+impl<InputType: Input> Clone for NextStateArg<InputType> {
 
     fn clone(&self) -> Self {
         return Self{
             inputs: self.inputs.clone(),
-            input_count: self.input_count,
-            phantom: PhantomData
+            input_count: self.input_count
         }
     }
 }

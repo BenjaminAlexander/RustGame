@@ -9,27 +9,19 @@ use std::io::Write;
 
 //TODO: Send response to time messages to calculate ping
 
-pub struct TcpOutput<InputType, InputEventType>
-    where InputType: Input<InputEventType>,
-          InputEventType: InputEvent {
-
+pub struct TcpOutput<InputType: Input> {
     tcp_stream: TcpStream,
-    input_queue: Vec<InputMessage<InputType>>,
-    event_phantom: PhantomData<InputEventType>
+    input_queue: Vec<InputMessage<InputType>>
 }
 
-impl<InputType, InputEventType> TcpOutput<InputType, InputEventType>
-    where InputType: Input<InputEventType>,
-          InputEventType: InputEvent {
+impl<InputType: Input> TcpOutput<InputType> {
 
     pub fn new(tcp_stream: &TcpStream) -> io::Result<Self> {
-        Ok(Self{tcp_stream: tcp_stream.try_clone()?, input_queue: Vec::new(), event_phantom: PhantomData})
+        Ok(Self{tcp_stream: tcp_stream.try_clone()?, input_queue: Vec::new()})
     }
 }
 
-impl<InputType, InputEventType> ChannelThread<()> for TcpOutput<InputType, InputEventType>
-    where InputType: Input<InputEventType>,
-          InputEventType: InputEvent {
+impl<InputType: Input> ChannelThread<()> for TcpOutput<InputType> {
 
     fn run(mut self, receiver: Receiver<Self>) -> () {
         loop {
@@ -60,9 +52,7 @@ impl<InputType, InputEventType> ChannelThread<()> for TcpOutput<InputType, Input
     }
 }
 
-impl<InputType, InputEventType> Consumer<InputMessage<InputType>> for Sender<TcpOutput<InputType, InputEventType>>
-    where InputType: Input<InputEventType>,
-          InputEventType: InputEvent {
+impl<InputType: Input> Consumer<InputMessage<InputType>> for Sender<TcpOutput<InputType>> {
 
     fn accept(&self, input_message: InputMessage<InputType>) {
         self.send(move |tcp_output|{

@@ -7,14 +7,14 @@ use graphics::Context;
 use piston::RenderArgs;
 use crate::gametime::TimeDuration;
 
-pub const STEP_DURATION: TimeDuration = TimeDuration::from_millis(50);
+pub const STEP_DURATION: TimeDuration = TimeDuration::from_millis(16);
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct SimpleState {
     pub player_characters: Vec<Character>
 }
 
-impl State<SimpleInput, SimpleInputEvent> for SimpleState {
+impl State<SimpleInput> for SimpleState {
 
     fn new(player_count: usize) -> Self {
 
@@ -28,7 +28,7 @@ impl State<SimpleInput, SimpleInputEvent> for SimpleState {
         return new;
     }
 
-    fn get_next_state(&self, arg: &NextStateArg<SimpleInput, SimpleInputEvent>) -> Self {
+    fn get_next_state(&self, arg: &NextStateArg<SimpleInput>) -> Self {
         let mut new = self.clone();
 
         for i in 0..new.player_characters.len() {
