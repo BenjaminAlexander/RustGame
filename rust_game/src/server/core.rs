@@ -82,6 +82,8 @@ impl<StateType, InputType> Sender<Core<StateType, InputType>>
 
                 timer_sender.add_timer_message_consumer(core_sender.clone());
 
+                manager_sender.add_requested_step_consumer(render_receiver_sender);
+
                 core.manager_sender = Some(manager_sender.clone());
                 manager_sender.drop_steps_before(core.drop_steps_before);
 

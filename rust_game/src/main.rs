@@ -1,4 +1,4 @@
-use std::{thread, time};
+use std::{thread, time, io};
 use log::info;
 use crate::messaging::*;
 use crate::simplegame::{Vector2, SimpleInput, SimpleState, SimpleInputEvent, STEP_DURATION, SimpleInputEventHandler, SimpleWindow};
@@ -14,6 +14,7 @@ use piston::{Event, MouseRelativeEvent, MouseCursorEvent};
 use crate::gamemanager::RenderReceiver;
 use graphics::*;
 use piston::input::Input as PistonInput;
+use std::io::Read;
 
 mod simplegame;
 mod messaging;
@@ -26,70 +27,81 @@ mod util;
 mod client;
 mod gamemanager;
 
-pub fn insert(v: &mut Vec<i32>, val: i32) {
-
-    match v.binary_search_by(|elem| { val.cmp(elem) }) {
-        Ok(pos) => v[pos] = val,
-        Err(pos) => v.insert(pos, val)
-    }
-}
-
 pub fn main() {
 
     logging::init_logging();
 
-    info!("Hello, world!");
+    let args: Vec<String> = std::env::args().collect();
 
-    let mut v = Vec::<i32>::new();
+    info!("args: {:?}", args);
 
-    insert(&mut v, 6);
-    insert(&mut v, 4);
-    insert(&mut v, 5);
+    let mut run_client = true;
+    let mut run_server = true;
 
-    info!("test {:?}", v);
-    info!("test {:?}", v.pop().unwrap());
-    info!("test {:?}", v);
+    if args.len() == 2 {
+        if args[1].eq("-s") {
+            run_client = false;
 
-    let input_message:InputMessage<Vector2> = InputMessage::new(0, 0, Vector2::new(1.0, 12.0));
-    let _my_message:ToServerMessage<Vector2> = ToServerMessage::Input(input_message);
+        } else if args[1].eq("-c") {
+            run_server = false;
+        }
+    }
 
-    let server_core  = server::Core::<SimpleState, SimpleInput>::new(3456, STEP_DURATION, TimeDuration::from_millis(500));
-    let (server_core_sender, server_core_builder) = server_core.build();
+    let mut server_core_sender_option = None;
+    let mut render_receiver_option = None;
+    let mut unused_render_receiver_option = None;
+    let mut client_core_sender_option = None;
 
-    server_core_sender.start_listener();
-    server_core_builder.name("ServerCore").start().unwrap();
+    if run_server {
+        let server_core  = server::Core::<SimpleState, SimpleInput>::new(3456, STEP_DURATION, TimeDuration::from_millis(500));
+        let (server_core_sender, server_core_builder) = server_core.build();
 
-    let client_core = client::Core::<SimpleState, SimpleInput, SimpleInputEventHandler, SimpleInputEvent>::new(
-        "127.0.0.1",
-        3456,
-        STEP_DURATION,
-        TimeDuration::from_millis(500),
-        50);
+        server_core_sender.start_listener();
+        server_core_builder.name("ServerCore").start().unwrap();
 
-    let (client_core_sender, client_core_builder) = client_core.build();
+        server_core_sender_option = Some(server_core_sender);
+    }
 
-    let mut render_receiver = client_core_sender.connect();
-    client_core_builder.name("ClientCore").start().unwrap();
+    if run_client {
 
-    let millis = time::Duration::from_millis(1000);
-    thread::sleep(millis);
+        let client_core = client::Core::<SimpleState, SimpleInput, SimpleInputEventHandler, SimpleInputEvent>::new(
+            "127.0.0.1",
+            3456,
+            STEP_DURATION,
+            TimeDuration::from_millis(500),
+            50);
 
-    server_core_sender.start_game();
+        let (client_core_sender, client_core_builder) = client_core.build();
 
-    // let mut stream = TcpStream::connect("127.0.0.1:3456").unwrap();
-    // rmp_serde::encode::write(&mut stream, &my_message).unwrap();
-    // stream.flush().unwrap();
+        render_receiver_option = Some(client_core_sender.connect());
+        client_core_sender_option = Some(client_core_sender);
+        client_core_builder.name("ClientCore").start().unwrap();
+
+        let millis = time::Duration::from_millis(1000);
+        thread::sleep(millis);
+    }
+
+    if run_server {
+
+        if !run_client {
+            info!("Hit enter to start the game.");
+            let stdin = io::stdin();
+            let mut line = String::new();
+            stdin.read_line(&mut line);
+
+            info!("line: {:?}", line);
+        }
+
+        unused_render_receiver_option = Some(server_core_sender_option.as_ref().unwrap().start_game());
+
+        if !run_client {
+            let tmp = unused_render_receiver_option;
+            unused_render_receiver_option = render_receiver_option;
+            render_receiver_option = tmp;
+        }
+    }
 
 
-    let millis = time::Duration::from_millis(1000);
-    thread::sleep(millis);
-
-    let client_window = SimpleWindow::new(render_receiver, Some(client_core_sender));
+    let client_window = SimpleWindow::new(render_receiver_option.unwrap(), client_core_sender_option);
     client_window.run();
-
-
-
-    let ten_millis = time::Duration::from_millis(10000);
-    thread::sleep(ten_millis);
-
 }

@@ -36,7 +36,7 @@ impl SimpleWindow {
             .exit_on_esc(true)
             .build()
             .unwrap();
-        
+
         let mut gl = GlGraphics::new(opengl);
 
         let mut simple_window = SimpleWindow{
