@@ -1,6 +1,6 @@
 use log::{trace, info};
 use std::net::TcpStream;
-use crate::gametime::TimeMessage;
+use crate::gametime::{TimeMessage, TimeDuration};
 use crate::threading::{ChannelDrivenThread, Consumer, Sender, ChannelThread, Receiver};
 use std::io;
 use crate::messaging::{ToClientMessage, InputMessage, StateMessage, InitialInformation};
@@ -14,6 +14,8 @@ pub struct TcpOutput<StateType, InputType>
 
     player_index: usize,
     tcp_stream: TcpStream,
+    time_message_period: TimeDuration,
+    last_time_message: Option<TimeMessage>,
     time_message: Option<TimeMessage>,
     last_state_sequence: Option<usize>,
     input_queue: Vec<InputMessage<InputType>>,
@@ -24,10 +26,15 @@ impl<StateType, InputType> TcpOutput<StateType, InputType>
     where InputType: Input,
           StateType: State<InputType> {
 
-    pub fn new(player_index: usize, tcp_stream: &TcpStream) -> io::Result<Self> {
+    pub fn new(time_message_period: TimeDuration,
+               player_index: usize,
+               tcp_stream: &TcpStream) -> io::Result<Self> {
+
         Ok(TcpOutput{
             player_index,
             tcp_stream: tcp_stream.try_clone()?,
+            time_message_period,
+            last_time_message: None,
             time_message: None,
             last_state_sequence: None,
             input_queue: Vec::new(),
@@ -52,19 +59,23 @@ impl<StateType, InputType> ChannelThread<()> for TcpOutput<StateType, InputType>
                 _ => {}
             }
 
+            receiver.try_iter(&mut self);
+
             let mut send_another_message = true;
             while send_another_message {
-                receiver.try_iter(&mut self);
 
                 if self.time_message.is_some() {
+
                     let time_message = self.time_message.unwrap();
                     self.time_message = None;
+                    self.last_time_message = Some(time_message.clone());
 
                     //TODO: timestamp when the time message is set, then use that info in client side time calc
                     let message = ToClientMessage::<StateType, InputType>::TimeMessage(time_message);
 
                     rmp_serde::encode::write(&mut self.tcp_stream, &message).unwrap();
                     self.tcp_stream.flush().unwrap();
+
                 } else if self.state_message.is_some() {
                     let message = self.state_message.as_ref().unwrap().clone();
                     let message = ToClientMessage::<StateType, InputType>::StateMessage(message);
@@ -72,6 +83,7 @@ impl<StateType, InputType> ChannelThread<()> for TcpOutput<StateType, InputType>
 
                     rmp_serde::encode::write(&mut self.tcp_stream, &message).unwrap();
                     self.tcp_stream.flush().unwrap();
+
                 } else {
                     match self.input_queue.pop() {
                         None => send_another_message = false,
@@ -95,7 +107,14 @@ impl<StateType, InputType> Consumer<TimeMessage> for Sender<TcpOutput<StateType,
         self.send(move |tcp_output|{
             if tcp_output.time_message.is_none() ||
                 time_message.is_after(&tcp_output.time_message.clone().unwrap()) {
-                tcp_output.time_message = Some(time_message);
+
+                if let Some(last_time_message) = &tcp_output.last_time_message {
+                    if time_message.get_scheduled_time().is_after(&last_time_message.get_scheduled_time().add(tcp_output.time_message_period)) {
+                        tcp_output.time_message = Some(time_message);
+                    }
+                } else {
+                    tcp_output.time_message = Some(time_message);
+                }
             }
         }).unwrap();
     }

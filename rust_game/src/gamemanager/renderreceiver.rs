@@ -62,7 +62,10 @@ impl<StateType, InputType> RenderReceiver<StateType, InputType>
                     if (step as i64 - this_step as i64).abs() > 3 {
                         warn!("Needed step: {:?}, Gotten step: {:?}", step, this_step);
                     }
-                    return Some(&self.data.step_queue[self.data.step_queue.len() - 1]);
+
+                    let step = &self.data.step_queue[self.data.step_queue.len() - 1];
+
+                    return Some(step);
                 } else {
                     self.data.step_queue.pop();
                 }

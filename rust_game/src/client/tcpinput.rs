@@ -51,6 +51,10 @@ impl<StateType, InputType> ChannelThread<()> for TcpInput<StateType, InputType>
 
             match result {
                 Ok(message) => {
+
+                    //Why does this crash the client?
+                    //info!("{:?}", message);
+
                     let time_received = TimeValue::now();
 
                     receiver.try_iter(&mut self);

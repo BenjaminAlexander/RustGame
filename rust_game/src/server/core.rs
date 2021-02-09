@@ -21,6 +21,7 @@ pub struct Core<StateType, InputType>
     port: u16,
     step_duration: TimeDuration,
     grace_period: TimeDuration,
+    timer_message_period: TimeDuration,
     tcp_inputs: Vec<Sender<TcpInput<InputType>>>,
     tcp_outputs: Vec<Sender<TcpOutput<StateType, InputType>>>,
     manager_sender: Option<Sender<Manager<StateType, InputType>>>,
@@ -40,12 +41,17 @@ impl<StateType, InputType> Core<StateType, InputType>
     where StateType: State<InputType>,
           InputType: Input {
 
-    pub fn new(port: u16, step_duration: TimeDuration, grace_period: TimeDuration) -> Self {
+    pub fn new(port: u16,
+               step_duration: TimeDuration,
+               grace_period: TimeDuration,
+               timer_message_period: TimeDuration) -> Self {
+
         Self {
             game_is_started: false,
             port,
             step_duration,
             grace_period,
+            timer_message_period,
             tcp_inputs: Vec::new(),
             tcp_outputs: Vec::new(),
             drop_steps_before: 0,
@@ -81,6 +87,7 @@ impl<StateType, InputType> Sender<Core<StateType, InputType>>
                 let (timer_sender, timer_builder) = GameTimer::new(core.step_duration, 0).build();
 
                 timer_sender.add_timer_message_consumer(core_sender.clone());
+                timer_sender.add_timer_message_consumer(render_receiver_sender.clone());
 
                 manager_sender.add_requested_step_consumer(render_receiver_sender);
 
@@ -130,7 +137,12 @@ impl<StateType, InputType> Consumer<TcpStream> for Sender<Core<StateType, InputT
                 in_thread_builder.name("ServerTcpInput").start().unwrap();
                 core.tcp_inputs.push(in_sender);
 
-                let (out_sender, out_thread_builder) = TcpOutput::new(player_index, &tcp_stream).unwrap().build();
+                let (out_sender, out_thread_builder) = TcpOutput::new(
+                    core.timer_message_period.clone(),
+                    player_index,
+                    &tcp_stream
+                ).unwrap().build();
+
                 out_thread_builder.name("ServerTcpOutput").start().unwrap();
                 core.tcp_outputs.push(out_sender);
 

@@ -7,6 +7,7 @@ use piston::{RenderArgs, WindowSettings, Events, EventSettings, RenderEvent, Eve
 use piston::input::Input as PistonInput;
 use graphics::*;
 use glutin_window::GlutinWindow as Window;
+use log::info;
 
 pub struct SimpleWindow {
     render_receiver: RenderReceiver<SimpleState, SimpleInput>,
@@ -59,6 +60,7 @@ impl SimpleWindow {
                 }
             }
         }
+        info!("Done");
         return ();
     }
 

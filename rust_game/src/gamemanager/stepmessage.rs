@@ -3,6 +3,7 @@ use crate::messaging::{InputMessage, StateMessage};
 use std::marker::PhantomData;
 use std::cmp::Ordering;
 
+#[derive(Debug)]
 pub struct StepMessage<StateType, InputType>
     where StateType: State<InputType>,
           InputType: Input {

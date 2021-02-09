@@ -7,7 +7,8 @@ use graphics::Context;
 use piston::RenderArgs;
 use crate::gametime::TimeDuration;
 
-pub const STEP_DURATION: TimeDuration = TimeDuration::from_millis(100);
+//TODO: 16-20 mills causes some strange behavior
+pub const STEP_DURATION: TimeDuration = TimeDuration::from_millis(20);
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct SimpleState {

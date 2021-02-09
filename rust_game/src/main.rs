@@ -53,7 +53,13 @@ pub fn main() {
     let mut client_core_sender_option = None;
 
     if run_server {
-        let server_core  = server::Core::<SimpleState, SimpleInput>::new(3456, STEP_DURATION, TimeDuration::from_millis(500));
+        let server_core  = server::Core::<SimpleState, SimpleInput>::new(
+            3456,
+            STEP_DURATION,
+            TimeDuration::from_millis(500),
+            TimeDuration::from_millis(1000)
+        );
+
         let (server_core_sender, server_core_builder) = server_core.build();
 
         server_core_sender.start_listener();
