@@ -1,6 +1,6 @@
-use log::{error, info};
+use log::{error, info, warn};
 use std::net::TcpStream;
-use crate::gametime::{TimeMessage, TimeReceived, TimeValue};
+use crate::gametime::{TimeMessage, TimeReceived, TimeValue, TimeDuration};
 use crate::threading::{ConsumerList, ChannelThread, Receiver, Sender, Consumer};
 use crate::messaging::{ToClientMessage, InputMessage, StateMessage, InitialInformation};
 use rmp_serde::decode::Error;
@@ -18,7 +18,11 @@ pub struct TcpInput <StateType, InputType>
     time_message_consumers: ConsumerList<TimeReceived<TimeMessage>>,
     input_message_consumers: ConsumerList<InputMessage<InputType>>,
     state_message_consumers: ConsumerList<StateMessage<StateType>>,
-    initial_information_message_consumers: ConsumerList<InitialInformation<StateType>>
+    initial_information_message_consumers: ConsumerList<InitialInformation<StateType>>,
+
+    //metrics
+    time_of_last_state_receive: TimeValue,
+    time_of_last_input_receive: TimeValue,
 }
 
 impl<StateType, InputType> TcpInput<StateType, InputType>
@@ -32,7 +36,11 @@ impl<StateType, InputType> TcpInput<StateType, InputType>
             time_message_consumers: ConsumerList::new(),
             input_message_consumers: ConsumerList::new(),
             state_message_consumers: ConsumerList::new(),
-            initial_information_message_consumers: ConsumerList::new()
+            initial_information_message_consumers: ConsumerList::new(),
+
+            //metrics
+            time_of_last_state_receive: TimeValue::now(),
+            time_of_last_input_receive: TimeValue::now(),
         })
     }
 }
@@ -61,15 +69,20 @@ impl<StateType, InputType> ChannelThread<()> for TcpInput<StateType, InputType>
 
                     match message {
                         ToClientMessage::TimeMessage(time_message) => {
+                            //info!("Time message: {:?}", time_message.get_step());
                             self.time_message_consumers.accept(&TimeReceived::new(time_received, time_message));
 
                         }
                         ToClientMessage::InputMessage(input_message) => {
                             //TODO: ignore input messages from this player
+                            //info!("Input message: {:?}", input_message.get_step());
+                            self.time_of_last_input_receive = TimeValue::now();
                             self.input_message_consumers.accept(&input_message);
 
                         }
                         ToClientMessage::StateMessage(state_message) => {
+                            //info!("State message: {:?}", state_message.get_sequence());
+                            self.time_of_last_state_receive = TimeValue::now();
                             self.state_message_consumers.accept(&state_message);
 
                         }
@@ -83,6 +96,13 @@ impl<StateType, InputType> ChannelThread<()> for TcpInput<StateType, InputType>
                     error!("Error: {:?}", error);
                     return;
                 }
+            }
+
+            let now = TimeValue::now();
+            let duration_since_last_state = now.duration_since(self.time_of_last_state_receive);
+            if duration_since_last_state > TimeDuration::one_second() {
+                warn!("It has been {:?} since last state message was received. Now: {:?}, Last: {:?}",
+                      duration_since_last_state, now, self.time_of_last_state_receive);
             }
         }
     }

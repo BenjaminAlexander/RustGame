@@ -12,6 +12,10 @@ impl TimeDuration {
         TimeDuration(millis)
     }
 
+    pub const fn one_second() -> Self {
+        return Self::from_millis(1000);
+    }
+
     pub fn get_millis(&self) -> i64 {
         self.0
     }

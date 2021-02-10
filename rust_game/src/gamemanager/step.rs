@@ -2,6 +2,7 @@ use crate::interface::{Input, State, InputEvent, NextStateArg};
 use crate::messaging::{InputMessage, StateMessage};
 use crate::gamemanager::stepmessage::StepMessage;
 use std::marker::PhantomData;
+use log::{trace, info, warn};
 
 pub struct Step<StateType, InputType>
     where StateType: State<InputType>,
@@ -50,18 +51,16 @@ impl<StateType, InputType> Step<StateType, InputType>
         self.need_to_compute_next_state = true;
         self.need_to_send_as_complete = true;
         self.need_to_send_as_changed = true;
+
+        //info!("Set final Step: {:?}", self.step_index);
     }
 
-    pub fn calculate_next_state(&mut self) -> Option<StateType> {
-        if self.need_to_compute_next_state {
+    pub fn calculate_next_state(&mut self) -> StateType {
+        return self.state.as_ref().unwrap().get_next_state(&self.next_state_arg);
+    }
 
-            let next_state = self.state.as_ref().unwrap().get_next_state(&self.next_state_arg);
-            self.mark_as_calculation_not_needed();
-
-            return Some(next_state);
-        } else {
-            return None;
-        }
+    pub fn need_to_compute_next_state(&self) -> bool {
+        return self.need_to_compute_next_state;
     }
 
     pub fn mark_as_calculation_not_needed(&mut self) {

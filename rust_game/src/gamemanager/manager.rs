@@ -5,7 +5,7 @@ use crate::interface::{Input, State, InputEvent};
 use crate::threading::{ConsumerList, ChannelDrivenThread, Sender, Consumer};
 use crate::gamemanager::step::Step;
 use crate::gamemanager::stepmessage::StepMessage;
-use crate::gametime::{TimeMessage, TimeReceived, TimeDuration};
+use crate::gametime::{TimeMessage, TimeReceived, TimeDuration, TimeValue};
 
 pub struct Manager<StateType, InputType>
     where StateType: State<InputType>,
@@ -19,7 +19,11 @@ pub struct Manager<StateType, InputType>
     steps: VecDeque<Step<StateType, InputType>>,
     requested_step_consumer_list: ConsumerList<StepMessage<StateType, InputType>>,
     completed_step_consumer_list: ConsumerList<StateMessage<StateType>>,
-    grace_period: TimeDuration
+    grace_period: TimeDuration,
+
+    //metrics
+    time_of_last_state_receive: TimeValue,
+    time_of_last_input_receive: TimeValue,
 }
 
 impl<StateType, InputType> Manager<StateType, InputType>
@@ -34,7 +38,11 @@ impl<StateType, InputType> Manager<StateType, InputType>
             drop_steps_before: 0,
             requested_step_consumer_list: ConsumerList::new(),
             completed_step_consumer_list: ConsumerList::new(),
-            grace_period
+            grace_period,
+
+            //metrics
+            time_of_last_state_receive: TimeValue::now(),
+            time_of_last_input_receive: TimeValue::now(),
         }
     }
 
@@ -71,7 +79,7 @@ impl<StateType, InputType> Manager<StateType, InputType>
         trace!("Setting drop_steps_before: {:?}", step);
         self.drop_steps_before = step;
         if self.requested_step < self.drop_steps_before {
-            warn!{"Requested step is earlier than drop step: {:?}", self.drop_steps_before};
+            warn!("Requested step is earlier than drop step: {:?}", self.drop_steps_before);
             self.set_requested_step(step);
         }
     }
@@ -100,6 +108,13 @@ impl<StateType, InputType> ChannelDrivenThread<()> for Manager<StateType, InputT
 
     fn on_none_pending(&mut self) -> Option<()> {
 
+        let now = TimeValue::now();
+        let duration_since_last_state = now.duration_since(self.time_of_last_state_receive);
+        if duration_since_last_state > TimeDuration::one_second() {
+            //warn!("It has been {:?} since last state message was received. Now: {:?}, Last: {:?}",
+            //      duration_since_last_state, now, self.time_of_last_state_receive);
+        }
+
         if self.steps.is_empty() {
             trace!("Steps is empty");
             return None;
@@ -118,27 +133,27 @@ impl<StateType, InputType> ChannelDrivenThread<()> for Manager<StateType, InputT
                 (self.steps[current].get_step_index() < self.requested_step) {
 
             let next = current + 1;
+            let should_drop_current = current == 0 && self.steps[current].get_step_index() < self.drop_steps_before;
+
             self.get_state(self.steps[current].get_step_index() + 1);
 
             trace!("Trying update current: {:?}, next: {:?}", self.steps[current].get_step_index(), self.steps[next].get_step_index());
 
-            let mut was_updated = false;
-            if !self.steps[next].is_state_final() {
+            if !self.steps[next].is_state_final() &&
+                self.steps[current].need_to_compute_next_state() ||
+                should_drop_current {
+
                 let next_state = self.steps[current].calculate_next_state();
-                if next_state.is_some() {
-                    self.steps[next].set_calculated_state(next_state.unwrap());
+                self.steps[next].set_calculated_state(next_state);
 
-                    if self.steps[current].is_complete() && self.steps[current].get_input_count() == player_count {
-                        self.steps[next].mark_as_complete();
-                    }
-
+                if (self.steps[current].is_complete() && self.steps[current].get_input_count() == player_count) ||
+                    should_drop_current {
+                    self.steps[next].mark_as_complete();
                 }
-            } else {
-                self.steps[current].mark_as_calculation_not_needed();
             }
+            self.steps[current].mark_as_calculation_not_needed();
 
-            if current == 0 && self.steps[current].get_step_index() < self.drop_steps_before {
-                self.steps[next].mark_as_complete();
+            if should_drop_current {
                 let dropped = self.steps.pop_front().unwrap();
                 trace!("Dropped step: {:?}", dropped.get_step_index());
             } else {
@@ -196,6 +211,9 @@ impl<StateType, InputType> Consumer<InputMessage<InputType>> for Sender<Manager<
         self.send(move |manager|{
             let step = manager.get_state(input_message.get_step());
             step.set_input(input_message);
+
+            manager.time_of_last_input_receive = TimeValue::now();
+
         }).unwrap();
     }
 }
@@ -207,6 +225,9 @@ impl<StateType, InputType> Consumer<StateMessage<StateType>> for Sender<Manager<
     fn accept(&self, mut state_message: StateMessage<StateType>) {
         self.send(move |manager|{
             manager.handle_state_message(state_message);
+
+            manager.time_of_last_state_receive = TimeValue::now();
+
         }).unwrap();
     }
 }
