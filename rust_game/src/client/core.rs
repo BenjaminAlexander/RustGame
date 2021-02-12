@@ -10,6 +10,7 @@ use crate::messaging::{StateMessage, InitialInformation, InputMessage};
 use crate::gamemanager::{Manager, RenderReceiver};
 use log::{info, trace};
 use crate::client::udpoutput::UdpOutput;
+use crate::client::udpinput::UdpInput;
 
 pub struct Core<StateType, InputType, InputEventHandlerType, InputEventType>
     where StateType: State<InputType>,
@@ -89,20 +90,24 @@ impl<StateType, InputEventHandlerType, InputType, InputEventType> Sender<Core<St
             let socket_addr:SocketAddr = SocketAddr::from(socket_addr_v4);
             let tcp_stream = TcpStream::connect(socket_addr).unwrap();
 
+            let server_udp_socket_addr_v4 = SocketAddrV4::new(ip_addr_v4, core.udp_port);
+
             let udp_socket = UdpSocket::bind("127.0.0.1:0").unwrap();
 
             let (manager_sender, manager_builder) = Manager::<StateType, InputType>::new(core.grace_period).build();
             let (game_timer_sender, game_timer_builder) = GameTimer::new(core.step_duration, core.clock_average_size).build();
             let (tcp_input_sender, tcp_input_builder) = TcpInput::<StateType, InputType>::new(&tcp_stream).unwrap().build();
             let (tcp_output_sender, tcp_output_builder) = TcpOutput::new(&tcp_stream).unwrap().build();
-            let (udp_output_sender, udp_output_builder) = UdpOutput::<StateType, InputType>::new(core.server_ip.clone(), core.udp_port, &udp_socket).unwrap().build();
+            let (udp_output_sender, udp_output_builder) = UdpOutput::<StateType, InputType>::new(server_udp_socket_addr_v4, &udp_socket).unwrap().build();
+            let (udp_input_sender, udp_input_builder) = UdpInput::<StateType, InputType>::new(server_udp_socket_addr_v4, &udp_socket).unwrap().build();
 
-            tcp_input_sender.add_time_message_consumer(game_timer_sender.clone()).unwrap();
             tcp_input_sender.add_initial_information_message_consumer(manager_sender.clone());
             tcp_input_sender.add_initial_information_message_consumer(core_sender.clone());
             tcp_input_sender.add_initial_information_message_consumer(udp_output_sender.clone());
-            tcp_input_sender.add_input_message_consumer(manager_sender.clone());
-            tcp_input_sender.add_state_message_consumer(manager_sender.clone());
+
+            udp_input_sender.add_time_message_consumer(game_timer_sender.clone()).unwrap();
+            udp_input_sender.add_input_message_consumer(manager_sender.clone());
+            udp_input_sender.add_state_message_consumer(manager_sender.clone());
 
             game_timer_sender.add_timer_message_consumer(core_sender.clone());
             game_timer_sender.add_timer_message_consumer(render_receiver_sender.clone());
@@ -113,6 +118,7 @@ impl<StateType, InputEventHandlerType, InputType, InputEventType> Sender<Core<St
             let _tcp_input_join_handle = tcp_input_builder.name("ClientTcpInput").start().unwrap();
             let _tcp_output_join_handle = tcp_output_builder.name("ClientTcpOutput").start().unwrap();
             let _udp_output_join_handle = udp_output_builder.name("ClientUdpOutput").start().unwrap();
+            let _udp_input_join_handle = udp_input_builder.name("ClientUdpInput").start().unwrap();
             let _game_timer_join_handle = game_timer_builder.name("ClientGameTimer").start().unwrap();
 
             core.manager_sender = Some(manager_sender);

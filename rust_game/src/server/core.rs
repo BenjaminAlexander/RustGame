@@ -125,10 +125,13 @@ impl<StateType, InputType> Sender<Core<StateType, InputType>>
 
                 timer_sender.start().unwrap();
 
-                for tcp_output in core.tcp_outputs.iter() {
-                    timer_sender.add_timer_message_consumer(tcp_output.clone());
-                    manager_sender.add_completed_step_consumer(tcp_output.clone());
+                for udp_output in core.udp_outputs.iter() {
+                    timer_sender.add_timer_message_consumer(udp_output.clone());
 
+                    manager_sender.add_completed_step_consumer(udp_output.clone());
+                }
+
+                for tcp_output in core.tcp_outputs.iter() {
                     tcp_output.send_initial_information(core.tcp_outputs.len(), initial_state.clone());
                 }
 
@@ -158,7 +161,6 @@ impl<StateType, InputType> Consumer<TcpStream> for Sender<Core<StateType, InputT
                 core.tcp_inputs.push(in_sender);
 
                 let (tcp_out_sender, tcp_out_builder) = TcpOutput::new(
-                    core.timer_message_period.clone(),
                     player_index,
                     &tcp_stream
                 ).unwrap().build();
@@ -215,8 +217,8 @@ impl<StateType, InputType> Consumer<InputMessage<InputType>> for Sender<Core<Sta
                 core.manager_sender.is_some() {
 
                 core.manager_sender.as_ref().unwrap().accept(input_message.clone());
-                for tcp_output in core.tcp_outputs.iter() {
-                    tcp_output.accept(input_message.clone());
+                for udp_output in core.udp_outputs.iter() {
+                    udp_output.accept(input_message.clone());
                 }
             }
         }).unwrap();

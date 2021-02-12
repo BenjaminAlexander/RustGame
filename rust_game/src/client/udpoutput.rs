@@ -15,17 +15,11 @@ pub struct UdpOutput<StateType: State<InputType>, InputType: Input> {
 
 impl<StateType: State<InputType>, InputType: Input> UdpOutput<StateType, InputType> {
 
-    pub fn new(server_ip: String,
-               dst_port: u16,
+    pub fn new(server_socket_addr_v4: SocketAddrV4,
                socket: &UdpSocket) -> io::Result<Self> {
 
-        let addr_v4 = Ipv4Addr::from_str(server_ip.as_str()).unwrap();
-        let socket_addr_v4 = SocketAddrV4::new(addr_v4, dst_port);
-        //let socket_addr:SocketAddr = SocketAddr::from(socket_addr_v4);
-        //let tcp_stream = TcpStream::connect(socket_addr).unwrap();
-
         return Ok(Self{
-            server_address: socket_addr_v4,
+            server_address: server_socket_addr_v4,
             socket: socket.try_clone()?,
             input_queue: Vec::new(),
             initial_information: None

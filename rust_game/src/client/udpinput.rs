@@ -1,5 +1,5 @@
-use std::net::UdpSocket;
-use crate::gametime::{TimeMessage, TimeReceived};
+use std::net::{UdpSocket, Ipv4Addr, SocketAddrV4, SocketAddr};
+use crate::gametime::{TimeMessage, TimeReceived, TimeValue, TimeDuration};
 use crate::messaging::{InputMessage, StateMessage, ToClientMessageUDP, MAX_UDP_DATAGRAM_SIZE};
 use crate::threading::{ConsumerList, Consumer, Sender, Receiver, ChannelThread};
 use crate::interface::{State, Input};
@@ -12,24 +12,35 @@ pub struct UdpInput<StateType, InputType>
     where StateType: State<InputType>,
           InputType: Input {
 
-    port: u16,
+    server_socket_addr: SocketAddr,
     socket: UdpSocket,
     time_message_consumers: ConsumerList<TimeReceived<TimeMessage>>,
     input_message_consumers: ConsumerList<InputMessage<InputType>>,
     state_message_consumers: ConsumerList<StateMessage<StateType>>,
+
+    //metrics
+    time_of_last_state_receive: TimeValue,
+    time_of_last_input_receive: TimeValue,
 }
 
 impl<StateType, InputType> UdpInput<StateType, InputType>
     where StateType: State<InputType>,
           InputType: Input {
 
-    pub fn new(port: u16, socket: &UdpSocket) -> io::Result<Self> {
+    pub fn new(server_socket_addr_v4: SocketAddrV4, socket: &UdpSocket) -> io::Result<Self> {
+
+        let server_socket_addr = SocketAddr::from(server_socket_addr_v4);
+
         return Ok(Self{
-            port,
+            server_socket_addr,
             socket: socket.try_clone()?,
             time_message_consumers: ConsumerList::new(),
             input_message_consumers: ConsumerList::new(),
             state_message_consumers: ConsumerList::new(),
+
+            //metrics
+            time_of_last_state_receive: TimeValue::now(),
+            time_of_last_input_receive: TimeValue::now(),
         });
     }
 }
@@ -41,16 +52,67 @@ impl<StateType, InputType> ChannelThread<()> for UdpInput<StateType, InputType>
     fn run(mut self, receiver: Receiver<Self>) {
         info!("Starting");
 
-        let mut buf = [0; MAX_UDP_DATAGRAM_SIZE];
-        let (number_of_bytes, source) = self.socket.recv_from(&mut buf).unwrap();
-        let filled_buf = &mut buf[..number_of_bytes];
+        let receiver = receiver;
 
-        let result: Result<ToClientMessageUDP::<StateType, InputType>, Error> = rmp_serde::from_read_ref(filled_buf);
+        loop {
 
+            let mut buf = [0; MAX_UDP_DATAGRAM_SIZE];
+            let (number_of_bytes, source) = self.socket.recv_from(&mut buf).unwrap();
 
+            if !self.server_socket_addr.eq(&source) {
+                continue;
+            }
+
+            let filled_buf = &mut buf[..number_of_bytes];
+
+            let result: Result<ToClientMessageUDP::<StateType, InputType>, Error> = rmp_serde::from_read_ref(filled_buf);
+
+            match result {
+                Ok(message) => {
+
+                    //Why does this crash the client?
+                    //info!("{:?}", message);
+
+                    let time_received = TimeValue::now();
+
+                    receiver.try_iter(&mut self);
+
+                    match message {
+                        ToClientMessageUDP::TimeMessage(time_message) => {
+                            //info!("Time message: {:?}", time_message.get_step());
+                            self.time_message_consumers.accept(&TimeReceived::new(time_received, time_message));
+
+                        }
+                        ToClientMessageUDP::InputMessage(input_message) => {
+                            //TODO: ignore input messages from this player
+                            //info!("Input message: {:?}", input_message.get_step());
+                            self.time_of_last_input_receive = TimeValue::now();
+                            self.input_message_consumers.accept(&input_message);
+
+                        }
+                        ToClientMessageUDP::StateMessage(state_message) => {
+                            //info!("State message: {:?}", state_message.get_sequence());
+                            self.time_of_last_state_receive = TimeValue::now();
+                            self.state_message_consumers.accept(&state_message);
+
+                        }
+                    }
+                }
+                Err(error) => {
+                    error!("Error: {:?}", error);
+                    return;
+                }
+            }
+
+            let now = TimeValue::now();
+            let duration_since_last_state = now.duration_since(self.time_of_last_state_receive);
+            if duration_since_last_state > TimeDuration::one_second() {
+                warn!("It has been {:?} since last state message was received. Now: {:?}, Last: {:?}",
+                      duration_since_last_state, now, self.time_of_last_state_receive);
+            }
+        }
     }
 }
-
 impl<StateType, InputType> Sender<UdpInput<StateType, InputType>>
     where StateType: State<InputType>,
           InputType: Input {
