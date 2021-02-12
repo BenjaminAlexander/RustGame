@@ -10,6 +10,7 @@ pub struct UdpOutput<StateType: State<InputType>, InputType: Input> {
     server_address: SocketAddrV4,
     socket: UdpSocket,
     input_queue: Vec<InputMessage<InputType>>,
+    max_observed_input_queue: usize,
     initial_information: Option<InitialInformation<StateType>>
 }
 
@@ -22,6 +23,7 @@ impl<StateType: State<InputType>, InputType: Input> UdpOutput<StateType, InputTy
             server_address: server_socket_addr_v4,
             socket: socket.try_clone()?,
             input_queue: Vec::new(),
+            max_observed_input_queue: 0,
             initial_information: None
         });
     }
@@ -44,6 +46,11 @@ impl<StateType: State<InputType>, InputType: Input> ChannelThread<()> for UdpOut
             let mut send_another_message = true;
             while send_another_message {
                 receiver.try_iter(&mut self);
+
+                if self.input_queue.len() > self.max_observed_input_queue {
+                    self.max_observed_input_queue = self.input_queue.len();
+                    info!("Outbound input queue has hit a max size of {:?}", self.max_observed_input_queue);
+                }
 
                 match self.input_queue.pop() {
                     None => send_another_message = false,

@@ -7,6 +7,7 @@ use crate::threading::sender::SendError;
 use rmp_serde::decode::Error;
 use std::io;
 use log::{error, info, warn};
+use std::time::Duration;
 
 pub struct UdpInput<StateType, InputType>
     where StateType: State<InputType>,
@@ -54,10 +55,25 @@ impl<StateType, InputType> ChannelThread<()> for UdpInput<StateType, InputType>
 
         let receiver = receiver;
 
+        self.socket.set_read_timeout(Some(Duration::new(1, 0))).unwrap();
+
         loop {
 
+            let now = TimeValue::now();
+            let duration_since_last_state = now.duration_since(self.time_of_last_state_receive);
+            if duration_since_last_state > TimeDuration::one_second() {
+                warn!("It has been {:?} since last state message was received. Now: {:?}, Last: {:?}",
+                      duration_since_last_state, now, self.time_of_last_state_receive);
+            }
+
             let mut buf = [0; MAX_UDP_DATAGRAM_SIZE];
-            let (number_of_bytes, source) = self.socket.recv_from(&mut buf).unwrap();
+
+            let recv_result = self.socket.recv_from(&mut buf);
+            if recv_result.is_err() {
+                continue;
+            }
+
+            let (number_of_bytes, source) = recv_result.unwrap();
 
             if !self.server_socket_addr.eq(&source) {
                 continue;
@@ -102,13 +118,6 @@ impl<StateType, InputType> ChannelThread<()> for UdpInput<StateType, InputType>
                     error!("Error: {:?}", error);
                     return;
                 }
-            }
-
-            let now = TimeValue::now();
-            let duration_since_last_state = now.duration_since(self.time_of_last_state_receive);
-            if duration_since_last_state > TimeDuration::one_second() {
-                warn!("It has been {:?} since last state message was received. Now: {:?}, Last: {:?}",
-                      duration_since_last_state, now, self.time_of_last_state_receive);
             }
         }
     }

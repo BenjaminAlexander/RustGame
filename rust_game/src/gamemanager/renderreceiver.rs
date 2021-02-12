@@ -1,4 +1,4 @@
-use log::{warn, info};
+use log::{warn, info, trace};
 use crate::interface::{State, Input, InputEvent};
 use crate::gamemanager::stepmessage::StepMessage;
 use crate::threading::{Consumer, Sender, Receiver, channel};
@@ -60,7 +60,7 @@ impl<StateType, InputType> RenderReceiver<StateType, InputType>
                     let this_step = self.data.step_queue[self.data.step_queue.len() - 1].get_step_index();
 
                     if (step as i64 - this_step as i64).abs() > 3 {
-                        warn!("Needed step: {:?}, Gotten step: {:?}", step, this_step);
+                        trace!("Needed step: {:?}, Gotten step: {:?}", step, this_step);
                     }
 
                     let step = &self.data.step_queue[self.data.step_queue.len() - 1];

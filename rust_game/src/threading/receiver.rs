@@ -1,4 +1,5 @@
-use std::sync::mpsc::{Receiver as MpscReceiver, RecvError, TryRecvError};
+use std::sync::mpsc::{Receiver as MpscReceiver, RecvError, TryRecvError, RecvTimeoutError};
+use core::time::Duration;
 
 pub struct Receiver<T: ?Sized> {
     receiver: MpscReceiver<Box<dyn FnOnce(&mut T) + Send + 'static>>
@@ -14,9 +15,14 @@ impl<T> Receiver<T> {
         Self::apply_message(message, t)
     }
 
+    pub fn recv_timeout(&self, t: &mut T, timeout: Duration) -> Result<(), RecvTimeoutError> {
+        let message = self.receiver.recv_timeout(timeout)?;
+        return Self::apply_message(message, t);
+    }
+
     pub fn try_recv(&self, t: &mut T) -> Result<(), TryRecvError> {
         let message = self.receiver.try_recv()?;
-        Self::apply_message(message, t)
+        return Self::apply_message(message, t);
     }
 
     // pub fn iter(&self, t: &mut T) {
