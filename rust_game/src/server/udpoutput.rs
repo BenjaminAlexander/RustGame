@@ -1,19 +1,20 @@
 use log::{trace, info, warn};
-use std::net::TcpStream;
-use crate::gametime::{TimeMessage, TimeDuration, TimeValue};
-use crate::threading::{ChannelDrivenThread, Consumer, Sender, ChannelThread, Receiver};
+use crate::interface::{Input, State};
+use std::net::{UdpSocket, SocketAddr};
+use crate::gametime::{TimeDuration, TimeMessage, TimeValue};
+use crate::messaging::{InputMessage, StateMessage, ToClientMessageUDP};
 use std::io;
-use crate::messaging::{ToClientMessageTCP, InputMessage, StateMessage, InitialInformation};
-use std::io::Write;
-use crate::interface::{Input, State, InputEvent};
-use std::marker::PhantomData;
+use crate::server::remoteudppeer::RemoteUdpPeer;
+use crate::threading::{ChannelThread, Receiver, Sender, Consumer};
+use crate::server::tcpoutput::TcpOutput;
 
-pub struct TcpOutput<StateType, InputType>
+pub struct UdpOutput<StateType, InputType>
     where InputType: Input,
           StateType: State<InputType> {
 
     player_index: usize,
-    tcp_stream: TcpStream,
+    socket: UdpSocket,
+    remote_peer: Option<RemoteUdpPeer>,
     time_message_period: TimeDuration,
     last_time_message: Option<TimeMessage>,
     time_message: Option<TimeMessage>,
@@ -24,20 +25,20 @@ pub struct TcpOutput<StateType, InputType>
     //metrics
     time_of_last_state_send: TimeValue,
     time_of_last_input_send: TimeValue,
-
 }
 
-impl<StateType, InputType> TcpOutput<StateType, InputType>
+impl<StateType, InputType> UdpOutput<StateType, InputType>
     where InputType: Input,
           StateType: State<InputType> {
 
     pub fn new(time_message_period: TimeDuration,
                player_index: usize,
-               tcp_stream: &TcpStream) -> io::Result<Self> {
+               socket: &UdpSocket) -> io::Result<Self> {
 
-        Ok(TcpOutput{
+        Ok(UdpOutput{
             player_index,
-            tcp_stream: tcp_stream.try_clone()?,
+            remote_peer: None,
+            socket: socket.try_clone()?,
             time_message_period,
             last_time_message: None,
             time_message: None,
@@ -52,7 +53,7 @@ impl<StateType, InputType> TcpOutput<StateType, InputType>
     }
 }
 
-impl<StateType, InputType> ChannelThread<()> for TcpOutput<StateType, InputType>
+impl<StateType, InputType> ChannelThread<()> for UdpOutput<StateType, InputType>
     where InputType: Input,
           StateType: State<InputType> {
 
@@ -79,20 +80,24 @@ impl<StateType, InputType> ChannelThread<()> for TcpOutput<StateType, InputType>
                     self.last_time_message = Some(time_message.clone());
 
                     //TODO: timestamp when the time message is set, then use that info in client side time calc
-                    let message = ToClientMessageTCP::<StateType, InputType>::TimeMessage(time_message);
+                    let message = ToClientMessageUDP::<StateType, InputType>::TimeMessage(time_message);
 
-                    rmp_serde::encode::write(&mut self.tcp_stream, &message).unwrap();
-                    self.tcp_stream.flush().unwrap();
+                    let buf = rmp_serde::to_vec(&message).unwrap();
+                    if let Some(remote_peer) = &self.remote_peer {
+                        self.socket.send_to(&buf, remote_peer.get_socket_addr()).unwrap();
+                    }
                     //info!("time_message");
 
                 } else if self.state_message.is_some() {
                     let message = self.state_message.as_ref().unwrap().clone();
-                    let message = ToClientMessageTCP::<StateType, InputType>::StateMessage(message);
+                    let message = ToClientMessageUDP::<StateType, InputType>::StateMessage(message);
                     self.state_message = None;
                     self.time_of_last_state_send = TimeValue::now();
 
-                    rmp_serde::encode::write(&mut self.tcp_stream, &message).unwrap();
-                    self.tcp_stream.flush().unwrap();
+                    let buf = rmp_serde::to_vec(&message).unwrap();
+                    if let Some(remote_peer) = &self.remote_peer {
+                        self.socket.send_to(&buf, remote_peer.get_socket_addr()).unwrap();
+                    }
                     //info!("state_message");
 
                 } else {
@@ -101,9 +106,11 @@ impl<StateType, InputType> ChannelThread<()> for TcpOutput<StateType, InputType>
                         Some(input_to_send) => {
                             self.time_of_last_input_send = TimeValue::now();
 
-                            let message = ToClientMessageTCP::<StateType, InputType>::InputMessage(input_to_send);
-                            rmp_serde::encode::write(&mut self.tcp_stream, &message).unwrap();
-                            self.tcp_stream.flush().unwrap();
+                            let message = ToClientMessageUDP::<StateType, InputType>::InputMessage(input_to_send);
+                            let buf = rmp_serde::to_vec(&message).unwrap();
+                            if let Some(remote_peer) = &self.remote_peer {
+                                self.socket.send_to(&buf, remote_peer.get_socket_addr()).unwrap();
+                            }
                             //info!("input_message");
                         }
                     }
@@ -128,7 +135,7 @@ impl<StateType, InputType> ChannelThread<()> for TcpOutput<StateType, InputType>
     }
 }
 
-impl<StateType, InputType> Consumer<TimeMessage> for Sender<TcpOutput<StateType, InputType>>
+impl<StateType, InputType> Consumer<TimeMessage> for Sender<UdpOutput<StateType, InputType>>
     where InputType: Input,
           StateType: State<InputType> {
 
@@ -149,7 +156,7 @@ impl<StateType, InputType> Consumer<TimeMessage> for Sender<TcpOutput<StateType,
     }
 }
 
-impl<StateType, InputType> Consumer<InputMessage<InputType>> for Sender<TcpOutput<StateType, InputType>>
+impl<StateType, InputType> Consumer<InputMessage<InputType>> for Sender<UdpOutput<StateType, InputType>>
     where InputType: Input,
           StateType: State<InputType> {
 
@@ -160,7 +167,7 @@ impl<StateType, InputType> Consumer<InputMessage<InputType>> for Sender<TcpOutpu
 
             if tcp_output.player_index != input_message.get_player_index() &&
                 (tcp_output.last_state_sequence.is_none() ||
-                tcp_output.last_state_sequence.as_ref().unwrap() <= &input_message.get_step()) {
+                    tcp_output.last_state_sequence.as_ref().unwrap() <= &input_message.get_step()) {
                 //insert in reverse sorted order
                 match tcp_output.input_queue.binary_search_by(|elem| { input_message.cmp(elem) }) {
                     Ok(pos) => tcp_output.input_queue[pos] = input_message,
@@ -176,7 +183,7 @@ impl<StateType, InputType> Consumer<InputMessage<InputType>> for Sender<TcpOutpu
     }
 }
 
-impl<StateType, InputType> Consumer<StateMessage<StateType>> for Sender<TcpOutput<StateType, InputType>>
+impl<StateType, InputType> Consumer<StateMessage<StateType>> for Sender<UdpOutput<StateType, InputType>>
     where InputType: Input,
           StateType: State<InputType> {
 
@@ -205,22 +212,17 @@ impl<StateType, InputType> Consumer<StateMessage<StateType>> for Sender<TcpOutpu
     }
 }
 
-impl<StateType, InputType> Sender<TcpOutput<StateType, InputType>>
+impl<StateType, InputType> Consumer<RemoteUdpPeer> for Sender<UdpOutput<StateType, InputType>>
     where InputType: Input,
           StateType: State<InputType> {
 
-    pub fn send_initial_information(&self, player_count: usize, initial_state: StateType) {
-        self.send(move |tcp_output|{
+    fn accept(&self, remote_peer: RemoteUdpPeer) {
+        self.send(|udp_output|{
 
-            let initial_information = InitialInformation::<StateType>::new(
-                player_count,
-                tcp_output.player_index,
-                initial_state);
-
-            let message = ToClientMessageTCP::<StateType, InputType>::InitialInformation(initial_information);
-            rmp_serde::encode::write(&mut tcp_output.tcp_stream, &message).unwrap();
-            tcp_output.tcp_stream.flush().unwrap();
-
+            if udp_output.player_index == remote_peer.get_player_index() {
+                info!("Setting remote peer: {:?}", remote_peer);
+                udp_output.remote_peer = Some(remote_peer);
+            }
         }).unwrap();
     }
 }

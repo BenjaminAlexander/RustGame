@@ -5,3 +5,6 @@ mod core;
 mod tcpinput;
 mod tcplistenerthread;
 mod tcpoutput;
+mod udpinput;
+mod udpoutput;
+mod remoteudppeer;

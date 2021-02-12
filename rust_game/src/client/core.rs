@@ -1,4 +1,4 @@
-use std::net::{Ipv4Addr, SocketAddrV4, SocketAddr, TcpStream};
+use std::net::{Ipv4Addr, SocketAddrV4, SocketAddr, TcpStream, UdpSocket};
 use std::str::FromStr;
 use crate::gametime::{TimeDuration, GameTimer, TimeMessage};
 use crate::threading::{ChannelThread, Sender, ChannelDrivenThread, Consumer};
@@ -9,6 +9,7 @@ use crate::client::tcpoutput::TcpOutput;
 use crate::messaging::{StateMessage, InitialInformation, InputMessage};
 use crate::gamemanager::{Manager, RenderReceiver};
 use log::{info, trace};
+use crate::client::udpoutput::UdpOutput;
 
 pub struct Core<StateType, InputType, InputEventHandlerType, InputEventType>
     where StateType: State<InputType>,
@@ -17,13 +18,15 @@ pub struct Core<StateType, InputType, InputEventHandlerType, InputEventType>
           InputEventType: InputEvent {
 
     server_ip: String,
-    port: u16,
+    tcp_port: u16,
+    udp_port: u16,
     step_duration: TimeDuration,
     grace_period: TimeDuration,
     clock_average_size: usize,
     input_event_handler: InputEventHandlerType,
     manager_sender: Option<Sender<Manager<StateType, InputType>>>,
-    tcp_output_sender: Option<Sender<TcpOutput<InputType>>>,
+    udp_output_sender: Option<Sender<UdpOutput<StateType, InputType>>>,
+    tcp_output_sender: Option<Sender<TcpOutput>>,
     initial_information: Option<InitialInformation<StateType>>,
     last_time_message: Option<TimeMessage>,
     phantom: PhantomData<InputEventType>
@@ -36,18 +39,21 @@ impl<StateType, InputEventHandlerType, InputType, InputEventType> Core<StateType
           InputEventType: InputEvent {
 
     pub fn new(server_ip: &str,
-               port: u16,
+               tcp_port: u16,
+               udp_port: u16,
                step_duration: TimeDuration,
                grace_period: TimeDuration,
                clock_average_size: usize) -> Self {
 
         Core{server_ip: server_ip.to_string(),
-            port,
+            tcp_port,
+            udp_port,
             step_duration,
             grace_period,
             clock_average_size,
             input_event_handler: InputEventHandlerType::new(),
             manager_sender: None,
+            udp_output_sender: None,
             tcp_output_sender: None,
             initial_information: None,
             last_time_message: None,
@@ -79,18 +85,22 @@ impl<StateType, InputEventHandlerType, InputType, InputEventType> Sender<Core<St
 
         self.send(move |core|{
             let ip_addr_v4 = Ipv4Addr::from_str(core.server_ip.as_str()).unwrap();
-            let socket_addr_v4 = SocketAddrV4::new(ip_addr_v4, core.port);
+            let socket_addr_v4 = SocketAddrV4::new(ip_addr_v4, core.tcp_port);
             let socket_addr:SocketAddr = SocketAddr::from(socket_addr_v4);
             let tcp_stream = TcpStream::connect(socket_addr).unwrap();
+
+            let udp_socket = UdpSocket::bind("127.0.0.1:0").unwrap();
 
             let (manager_sender, manager_builder) = Manager::<StateType, InputType>::new(core.grace_period).build();
             let (game_timer_sender, game_timer_builder) = GameTimer::new(core.step_duration, core.clock_average_size).build();
             let (tcp_input_sender, tcp_input_builder) = TcpInput::<StateType, InputType>::new(&tcp_stream).unwrap().build();
-            let (tcp_output_sender, tcp_output_builder) = TcpOutput::<InputType>::new(&tcp_stream).unwrap().build();
+            let (tcp_output_sender, tcp_output_builder) = TcpOutput::new(&tcp_stream).unwrap().build();
+            let (udp_output_sender, udp_output_builder) = UdpOutput::<StateType, InputType>::new(core.server_ip.clone(), core.udp_port, &udp_socket).unwrap().build();
 
             tcp_input_sender.add_time_message_consumer(game_timer_sender.clone()).unwrap();
             tcp_input_sender.add_initial_information_message_consumer(manager_sender.clone());
             tcp_input_sender.add_initial_information_message_consumer(core_sender.clone());
+            tcp_input_sender.add_initial_information_message_consumer(udp_output_sender.clone());
             tcp_input_sender.add_input_message_consumer(manager_sender.clone());
             tcp_input_sender.add_state_message_consumer(manager_sender.clone());
 
@@ -102,10 +112,12 @@ impl<StateType, InputEventHandlerType, InputType, InputEventType> Sender<Core<St
             let _manager_join_handle = manager_builder.name("ClientManager").start().unwrap();
             let _tcp_input_join_handle = tcp_input_builder.name("ClientTcpInput").start().unwrap();
             let _tcp_output_join_handle = tcp_output_builder.name("ClientTcpOutput").start().unwrap();
+            let _udp_output_join_handle = udp_output_builder.name("ClientUdpOutput").start().unwrap();
             let _game_timer_join_handle = game_timer_builder.name("ClientGameTimer").start().unwrap();
 
             core.manager_sender = Some(manager_sender);
             core.tcp_output_sender = Some(tcp_output_sender);
+            core.udp_output_sender = Some(udp_output_sender);
 
         }).unwrap();
 
@@ -148,7 +160,7 @@ impl<StateType, InputEventHandlerType, InputType, InputEventType> Consumer<TimeM
 
                 let manager_sender = core.manager_sender.as_ref().unwrap();
                 let last_time_message = core.last_time_message.as_ref().unwrap();
-                let tcp_output_sender = core.tcp_output_sender.as_ref().unwrap();
+                let udp_output_sender = core.udp_output_sender.as_ref().unwrap();
                 let initial_information = core.initial_information.as_ref().unwrap();
 
                 let message = InputMessage::<InputType>::new(
@@ -158,7 +170,7 @@ impl<StateType, InputEventHandlerType, InputType, InputEventType> Consumer<TimeM
                 );
 
                 manager_sender.accept(message.clone());
-                tcp_output_sender.accept(message);
+                udp_output_sender.accept(message);
 
                 let client_drop_time = time_message.get_scheduled_time().subtract(core.grace_period * 2);
                 let drop_step = time_message.get_step_from_actual_time(client_drop_time).ceil() as usize;

@@ -2,7 +2,7 @@ use log::{error, info, warn};
 use std::net::TcpStream;
 use crate::gametime::{TimeMessage, TimeReceived, TimeValue, TimeDuration};
 use crate::threading::{ConsumerList, ChannelThread, Receiver, Sender, Consumer};
-use crate::messaging::{ToClientMessage, InputMessage, StateMessage, InitialInformation};
+use crate::messaging::{ToClientMessageTCP, InputMessage, StateMessage, InitialInformation};
 use rmp_serde::decode::Error;
 use crate::threading::sender::SendError;
 use std::io;
@@ -55,7 +55,7 @@ impl<StateType, InputType> ChannelThread<()> for TcpInput<StateType, InputType>
         let receiver = receiver;
 
         loop {
-            let result: Result<ToClientMessage::<StateType, InputType>, Error> = rmp_serde::from_read(&self.tcp_stream);
+            let result: Result<ToClientMessageTCP::<StateType, InputType>, Error> = rmp_serde::from_read(&self.tcp_stream);
 
             match result {
                 Ok(message) => {
@@ -68,25 +68,25 @@ impl<StateType, InputType> ChannelThread<()> for TcpInput<StateType, InputType>
                     receiver.try_iter(&mut self);
 
                     match message {
-                        ToClientMessage::TimeMessage(time_message) => {
+                        ToClientMessageTCP::TimeMessage(time_message) => {
                             //info!("Time message: {:?}", time_message.get_step());
                             self.time_message_consumers.accept(&TimeReceived::new(time_received, time_message));
 
                         }
-                        ToClientMessage::InputMessage(input_message) => {
+                        ToClientMessageTCP::InputMessage(input_message) => {
                             //TODO: ignore input messages from this player
                             //info!("Input message: {:?}", input_message.get_step());
                             self.time_of_last_input_receive = TimeValue::now();
                             self.input_message_consumers.accept(&input_message);
 
                         }
-                        ToClientMessage::StateMessage(state_message) => {
+                        ToClientMessageTCP::StateMessage(state_message) => {
                             //info!("State message: {:?}", state_message.get_sequence());
                             self.time_of_last_state_receive = TimeValue::now();
                             self.state_message_consumers.accept(&state_message);
 
                         }
-                        ToClientMessage::InitialInformation(initial_information_message) => {
+                        ToClientMessageTCP::InitialInformation(initial_information_message) => {
                             self.player_index = Some(initial_information_message.get_player_index());
                             self.initial_information_message_consumers.accept(&initial_information_message);
                         }

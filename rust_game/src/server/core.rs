@@ -1,4 +1,4 @@
-use std::net::TcpStream;
+use std::net::{TcpStream, Ipv4Addr, SocketAddrV4, UdpSocket};
 
 use log::{warn, trace, info};
 use crate::interface::{Input, State, InputEvent};
@@ -9,6 +9,10 @@ use crate::server::tcpoutput::TcpOutput;
 use crate::gametime::{GameTimer, TimeDuration, TimeMessage};
 use crate::gamemanager::{Manager, RenderReceiver};
 use crate::messaging::{InputMessage, InitialInformation};
+use std::str::FromStr;
+use crate::server::udpinput::UdpInput;
+use crate::server::remoteudppeer::RemoteUdpPeer;
+use crate::server::udpoutput::UdpOutput;
 
 //TODO: route game timer and player inputs through the core to
 // get synchronous enforcement of the grace period
@@ -18,12 +22,16 @@ pub struct Core<StateType, InputType>
           InputType: Input {
 
     game_is_started: bool,
-    port: u16,
+    tcp_port: u16,
+    udp_port: u16,
     step_duration: TimeDuration,
     grace_period: TimeDuration,
     timer_message_period: TimeDuration,
-    tcp_inputs: Vec<Sender<TcpInput<InputType>>>,
+    tcp_inputs: Vec<Sender<TcpInput>>,
     tcp_outputs: Vec<Sender<TcpOutput<StateType, InputType>>>,
+    udp_socket: Option<UdpSocket>,
+    udp_outputs: Vec<Sender<UdpOutput<StateType, InputType>>>,
+    udp_input_sender: Option<Sender<UdpInput<InputType>>>,
     manager_sender: Option<Sender<Manager<StateType, InputType>>>,
     drop_steps_before: usize,
 }
@@ -41,20 +49,25 @@ impl<StateType, InputType> Core<StateType, InputType>
     where StateType: State<InputType>,
           InputType: Input {
 
-    pub fn new(port: u16,
+    pub fn new(tcp_port: u16,
+               udp_port: u16,
                step_duration: TimeDuration,
                grace_period: TimeDuration,
                timer_message_period: TimeDuration) -> Self {
 
         Self {
             game_is_started: false,
-            port,
+            tcp_port,
+            udp_port,
             step_duration,
             grace_period,
             timer_message_period,
             tcp_inputs: Vec::new(),
             tcp_outputs: Vec::new(),
+            udp_outputs: Vec::new(),
             drop_steps_before: 0,
+            udp_socket: None,
+            udp_input_sender: None,
             manager_sender: None,
         }
     }
@@ -68,7 +81,16 @@ impl<StateType, InputType> Sender<Core<StateType, InputType>>
         let clone = self.clone();
 
         self.send(|core| {
-            let (listener_sender, listener_builder) = TcpListenerThread::new(core.port).build();
+            let ip_addr_v4 = Ipv4Addr::from_str("127.0.0.1").unwrap();
+            let socket_addr_v4 = SocketAddrV4::new(ip_addr_v4, core.udp_port);
+            core.udp_socket = Some(UdpSocket::bind(socket_addr_v4).unwrap());
+
+            let udp_input = UdpInput::<InputType>::new(core.udp_socket.as_ref().unwrap()).unwrap();
+            let (udp_input_sender, udp_input_builder) = udp_input.build();
+            udp_input_builder.name("ServerUdpInput").start().unwrap();
+            core.udp_input_sender = Some(udp_input_sender);
+
+            let (listener_sender, listener_builder) = TcpListenerThread::new(core.tcp_port).build();
             listener_sender.set_consumer(clone).unwrap();
             listener_builder.name("ServerTcpListener").start().unwrap();
         }).unwrap();
@@ -110,9 +132,7 @@ impl<StateType, InputType> Sender<Core<StateType, InputType>>
                     tcp_output.send_initial_information(core.tcp_outputs.len(), initial_state.clone());
                 }
 
-                for tcp_input in core.tcp_inputs.iter() {
-                    tcp_input.add_input_consumer(core_sender.clone());
-                }
+                core.udp_input_sender.as_ref().unwrap().add_input_consumer(core_sender.clone());
 
                 timer_builder.name("ServerTimer").start().unwrap();
                 manager_builder.name("ServerManager").start().unwrap();
@@ -137,14 +157,25 @@ impl<StateType, InputType> Consumer<TcpStream> for Sender<Core<StateType, InputT
                 in_thread_builder.name("ServerTcpInput").start().unwrap();
                 core.tcp_inputs.push(in_sender);
 
-                let (out_sender, out_thread_builder) = TcpOutput::new(
+                let (tcp_out_sender, tcp_out_builder) = TcpOutput::new(
                     core.timer_message_period.clone(),
                     player_index,
                     &tcp_stream
                 ).unwrap().build();
 
-                out_thread_builder.name("ServerTcpOutput").start().unwrap();
-                core.tcp_outputs.push(out_sender);
+                let (udp_out_sender, udp_out_builder) = UdpOutput::new(
+                    core.timer_message_period.clone(),
+                    player_index,
+                    core.udp_socket.as_ref().unwrap()
+                ).unwrap().build();
+
+                core.udp_input_sender.as_ref().unwrap().add_remote_peer_consumers(udp_out_sender.clone());
+
+                tcp_out_builder.name("ServerTcpOutput").start().unwrap();
+                udp_out_builder.name("ServerUdpOutput").start().unwrap();
+
+                core.tcp_outputs.push(tcp_out_sender);
+                core.udp_outputs.push(udp_out_sender);
 
                 info!("TcpStream accepted: {:?}", tcp_stream);
 
@@ -192,3 +223,11 @@ impl<StateType, InputType> Consumer<InputMessage<InputType>> for Sender<Core<Sta
     }
 }
 
+impl<StateType, InputType> Consumer<RemoteUdpPeer> for Sender<Core<StateType, InputType>>
+    where StateType: State<InputType>,
+          InputType: Input {
+
+    fn accept(&self, t: RemoteUdpPeer) {
+        unimplemented!()
+    }
+}

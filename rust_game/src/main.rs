@@ -55,6 +55,7 @@ pub fn main() {
     if run_server {
         let server_core  = server::Core::<SimpleState, SimpleInput>::new(
             3456,
+            3457,
             STEP_DURATION,
             TimeDuration::from_millis(500),
             TimeDuration::from_millis(1000)
@@ -73,6 +74,7 @@ pub fn main() {
         let client_core = client::Core::<SimpleState, SimpleInput, SimpleInputEventHandler, SimpleInputEvent>::new(
             "127.0.0.1",
             3456,
+            3457,
             STEP_DURATION,
             TimeDuration::from_millis(500),
             50);
