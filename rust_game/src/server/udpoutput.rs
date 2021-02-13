@@ -9,6 +9,8 @@ use crate::threading::{ChannelThread, Receiver, Sender, Consumer};
 use crate::server::tcpoutput::TcpOutput;
 use std::time::Duration;
 use std::sync::mpsc::RecvTimeoutError;
+use std::marker::PhantomData;
+use crate::util::RollingAverage;
 
 pub struct UdpOutput<StateType, InputType>
     where InputType: Input,
@@ -19,13 +21,12 @@ pub struct UdpOutput<StateType, InputType>
     remote_peer: Option<RemoteUdpPeer>,
     time_message_period: TimeDuration,
     last_time_message: Option<TimeMessage>,
-    time_message: Option<TimeMessage>,
     last_state_sequence: Option<usize>,
-    input_queue: Vec<InputMessage<InputType>>,
-    max_observed_input_queue: usize,
-    state_message: Option<StateMessage<StateType>>,
+    state_phantom: PhantomData<StateType>,
+    input_phantom: PhantomData<InputType>,
 
     //metrics
+    time_in_queue_rolling_average: RollingAverage<u64>,
     time_of_last_state_send: TimeValue,
     time_of_last_input_send: TimeValue,
 }
@@ -44,16 +45,27 @@ impl<StateType, InputType> UdpOutput<StateType, InputType>
             socket: socket.try_clone()?,
             time_message_period,
             last_time_message: None,
-            time_message: None,
             last_state_sequence: None,
-            input_queue: Vec::new(),
-            max_observed_input_queue: 0,
-            state_message: None,
+            state_phantom: PhantomData,
+            input_phantom: PhantomData,
 
             //metrics
+            time_in_queue_rolling_average: RollingAverage::new(100),
             time_of_last_state_send: TimeValue::now(),
             time_of_last_input_send: TimeValue::now(),
         })
+    }
+
+    fn log_time_in_queue(&mut self, time_in_queue: TimeValue) {
+        let now = TimeValue::now();
+        let duration_in_queue = now.duration_since(time_in_queue);
+
+        self.time_in_queue_rolling_average.add_value(duration_in_queue.get_millis() as u64);
+        let average = self.time_in_queue_rolling_average.get_average();
+
+        if average > 500 {
+            warn!("High average duration in queue: {:?} in milliseconds", average);
+        }
     }
 }
 
@@ -64,12 +76,12 @@ impl<StateType, InputType> ChannelThread<()> for UdpOutput<StateType, InputType>
     fn run(mut self, receiver: Receiver<Self>) -> () {
 
         loop {
-            info!("Waiting.");
+            trace!("Waiting.");
 
             match receiver.recv_timeout(&mut self, Duration::new(1, 0)) {
                 Err(error) => {
                     match error {
-                        RecvTimeoutError::Timeout => { info!("TIMEOUT"); }
+                        RecvTimeoutError::Timeout => { }
                         RecvTimeoutError::Disconnected => {
                             info!("Channel closed.");
                             return ();
@@ -79,80 +91,18 @@ impl<StateType, InputType> ChannelThread<()> for UdpOutput<StateType, InputType>
                 _ => {}
             }
 
-            let mut send_another_message = true;
-            while send_another_message {
+            let now = TimeValue::now();
 
-                info!("receiver.try_iter...");
-                receiver.try_iter(&mut self);
+            // let duration_since_last_input = now.duration_since(self.time_of_last_input_send);
+            // if duration_since_last_input > TimeDuration::one_second() {
+            //     warn!("It has been {:?} since last input message was sent. Now: {:?}, Last: {:?}, Queue length: {:?}",
+            //           duration_since_last_input, now, self.time_of_last_input_send, self.input_queue.len());
+            // }
 
-                info!("receiver.try_iter done");
-                let now = TimeValue::now();
-
-                // let duration_since_last_input = now.duration_since(self.time_of_last_input_send);
-                // if duration_since_last_input > TimeDuration::one_second() {
-                //     warn!("It has been {:?} since last input message was sent. Now: {:?}, Last: {:?}, Queue length: {:?}",
-                //           duration_since_last_input, now, self.time_of_last_input_send, self.input_queue.len());
-                // }
-
-                let duration_since_last_state = now.duration_since(self.time_of_last_state_send);
-                if duration_since_last_state > TimeDuration::one_second() {
-                    warn!("It has been {:?} since last state message was sent. Now: {:?}, Last: {:?}",
-                          duration_since_last_state, now, self.time_of_last_state_send);
-                }
-
-                if self.input_queue.len() > self.max_observed_input_queue {
-                    self.max_observed_input_queue = self.input_queue.len();
-                    info!("Outbound input queue has hit a max size of {:?}", self.max_observed_input_queue);
-                }
-
-                info!("lets look at what to do...");
-                if self.time_message.is_some() {
-
-                    let time_message = self.time_message.unwrap();
-                    self.time_message = None;
-                    self.last_time_message = Some(time_message.clone());
-
-                    //TODO: timestamp when the time message is set, then use that info in client side time calc
-                    let message = ToClientMessageUDP::<StateType, InputType>::TimeMessage(time_message);
-
-                    let buf = rmp_serde::to_vec(&message).unwrap();
-                    if let Some(remote_peer) = &self.remote_peer {
-                        self.socket.send_to(&buf, remote_peer.get_socket_addr()).unwrap();
-                    }
-                    info!("time_message");
-
-                } else if self.state_message.is_some() {
-                    let message = self.state_message.as_ref().unwrap().clone();
-                    let message = ToClientMessageUDP::<StateType, InputType>::StateMessage(message);
-                    self.state_message = None;
-                    self.time_of_last_state_send = TimeValue::now();
-
-                    let buf = rmp_serde::to_vec(&message).unwrap();
-                    if let Some(remote_peer) = &self.remote_peer {
-                        self.socket.send_to(&buf, remote_peer.get_socket_addr()).unwrap();
-                    }
-                    info!("state_message");
-
-                } else {
-                    match self.input_queue.pop() {
-                        None => {
-                            info!("send_another_message = false");
-                            send_another_message = false
-                        },
-                        Some(input_to_send) => {
-                            self.time_of_last_input_send = TimeValue::now();
-
-                            let message = ToClientMessageUDP::<StateType, InputType>::InputMessage(input_to_send);
-                            let buf = rmp_serde::to_vec(&message).unwrap();
-                            if let Some(remote_peer) = &self.remote_peer {
-                                self.socket.send_to(&buf, remote_peer.get_socket_addr()).unwrap();
-                            }
-                            info!("input_message");
-                        }
-                    }
-                }
-
-                info!("done doing stuff");
+            let duration_since_last_state = now.duration_since(self.time_of_last_state_send);
+            if duration_since_last_state > TimeDuration::one_second() {
+                warn!("It has been {:?} since last state message was sent. Now: {:?}, Last: {:?}",
+                      duration_since_last_state, now, self.time_of_last_state_send);
             }
         }
     }
@@ -163,18 +113,37 @@ impl<StateType, InputType> Consumer<TimeMessage> for Sender<UdpOutput<StateType,
           StateType: State<InputType> {
 
     fn accept(&self, time_message: TimeMessage) {
-        self.send(move |tcp_output|{
-            if tcp_output.time_message.is_none() ||
-                time_message.is_after(&tcp_output.time_message.clone().unwrap()) {
 
-                if let Some(last_time_message) = &tcp_output.last_time_message {
-                    if time_message.get_scheduled_time().is_after(&last_time_message.get_scheduled_time().add(tcp_output.time_message_period)) {
-                        tcp_output.time_message = Some(time_message);
-                    }
-                } else {
-                    tcp_output.time_message = Some(time_message);
+        let time_in_queue = TimeValue::now();
+
+        self.send(move |udp_output|{
+
+            let mut send_it = false;
+
+            if let Some(last_time_message) = &udp_output.last_time_message {
+                if time_message.get_scheduled_time().is_after(&last_time_message.get_scheduled_time().add(udp_output.time_message_period)) {
+                    send_it = true;
                 }
+            } else {
+                send_it = true;
             }
+
+            if send_it {
+
+                udp_output.last_time_message = Some(time_message.clone());
+
+                //TODO: timestamp when the time message is set, then use that info in client side time calc
+                let message = ToClientMessageUDP::<StateType, InputType>::TimeMessage(time_message);
+
+                let buf = rmp_serde::to_vec(&message).unwrap();
+                if let Some(remote_peer) = &udp_output.remote_peer {
+                    udp_output.socket.send_to(&buf, remote_peer.get_socket_addr()).unwrap();
+                }
+
+                //info!("time_message");
+                udp_output.log_time_in_queue(time_in_queue);
+            }
+
         }).unwrap();
     }
 }
@@ -184,21 +153,25 @@ impl<StateType, InputType> Consumer<InputMessage<InputType>> for Sender<UdpOutpu
           StateType: State<InputType> {
 
     fn accept(&self, input_message: InputMessage<InputType>) {
-        //info!("InputMessage: {:?}", input_message);
 
-        self.send(move |tcp_output|{
+        let time_in_queue = TimeValue::now();
 
-            if tcp_output.player_index != input_message.get_player_index() &&
-                (tcp_output.last_state_sequence.is_none() ||
-                    tcp_output.last_state_sequence.as_ref().unwrap() <= &input_message.get_step()) {
-                //insert in reverse sorted order
-                match tcp_output.input_queue.binary_search_by(|elem| { input_message.cmp(elem) }) {
-                    Ok(pos) => tcp_output.input_queue[pos] = input_message,
-                    Err(pos) => tcp_output.input_queue.insert(pos, input_message)
+        self.send(move |udp_output|{
+
+            if udp_output.player_index != input_message.get_player_index() &&
+                (udp_output.last_state_sequence.is_none() ||
+                    udp_output.last_state_sequence.as_ref().unwrap() <= &input_message.get_step()) {
+
+                udp_output.time_of_last_input_send = TimeValue::now();
+
+                let message = ToClientMessageUDP::<StateType, InputType>::InputMessage(input_message);
+                let buf = rmp_serde::to_vec(&message).unwrap();
+                if let Some(remote_peer) = &udp_output.remote_peer {
+                    udp_output.socket.send_to(&buf, remote_peer.get_socket_addr()).unwrap();
                 }
 
-                //info!("InputMessage queued. Queue length: {:?}", tcp_output.input_queue.len());
-
+                //info!("input_message");
+                udp_output.log_time_in_queue(time_in_queue);
             } else {
                 //info!("InputMessage dropped. Last state: {:?}", tcp_output.last_state_sequence);
             }
@@ -211,39 +184,25 @@ impl<StateType, InputType> Consumer<StateMessage<StateType>> for Sender<UdpOutpu
           StateType: State<InputType> {
 
     fn accept(&self, state_message: StateMessage<StateType>) {
-        self.send(move |tcp_output|{
 
-            if tcp_output.last_state_sequence.is_none() ||
-                tcp_output.last_state_sequence.as_ref().unwrap() <= &state_message.get_sequence() {
+        let time_in_queue = TimeValue::now();
 
-                tcp_output.last_state_sequence = Some(state_message.get_sequence());
-                tcp_output.state_message = Some(state_message);
+        self.send(move |udp_output|{
 
-                loop {
-                    match tcp_output.input_queue.last() {
-                        None => break,
-                        Some(last) => {
-                            if last.get_step() < tcp_output.last_state_sequence.unwrap() {
-                                //info!("Popped from que: {:?}, Last state: {:?}", last.get_step(), tcp_output.last_state_sequence.unwrap());
-                                tcp_output.input_queue.pop();
-                            }
-                        }
-                    }
+            if udp_output.last_state_sequence.is_none() ||
+                udp_output.last_state_sequence.as_ref().unwrap() <= &state_message.get_sequence() {
+
+                udp_output.last_state_sequence = Some(state_message.get_sequence());
+                udp_output.time_of_last_state_send = TimeValue::now();
+
+                let message = ToClientMessageUDP::<StateType, InputType>::StateMessage(state_message);
+                let buf = rmp_serde::to_vec(&message).unwrap();
+                if let Some(remote_peer) = &udp_output.remote_peer {
+                    udp_output.socket.send_to(&buf, remote_peer.get_socket_addr()).unwrap();
                 }
+                //info!("state_message");
+                udp_output.log_time_in_queue(time_in_queue);
 
-                let now = TimeValue::now();
-
-                // let duration_since_last_input = now.duration_since(self.time_of_last_input_send);
-                // if duration_since_last_input > TimeDuration::one_second() {
-                //     warn!("It has been {:?} since last input message was sent. Now: {:?}, Last: {:?}, Queue length: {:?}",
-                //           duration_since_last_input, now, self.time_of_last_input_send, self.input_queue.len());
-                // }
-
-                let duration_since_last_state = now.duration_since(tcp_output.time_of_last_state_send);
-                if duration_since_last_state > TimeDuration::one_second() {
-                    warn!("It has been {:?} since last state message was sent. Now: {:?}, Last: {:?}",
-                          duration_since_last_state, now, tcp_output.time_of_last_state_send);
-                }
             }
         }).unwrap();
     }
