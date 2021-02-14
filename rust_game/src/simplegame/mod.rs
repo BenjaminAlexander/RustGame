@@ -12,6 +12,7 @@ mod simplestate;
 mod character;
 mod simpleinputeventhandler;
 mod simplewindow;
+mod bullet;
 
 
 

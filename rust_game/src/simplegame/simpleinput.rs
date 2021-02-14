@@ -7,25 +7,31 @@ use log::info;
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct SimpleInput {
-    vector_option: Option<Vector2>,
-    velocity: Vector2
+    aim_point: Vector2,
+    velocity: Vector2,
+    should_fire: bool,
 }
 
 impl SimpleInput {
 
-    pub fn new(vector_option: Option<Vector2>, velocity: Vector2) -> Self {
+    pub fn new(aim_point: Vector2, velocity: Vector2, should_fire: bool) -> Self {
         return Self{
-            vector_option,
-            velocity
+            aim_point,
+            velocity,
+            should_fire
         };
     }
 
-    pub fn get_vector_option(&self) -> Option<Vector2> {
-        return self.vector_option;
+    pub fn get_aim_point(&self) -> Vector2 {
+        return self.aim_point;
     }
 
     pub fn get_velocity(&self) -> Vector2 {
         return self.velocity;
+    }
+
+    pub fn should_fire(&self) -> bool {
+        return self.should_fire;
     }
 }
 

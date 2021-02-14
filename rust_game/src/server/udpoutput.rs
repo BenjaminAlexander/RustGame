@@ -136,6 +136,7 @@ impl<StateType, InputType> Consumer<TimeMessage> for Sender<UdpOutput<StateType,
                 let message = ToClientMessageUDP::<StateType, InputType>::TimeMessage(time_message);
 
                 let buf = rmp_serde::to_vec(&message).unwrap();
+
                 if let Some(remote_peer) = &udp_output.remote_peer {
                     udp_output.socket.send_to(&buf, remote_peer.get_socket_addr()).unwrap();
                 }
@@ -197,6 +198,8 @@ impl<StateType, InputType> Consumer<StateMessage<StateType>> for Sender<UdpOutpu
 
                 let message = ToClientMessageUDP::<StateType, InputType>::StateMessage(state_message);
                 let buf = rmp_serde::to_vec(&message).unwrap();
+
+                //info!("state_message: {:?}", buf);
                 if let Some(remote_peer) = &udp_output.remote_peer {
                     udp_output.socket.send_to(&buf, remote_peer.get_socket_addr()).unwrap();
                 }

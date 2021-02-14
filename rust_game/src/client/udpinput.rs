@@ -70,12 +70,14 @@ impl<StateType, InputType> ChannelThread<()> for UdpInput<StateType, InputType>
 
             let recv_result = self.socket.recv_from(&mut buf);
             if recv_result.is_err() {
+                warn!("Error on socket recv: {:?}", recv_result);
                 continue;
             }
 
             let (number_of_bytes, source) = recv_result.unwrap();
 
             if !self.server_socket_addr.eq(&source) {
+                warn!("Received from wrong source. Expected: {:?}, Actual: {:?}", self.server_socket_addr, source);
                 continue;
             }
 

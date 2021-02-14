@@ -1,9 +1,10 @@
-use crate::simplegame::{Vector2, STEP_DURATION, SimpleInput};
+use crate::simplegame::{Vector2, STEP_DURATION, SimpleInput, SimpleState};
 use serde::{Deserialize, Serialize};
 use piston::{RenderArgs, ButtonState};
 use opengl_graphics::{GlGraphics, OpenGL};
 use graphics::{Context, rectangle};
 use graphics::*;
+use crate::simplegame::bullet::Bullet;
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Character {
@@ -23,17 +24,23 @@ impl Character {
         return &self.position;
     }
 
-    pub fn set_position(&mut self, position: Vector2) {
-        self.position = position;
-    }
-
-    pub fn update(&mut self, input_option: Option<&SimpleInput>) {
+    pub fn move_character(&mut self, input_option: Option<&SimpleInput>) {
 
         if let Some(input) = input_option {
             self.velocity = input.get_velocity();
         }
 
-        self.position = self.position.add(self.velocity.multiply(STEP_DURATION.get_millis() as f64 * 0.5 as f64));
+        self.position = self.position + self.velocity * STEP_DURATION.get_millis() as f64 * 0.5;
+    }
+
+    pub fn get_fired_bullet(&self, input_option: Option<&SimpleInput>) -> Option<Bullet> {
+        if let Some(input) = input_option {
+            if input.should_fire() {
+                return Some(Bullet::new(self.position, input.get_aim_point()));
+            }
+        }
+
+        return None;
     }
 
     pub fn draw(&self, args: &RenderArgs, context: Context, gl: &mut GlGraphics) {

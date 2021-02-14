@@ -1,4 +1,4 @@
-use piston::{ButtonState, ButtonArgs, Button, Key, Motion};
+use piston::{ButtonState, ButtonArgs, Button, Key, Motion, MouseButton};
 use piston::input::Input as PistonInput;
 use crate::interface::InputEventHandler;
 use crate::simplegame::{SimpleInput, SimpleInputEvent, Vector2};
@@ -6,11 +6,13 @@ use log::info;
 use num::integer::Roots;
 
 pub struct SimpleInputEventHandler {
-    vector_option: Option<Vector2>,
+    aim_point: Vector2,
     d_state: ButtonState,
     a_state: ButtonState,
     s_state: ButtonState,
-    w_state: ButtonState
+    w_state: ButtonState,
+    left_mouse_state: ButtonState,
+    should_fire: bool
 }
 
 impl SimpleInputEventHandler {
@@ -18,7 +20,7 @@ impl SimpleInputEventHandler {
     fn accumulate_move(&mut self, move_event: &Motion) {
         match move_event {
             Motion::MouseCursor(position) => {
-                self.vector_option = Some(Vector2::new(position[0], position[1]));
+                self.aim_point = Vector2::new(position[0], position[1]);
             }
             _ => {}
         }
@@ -36,6 +38,21 @@ impl SimpleInputEventHandler {
                     _ => {}
                 }
             }
+            Button::Mouse(mouse_button) => {
+                match mouse_button {
+                    MouseButton::Left => {
+                        if self.left_mouse_state == ButtonState::Release &&
+                            button.state == ButtonState::Press {
+
+                            self.should_fire = true;
+                        }
+
+                        self.left_mouse_state = button.state;
+
+                    }
+                    _ => {}
+                }
+            }
             _ => {}
         }
     }
@@ -44,11 +61,13 @@ impl SimpleInputEventHandler {
 impl InputEventHandler<SimpleInput, SimpleInputEvent> for SimpleInputEventHandler {
     fn new() -> Self {
         Self{
-            vector_option: None,
+            aim_point: Vector2::new(0 as f64, 0 as f64),
             d_state: ButtonState::Release,
             a_state: ButtonState::Release,
             s_state: ButtonState::Release,
-            w_state: ButtonState::Release
+            w_state: ButtonState::Release,
+            left_mouse_state: ButtonState::Release,
+            should_fire: false
         }
     }
 
@@ -85,19 +104,15 @@ impl InputEventHandler<SimpleInput, SimpleInputEvent> for SimpleInputEventHandle
             (ButtonState::Release, ButtonState::Release) => 0,
         } as f64;
 
-        let h = (x.powf(2 as f64) + y.powf(2 as f64)).sqrt();
+        let velocity = Vector2::new(x, y).normalize();
 
-        if h != 0 as f64 {
-            let cos = x / h;
-            let sin = y / h;
+        let input = SimpleInput::new(
+            self.aim_point,
+            velocity,
+            self.should_fire
+        );
 
-            x = cos;
-            y = sin;
-        }
-
-        let input = SimpleInput::new(self.vector_option, Vector2::new(x as f64, y as f64));
-
-        self.vector_option = None;
+        self.should_fire = false;
 
         return input;
     }

@@ -16,4 +16,4 @@ mod initialinformation;
 mod toclientmessageudp;
 mod toservermessageudp;
 
-pub const MAX_UDP_DATAGRAM_SIZE: usize = 100;
+pub const MAX_UDP_DATAGRAM_SIZE: usize = 1000;
