@@ -8,8 +8,8 @@ pub use self::toclientmessageudp::ToClientMessageUDP;
 pub use self::statemessage::StateMessage;
 pub use self::initialinformation::InitialInformation;
 pub use self::messagefragment::MessageFragment;
-pub use self::fragmentassembler::PartiallyAssembledFragment;
 pub use self::fragmentassembler::FragmentAssembler;
+pub use self::fragmenter::Fragmenter;
 
 mod toservermessagetcp;
 mod inputmessage;
@@ -20,5 +20,6 @@ mod toclientmessageudp;
 mod toservermessageudp;
 mod messagefragment;
 mod fragmentassembler;
+mod fragmenter;
 
 pub const MAX_UDP_DATAGRAM_SIZE: usize = 1000;

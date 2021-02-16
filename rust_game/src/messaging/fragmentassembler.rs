@@ -1,8 +1,8 @@
 use crate::messaging::MessageFragment;
 use std::collections::HashMap;
+use crate::gametime::TimeValue;
 
 pub struct FragmentAssembler {
-    //TODO: implement max size
     max_messages: usize,
     messages: HashMap<u32, PartiallyAssembledFragment>
 }
@@ -17,12 +17,37 @@ impl FragmentAssembler {
 
     pub fn add_fragment(&mut self, fragment: MessageFragment) -> Option<Vec<u8>> {
 
-        //TODO:short circuit 1 of 1
+        if fragment.get_count() == 1 {
+            return Some(fragment.move_buf());
+        }
 
         let id = fragment.get_id();
 
         let partial = match self.messages.get_mut(&id) {
             None => {
+                while self.messages.len() >= self.max_messages {
+                    let mut oldest_id: Option<u32> = None;
+
+                    {
+                        let mut oldest: Option<&PartiallyAssembledFragment> = None;
+
+                        for (id, partial) in self.messages.iter() {
+                            if let Some(current) = oldest {
+                                if current.get_time_of_first_fragment().is_after(&partial.get_time_of_first_fragment()) {
+                                    oldest = Some(partial);
+                                    oldest_id = Some(*id);
+                                }
+                            } else {
+                                oldest = Some(partial);
+                                oldest_id = Some(*id);
+                            }
+                        }
+                    }
+                    if let Some(id_to_remove) = oldest_id {
+                        self.messages.remove(&id_to_remove);
+                    }
+                }
+
                 self.messages.insert(id, PartiallyAssembledFragment::new(fragment));
                 self.messages.get_mut(&id).unwrap()
             },
@@ -42,11 +67,12 @@ impl FragmentAssembler {
 
 }
 
-pub struct PartiallyAssembledFragment {
+struct PartiallyAssembledFragment {
     id: u32,
     count: u16,
     outstanding_fragments: u16,
-    fragments: Vec<Option<MessageFragment>>
+    fragments: Vec<Option<MessageFragment>>,
+    time_of_first_fragment: TimeValue
 }
 
 impl PartiallyAssembledFragment {
@@ -62,7 +88,8 @@ impl PartiallyAssembledFragment {
             id: fragment.get_id(),
             count: fragment.get_count(),
             outstanding_fragments: fragment.get_count(),
-            fragments: vec
+            fragments: vec,
+            time_of_first_fragment: TimeValue::now()
         };
 
         new.add_fragment(fragment);
@@ -70,7 +97,7 @@ impl PartiallyAssembledFragment {
         return new;
     }
 
-    pub fn add_fragment(&mut self, fragment: MessageFragment) {
+    fn add_fragment(&mut self, fragment: MessageFragment) {
         if self.fragments[fragment.get_index() as usize].is_none() {
             self.outstanding_fragments = self.outstanding_fragments - 1;
         }
@@ -79,11 +106,11 @@ impl PartiallyAssembledFragment {
         self.fragments[index] = Some(fragment);
     }
 
-    pub fn has_all_fragments(&self) -> bool {
+    fn has_all_fragments(&self) -> bool {
         return self.outstanding_fragments == 0;
     }
 
-    pub fn get_full_message(self) -> Vec<u8> {
+    fn get_full_message(self) -> Vec<u8> {
 
         let mut length = 0;
 
@@ -99,5 +126,9 @@ impl PartiallyAssembledFragment {
         };
 
         return buf;
+    }
+
+    pub fn get_time_of_first_fragment(&self) -> TimeValue {
+        return self.time_of_first_fragment;
     }
 }

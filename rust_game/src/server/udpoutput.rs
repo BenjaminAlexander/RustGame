@@ -1,8 +1,8 @@
-use log::{trace, info, warn};
+use log::{trace, info, warn, error};
 use crate::interface::{Input, State};
 use std::net::{UdpSocket, SocketAddr};
 use crate::gametime::{TimeDuration, TimeMessage, TimeValue};
-use crate::messaging::{InputMessage, StateMessage, ToClientMessageUDP};
+use crate::messaging::{InputMessage, StateMessage, ToClientMessageUDP, Fragmenter, MAX_UDP_DATAGRAM_SIZE};
 use std::io;
 use crate::server::remoteudppeer::RemoteUdpPeer;
 use crate::threading::{ChannelThread, Receiver, Sender, Consumer};
@@ -19,6 +19,7 @@ pub struct UdpOutput<StateType, InputType>
     player_index: usize,
     socket: UdpSocket,
     remote_peer: Option<RemoteUdpPeer>,
+    fragmenter: Fragmenter,
     time_message_period: TimeDuration,
     last_time_message: Option<TimeMessage>,
     last_state_sequence: Option<usize>,
@@ -43,6 +44,8 @@ impl<StateType, InputType> UdpOutput<StateType, InputType>
             player_index,
             remote_peer: None,
             socket: socket.try_clone()?,
+            //TODO: make max datagram size more configurable
+            fragmenter: Fragmenter::new(MAX_UDP_DATAGRAM_SIZE),
             time_message_period,
             last_time_message: None,
             last_state_sequence: None,
@@ -65,6 +68,27 @@ impl<StateType, InputType> UdpOutput<StateType, InputType>
 
         if average > 500 {
             warn!("High average duration in queue: {:?} in milliseconds", average);
+        }
+    }
+
+    fn send_message(&mut self, message: ToClientMessageUDP<StateType, InputType>) {
+
+        if let Some(remote_peer) = &self.remote_peer {
+            let buf = rmp_serde::to_vec(&message).unwrap();
+            info!("buf:{:?}", buf);
+            let fragments = self.fragmenter.make_fragments(buf);
+
+            for fragment in fragments {
+                let fragment_buf = rmp_serde::to_vec(&fragment).unwrap();
+
+                if fragment_buf.len() > MAX_UDP_DATAGRAM_SIZE {
+
+                    error!("fragment: {:?}", fragment);
+                    error!("fragment_buf: {:?}", fragment_buf);
+                }
+
+                self.socket.send_to(&fragment_buf, remote_peer.get_socket_addr()).unwrap();
+            }
         }
     }
 }
@@ -134,12 +158,7 @@ impl<StateType, InputType> Consumer<TimeMessage> for Sender<UdpOutput<StateType,
 
                 //TODO: timestamp when the time message is set, then use that info in client side time calc
                 let message = ToClientMessageUDP::<StateType, InputType>::TimeMessage(time_message);
-
-                let buf = rmp_serde::to_vec(&message).unwrap();
-
-                if let Some(remote_peer) = &udp_output.remote_peer {
-                    udp_output.socket.send_to(&buf, remote_peer.get_socket_addr()).unwrap();
-                }
+                udp_output.send_message(message);
 
                 //info!("time_message");
                 udp_output.log_time_in_queue(time_in_queue);
@@ -166,10 +185,7 @@ impl<StateType, InputType> Consumer<InputMessage<InputType>> for Sender<UdpOutpu
                 udp_output.time_of_last_input_send = TimeValue::now();
 
                 let message = ToClientMessageUDP::<StateType, InputType>::InputMessage(input_message);
-                let buf = rmp_serde::to_vec(&message).unwrap();
-                if let Some(remote_peer) = &udp_output.remote_peer {
-                    udp_output.socket.send_to(&buf, remote_peer.get_socket_addr()).unwrap();
-                }
+                udp_output.send_message(message);
 
                 //info!("input_message");
                 udp_output.log_time_in_queue(time_in_queue);
@@ -197,12 +213,8 @@ impl<StateType, InputType> Consumer<StateMessage<StateType>> for Sender<UdpOutpu
                 udp_output.time_of_last_state_send = TimeValue::now();
 
                 let message = ToClientMessageUDP::<StateType, InputType>::StateMessage(state_message);
-                let buf = rmp_serde::to_vec(&message).unwrap();
+                udp_output.send_message(message);
 
-                //info!("state_message: {:?}", buf);
-                if let Some(remote_peer) = &udp_output.remote_peer {
-                    udp_output.socket.send_to(&buf, remote_peer.get_socket_addr()).unwrap();
-                }
                 //info!("state_message");
                 udp_output.log_time_in_queue(time_in_queue);
 

@@ -35,27 +35,6 @@ pub fn main() {
 
     info!("args: {:?}", args);
 
-    //13 + buff
-    let mut buf: Vec<u8> = Vec::new();
-    buf.push(4);
-    buf.push(1);
-    buf.push(4);
-    buf.push(2);
-    buf.push(4);
-    buf.push(3);
-    let mut fragments = MessageFragment::make_fragments(1, buf, 15);
-    //let fragment = MessageFragment::new(4294967295, 65535, 65535, buf);
-    //let ser = rmp_serde::to_vec(&fragment).unwrap();
-    info!("fragments: {:?}", fragments);
-
-    let mut a = FragmentAssembler::new(3);
-
-    a.add_fragment(fragments.pop().unwrap());
-    a.add_fragment(fragments.pop().unwrap());
-    let fm = a.add_fragment(fragments.pop().unwrap()).unwrap();
-
-    info!("assembled: {:?}", fm);
-
     let mut run_client = true;
     let mut run_server = true;
 

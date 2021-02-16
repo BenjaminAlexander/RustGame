@@ -1,6 +1,6 @@
 use std::net::{UdpSocket, Ipv4Addr, SocketAddrV4, SocketAddr};
 use crate::gametime::{TimeMessage, TimeReceived, TimeValue, TimeDuration};
-use crate::messaging::{InputMessage, StateMessage, ToClientMessageUDP, MAX_UDP_DATAGRAM_SIZE};
+use crate::messaging::{InputMessage, StateMessage, ToClientMessageUDP, MAX_UDP_DATAGRAM_SIZE, MessageFragment, FragmentAssembler};
 use crate::threading::{ConsumerList, Consumer, Sender, Receiver, ChannelThread};
 use crate::interface::{State, Input};
 use crate::threading::sender::SendError;
@@ -15,6 +15,7 @@ pub struct UdpInput<StateType, InputType>
 
     server_socket_addr: SocketAddr,
     socket: UdpSocket,
+    fragment_assembler: FragmentAssembler,
     time_message_consumers: ConsumerList<TimeReceived<TimeMessage>>,
     input_message_consumers: ConsumerList<InputMessage<InputType>>,
     state_message_consumers: ConsumerList<StateMessage<StateType>>,
@@ -35,6 +36,8 @@ impl<StateType, InputType> UdpInput<StateType, InputType>
         return Ok(Self{
             server_socket_addr,
             socket: socket.try_clone()?,
+            //TODO: make this more configurable
+            fragment_assembler: FragmentAssembler::new(5),
             time_message_consumers: ConsumerList::new(),
             input_message_consumers: ConsumerList::new(),
             state_message_consumers: ConsumerList::new(),
@@ -82,37 +85,48 @@ impl<StateType, InputType> ChannelThread<()> for UdpInput<StateType, InputType>
             }
 
             let filled_buf = &mut buf[..number_of_bytes];
+            let fragment_result: Result<MessageFragment, Error> = rmp_serde::from_read_ref(filled_buf);
 
-            let result: Result<ToClientMessageUDP::<StateType, InputType>, Error> = rmp_serde::from_read_ref(filled_buf);
+            match fragment_result {
+                Ok(fragment) => {
+                    if let Some(message_buf) = self.fragment_assembler.add_fragment(fragment) {
+                        let result: Result<ToClientMessageUDP::<StateType, InputType>, Error> = rmp_serde::from_read_ref(&message_buf);
 
-            match result {
-                Ok(message) => {
+                        match result {
+                            Ok(message) => {
 
-                    //Why does this crash the client?
-                    //info!("{:?}", message);
+                                //Why does this crash the client?
+                                //info!("{:?}", message);
 
-                    let time_received = TimeValue::now();
+                                let time_received = TimeValue::now();
 
-                    receiver.try_iter(&mut self);
+                                receiver.try_iter(&mut self);
 
-                    match message {
-                        ToClientMessageUDP::TimeMessage(time_message) => {
-                            //info!("Time message: {:?}", time_message.get_step());
-                            self.time_message_consumers.accept(&TimeReceived::new(time_received, time_message));
+                                match message {
+                                    ToClientMessageUDP::TimeMessage(time_message) => {
+                                        //info!("Time message: {:?}", time_message.get_step());
+                                        self.time_message_consumers.accept(&TimeReceived::new(time_received, time_message));
 
-                        }
-                        ToClientMessageUDP::InputMessage(input_message) => {
-                            //TODO: ignore input messages from this player
-                            //info!("Input message: {:?}", input_message.get_step());
-                            self.time_of_last_input_receive = TimeValue::now();
-                            self.input_message_consumers.accept(&input_message);
+                                    }
+                                    ToClientMessageUDP::InputMessage(input_message) => {
+                                        //TODO: ignore input messages from this player
+                                        //info!("Input message: {:?}", input_message.get_step());
+                                        self.time_of_last_input_receive = TimeValue::now();
+                                        self.input_message_consumers.accept(&input_message);
 
-                        }
-                        ToClientMessageUDP::StateMessage(state_message) => {
-                            //info!("State message: {:?}", state_message.get_sequence());
-                            self.time_of_last_state_receive = TimeValue::now();
-                            self.state_message_consumers.accept(&state_message);
+                                    }
+                                    ToClientMessageUDP::StateMessage(state_message) => {
+                                        //info!("State message: {:?}", state_message.get_sequence());
+                                        self.time_of_last_state_receive = TimeValue::now();
+                                        self.state_message_consumers.accept(&state_message);
 
+                                    }
+                                }
+                            }
+                            Err(error) => {
+                                error!("Error: {:?}", error);
+                                return;
+                            }
                         }
                     }
                 }
