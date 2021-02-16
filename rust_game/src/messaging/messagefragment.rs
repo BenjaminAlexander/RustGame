@@ -45,4 +45,24 @@ impl MessageFragment {
             buf
         };
     }
+
+    pub fn get_id(&self) -> u32 {
+        return self.id;
+    }
+
+    pub fn get_count(&self) -> u16 {
+        return self.count;
+    }
+
+    pub fn get_index(&self) -> u16 {
+        return self.index;
+    }
+
+    pub fn get_buf(&self) -> &Vec<u8> {
+        return &self.buf;
+    }
+
+    pub fn move_buf(self) -> Vec<u8> {
+        return self.buf;
+    }
 }
