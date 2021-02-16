@@ -1,7 +1,7 @@
-use log::{trace, info};
+use log::{trace, info, error};
 use crate::interface::{Input, State};
 use std::net::{UdpSocket, Ipv4Addr, SocketAddrV4};
-use crate::messaging::{InputMessage, ToServerMessageUDP, InitialInformation};
+use crate::messaging::{InputMessage, ToServerMessageUDP, InitialInformation, MAX_UDP_DATAGRAM_SIZE, Fragmenter};
 use std::io;
 use crate::threading::{ChannelThread, Receiver, Consumer, Sender};
 use std::str::FromStr;
@@ -9,6 +9,7 @@ use std::str::FromStr;
 pub struct UdpOutput<StateType: State<InputType>, InputType: Input> {
     server_address: SocketAddrV4,
     socket: UdpSocket,
+    fragmenter: Fragmenter,
     input_queue: Vec<InputMessage<InputType>>,
     max_observed_input_queue: usize,
     initial_information: Option<InitialInformation<StateType>>
@@ -22,10 +23,27 @@ impl<StateType: State<InputType>, InputType: Input> UdpOutput<StateType, InputTy
         return Ok(Self{
             server_address: server_socket_addr_v4,
             socket: socket.try_clone()?,
+            //TODO: make max datagram size more configurable
+            fragmenter: Fragmenter::new(MAX_UDP_DATAGRAM_SIZE),
             input_queue: Vec::new(),
             max_observed_input_queue: 0,
             initial_information: None
         });
+    }
+
+    fn send_message(&mut self, message: ToServerMessageUDP<InputType>) {
+
+        let buf = rmp_serde::to_vec(&message).unwrap();
+        let fragments = self.fragmenter.make_fragments(buf);
+
+        for fragment in fragments {
+
+            if fragment.get_whole_buf().len() > MAX_UDP_DATAGRAM_SIZE {
+                error!("Datagram is larger than MAX_UDP_DATAGRAM_SIZE: {:?}", fragment.get_whole_buf().len());
+            }
+
+            self.socket.send_to(fragment.get_whole_buf(), &self.server_address).unwrap();
+        }
     }
 }
 
@@ -56,8 +74,7 @@ impl<StateType: State<InputType>, InputType: Input> ChannelThread<()> for UdpOut
                     None => send_another_message = false,
                     Some(input_to_send) => {
                         let message = ToServerMessageUDP::<InputType>::Input(input_to_send);
-                        let buf = rmp_serde::to_vec(&message).unwrap();
-                        self.socket.send_to(&buf, &self.server_address).unwrap();
+                        self.send_message(message);
                     }
                 }
             }
@@ -75,8 +92,7 @@ impl<StateType, InputType> Consumer<InitialInformation<StateType>> for Sender<Ud
             udp_output.initial_information = Some(initial_information);
 
             let message = ToServerMessageUDP::<InputType>::Hello{player_index: udp_output.initial_information.as_ref().unwrap().get_player_index()};
-            let buf = rmp_serde::to_vec(&message).unwrap();
-            udp_output.socket.send_to(&buf, &udp_output.server_address).unwrap();
+            udp_output.send_message(message);
 
         }).unwrap();
     }

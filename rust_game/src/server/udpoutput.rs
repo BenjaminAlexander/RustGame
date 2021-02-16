@@ -75,19 +75,15 @@ impl<StateType, InputType> UdpOutput<StateType, InputType>
 
         if let Some(remote_peer) = &self.remote_peer {
             let buf = rmp_serde::to_vec(&message).unwrap();
-            info!("buf:{:?}", buf);
             let fragments = self.fragmenter.make_fragments(buf);
 
             for fragment in fragments {
-                let fragment_buf = rmp_serde::to_vec(&fragment).unwrap();
 
-                if fragment_buf.len() > MAX_UDP_DATAGRAM_SIZE {
-
-                    error!("fragment: {:?}", fragment);
-                    error!("fragment_buf: {:?}", fragment_buf);
+                if fragment.get_whole_buf().len() > MAX_UDP_DATAGRAM_SIZE {
+                    error!("Datagram is larger than MAX_UDP_DATAGRAM_SIZE: {:?}", fragment.get_whole_buf().len());
                 }
 
-                self.socket.send_to(&fragment_buf, remote_peer.get_socket_addr()).unwrap();
+                self.socket.send_to(fragment.get_whole_buf(), remote_peer.get_socket_addr()).unwrap();
             }
         }
     }

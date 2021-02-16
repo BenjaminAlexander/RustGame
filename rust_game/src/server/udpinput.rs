@@ -1,5 +1,5 @@
 use log::{error, info, trace};
-use crate::messaging::{InputMessage, MAX_UDP_DATAGRAM_SIZE, ToServerMessageUDP};
+use crate::messaging::{InputMessage, MAX_UDP_DATAGRAM_SIZE, ToServerMessageUDP, FragmentAssembler, MessageFragment};
 use crate::threading::{ConsumerList, ChannelThread, Receiver, Sender, Consumer};
 use crate::interface::Input;
 use crate::server::tcpinput::TcpInput;
@@ -8,10 +8,12 @@ use std::io;
 use rmp_serde::decode::Error;
 use crate::threading::sender::SendError;
 use crate::server::remoteudppeer::RemoteUdpPeer;
+use std::collections::HashMap;
 
 pub struct UdpInput<InputType: Input> {
     socket: UdpSocket,
     remote_peers: Vec<Option<RemoteUdpPeer>>,
+    fragment_assemblers: HashMap<SocketAddr, FragmentAssembler>,
     input_consumers: ConsumerList<InputMessage<InputType>>,
     remote_peer_consumers: ConsumerList<RemoteUdpPeer>
 }
@@ -22,9 +24,24 @@ impl<InputType: Input> UdpInput<InputType> {
         return Ok(Self{
             socket: socket.try_clone()?,
             remote_peers: Vec::new(),
+            //TODO: make this more configurable
+            fragment_assemblers: HashMap::new(),
             input_consumers: ConsumerList::new(),
             remote_peer_consumers: ConsumerList::new(),
         });
+    }
+
+    fn handle_fragment(&mut self, source: SocketAddr, fragment: &mut [u8]) -> Option<Vec<u8>> {
+        let assembler = match self.fragment_assemblers.get_mut(&source) {
+            None => {
+                //TODO: make max_messages more configurable
+                self.fragment_assemblers.insert(source, FragmentAssembler::new(5));
+                self.fragment_assemblers.get_mut(&source).unwrap()
+            }
+            Some(assembler) => assembler
+        };
+
+        return assembler.add_fragment(MessageFragment::from_vec(fragment.to_vec()));
     }
 
     fn handle_remote_peer(&mut self, player_index: usize, remote_peer: SocketAddr) {
@@ -62,31 +79,34 @@ impl<InputType: Input> ChannelThread<()> for UdpInput<InputType> {
         loop {
 
             let mut buf = [0; MAX_UDP_DATAGRAM_SIZE];
+            //TODO: check source against valid sources
             let (number_of_bytes, source) = self.socket.recv_from(&mut buf).unwrap();
             let filled_buf = &mut buf[..number_of_bytes];
 
-            let result: Result<ToServerMessageUDP::<InputType>, Error> = rmp_serde::from_read_ref(filled_buf);
+            if let Some(assembled) = self.handle_fragment(source, filled_buf) {
+                let result: Result<ToServerMessageUDP::<InputType>, Error> = rmp_serde::from_read_ref(assembled.as_slice());
 
-            match result {
-                Ok(message) => {
+                match result {
+                    Ok(message) => {
 
-                    receiver.try_iter(&mut self);
+                        receiver.try_iter(&mut self);
 
-                    self.handle_remote_peer(message.get_player_index(), source);
+                        self.handle_remote_peer(message.get_player_index(), source);
 
-                    match message {
-                        ToServerMessageUDP::Hello { player_index } => {
+                        match message {
+                            ToServerMessageUDP::Hello { player_index } => {
 
-                        }
-                        ToServerMessageUDP::Input(input_message) => {
-                            self.input_consumers.accept(&input_message);
+                            }
+                            ToServerMessageUDP::Input(input_message) => {
+                                self.input_consumers.accept(&input_message);
+                            }
                         }
                     }
-                }
-                Err(error) => {
-                    //TODO: tolerate bad packets
-                    error!("Ending due to: {:?}", error);
-                    return;
+                    Err(error) => {
+                        //TODO: tolerate bad packets
+                        error!("Ending due to: {:?}", error);
+                        return;
+                    }
                 }
             }
         }

@@ -1,6 +1,5 @@
 use crate::messaging::messagefragment::FRAGMENT_HEADER_SIZE;
 use crate::messaging::MessageFragment;
-use log::{trace, info, warn, error};
 
 pub struct Fragmenter {
     next_id: u32,
@@ -26,16 +25,11 @@ impl Fragmenter {
         }
 
         let fragment_payload_size = self.max_datagram_size - FRAGMENT_HEADER_SIZE;
-
-        info!("Number: {:?}, {:?}", buf.len(), fragment_payload_size);
-
         let mut number_of_fragments = buf.len() / fragment_payload_size;
 
         if buf.len() % fragment_payload_size != 0 {
             number_of_fragments = number_of_fragments + 1;
         }
-
-        info!("number_of_fragments: {:?}", number_of_fragments);
 
         let mut fragments = Vec::new();
 
@@ -44,8 +38,6 @@ impl Fragmenter {
             let end = (start + fragment_payload_size).min(buf.len());
 
             let fragment_buf = buf[start..end].to_vec().clone();
-
-            info!("start, end, fragment_buf.len(): {:?}, {:?}, {:?}", start, end, fragment_buf.len());
 
             let fragment = MessageFragment::new(
                 id,

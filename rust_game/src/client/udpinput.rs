@@ -85,54 +85,47 @@ impl<StateType, InputType> ChannelThread<()> for UdpInput<StateType, InputType>
             }
 
             let filled_buf = &mut buf[..number_of_bytes];
-            let fragment_result: Result<MessageFragment, Error> = rmp_serde::from_read_ref(filled_buf);
+            let fragment = MessageFragment::from_vec(filled_buf.to_vec());
 
-            match fragment_result {
-                Ok(fragment) => {
-                    if let Some(message_buf) = self.fragment_assembler.add_fragment(fragment) {
-                        let result: Result<ToClientMessageUDP::<StateType, InputType>, Error> = rmp_serde::from_read_ref(&message_buf);
+            if let Some(message_buf) = self.fragment_assembler.add_fragment(fragment) {
 
-                        match result {
-                            Ok(message) => {
+                let result: Result<ToClientMessageUDP::<StateType, InputType>, Error> = rmp_serde::from_read_ref(&message_buf);
 
-                                //Why does this crash the client?
-                                //info!("{:?}", message);
+                match result {
+                    Ok(message) => {
 
-                                let time_received = TimeValue::now();
+                        //Why does this crash the client?
+                        //info!("{:?}", message);
 
-                                receiver.try_iter(&mut self);
+                        let time_received = TimeValue::now();
 
-                                match message {
-                                    ToClientMessageUDP::TimeMessage(time_message) => {
-                                        //info!("Time message: {:?}", time_message.get_step());
-                                        self.time_message_consumers.accept(&TimeReceived::new(time_received, time_message));
+                        receiver.try_iter(&mut self);
 
-                                    }
-                                    ToClientMessageUDP::InputMessage(input_message) => {
-                                        //TODO: ignore input messages from this player
-                                        //info!("Input message: {:?}", input_message.get_step());
-                                        self.time_of_last_input_receive = TimeValue::now();
-                                        self.input_message_consumers.accept(&input_message);
+                        match message {
+                            ToClientMessageUDP::TimeMessage(time_message) => {
+                                //info!("Time message: {:?}", time_message.get_step());
+                                self.time_message_consumers.accept(&TimeReceived::new(time_received, time_message));
 
-                                    }
-                                    ToClientMessageUDP::StateMessage(state_message) => {
-                                        //info!("State message: {:?}", state_message.get_sequence());
-                                        self.time_of_last_state_receive = TimeValue::now();
-                                        self.state_message_consumers.accept(&state_message);
-
-                                    }
-                                }
                             }
-                            Err(error) => {
-                                error!("Error: {:?}", error);
-                                return;
+                            ToClientMessageUDP::InputMessage(input_message) => {
+                                //TODO: ignore input messages from this player
+                                //info!("Input message: {:?}", input_message.get_step());
+                                self.time_of_last_input_receive = TimeValue::now();
+                                self.input_message_consumers.accept(&input_message);
+
+                            }
+                            ToClientMessageUDP::StateMessage(state_message) => {
+                                //info!("State message: {:?}", state_message.get_sequence());
+                                self.time_of_last_state_receive = TimeValue::now();
+                                self.state_message_consumers.accept(&state_message);
+
                             }
                         }
                     }
-                }
-                Err(error) => {
-                    error!("Error: {:?}", error);
-                    return;
+                    Err(error) => {
+                        error!("Error: {:?}", error);
+                        return;
+                    }
                 }
             }
         }

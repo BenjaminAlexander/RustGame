@@ -115,7 +115,7 @@ impl PartiallyAssembledFragment {
         let mut length = 0;
 
         for option in &self.fragments {
-            length = length + option.as_ref().unwrap().get_buf().len();
+            length = length + option.as_ref().unwrap().get_fragment_length();
         }
 
         let mut buf = Vec::with_capacity(length);
