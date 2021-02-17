@@ -140,20 +140,20 @@ impl<StateType, InputType> ChannelDrivenThread<()> for Manager<StateType, InputT
             trace!("Trying update current: {:?}, next: {:?}", self.steps[current].get_step_index(), self.steps[next].get_step_index());
 
             if !self.steps[next].is_state_final() &&
-                self.steps[current].need_to_compute_next_state() ||
-                should_drop_current {
+                (self.steps[current].need_to_compute_next_state() ||
+                (should_drop_current && self.steps[next].get_state().is_none())) {
 
                 let next_state = self.steps[current].calculate_next_state();
                 self.steps[next].set_calculated_state(next_state);
 
-                if (self.steps[current].is_complete() && self.steps[current].get_input_count() == player_count) ||
-                    should_drop_current {
+                if self.steps[current].is_complete() && self.steps[current].get_input_count() == player_count {
                     self.steps[next].mark_as_complete();
                 }
             }
             self.steps[current].mark_as_calculation_not_needed();
 
             if should_drop_current {
+                self.steps[next].mark_as_complete();
                 let dropped = self.steps.pop_front().unwrap();
                 trace!("Dropped step: {:?}", dropped.get_step_index());
             } else {

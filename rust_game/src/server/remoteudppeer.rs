@@ -23,14 +23,3 @@ impl RemoteUdpPeer {
         return self.remote_peer;
     }
 }
-
-impl PartialEq for RemoteUdpPeer {
-    fn eq(&self, other: &Self) -> bool {
-        return self.player_index.eq(&other.player_index) &&
-            self.remote_peer.eq(&other.remote_peer);
-    }
-}
-
-impl Eq for RemoteUdpPeer {
-
-}
