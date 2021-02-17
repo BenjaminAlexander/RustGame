@@ -37,7 +37,6 @@ impl Character {
     pub fn get_fired_bullet(&self, input_option: Option<&SimpleInput>) -> Option<Bullet> {
         if let Some(input) = input_option {
             if input.should_fire() {
-                info!("FIRE!!!");
                 return Some(Bullet::new(self.position, input.get_aim_point()));
             }
         }

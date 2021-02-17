@@ -8,8 +8,9 @@ use piston::RenderArgs;
 use crate::gametime::TimeDuration;
 use crate::simplegame::bullet::Bullet;
 
-//TODO: 16-20 mills causes some strange behavior
-pub const STEP_DURATION: TimeDuration = TimeDuration::from_millis(16);
+//TODO: 8 mills causes some strange input loss
+//TODO: its connected to n-1,n,n+1 in core when timer messages come in
+pub const STEP_DURATION: TimeDuration = TimeDuration::from_millis(8);
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct SimpleState {

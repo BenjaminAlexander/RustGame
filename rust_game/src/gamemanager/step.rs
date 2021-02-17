@@ -45,12 +45,38 @@ impl<StateType, InputType> Step<StateType, InputType>
     }
 
     pub fn set_final_state(&mut self, state_message: StateMessage<StateType>) {
-        self.state = Some(state_message.get_state());
+
+        let new_state = state_message.get_state();
+        let mut has_changed = false;
+
+        if let Some(old_state) = &self.state {
+            let old_buf = rmp_serde::to_vec(old_state).unwrap();
+            let new_buf = rmp_serde::to_vec(&new_state).unwrap();
+
+            if old_buf.len() != new_buf.len() {
+                has_changed = true;
+
+            } else {
+                for i in 0..old_buf.len() {
+                    if !old_buf[i].eq(&new_buf[i]) {
+                        has_changed = true;
+                        break;
+                    }
+                }
+            }
+        } else {
+            has_changed = true;
+        }
+
+        self.state = Some(new_state);
         self.is_state_final = true;
         self.is_state_complete = true;
-        self.need_to_compute_next_state = true;
         self.need_to_send_as_complete = true;
-        self.need_to_send_as_changed = true;
+
+        if has_changed {
+            self.need_to_compute_next_state = true;
+            self.need_to_send_as_changed = true;
+        }
 
         //info!("Set final Step: {:?}", self.step_index);
     }
