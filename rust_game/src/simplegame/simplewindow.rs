@@ -55,7 +55,9 @@ impl SimpleWindow {
             } else {
 
                 match e {
-                    Event::Input(input, _) => simple_window.input(input),
+                    Event::Input(input, _) => {
+                        simple_window.input(input)
+                    },
                     _ => {}
                 }
             }

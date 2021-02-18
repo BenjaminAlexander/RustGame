@@ -169,24 +169,26 @@ impl<StateType, InputEventHandlerType, InputType, InputEventType> Consumer<TimeM
                 let udp_output_sender = core.udp_output_sender.as_ref().unwrap();
                 let initial_information = core.initial_information.as_ref().unwrap();
 
-                let message = InputMessage::<InputType>::new(
-                    //TODO: message or last message?
+                if time_message.get_step() > last_time_message.get_step() {
+                    let message = InputMessage::<InputType>::new(
+                        //TODO: message or last message?
+                        //TODO: define strict and consistent rules for how real time relates to ticks, input deadlines and display states
+                        time_message.get_step(),
+                        initial_information.get_player_index(),
+                        core.input_event_handler.get_input()
+                    );
+
+                    manager_sender.accept(message.clone());
+                    udp_output_sender.accept(message);
+
+                    let client_drop_time = time_message.get_scheduled_time().subtract(core.grace_period * 2);
+                    let drop_step = time_message.get_step_from_actual_time(client_drop_time).ceil() as usize;
+
+                    manager_sender.drop_steps_before(drop_step);
+                    //TODO: message or last message or next?
                     //TODO: define strict and consistent rules for how real time relates to ticks, input deadlines and display states
-                    last_time_message.get_step(),
-                    initial_information.get_player_index(),
-                    core.input_event_handler.get_input()
-                );
-
-                manager_sender.accept(message.clone());
-                udp_output_sender.accept(message);
-
-                let client_drop_time = time_message.get_scheduled_time().subtract(core.grace_period * 2);
-                let drop_step = time_message.get_step_from_actual_time(client_drop_time).ceil() as usize;
-
-                manager_sender.drop_steps_before(drop_step);
-                //TODO: message or last message or next?
-                //TODO: define strict and consistent rules for how real time relates to ticks, input deadlines and display states
-                manager_sender.set_requested_step(time_message.get_step());
+                    manager_sender.set_requested_step(time_message.get_step() + 1);
+                }
             }
 
             core.last_time_message = Some(time_message);

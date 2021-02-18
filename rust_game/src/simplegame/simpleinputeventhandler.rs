@@ -27,7 +27,6 @@ impl SimpleInputEventHandler {
     }
 
     fn accumulate_button(&mut self, button: &ButtonArgs) {
-
         match button.button {
             Button::Keyboard(key) => {
                 match key {

@@ -204,7 +204,7 @@ impl<StateType, InputType> Consumer<TimeMessage> for Sender<Core<StateType, Inpu
             if core.manager_sender.is_some() {
                 let manager_sender = core.manager_sender.as_ref().unwrap();
                 manager_sender.drop_steps_before(core.drop_steps_before);
-                manager_sender.set_requested_step(time_message.get_step());
+                manager_sender.set_requested_step(time_message.get_step() + 1);
             }
 
         }).unwrap();
