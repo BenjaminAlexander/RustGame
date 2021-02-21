@@ -5,7 +5,7 @@ use crate::threading::{Consumer, Sender, Receiver, channel};
 use crate::gametime::{TimeMessage, TimeValue};
 
 pub struct RenderReceiver<StateType, InputType>
-    where StateType: State<InputType>,
+    where StateType: State,
           InputType: Input {
 
     receiver: Receiver<Data<StateType, InputType>>,
@@ -13,7 +13,7 @@ pub struct RenderReceiver<StateType, InputType>
 }
 
 pub struct Data<StateType, InputType>
-    where StateType: State<InputType>,
+    where StateType: State,
           InputType: Input {
 
     step_queue: Vec<StepMessage<StateType, InputType>>,
@@ -21,7 +21,7 @@ pub struct Data<StateType, InputType>
 }
 
 impl<StateType, InputType> RenderReceiver<StateType, InputType>
-    where StateType: State<InputType>,
+    where StateType: State,
           InputType: Input {
 
     pub fn new() -> (Sender<Data<StateType, InputType>>, Self) {
@@ -78,7 +78,7 @@ impl<StateType, InputType> RenderReceiver<StateType, InputType>
 }
 
 impl<StateType, InputType> Consumer<StepMessage<StateType, InputType>> for Sender<Data<StateType, InputType>>
-    where StateType: State<InputType>,
+    where StateType: State,
           InputType: Input {
 
     fn accept(&self, step_message: StepMessage<StateType, InputType>) {
@@ -97,7 +97,7 @@ impl<StateType, InputType> Consumer<StepMessage<StateType, InputType>> for Sende
 }
 
 impl<StateType, InputType> Consumer<TimeMessage> for Sender<Data<StateType, InputType>>
-    where StateType: State<InputType>,
+    where StateType: State,
           InputType: Input {
 
     fn accept(&self, time_message: TimeMessage) {

@@ -3,7 +3,7 @@ use std::str::FromStr;
 use crate::gametime::{TimeDuration, GameTimer, TimeMessage};
 use crate::threading::{ChannelThread, Sender, ChannelDrivenThread, Consumer};
 use crate::client::tcpinput::TcpInput;
-use crate::interface::{Input, State, InputEvent, InputEventHandler};
+use crate::interface::{Input, State, InputEvent, InputEventHandler, StateUpdate};
 use std::marker::PhantomData;
 use crate::client::tcpoutput::TcpOutput;
 use crate::messaging::{StateMessage, InitialInformation, InputMessage};
@@ -12,10 +12,11 @@ use log::{info, trace};
 use crate::client::udpoutput::UdpOutput;
 use crate::client::udpinput::UdpInput;
 
-pub struct Core<StateType, InputType, InputEventHandlerType, InputEventType>
-    where StateType: State<InputType>,
-          InputEventHandlerType: InputEventHandler<InputType, InputEventType>,
+pub struct Core<StateType, InputType, StateUpdateType, InputEventHandlerType, InputEventType>
+    where StateType: State,
           InputType: Input,
+          StateUpdateType: StateUpdate<StateType, InputType>,
+          InputEventHandlerType: InputEventHandler<InputType, InputEventType>,
           InputEventType: InputEvent {
 
     server_ip: String,
@@ -25,7 +26,7 @@ pub struct Core<StateType, InputType, InputEventHandlerType, InputEventType>
     grace_period: TimeDuration,
     clock_average_size: usize,
     input_event_handler: InputEventHandlerType,
-    manager_sender: Option<Sender<Manager<StateType, InputType>>>,
+    manager_sender: Option<Sender<Manager<StateType, InputType, StateUpdateType>>>,
     udp_output_sender: Option<Sender<UdpOutput<StateType, InputType>>>,
     tcp_output_sender: Option<Sender<TcpOutput>>,
     initial_information: Option<InitialInformation<StateType>>,
@@ -33,10 +34,11 @@ pub struct Core<StateType, InputType, InputEventHandlerType, InputEventType>
     phantom: PhantomData<InputEventType>
 }
 
-impl<StateType, InputEventHandlerType, InputType, InputEventType> Core<StateType, InputType, InputEventHandlerType, InputEventType>
-    where StateType: State<InputType>,
-          InputEventHandlerType: InputEventHandler<InputType, InputEventType>,
+impl<StateType, InputType, StateUpdateType, InputEventHandlerType, InputEventType> Core<StateType, InputType, StateUpdateType, InputEventHandlerType, InputEventType>
+    where StateType: State,
           InputType: Input,
+          StateUpdateType: StateUpdate<StateType, InputType>,
+          InputEventHandlerType: InputEventHandler<InputType, InputEventType>,
           InputEventType: InputEvent {
 
     pub fn new(server_ip: &str,
@@ -63,10 +65,11 @@ impl<StateType, InputEventHandlerType, InputType, InputEventType> Core<StateType
     }
 }
 
-impl<StateType, InputEventHandlerType, InputType, InputEventType> ChannelDrivenThread<()> for Core<StateType, InputType, InputEventHandlerType, InputEventType>
-    where StateType: State<InputType>,
-          InputEventHandlerType: InputEventHandler<InputType, InputEventType>,
+impl<StateType, InputType, StateUpdateType, InputEventHandlerType, InputEventType> ChannelDrivenThread<()> for Core<StateType, InputType, StateUpdateType, InputEventHandlerType, InputEventType>
+    where StateType: State,
           InputType: Input,
+          StateUpdateType: StateUpdate<StateType, InputType>,
+          InputEventHandlerType: InputEventHandler<InputType, InputEventType>,
           InputEventType: InputEvent {
 
     fn on_channel_disconnect(&mut self) -> () {
@@ -74,10 +77,11 @@ impl<StateType, InputEventHandlerType, InputType, InputEventType> ChannelDrivenT
     }
 }
 
-impl<StateType, InputEventHandlerType, InputType, InputEventType> Sender<Core<StateType, InputType, InputEventHandlerType, InputEventType>>
-    where StateType: State<InputType>,
-          InputEventHandlerType: InputEventHandler<InputType, InputEventType>,
+impl<StateType, InputType, StateUpdateType, InputEventHandlerType, InputEventType> Sender<Core<StateType, InputType, StateUpdateType, InputEventHandlerType, InputEventType>>
+    where StateType: State,
           InputType: Input,
+          StateUpdateType: StateUpdate<StateType, InputType>,
+          InputEventHandlerType: InputEventHandler<InputType, InputEventType>,
           InputEventType: InputEvent {
 
     pub fn connect(&self) -> RenderReceiver<StateType, InputType> {
@@ -94,7 +98,7 @@ impl<StateType, InputEventHandlerType, InputType, InputEventType> Sender<Core<St
 
             let udp_socket = UdpSocket::bind("127.0.0.1:0").unwrap();
 
-            let (manager_sender, manager_builder) = Manager::<StateType, InputType>::new(core.grace_period).build();
+            let (manager_sender, manager_builder) = Manager::<StateType, InputType, StateUpdateType>::new(core.grace_period).build();
             let (game_timer_sender, game_timer_builder) = GameTimer::new(core.step_duration, core.clock_average_size).build();
             let (tcp_input_sender, tcp_input_builder) = TcpInput::<StateType, InputType>::new(&tcp_stream).unwrap().build();
             let (tcp_output_sender, tcp_output_builder) = TcpOutput::new(&tcp_stream).unwrap().build();
@@ -131,10 +135,11 @@ impl<StateType, InputEventHandlerType, InputType, InputEventType> Sender<Core<St
     }
 }
 
-impl<StateType, InputEventHandlerType, InputType, InputEventType> Consumer<InitialInformation<StateType>> for Sender<Core<StateType, InputType, InputEventHandlerType, InputEventType>>
-    where StateType: State<InputType>,
-          InputEventHandlerType: InputEventHandler<InputType, InputEventType>,
+impl<StateType, InputType, StateUpdateType, InputEventHandlerType, InputEventType> Consumer<InitialInformation<StateType>> for Sender<Core<StateType, InputType, StateUpdateType, InputEventHandlerType, InputEventType>>
+    where StateType: State,
           InputType: Input,
+          StateUpdateType: StateUpdate<StateType, InputType>,
+          InputEventHandlerType: InputEventHandler<InputType, InputEventType>,
           InputEventType: InputEvent {
 
     fn accept(&self, initial_information: InitialInformation<StateType>) {
@@ -145,10 +150,11 @@ impl<StateType, InputEventHandlerType, InputType, InputEventType> Consumer<Initi
     }
 }
 
-impl<StateType, InputEventHandlerType, InputType, InputEventType> Consumer<TimeMessage> for Sender<Core<StateType, InputType, InputEventHandlerType, InputEventType>>
-    where StateType: State<InputType>,
-          InputEventHandlerType: InputEventHandler<InputType, InputEventType>,
+impl<StateType, InputType, StateUpdateType, InputEventHandlerType, InputEventType> Consumer<TimeMessage> for Sender<Core<StateType, InputType, StateUpdateType, InputEventHandlerType, InputEventType>>
+    where StateType: State,
           InputType: Input,
+          StateUpdateType: StateUpdate<StateType, InputType>,
+          InputEventHandlerType: InputEventHandler<InputType, InputEventType>,
           InputEventType: InputEvent {
 
     fn accept(&self, time_message: TimeMessage) {
@@ -197,10 +203,11 @@ impl<StateType, InputEventHandlerType, InputType, InputEventType> Consumer<TimeM
     }
 }
 
-impl<StateType, InputEventHandlerType, InputType, InputEventType> Consumer<InputEventType> for Sender<Core<StateType, InputType, InputEventHandlerType, InputEventType>>
-    where StateType: State<InputType>,
-          InputEventHandlerType: InputEventHandler<InputType, InputEventType>,
+impl<StateType, InputType, StateUpdateType, InputEventHandlerType, InputEventType> Consumer<InputEventType> for Sender<Core<StateType, InputType, StateUpdateType, InputEventHandlerType, InputEventType>>
+    where StateType: State,
           InputType: Input,
+          StateUpdateType: StateUpdate<StateType, InputType>,
+          InputEventHandlerType: InputEventHandler<InputType, InputEventType>,
           InputEventType: InputEvent {
 
     fn accept(&self, input_event: InputEventType) {

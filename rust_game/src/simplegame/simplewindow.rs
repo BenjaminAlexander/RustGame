@@ -11,13 +11,13 @@ use log::info;
 
 pub struct SimpleWindow {
     render_receiver: RenderReceiver<SimpleState, SimpleInput>,
-    client_core_sender_option: Option<Sender<Core<SimpleState, SimpleInput, SimpleInputEventHandler, SimpleInputEvent>>>
+    client_core_sender_option: Option<Sender<Core<SimpleState, SimpleInput, SimpleState, SimpleInputEventHandler, SimpleInputEvent>>>
 }
 
 impl SimpleWindow {
 
     pub fn new(render_receiver: RenderReceiver<SimpleState, SimpleInput>,
-               client_core_sender_option: Option<Sender<Core<SimpleState, SimpleInput, SimpleInputEventHandler, SimpleInputEvent>>>) -> Self {
+               client_core_sender_option: Option<Sender<Core<SimpleState, SimpleInput, SimpleState, SimpleInputEventHandler, SimpleInputEvent>>>) -> Self {
 
         return Self{
             render_receiver,

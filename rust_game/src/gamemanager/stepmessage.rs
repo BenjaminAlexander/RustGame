@@ -5,7 +5,7 @@ use std::cmp::Ordering;
 
 #[derive(Debug)]
 pub struct StepMessage<StateType, InputType>
-    where StateType: State<InputType>,
+    where StateType: State,
           InputType: Input {
 
     step_index: usize,
@@ -14,7 +14,7 @@ pub struct StepMessage<StateType, InputType>
 }
 
 impl<StateType, InputType> StepMessage<StateType, InputType>
-    where StateType: State<InputType>,
+    where StateType: State,
           InputType: Input {
 
     pub fn new(step_index: usize,
@@ -34,7 +34,7 @@ impl<StateType, InputType> StepMessage<StateType, InputType>
 }
 
 impl<StateType, InputType> Clone for StepMessage<StateType, InputType>
-    where StateType: State<InputType>,
+    where StateType: State,
           InputType: Input {
 
     fn clone(&self) -> Self {
@@ -47,8 +47,8 @@ impl<StateType, InputType> Clone for StepMessage<StateType, InputType>
 }
 
 impl<StateType, InputType> PartialEq for StepMessage<StateType, InputType>
-    where StateType: State<InputType>,
-          InputType: Input {
+    where StateType: State,
+    InputType: Input {
 
     fn eq(&self, other: &Self) -> bool {
         return self.step_index.eq(&other.step_index);
@@ -56,13 +56,13 @@ impl<StateType, InputType> PartialEq for StepMessage<StateType, InputType>
 }
 
 impl<StateType, InputType> Eq for StepMessage<StateType, InputType>
-    where StateType: State<InputType>,
+    where StateType: State,
           InputType: Input {
 
 }
 
 impl<StateType, InputType> PartialOrd for StepMessage<StateType, InputType>
-    where StateType: State<InputType>,
+    where StateType: State,
           InputType: Input {
 
     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
@@ -71,7 +71,7 @@ impl<StateType, InputType> PartialOrd for StepMessage<StateType, InputType>
 }
 
 impl<StateType, InputType> Ord for StepMessage<StateType, InputType>
-    where StateType: State<InputType>,
+    where StateType: State,
           InputType: Input {
 
     fn cmp(&self, other: &Self) -> Ordering {

@@ -10,7 +10,7 @@ use std::marker::PhantomData;
 
 pub struct TcpOutput<StateType, InputType>
     where InputType: Input,
-          StateType: State<InputType> {
+          StateType: State {
 
     player_index: usize,
     tcp_stream: TcpStream,
@@ -20,7 +20,7 @@ pub struct TcpOutput<StateType, InputType>
 
 impl<StateType, InputType> TcpOutput<StateType, InputType>
     where InputType: Input,
-          StateType: State<InputType> {
+          StateType: State {
 
     pub fn new(player_index: usize,
                tcp_stream: &TcpStream) -> io::Result<Self> {
@@ -36,7 +36,7 @@ impl<StateType, InputType> TcpOutput<StateType, InputType>
 
 impl<StateType, InputType> ChannelThread<()> for TcpOutput<StateType, InputType>
     where InputType: Input,
-          StateType: State<InputType> {
+          StateType: State {
 
     fn run(mut self, receiver: Receiver<Self>) -> () {
 
@@ -57,7 +57,7 @@ impl<StateType, InputType> ChannelThread<()> for TcpOutput<StateType, InputType>
 
 impl<StateType, InputType> Sender<TcpOutput<StateType, InputType>>
     where InputType: Input,
-          StateType: State<InputType> {
+          StateType: State {
 
     pub fn send_initial_information(&self, player_count: usize, initial_state: StateType) {
         self.send(move |tcp_output|{

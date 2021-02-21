@@ -10,7 +10,7 @@ use log::{error, info, warn};
 use std::time::Duration;
 
 pub struct UdpInput<StateType, InputType>
-    where StateType: State<InputType>,
+    where StateType: State,
           InputType: Input {
 
     server_socket_addr: SocketAddr,
@@ -26,7 +26,7 @@ pub struct UdpInput<StateType, InputType>
 }
 
 impl<StateType, InputType> UdpInput<StateType, InputType>
-    where StateType: State<InputType>,
+    where StateType: State,
           InputType: Input {
 
     pub fn new(server_socket_addr_v4: SocketAddrV4, socket: &UdpSocket) -> io::Result<Self> {
@@ -50,7 +50,7 @@ impl<StateType, InputType> UdpInput<StateType, InputType>
 }
 
 impl<StateType, InputType> ChannelThread<()> for UdpInput<StateType, InputType>
-    where StateType: State<InputType>,
+    where StateType: State,
           InputType: Input {
 
     fn run(mut self, receiver: Receiver<Self>) {
@@ -132,7 +132,7 @@ impl<StateType, InputType> ChannelThread<()> for UdpInput<StateType, InputType>
     }
 }
 impl<StateType, InputType> Sender<UdpInput<StateType, InputType>>
-    where StateType: State<InputType>,
+    where StateType: State,
           InputType: Input {
 
     pub fn add_time_message_consumer<T>(&self, consumer: T) -> Result<(), SendError<UdpInput<StateType, InputType>>>

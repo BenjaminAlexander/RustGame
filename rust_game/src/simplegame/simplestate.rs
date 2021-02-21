@@ -1,5 +1,5 @@
 use crate::simplegame::{Vector2, SimpleInputEvent, SimpleInput};
-use crate::interface::{State, NextStateArg};
+use crate::interface::{State, NextStateArg, StateUpdate};
 use serde::{Deserialize, Serialize};
 use crate::simplegame::character::Character;
 use opengl_graphics::GlGraphics;
@@ -8,9 +8,7 @@ use piston::RenderArgs;
 use crate::gametime::TimeDuration;
 use crate::simplegame::bullet::Bullet;
 
-//TODO: 8 mills causes some strange input loss
-//TODO: its connected to n-1,n,n+1 in core when timer messages come in
-pub const STEP_DURATION: TimeDuration = TimeDuration::from_millis(50);
+pub const STEP_DURATION: TimeDuration = TimeDuration::from_millis(16);
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct SimpleState {
@@ -18,7 +16,7 @@ pub struct SimpleState {
     bullets: Vec<Bullet>
 }
 
-impl State<SimpleInput> for SimpleState {
+impl State for SimpleState {
 
     fn new(player_count: usize) -> Self {
 
@@ -34,12 +32,16 @@ impl State<SimpleInput> for SimpleState {
 
         return new;
     }
+}
 
-    fn get_next_state(&self, arg: &NextStateArg<SimpleInput>) -> Self {
-        let mut new = self.clone();
+impl StateUpdate<SimpleState, SimpleInput> for SimpleState {
+
+    fn get_next_state(state: &SimpleState, arg: &NextStateArg<SimpleInput>) -> SimpleState {
+        let mut new = state.clone();
         new.update(arg);
         return new;
     }
+
 }
 
 impl SimpleState {

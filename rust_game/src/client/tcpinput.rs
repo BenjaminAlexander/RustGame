@@ -10,7 +10,7 @@ use crate::interface::{Input, State, InputEvent};
 use std::marker::PhantomData;
 
 pub struct TcpInput <StateType, InputType>
-    where StateType: State<InputType>,
+    where StateType: State,
           InputType: Input {
 
     player_index: Option<usize>,
@@ -20,7 +20,7 @@ pub struct TcpInput <StateType, InputType>
 }
 
 impl<StateType, InputType> TcpInput<StateType, InputType>
-    where StateType: State<InputType>,
+    where StateType: State,
           InputType: Input {
 
     pub fn new(tcp_stream: &TcpStream) -> io::Result<Self> {
@@ -34,7 +34,7 @@ impl<StateType, InputType> TcpInput<StateType, InputType>
 }
 
 impl<StateType, InputType> ChannelThread<()> for TcpInput<StateType, InputType>
-    where StateType: State<InputType>,
+    where StateType: State,
           InputType: Input {
 
     fn run(mut self, receiver: Receiver<Self>) {
@@ -72,7 +72,7 @@ impl<StateType, InputType> ChannelThread<()> for TcpInput<StateType, InputType>
 }
 
 impl<StateType, InputType> Sender<TcpInput<StateType, InputType>>
-    where StateType: State<InputType>,
+    where StateType: State,
           InputType: Input {
 
     pub fn add_initial_information_message_consumer<T>(&self, consumer: T) -> Result<(), SendError<TcpInput<StateType, InputType>>>

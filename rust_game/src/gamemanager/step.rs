@@ -1,12 +1,13 @@
-use crate::interface::{Input, State, InputEvent, NextStateArg};
+use crate::interface::{Input, State, InputEvent, NextStateArg, StateUpdate};
 use crate::messaging::{InputMessage, StateMessage};
 use crate::gamemanager::stepmessage::StepMessage;
 use std::marker::PhantomData;
 use log::{trace, info, warn};
 
-pub struct Step<StateType, InputType>
-    where StateType: State<InputType>,
-          InputType: Input {
+pub struct Step<StateType, InputType, StateUpdateType>
+    where StateType: State,
+          InputType: Input,
+          StateUpdateType: StateUpdate<StateType, InputType>{
 
     step_index: usize,
     next_state_arg: NextStateArg<InputType>,
@@ -15,12 +16,14 @@ pub struct Step<StateType, InputType>
     is_state_complete: bool,
     need_to_compute_next_state: bool,
     need_to_send_as_complete: bool,
-    need_to_send_as_changed: bool
+    need_to_send_as_changed: bool,
+    phantom: PhantomData<StateUpdateType>,
 }
 
-impl<StateType, InputType> Step<StateType, InputType>
-    where StateType: State<InputType>,
-          InputType: Input {
+impl<StateType, InputType, StateUpdateType> Step<StateType, InputType, StateUpdateType>
+    where StateType: State,
+          InputType: Input,
+          StateUpdateType: StateUpdate<StateType, InputType>{
 
     pub fn blank(step_index: usize) -> Self {
 
@@ -32,7 +35,8 @@ impl<StateType, InputType> Step<StateType, InputType>
             is_state_complete: false,
             need_to_compute_next_state: false,
             need_to_send_as_complete: false,
-            need_to_send_as_changed: false
+            need_to_send_as_changed: false,
+            phantom: PhantomData
         };
     }
 
@@ -82,7 +86,7 @@ impl<StateType, InputType> Step<StateType, InputType>
     }
 
     pub fn calculate_next_state(&mut self) -> StateType {
-        return self.state.as_ref().unwrap().get_next_state(&self.next_state_arg);
+        return StateUpdateType::get_next_state(self.state.as_ref().unwrap(), &self.next_state_arg);
     }
 
     pub fn need_to_compute_next_state(&self) -> bool {
@@ -149,15 +153,13 @@ impl<StateType, InputType> Step<StateType, InputType>
         }
 
     }
-
-
-
 }
 
 //TODO: is this needed?
-impl<StateType, InputType> Clone for Step<StateType, InputType>
-    where StateType: State<InputType>,
-          InputType: Input {
+impl<StateType, InputType, StateUpdateType> Clone for Step<StateType, InputType, StateUpdateType>
+    where StateType: State,
+          InputType: Input,
+          StateUpdateType: StateUpdate<StateType, InputType>{
 
     fn clone(&self) -> Self {
         Self{
@@ -168,7 +170,8 @@ impl<StateType, InputType> Clone for Step<StateType, InputType>
             is_state_complete: self.is_state_complete,
             need_to_compute_next_state: self.need_to_compute_next_state,
             need_to_send_as_complete: self.need_to_send_as_complete,
-            need_to_send_as_changed: self.need_to_send_as_changed
+            need_to_send_as_changed: self.need_to_send_as_changed,
+            phantom: PhantomData
         }
     }
 }

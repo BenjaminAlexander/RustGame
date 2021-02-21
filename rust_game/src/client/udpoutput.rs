@@ -6,7 +6,7 @@ use std::io;
 use crate::threading::{ChannelThread, Receiver, Consumer, Sender};
 use std::str::FromStr;
 
-pub struct UdpOutput<StateType: State<InputType>, InputType: Input> {
+pub struct UdpOutput<StateType: State, InputType: Input> {
     server_address: SocketAddrV4,
     socket: UdpSocket,
     fragmenter: Fragmenter,
@@ -15,7 +15,7 @@ pub struct UdpOutput<StateType: State<InputType>, InputType: Input> {
     initial_information: Option<InitialInformation<StateType>>
 }
 
-impl<StateType: State<InputType>, InputType: Input> UdpOutput<StateType, InputType> {
+impl<StateType: State, InputType: Input> UdpOutput<StateType, InputType> {
 
     pub fn new(server_socket_addr_v4: SocketAddrV4,
                socket: &UdpSocket) -> io::Result<Self> {
@@ -47,7 +47,7 @@ impl<StateType: State<InputType>, InputType: Input> UdpOutput<StateType, InputTy
     }
 }
 
-impl<StateType: State<InputType>, InputType: Input> ChannelThread<()> for UdpOutput<StateType, InputType> {
+impl<StateType: State, InputType: Input> ChannelThread<()> for UdpOutput<StateType, InputType> {
 
     fn run(mut self, receiver: Receiver<Self>) -> () {
 
@@ -83,7 +83,7 @@ impl<StateType: State<InputType>, InputType: Input> ChannelThread<()> for UdpOut
 }
 
 impl<StateType, InputType> Consumer<InitialInformation<StateType>> for Sender<UdpOutput<StateType, InputType>>
-    where StateType: State<InputType>,
+    where StateType: State,
           InputType: Input {
 
     fn accept(&self, initial_information: InitialInformation<StateType>) {
@@ -98,7 +98,7 @@ impl<StateType, InputType> Consumer<InitialInformation<StateType>> for Sender<Ud
     }
 }
 
-impl<StateType: State<InputType>, InputType: Input> Consumer<InputMessage<InputType>> for Sender<UdpOutput<StateType, InputType>> {
+impl<StateType: State, InputType: Input> Consumer<InputMessage<InputType>> for Sender<UdpOutput<StateType, InputType>> {
 
     fn accept(&self, input_message: InputMessage<InputType>) {
         self.send(move |udp_output|{

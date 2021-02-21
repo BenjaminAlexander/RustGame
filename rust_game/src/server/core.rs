@@ -1,7 +1,7 @@
 use std::net::{TcpStream, Ipv4Addr, SocketAddrV4, UdpSocket};
 
 use log::{warn, trace, info};
-use crate::interface::{Input, State, InputEvent};
+use crate::interface::{Input, State, InputEvent, StateUpdate};
 use crate::server::tcpinput::TcpInput;
 use crate::threading::{ChannelDrivenThread, ChannelThread, Consumer, Sender};
 use crate::server::TcpListenerThread;
@@ -18,9 +18,10 @@ use crate::server::clientaddress::ClientAddress;
 //TODO: route game timer and player inputs through the core to
 // get synchronous enforcement of the grace period
 
-pub struct Core<StateType, InputType>
-    where StateType: State<InputType>,
-          InputType: Input {
+pub struct Core<StateType, InputType, StateUpdateType>
+    where StateType: State,
+          InputType: Input,
+          StateUpdateType: StateUpdate<StateType, InputType> {
 
     game_is_started: bool,
     tcp_port: u16,
@@ -33,22 +34,24 @@ pub struct Core<StateType, InputType>
     udp_socket: Option<UdpSocket>,
     udp_outputs: Vec<Sender<UdpOutput<StateType, InputType>>>,
     udp_input_sender: Option<Sender<UdpInput<InputType>>>,
-    manager_sender: Option<Sender<Manager<StateType, InputType>>>,
+    manager_sender: Option<Sender<Manager<StateType, InputType, StateUpdateType>>>,
     drop_steps_before: usize,
 }
 
-impl<StateType, InputType> ChannelDrivenThread<()> for Core<StateType, InputType>
-    where StateType: State<InputType>,
-          InputType: Input {
+impl<StateType, InputType, StateUpdateType> ChannelDrivenThread<()> for Core<StateType, InputType, StateUpdateType>
+    where StateType: State,
+          InputType: Input,
+          StateUpdateType: StateUpdate<StateType, InputType> {
 
     fn on_channel_disconnect(&mut self) -> () {
         ()
     }
 }
 
-impl<StateType, InputType> Core<StateType, InputType>
-    where StateType: State<InputType>,
-          InputType: Input {
+impl<StateType, InputType, StateUpdateType> Core<StateType, InputType, StateUpdateType>
+    where StateType: State,
+          InputType: Input,
+          StateUpdateType: StateUpdate<StateType, InputType>{
 
     pub fn new(tcp_port: u16,
                udp_port: u16,
@@ -74,9 +77,10 @@ impl<StateType, InputType> Core<StateType, InputType>
     }
 }
 
-impl<StateType, InputType> Sender<Core<StateType, InputType>>
-    where StateType: State<InputType>,
-          InputType: Input {
+impl<StateType, InputType, StateUpdateType> Sender<Core<StateType, InputType, StateUpdateType>>
+    where StateType: State,
+          InputType: Input,
+          StateUpdateType: StateUpdate<StateType, InputType>{
 
     pub fn start_listener(&self) {
         let clone = self.clone();
@@ -106,7 +110,7 @@ impl<StateType, InputType> Sender<Core<StateType, InputType>>
 
                 let initial_state = StateType::new(core.tcp_outputs.len());
 
-                let (manager_sender, manager_builder) = Manager::<StateType, InputType>::new(core.grace_period).build();
+                let (manager_sender, manager_builder) = Manager::<StateType, InputType, StateUpdateType>::new(core.grace_period).build();
                 let (timer_sender, timer_builder) = GameTimer::new(core.step_duration, 0).build();
 
                 timer_sender.add_timer_message_consumer(core_sender.clone());
@@ -148,9 +152,10 @@ impl<StateType, InputType> Sender<Core<StateType, InputType>>
 
 }
 
-impl<StateType, InputType> Consumer<TcpStream> for Sender<Core<StateType, InputType>>
-    where StateType: State<InputType>,
-          InputType: Input {
+impl<StateType, InputType, StateUpdateType> Consumer<TcpStream> for Sender<Core<StateType, InputType, StateUpdateType>>
+    where StateType: State,
+          InputType: Input,
+          StateUpdateType: StateUpdate<StateType, InputType>{
 
     fn accept(&self, tcp_stream: TcpStream) {
         self.send(move |core|{
@@ -193,9 +198,10 @@ impl<StateType, InputType> Consumer<TcpStream> for Sender<Core<StateType, InputT
     }
 }
 
-impl<StateType, InputType> Consumer<TimeMessage> for Sender<Core<StateType, InputType>>
-    where StateType: State<InputType>,
-          InputType: Input {
+impl<StateType, InputType, StateUpdateType> Consumer<TimeMessage> for Sender<Core<StateType, InputType, StateUpdateType>>
+    where StateType: State,
+          InputType: Input,
+          StateUpdateType: StateUpdate<StateType, InputType>{
 
     fn accept(&self, time_message: TimeMessage) {
         self.send(move |core|{
@@ -211,9 +217,10 @@ impl<StateType, InputType> Consumer<TimeMessage> for Sender<Core<StateType, Inpu
     }
 }
 
-impl<StateType, InputType> Consumer<InputMessage<InputType>> for Sender<Core<StateType, InputType>>
-    where StateType: State<InputType>,
-          InputType: Input {
+impl<StateType, InputType, StateUpdateType> Consumer<InputMessage<InputType>> for Sender<Core<StateType, InputType, StateUpdateType>>
+    where StateType: State,
+          InputType: Input,
+          StateUpdateType: StateUpdate<StateType, InputType>{
 
     fn accept(&self, input_message: InputMessage<InputType>) {
         self.send(move |core|{
@@ -227,14 +234,5 @@ impl<StateType, InputType> Consumer<InputMessage<InputType>> for Sender<Core<Sta
                 }
             }
         }).unwrap();
-    }
-}
-
-impl<StateType, InputType> Consumer<RemoteUdpPeer> for Sender<Core<StateType, InputType>>
-    where StateType: State<InputType>,
-          InputType: Input {
-
-    fn accept(&self, t: RemoteUdpPeer) {
-        unimplemented!()
     }
 }

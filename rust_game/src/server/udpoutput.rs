@@ -14,7 +14,7 @@ use crate::util::RollingAverage;
 
 pub struct UdpOutput<StateType, InputType>
     where InputType: Input,
-          StateType: State<InputType> {
+          StateType: State {
 
     player_index: usize,
     socket: UdpSocket,
@@ -34,7 +34,7 @@ pub struct UdpOutput<StateType, InputType>
 
 impl<StateType, InputType> UdpOutput<StateType, InputType>
     where InputType: Input,
-          StateType: State<InputType> {
+          StateType: State {
 
     pub fn new(time_message_period: TimeDuration,
                player_index: usize,
@@ -91,7 +91,7 @@ impl<StateType, InputType> UdpOutput<StateType, InputType>
 
 impl<StateType, InputType> ChannelThread<()> for UdpOutput<StateType, InputType>
     where InputType: Input,
-          StateType: State<InputType> {
+          StateType: State {
 
     fn run(mut self, receiver: Receiver<Self>) -> () {
 
@@ -130,7 +130,7 @@ impl<StateType, InputType> ChannelThread<()> for UdpOutput<StateType, InputType>
 
 impl<StateType, InputType> Consumer<TimeMessage> for Sender<UdpOutput<StateType, InputType>>
     where InputType: Input,
-          StateType: State<InputType> {
+          StateType: State {
 
     fn accept(&self, time_message: TimeMessage) {
 
@@ -166,7 +166,7 @@ impl<StateType, InputType> Consumer<TimeMessage> for Sender<UdpOutput<StateType,
 
 impl<StateType, InputType> Consumer<InputMessage<InputType>> for Sender<UdpOutput<StateType, InputType>>
     where InputType: Input,
-          StateType: State<InputType> {
+          StateType: State {
 
     fn accept(&self, input_message: InputMessage<InputType>) {
 
@@ -194,7 +194,7 @@ impl<StateType, InputType> Consumer<InputMessage<InputType>> for Sender<UdpOutpu
 
 impl<StateType, InputType> Consumer<StateMessage<StateType>> for Sender<UdpOutput<StateType, InputType>>
     where InputType: Input,
-          StateType: State<InputType> {
+          StateType: State {
 
     fn accept(&self, state_message: StateMessage<StateType>) {
 
@@ -221,7 +221,7 @@ impl<StateType, InputType> Consumer<StateMessage<StateType>> for Sender<UdpOutpu
 
 impl<StateType, InputType> Consumer<RemoteUdpPeer> for Sender<UdpOutput<StateType, InputType>>
     where InputType: Input,
-          StateType: State<InputType> {
+          StateType: State {
 
     fn accept(&self, remote_peer: RemoteUdpPeer) {
         self.send(|udp_output|{
