@@ -7,7 +7,7 @@ use graphics::*;
 
 const MAX_RANGE: f64 = 5000 as f64;
 
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone, Hash)]
 pub struct Bullet {
     start_position: Vector2,
     position: Vector2,

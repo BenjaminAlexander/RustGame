@@ -7,13 +7,15 @@ use graphics::Context;
 use piston::RenderArgs;
 use crate::gametime::TimeDuration;
 use crate::simplegame::bullet::Bullet;
+use std::collections::HashMap;
 
 pub const STEP_DURATION: TimeDuration = TimeDuration::from_millis(16);
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct SimpleState {
+    next_bullet_key: u32,
     player_characters: Vec<Character>,
-    bullets: Vec<Bullet>
+    bullets: HashMap<u32, Bullet>
 }
 
 impl State for SimpleState {
@@ -21,8 +23,9 @@ impl State for SimpleState {
     fn new(player_count: usize) -> Self {
 
         let mut new = Self{
+            next_bullet_key: 0,
             player_characters: Vec::new(),
-            bullets: Vec::new(),
+            bullets: HashMap::new(),
         };
 
         for i in 0..player_count {
@@ -48,14 +51,9 @@ impl SimpleState {
 
     fn update(&mut self, arg: &NextStateArg<SimpleInput>) {
 
-        let mut i = 0;
-        while i < self.bullets.len() {
-            if self.bullets[i].should_remove() {
-                self.bullets.remove(i);
-            } else {
-                i = i + 1;
-            }
-        }
+        self.bullets.retain(|key, value|{
+            return !value.should_remove();
+        });
 
         for i in 0..self.player_characters.len() {
             let input = arg.get_input(i);
@@ -63,11 +61,12 @@ impl SimpleState {
             self.player_characters[i].move_character(input);
 
             if let Some(bullet) = self.player_characters[i].get_fired_bullet(input) {
-                self.bullets.push(bullet);
+                self.bullets.insert(self.next_bullet_key, bullet);
+                self.next_bullet_key = self.next_bullet_key + 1;
             }
         }
 
-        for bullet in &mut self.bullets {
+        for bullet in self.bullets.values_mut() {
             bullet.update();
         }
     }
@@ -77,7 +76,7 @@ impl SimpleState {
             character.draw(args, context, gl);
         }
 
-        for bullet in &self.bullets {
+        for bullet in self.bullets.values() {
             bullet.draw(args, context, gl);
         }
     }

@@ -15,6 +15,8 @@ use crate::gamemanager::RenderReceiver;
 use graphics::*;
 use piston::input::Input as PistonInput;
 use std::io::Read;
+use std::collections::hash_map::{DefaultHasher, RandomState};
+use std::hash::{Hash, Hasher, BuildHasher};
 
 mod simplegame;
 mod messaging;
@@ -29,7 +31,24 @@ mod gamemanager;
 
 pub fn main() {
 
+
+
     logging::init_logging();
+
+    //15848021395497336319
+    //15848021395497336319
+
+    //14190037075425938315
+    //16148114578311864184
+
+    let x = Vector2::new(3 as f64, 5 as f64);
+
+    let rs = RandomState::new();
+    let mut s = rs.build_hasher();//DefaultHasher::new();
+    x.hash(&mut s);
+    info!("has: {:?}", s.finish());
+
+
 
     let args: Vec<String> = std::env::args().collect();
 

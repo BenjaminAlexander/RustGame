@@ -4,6 +4,7 @@ use crate::interface::{Input, State, InputEvent};
 use std::ops::{Sub, Add, Mul};
 use num::traits::Pow;
 use num::traits::real::Real;
+use std::hash::{Hash, Hasher};
 
 #[derive(Serialize, Deserialize, Debug, Clone, Copy)]
 pub struct Vector2 {
@@ -97,4 +98,11 @@ impl<T> Mul<T> for Vector2
 
 impl InputEvent for Vector2 {
 
+}
+
+impl Hash for Vector2 {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        self.x.to_be_bytes().hash(state);
+        self.y.to_be_bytes().hash(state);
+    }
 }
