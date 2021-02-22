@@ -9,3 +9,4 @@ pub use self::timemessage::TimeMessage;
 pub use self::gametimer::GameTimer;
 pub use crate::gametime::timevalue::TimeValue;
 pub use crate::gametime::timeduration::TimeDuration;
+pub use self::timevalue::EPOCH;

@@ -4,6 +4,7 @@ use piston::{RenderArgs, ButtonState};
 use opengl_graphics::{GlGraphics, OpenGL};
 use graphics::{Context, rectangle};
 use graphics::*;
+use crate::gametime::{TimeDuration, EPOCH};
 
 const MAX_RANGE: f64 = 5000 as f64;
 
@@ -26,19 +27,19 @@ impl Bullet {
         };
     }
 
-    pub fn get_position(&self, step: usize) -> Vector2 {
-        let steps = step - self.start_step;
-        return self.start_position + self.velocity * STEP_DURATION.get_millis() as f64 * steps as f64;
+    pub fn get_position(&self, duration_since_game_start: TimeDuration) -> Vector2 {
+        let duration_since_bullet_start = duration_since_game_start - (STEP_DURATION * self.start_step as i64);
+        return self.start_position + self.velocity * duration_since_bullet_start.get_millis() as f64;
     }
 
-    pub fn should_remove(&self, step: usize) -> bool {
-        return (self.get_position(step) -  self.start_position).get_length() > MAX_RANGE;
+    pub fn should_remove(&self, duration_since_game_start: TimeDuration) -> bool {
+        return (self.get_position(duration_since_game_start) -  self.start_position).get_length() > MAX_RANGE;
     }
 
-    pub fn draw(&self, step: usize, args: &RenderArgs, context: Context, gl: &mut GlGraphics) {
+    pub fn draw(&self, duration_since_game_start: TimeDuration, args: &RenderArgs, context: Context, gl: &mut GlGraphics) {
         const BLUE: [f32; 4] = [0.0, 0.0, 1.0, 1.0];
 
-        let (x, y) = self.get_position(step).get();
+        let (x, y) = self.get_position(duration_since_game_start).get();
         let x_in_window = (x as f64 / args.draw_size[0] as f64) * args.window_size[0];
         let y_in_window = (y as f64 / args.draw_size[1] as f64) * args.window_size[1];
 

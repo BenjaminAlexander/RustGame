@@ -110,7 +110,7 @@ impl<StateType, InputType, StateUpdateType> Sender<Core<StateType, InputType, St
 
                 let initial_state = StateType::new(core.tcp_outputs.len());
 
-                let (manager_sender, manager_builder) = Manager::<StateType, InputType, StateUpdateType>::new(core.grace_period).build();
+                let (manager_sender, manager_builder) = Manager::<StateType, InputType, StateUpdateType>::new(core.step_duration, core.grace_period).build();
                 let (timer_sender, timer_builder) = GameTimer::new(core.step_duration, 0).build();
 
                 timer_sender.add_timer_message_consumer(core_sender.clone());

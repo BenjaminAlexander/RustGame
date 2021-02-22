@@ -21,6 +21,7 @@ pub struct Manager<StateType, InputType, StateUpdateType>
     steps: VecDeque<Step<StateType, InputType, StateUpdateType>>,
     requested_step_consumer_list: ConsumerList<StepMessage<StateType, InputType>>,
     completed_step_consumer_list: ConsumerList<StateMessage<StateType>>,
+    step_duration: TimeDuration,
     grace_period: TimeDuration,
     //TODO: why is this needed?
     phantom: PhantomData<StateUpdateType>,
@@ -35,7 +36,7 @@ impl<StateType, InputType, StateUpdateType> Manager<StateType, InputType, StateU
           InputType: Input,
           StateUpdateType: StateUpdate<StateType, InputType>{
 
-    pub fn new(grace_period: TimeDuration) -> Self {
+    pub fn new(step_duration: TimeDuration, grace_period: TimeDuration) -> Self {
         Self{
             player_count: None,
             steps: VecDeque::new(),
@@ -43,6 +44,7 @@ impl<StateType, InputType, StateUpdateType> Manager<StateType, InputType, StateU
             drop_steps_before: 0,
             requested_step_consumer_list: ConsumerList::new(),
             completed_step_consumer_list: ConsumerList::new(),
+            step_duration,
             grace_period,
             phantom: PhantomData,
 

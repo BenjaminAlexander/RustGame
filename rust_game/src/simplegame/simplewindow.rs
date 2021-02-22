@@ -1,6 +1,6 @@
 use opengl_graphics::{GlGraphics, OpenGL};
 use crate::gamemanager::RenderReceiver;
-use crate::simplegame::{SimpleState, SimpleInput, SimpleInputEventHandler, SimpleInputEvent};
+use crate::simplegame::{SimpleState, SimpleInput, SimpleInputEventHandler, SimpleInputEvent, STEP_DURATION};
 use crate::client::Core;
 use crate::threading::{Sender, Thread, Consumer};
 use piston::{RenderArgs, WindowSettings, Events, EventSettings, RenderEvent, Event};
@@ -78,9 +78,9 @@ impl SimpleWindow {
             clear(GREEN, gl);
 
             if step_message.is_some() {
-                let step_message = step_message.unwrap();
-                let step = step_message.get_step_index();
-                step_message.get_state().draw(step, args, c, gl);
+                let (duration_since_game_start, step_message) = step_message.unwrap();
+                //let duration_since_game_start = STEP_DURATION * step_message.get_step_index() as i64;
+                step_message.get_state().draw(duration_since_game_start, args, c, gl);
             }
 
         });

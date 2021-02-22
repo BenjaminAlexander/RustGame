@@ -1,12 +1,13 @@
 use crate::interface::{Input, InputEvent};
 use crate::messaging::InputMessage;
 use std::marker::PhantomData;
+use crate::gametime::TimeDuration;
 
 #[derive(Debug)]
 pub struct NextStateArg<InputType: Input> {
     step: usize,
     inputs: Vec<Option<InputType>>,
-    input_count: usize
+    input_count: usize,
 }
 
 impl<InputType: Input> NextStateArg<InputType> {

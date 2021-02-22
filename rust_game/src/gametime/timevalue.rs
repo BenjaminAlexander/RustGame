@@ -4,7 +4,7 @@ use crate::gametime::TimeDuration;
 use std::ops::Add;
 use core::time::Duration;
 
-
+pub const EPOCH: TimeValue = TimeValue::from_millis(0);
 
 #[derive(Serialize, Deserialize, Clone, Copy, Debug)]
 pub struct TimeValue {
@@ -17,15 +17,13 @@ impl TimeValue {
         TimeValue{millis_since_epoch: now.duration_since(UNIX_EPOCH).unwrap().as_millis() as i64 }
     }
 
-    pub fn from_millis(millis_since_epoch: i64) -> Self {
+    pub const fn from_millis(millis_since_epoch: i64) -> Self {
         TimeValue{millis_since_epoch}
     }
 
     pub fn get_millis_since_epoch(&self) -> i64 {
         self.millis_since_epoch
     }
-
-
 
     pub fn is_after(&self, other: &TimeValue) -> bool {
         self.millis_since_epoch > other.millis_since_epoch

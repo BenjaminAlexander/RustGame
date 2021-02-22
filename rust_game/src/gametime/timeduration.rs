@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 use std::time::{Duration};
-use std::ops::{Div, Mul};
+use std::ops::{Div, Mul, Sub, Add};
 use std::cmp::Ordering;
 
 //Time In Milliseconds
@@ -28,6 +28,22 @@ impl TimeDuration {
 impl From<Duration> for TimeDuration {
     fn from(duration: Duration) -> Self {
         Self::from_millis(duration.as_millis() as i64)
+    }
+}
+
+impl Sub for TimeDuration {
+    type Output = Self;
+
+    fn sub(self, rhs: Self) -> Self::Output {
+        return Self (self.0 - rhs.0);
+    }
+}
+
+impl Add for TimeDuration {
+    type Output = Self;
+
+    fn add(self, rhs: Self) -> Self::Output {
+        return Self (self.0 + rhs.0);
     }
 }
 

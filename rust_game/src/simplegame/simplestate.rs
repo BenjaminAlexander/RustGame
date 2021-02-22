@@ -9,7 +9,7 @@ use crate::gametime::TimeDuration;
 use crate::simplegame::bullet::Bullet;
 use std::collections::HashMap;
 
-pub const STEP_DURATION: TimeDuration = TimeDuration::from_millis(16);
+pub const STEP_DURATION: TimeDuration = TimeDuration::from_millis(500);
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct SimpleState {
@@ -53,9 +53,11 @@ impl SimpleState {
 
     fn update(&mut self, arg: &NextStateArg<SimpleInput>) {
 
+        let duration_of_start_to_current = STEP_DURATION * arg.get_current_step() as i64;
+
         let mut i = 0;
         while i < self.bullets.len() {
-            if self.bullets[i].should_remove(arg.get_current_step()) {
+            if self.bullets[i].should_remove(duration_of_start_to_current) {
                 self.bullets.remove(i);
             } else {
                 i = i + 1;
@@ -73,13 +75,13 @@ impl SimpleState {
         }
     }
 
-    pub fn draw(&self, step: usize, args: &RenderArgs, context: Context, gl: &mut GlGraphics) {
+    pub fn draw(&self, duration_since_game_start: TimeDuration, args: &RenderArgs, context: Context, gl: &mut GlGraphics) {
         for character in &self.player_characters {
             character.draw(args, context, gl);
         }
 
         for bullet in &self.bullets {
-            bullet.draw(step, args, context, gl);
+            bullet.draw(duration_since_game_start, args, context, gl);
         }
     }
 }

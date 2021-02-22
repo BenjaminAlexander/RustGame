@@ -98,7 +98,7 @@ impl<StateType, InputType, StateUpdateType, InputEventHandlerType, InputEventTyp
 
             let udp_socket = UdpSocket::bind("127.0.0.1:0").unwrap();
 
-            let (manager_sender, manager_builder) = Manager::<StateType, InputType, StateUpdateType>::new(core.grace_period).build();
+            let (manager_sender, manager_builder) = Manager::<StateType, InputType, StateUpdateType>::new(core.step_duration, core.grace_period).build();
             let (game_timer_sender, game_timer_builder) = GameTimer::new(core.step_duration, core.clock_average_size).build();
             let (tcp_input_sender, tcp_input_builder) = TcpInput::<StateType, InputType>::new(&tcp_stream).unwrap().build();
             let (tcp_output_sender, tcp_output_builder) = TcpOutput::new(&tcp_stream).unwrap().build();

@@ -2,7 +2,7 @@ use log::{warn, info, trace};
 use crate::interface::{State, Input, InputEvent};
 use crate::gamemanager::stepmessage::StepMessage;
 use crate::threading::{Consumer, Sender, Receiver, channel};
-use crate::gametime::{TimeMessage, TimeValue};
+use crate::gametime::{TimeMessage, TimeValue, TimeDuration};
 
 pub struct RenderReceiver<StateType, InputType>
     where StateType: State,
@@ -38,7 +38,7 @@ impl<StateType, InputType> RenderReceiver<StateType, InputType>
         return (sender, render_receiver);
     }
 
-    pub fn get_step_message(&mut self) -> Option<&StepMessage<StateType, InputType>> {
+    pub fn get_step_message(&mut self) -> Option<(TimeDuration, &StepMessage<StateType, InputType>)> {
 
         self.receiver.try_iter(&mut self.data);
 
@@ -52,7 +52,9 @@ impl<StateType, InputType> RenderReceiver<StateType, InputType>
         } else if self.data.latest_time_message.is_some() {
 
             let latest_time_message = self.data.latest_time_message.as_ref().unwrap();
-            let step = latest_time_message.get_step_from_actual_time(now).floor() as usize;
+            let duration_since_start = latest_time_message.get_duration_since_start(now);
+            //used to be floor
+            let step = latest_time_message.get_step_from_actual_time(now).ceil() as usize;
 
             loop {
                 if self.data.step_queue.len() == 1 ||
@@ -65,7 +67,7 @@ impl<StateType, InputType> RenderReceiver<StateType, InputType>
 
                     let step = &self.data.step_queue[self.data.step_queue.len() - 1];
 
-                    return Some(step);
+                    return Some((duration_since_start, step));
                 } else {
                     self.data.step_queue.pop();
                 }

@@ -3,6 +3,7 @@ use crate::messaging::{InputMessage, StateMessage};
 use crate::gamemanager::stepmessage::StepMessage;
 use std::marker::PhantomData;
 use log::{trace, info, warn};
+use crate::gametime::TimeDuration;
 
 pub struct Step<StateType, InputType, StateUpdateType>
     where StateType: State,
