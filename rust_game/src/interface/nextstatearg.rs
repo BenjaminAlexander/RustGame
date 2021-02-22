@@ -4,15 +4,16 @@ use std::marker::PhantomData;
 
 #[derive(Debug)]
 pub struct NextStateArg<InputType: Input> {
-
+    step: usize,
     inputs: Vec<Option<InputType>>,
     input_count: usize
 }
 
 impl<InputType: Input> NextStateArg<InputType> {
 
-    pub fn new() -> Self {
+    pub fn new(step: usize) -> Self {
         return Self{
+            step,
             inputs: Vec::new(),
             input_count: 0
         }
@@ -42,12 +43,21 @@ impl<InputType: Input> NextStateArg<InputType> {
             return None;
         }
     }
+
+    pub fn get_current_step(&self) -> usize {
+        return self.step;
+    }
+
+    pub fn get_next_step(&self) -> usize {
+        return self.step;
+    }
 }
 
 impl<InputType: Input> Clone for NextStateArg<InputType> {
 
     fn clone(&self) -> Self {
         return Self{
+            step: self.step,
             inputs: self.inputs.clone(),
             input_count: self.input_count
         }

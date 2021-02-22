@@ -9,43 +9,36 @@ const MAX_RANGE: f64 = 5000 as f64;
 
 #[derive(Serialize, Deserialize, Debug, Clone, Hash)]
 pub struct Bullet {
+    start_step: usize,
     start_position: Vector2,
-    position: Vector2,
     velocity: Vector2,
 }
 
 impl Bullet {
-    pub fn new(position: Vector2, aim_point: Vector2) -> Self {
+    pub fn new(start_step: usize, start_position: Vector2, aim_point: Vector2) -> Self {
 
-        let velocity = (aim_point - position).normalize();
+        let velocity = (aim_point - start_position).normalize();
 
         return Self{
-            start_position: position,
-            position,
+            start_step,
+            start_position,
             velocity,
         };
     }
 
-    pub fn get_position(&self) -> &Vector2 {
-        return &self.position;
+    pub fn get_position(&self, step: usize) -> Vector2 {
+        let steps = step - self.start_step;
+        return self.start_position + self.velocity * STEP_DURATION.get_millis() as f64 * steps as f64;
     }
 
-    pub fn set_position(&mut self, position: Vector2) {
-        self.position = position;
+    pub fn should_remove(&self, step: usize) -> bool {
+        return (self.get_position(step) -  self.start_position).get_length() > MAX_RANGE;
     }
 
-    pub fn update(&mut self) {
-        self.position = self.position + self.velocity * STEP_DURATION.get_millis() as f64;
-    }
-
-    pub fn should_remove(&self) -> bool {
-        return (self.position -  self.start_position).get_length() > MAX_RANGE;
-    }
-
-    pub fn draw(&self, args: &RenderArgs, context: Context, gl: &mut GlGraphics) {
+    pub fn draw(&self, step: usize, args: &RenderArgs, context: Context, gl: &mut GlGraphics) {
         const BLUE: [f32; 4] = [0.0, 0.0, 1.0, 1.0];
 
-        let (x, y) = self.position.get();
+        let (x, y) = self.get_position(step).get();
         let x_in_window = (x as f64 / args.draw_size[0] as f64) * args.window_size[0];
         let y_in_window = (y as f64 / args.draw_size[1] as f64) * args.window_size[1];
 

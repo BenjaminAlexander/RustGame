@@ -6,16 +6,19 @@ use graphics::{Context, rectangle};
 use graphics::*;
 use crate::simplegame::bullet::Bullet;
 use log::{warn, trace, info};
+use crate::interface::NextStateArg;
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Character {
+    player_index: usize,
     velocity: Vector2,
     position: Vector2
 }
 
 impl Character {
-    pub fn new(position: Vector2) -> Self {
+    pub fn new(player_index: usize, position: Vector2) -> Self {
         return Self{
+            player_index,
             velocity: Vector2::new(0 as f64, 0 as f64),
             position
         };
@@ -25,19 +28,23 @@ impl Character {
         return &self.position;
     }
 
-    pub fn move_character(&mut self, input_option: Option<&SimpleInput>) {
+    pub fn move_character(&mut self, arg: &NextStateArg<SimpleInput>) {
 
-        if let Some(input) = input_option {
+        if let Some(input) = arg.get_input(self.player_index) {
             self.velocity = input.get_velocity();
         }
 
         self.position = self.position + self.velocity * STEP_DURATION.get_millis() as f64 * 0.5;
     }
 
-    pub fn get_fired_bullet(&self, input_option: Option<&SimpleInput>) -> Option<Bullet> {
-        if let Some(input) = input_option {
+    pub fn get_fired_bullet(&self, arg: &NextStateArg<SimpleInput>) -> Option<Bullet> {
+        if let Some(input) = arg.get_input(self.player_index) {
             if input.should_fire() {
-                return Some(Bullet::new(self.position, input.get_aim_point()));
+                return Some(Bullet::new(
+                    arg.get_next_step(),
+                    self.position,
+                    input.get_aim_point()
+                ));
             }
         }
 

@@ -78,7 +78,9 @@ impl SimpleWindow {
             clear(GREEN, gl);
 
             if step_message.is_some() {
-                step_message.unwrap().get_state().draw(args, c, gl);
+                let step_message = step_message.unwrap();
+                let step = step_message.get_step_index();
+                step_message.get_state().draw(step, args, c, gl);
             }
 
         });

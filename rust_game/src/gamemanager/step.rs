@@ -9,7 +9,6 @@ pub struct Step<StateType, InputType, StateUpdateType>
           InputType: Input,
           StateUpdateType: StateUpdate<StateType, InputType>{
 
-    step_index: usize,
     next_state_arg: NextStateArg<InputType>,
     state: Option<StateType>,
     is_state_final: bool,
@@ -28,8 +27,7 @@ impl<StateType, InputType, StateUpdateType> Step<StateType, InputType, StateUpda
     pub fn blank(step_index: usize) -> Self {
 
         return Self{
-            step_index,
-            next_state_arg: NextStateArg::new(),
+            next_state_arg: NextStateArg::new(step_index),
             state: None,
             is_state_final: false,
             is_state_complete: false,
@@ -113,7 +111,7 @@ impl<StateType, InputType, StateUpdateType> Step<StateType, InputType, StateUpda
     }
 
     pub fn get_step_index(&self) -> usize {
-        self.step_index
+        return self.next_state_arg.get_current_step();
     }
 
     pub fn get_input_count(&self) -> usize {
@@ -133,7 +131,7 @@ impl<StateType, InputType, StateUpdateType> Step<StateType, InputType, StateUpda
             self.need_to_send_as_changed = false;
 
             return Some(StepMessage::new(
-                self.step_index,
+                self.next_state_arg.get_current_step(),
                 self.next_state_arg.clone(),
                 self.state.as_ref().unwrap().clone()
             ));
@@ -147,7 +145,10 @@ impl<StateType, InputType, StateUpdateType> Step<StateType, InputType, StateUpda
         if self.need_to_send_as_complete {
             self.need_to_send_as_complete = false;
 
-            return Some(StateMessage::new(self.step_index, self.state.as_ref().unwrap().clone()));
+            return Some(StateMessage::new(
+                self.next_state_arg.get_current_step(),
+                self.state.as_ref().unwrap().clone())
+            );
         } else {
             return None;
         }
@@ -163,7 +164,6 @@ impl<StateType, InputType, StateUpdateType> Clone for Step<StateType, InputType,
 
     fn clone(&self) -> Self {
         Self{
-            step_index: self.step_index,
             next_state_arg: self.next_state_arg.clone(),
             state: self.state.clone(),
             is_state_final: self.is_state_final,
