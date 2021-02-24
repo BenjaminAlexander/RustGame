@@ -9,7 +9,7 @@ use crate::gametime::TimeDuration;
 use crate::simplegame::bullet::Bullet;
 use std::collections::HashMap;
 
-pub const STEP_DURATION: TimeDuration = TimeDuration::from_millis(500);
+pub const STEP_DURATION: TimeDuration = TimeDuration::from_millis(16);
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct SimpleState {
