@@ -27,31 +27,42 @@ impl Bullet {
         };
     }
 
-    pub fn get_position(&self, duration_since_game_start: TimeDuration) -> Vector2 {
+    pub fn get_position(&self, duration_since_game_start: TimeDuration) -> Option<Vector2> {
         let duration_since_bullet_start = duration_since_game_start - (STEP_DURATION * self.start_step as i64);
-        return self.start_position + self.velocity * duration_since_bullet_start.get_millis() as f64;
+        if duration_since_bullet_start.get_millis() >= 0 {
+            return Some(self.start_position + self.velocity * duration_since_bullet_start.get_millis() as f64);
+        } else {
+            return None;
+        }
     }
 
     pub fn should_remove(&self, duration_since_game_start: TimeDuration) -> bool {
-        return (self.get_position(duration_since_game_start) -  self.start_position).get_length() > MAX_RANGE;
+        if let Some(current_position) = self.get_position(duration_since_game_start) {
+            return (current_position -  self.start_position).get_length() > MAX_RANGE;
+        } else {
+            return false;
+        }
+
     }
 
     pub fn draw(&self, duration_since_game_start: TimeDuration, args: &RenderArgs, context: Context, gl: &mut GlGraphics) {
         const BLUE: [f32; 4] = [0.0, 0.0, 1.0, 1.0];
 
-        let (x, y) = self.get_position(duration_since_game_start).get();
-        let x_in_window = (x as f64 / args.draw_size[0] as f64) * args.window_size[0];
-        let y_in_window = (y as f64 / args.draw_size[1] as f64) * args.window_size[1];
+        if let Some(current_position) = self.get_position(duration_since_game_start) {
+            let (x, y) = current_position.get();
+            let x_in_window = (x as f64 / args.draw_size[0] as f64) * args.window_size[0];
+            let y_in_window = (y as f64 / args.draw_size[1] as f64) * args.window_size[1];
 
-        let square = rectangle::square(0.0, 0.0, 10.0);
-        let rotation = 0 as f64;
+            let square = rectangle::square(0.0, 0.0, 10.0);
+            let rotation = 0 as f64;
 
-        let transform = context
-            .transform
-            .trans(x_in_window, y_in_window)
-            .rot_rad(rotation)
-            .trans(-5.0, -5.0);
+            let transform = context
+                .transform
+                .trans(x_in_window, y_in_window)
+                .rot_rad(rotation)
+                .trans(-5.0, -5.0);
 
-        rectangle(BLUE, square, transform, gl);
+            rectangle(BLUE, square, transform, gl);
+        }
     }
 }

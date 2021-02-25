@@ -18,7 +18,24 @@ pub struct Data<StateType, InputType>
 
     //TODO: use vec deque so that this is more efficient
     step_queue: Vec<StepMessage<StateType, InputType>>,
-    latest_time_message: Option<TimeMessage>
+    latest_time_message: Option<TimeMessage>,
+
+    //metrics
+    next_expected_step_index: usize
+}
+
+impl<StateType, InputType> Data<StateType, InputType>
+    where StateType: State,
+          InputType: Input {
+
+    fn drop_steps_before(&mut self, drop_before: usize) {
+        while self.step_queue.len() > 2 &&
+            self.step_queue[self.step_queue.len() - 1].get_step_index() < drop_before {
+
+            let dropped = self.step_queue.pop().unwrap();
+            //info!("Dropped step: {:?}", dropped.get_step_index());
+        }
+    }
 }
 
 impl<StateType, InputType> RenderReceiver<StateType, InputType>
@@ -32,7 +49,8 @@ impl<StateType, InputType> RenderReceiver<StateType, InputType>
             receiver,
             data: Data {
                 step_queue: Vec::new(),
-                latest_time_message: None
+                latest_time_message: None,
+                next_expected_step_index: 0
             }
         };
 
@@ -43,44 +61,35 @@ impl<StateType, InputType> RenderReceiver<StateType, InputType>
 
         self.receiver.try_iter(&mut self.data);
 
-        let now = TimeValue::now();
-        //info!("Now: {:?}", now);
-
         if self.data.step_queue.is_empty() {
-            info!("Data is empty");
             return None;
 
         } else if self.data.latest_time_message.is_some() {
 
+            let now = TimeValue::now();
             let latest_time_message = self.data.latest_time_message.as_ref().unwrap();
             let duration_since_start = latest_time_message.get_duration_since_start(now);
             //used to be floor
-            let needed_step = latest_time_message.get_step_from_actual_time(now).ceil() as usize;
+            let now_as_fractional_step_index = latest_time_message.get_step_from_actual_time(now);
+            let desired_first_step_index = now_as_fractional_step_index.floor() as usize;
 
-            let step = if self.data.step_queue.len() > 2 {
+            let first_step = &self.data.step_queue[self.data.step_queue.len() - 1];
+            let second_step = if self.data.step_queue.len() >= 2 {
                 &self.data.step_queue[self.data.step_queue.len() - 2]
             } else {
-                &self.data.step_queue[self.data.step_queue.len() - 1]
+                first_step
             };
 
-            //let this_step = self.data.step_queue[self.data.step_queue.len() - 1].get_step_index();
-
-            info!("Needed step: {:?}, Gotten step: {:?}, len: {:?}", needed_step, step.get_step_index(), self.data.step_queue.len());
-
-            let mut x = "Steps: ".to_owned();
-            for sm in &self.data.step_queue {
-                x = x + &*sm.get_step_index().to_string() + ", ";
+            if first_step.get_step_index() + 1 != second_step.get_step_index() {
+                warn!("Interpolating from non-sequential steps: {:?}, {:?}",
+                      first_step.get_step_index(), second_step.get_step_index());
             }
 
-            info!("Available: {:?}", x);
-
-            if (needed_step as i64 - step.get_step_index() as i64).abs() > 3 {
-                trace!("Needed step: {:?}, Gotten step: {:?}", needed_step, step.get_step_index());
+            if (desired_first_step_index as i64 - first_step.get_step_index() as i64).abs() > 1 {
+                warn!("Needed step: {:?}, Gotten step: {:?}", desired_first_step_index, first_step.get_step_index());
             }
 
-            //let step = &self.data.step_queue[self.data.step_queue.len() - 1];
-
-            return Some((duration_since_start, step));
+            return Some((duration_since_start, second_step));
 
         } else {
             return None;
@@ -100,16 +109,11 @@ impl<StateType, InputType> Consumer<StepMessage<StateType, InputType>> for Sende
         //info!("StepMessage: {:?}", step_message.get_step_index());
         self.send(|data|{
 
-            let now = TimeValue::now();
-
-            if let Some(time_message) = data.latest_time_message {
-                //TODO: put this in a method
-                let latest_step = time_message.get_step_from_actual_time(now).floor() as usize;
-
-                if latest_step > step_message.get_step_index() {
-                    return;
-                }
+            if data.next_expected_step_index != step_message.get_step_index() {
+                warn!("Received steps out of order.  Waiting for {:?} but got {:?}.",
+                      data.next_expected_step_index, step_message.get_step_index());
             }
+            data.next_expected_step_index = step_message.get_step_index() + 1;
 
             //info!("StepMessage: {:?}", step_message.get_step_index());
             //insert in reverse sorted order
@@ -119,13 +123,12 @@ impl<StateType, InputType> Consumer<StepMessage<StateType, InputType>> for Sende
             }
 
             if let Some(time_message) = data.latest_time_message {
+                let now = TimeValue::now();
+
                 //TODO: put this in a method
                 let latest_step = time_message.get_step_from_actual_time(now).floor() as usize;
-                //TODO: put this in a method
-                while data.step_queue.len() > 2 &&
-                    data.step_queue[data.step_queue.len() - 1].get_step_index() < latest_step {
-                    data.step_queue.pop();
-                }
+
+                data.drop_steps_before(latest_step);
             }
 
         }).unwrap();
@@ -146,12 +149,7 @@ impl<StateType, InputType> Consumer<TimeMessage> for Sender<Data<StateType, Inpu
 
             data.latest_time_message = Some(time_message);
 
-            //TODO: put this in a method
-            while data.step_queue.len() > 2 &&
-                data.step_queue[data.step_queue.len() - 1].get_step_index() < latest_step {
-
-                data.step_queue.pop();
-            }
+            data.drop_steps_before(latest_step);
 
         }).unwrap();
     }
