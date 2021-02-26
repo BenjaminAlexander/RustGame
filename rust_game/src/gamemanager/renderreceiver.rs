@@ -1,15 +1,19 @@
 use log::{warn, info, trace};
-use crate::interface::{State, Input, InputEvent};
+use crate::interface::{State, Input, InputEvent, InterpolationArg, Interpolate, InterpolationResult};
 use crate::gamemanager::stepmessage::StepMessage;
 use crate::threading::{Consumer, Sender, Receiver, channel};
 use crate::gametime::{TimeMessage, TimeValue, TimeDuration};
+use std::marker::PhantomData;
 
-pub struct RenderReceiver<StateType, InputType>
+pub struct RenderReceiver<StateType, InputType, InterpolateType, InterpolatedType>
     where StateType: State,
-          InputType: Input {
+          InputType: Input,
+          InterpolateType: Interpolate<StateType, InterpolatedType>,
+          InterpolatedType: InterpolationResult {
 
     receiver: Receiver<Data<StateType, InputType>>,
-    data: Data<StateType, InputType>
+    data: Data<StateType, InputType>,
+    phantom: PhantomData<(InterpolateType, InterpolatedType)>
 }
 
 pub struct Data<StateType, InputType>
@@ -38,15 +42,18 @@ impl<StateType, InputType> Data<StateType, InputType>
     }
 }
 
-impl<StateType, InputType> RenderReceiver<StateType, InputType>
+impl<StateType, InputType, InterpolateType, InterpolatedType> RenderReceiver<StateType, InputType, InterpolateType, InterpolatedType>
     where StateType: State,
-          InputType: Input {
+          InputType: Input,
+          InterpolateType: Interpolate<StateType, InterpolatedType>,
+          InterpolatedType: InterpolationResult {
 
     pub fn new() -> (Sender<Data<StateType, InputType>>, Self) {
         let (sender, receiver) = channel::<Data<StateType, InputType>>();
 
         let render_receiver = Self{
             receiver,
+            phantom: PhantomData,
             data: Data {
                 step_queue: Vec::new(),
                 latest_time_message: None,
@@ -57,7 +64,8 @@ impl<StateType, InputType> RenderReceiver<StateType, InputType>
         return (sender, render_receiver);
     }
 
-    pub fn get_step_message(&mut self) -> Option<(TimeDuration, &StepMessage<StateType, InputType>)> {
+    //TODO: remove timeduration
+    pub fn get_step_message(&mut self) -> Option<(TimeDuration, InterpolatedType)> {
 
         self.receiver.try_iter(&mut self.data);
 
@@ -89,7 +97,16 @@ impl<StateType, InputType> RenderReceiver<StateType, InputType>
                 warn!("Needed step: {:?}, Gotten step: {:?}", desired_first_step_index, first_step.get_step_index());
             }
 
-            return Some((duration_since_start, second_step));
+            let weight = if second_step.get_step_index() == first_step.get_step_index() {
+                1 as f64
+            } else {
+                (now_as_fractional_step_index - first_step.get_step_index() as f64) /
+                    ((second_step.get_step_index() - first_step.get_step_index()) as f64)
+            };
+
+            let arg = InterpolationArg::new(weight, duration_since_start);
+
+            return Some((duration_since_start, InterpolateType::interpolate(first_step.get_state(),second_step.get_state(), &arg)));
 
         } else {
             return None;

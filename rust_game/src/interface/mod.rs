@@ -6,6 +6,7 @@ mod inputeventhandler;
 mod stateupdate;
 mod interpolate;
 mod interpolationarg;
+mod interpolationresult;
 
 pub use self::nextstatearg::NextStateArg;
 pub use self::inputevent::InputEvent;
@@ -14,7 +15,8 @@ pub use self::state::State;
 pub use self::inputeventhandler::InputEventHandler;
 pub use self::stateupdate::StateUpdate;
 pub use self::interpolate::Interpolate;
-use self::interpolationarg::InterpolationArg;
+pub use self::interpolationarg::InterpolationArg;
+pub use self::interpolationresult::InterpolationResult;
 
 
 

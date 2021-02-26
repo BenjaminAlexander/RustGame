@@ -59,6 +59,13 @@ impl Vector2 {
             return Self::new(self.x / length, self.y / length);
         }
     }
+
+    pub fn lerp(&self, other: &Self, weight: f64) -> Self {
+        let self_weight = 1 as f64 - weight;
+        let new_x = self.x * self_weight + other.x * weight;
+        let new_y = self.y * self_weight + other.y * weight;
+        return Self::new(new_x, new_y);
+    }
 }
 
 impl Sub for Vector2 {

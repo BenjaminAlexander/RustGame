@@ -28,6 +28,10 @@ impl Character {
         return &self.position;
     }
 
+    pub fn set_position(&mut self, position: Vector2) {
+        self.position = position;
+    }
+
     pub fn move_character(&mut self, arg: &NextStateArg<SimpleInput>) {
 
         if let Some(input) = arg.get_input(self.player_index) {
@@ -41,7 +45,7 @@ impl Character {
         if let Some(input) = arg.get_input(self.player_index) {
             if input.should_fire() {
                 return Some(Bullet::new(
-                    arg.get_next_step(),
+                    arg.get_current_step(),
                     self.position,
                     input.get_aim_point()
                 ));

@@ -3,7 +3,7 @@ use std::str::FromStr;
 use crate::gametime::{TimeDuration, GameTimer, TimeMessage};
 use crate::threading::{ChannelThread, Sender, ChannelDrivenThread, Consumer};
 use crate::client::tcpinput::TcpInput;
-use crate::interface::{Input, State, InputEvent, InputEventHandler, StateUpdate};
+use crate::interface::{Input, State, InputEvent, InputEventHandler, StateUpdate, Interpolate, InterpolationResult};
 use std::marker::PhantomData;
 use crate::client::tcpoutput::TcpOutput;
 use crate::messaging::{StateMessage, InitialInformation, InputMessage};
@@ -12,12 +12,14 @@ use log::{info, trace};
 use crate::client::udpoutput::UdpOutput;
 use crate::client::udpinput::UdpInput;
 
-pub struct Core<StateType, InputType, StateUpdateType, InputEventHandlerType, InputEventType>
+pub struct Core<StateType, InputType, StateUpdateType, InputEventHandlerType, InputEventType, InterpolateType, InterpolatedType>
     where StateType: State,
           InputType: Input,
           StateUpdateType: StateUpdate<StateType, InputType>,
           InputEventHandlerType: InputEventHandler<InputType, InputEventType>,
-          InputEventType: InputEvent {
+          InputEventType: InputEvent,
+          InterpolateType: Interpolate<StateType, InterpolatedType>,
+          InterpolatedType: InterpolationResult {
 
     server_ip: String,
     tcp_port: u16,
@@ -31,15 +33,17 @@ pub struct Core<StateType, InputType, StateUpdateType, InputEventHandlerType, In
     tcp_output_sender: Option<Sender<TcpOutput>>,
     initial_information: Option<InitialInformation<StateType>>,
     last_time_message: Option<TimeMessage>,
-    phantom: PhantomData<InputEventType>
+    phantom: PhantomData<(InputEventType, InterpolateType, InterpolatedType)>
 }
 
-impl<StateType, InputType, StateUpdateType, InputEventHandlerType, InputEventType> Core<StateType, InputType, StateUpdateType, InputEventHandlerType, InputEventType>
+impl<StateType, InputType, StateUpdateType, InputEventHandlerType, InputEventType, InterpolateType, InterpolatedType> Core<StateType, InputType, StateUpdateType, InputEventHandlerType, InputEventType, InterpolateType, InterpolatedType>
     where StateType: State,
           InputType: Input,
           StateUpdateType: StateUpdate<StateType, InputType>,
           InputEventHandlerType: InputEventHandler<InputType, InputEventType>,
-          InputEventType: InputEvent {
+          InputEventType: InputEvent,
+          InterpolateType: Interpolate<StateType, InterpolatedType>,
+          InterpolatedType: InterpolationResult {
 
     pub fn new(server_ip: &str,
                tcp_port: u16,
@@ -65,27 +69,31 @@ impl<StateType, InputType, StateUpdateType, InputEventHandlerType, InputEventTyp
     }
 }
 
-impl<StateType, InputType, StateUpdateType, InputEventHandlerType, InputEventType> ChannelDrivenThread<()> for Core<StateType, InputType, StateUpdateType, InputEventHandlerType, InputEventType>
+impl<StateType, InputType, StateUpdateType, InputEventHandlerType, InputEventType, InterpolateType, InterpolatedType> ChannelDrivenThread<()> for Core<StateType, InputType, StateUpdateType, InputEventHandlerType, InputEventType, InterpolateType, InterpolatedType>
     where StateType: State,
           InputType: Input,
           StateUpdateType: StateUpdate<StateType, InputType>,
           InputEventHandlerType: InputEventHandler<InputType, InputEventType>,
-          InputEventType: InputEvent {
+          InputEventType: InputEvent,
+          InterpolateType: Interpolate<StateType, InterpolatedType>,
+          InterpolatedType: InterpolationResult {
 
     fn on_channel_disconnect(&mut self) -> () {
         ()
     }
 }
 
-impl<StateType, InputType, StateUpdateType, InputEventHandlerType, InputEventType> Sender<Core<StateType, InputType, StateUpdateType, InputEventHandlerType, InputEventType>>
+impl<StateType, InputType, StateUpdateType, InputEventHandlerType, InputEventType, InterpolateType, InterpolatedType> Sender<Core<StateType, InputType, StateUpdateType, InputEventHandlerType, InputEventType, InterpolateType, InterpolatedType>>
     where StateType: State,
           InputType: Input,
           StateUpdateType: StateUpdate<StateType, InputType>,
           InputEventHandlerType: InputEventHandler<InputType, InputEventType>,
-          InputEventType: InputEvent {
+          InputEventType: InputEvent,
+          InterpolateType: Interpolate<StateType, InterpolatedType>,
+          InterpolatedType: InterpolationResult {
 
-    pub fn connect(&self) -> RenderReceiver<StateType, InputType> {
-        let (render_receiver_sender, render_receiver) = RenderReceiver::<StateType, InputType>::new();
+    pub fn connect(&self) -> RenderReceiver<StateType, InputType, InterpolateType, InterpolatedType> {
+        let (render_receiver_sender, render_receiver) = RenderReceiver::<StateType, InputType, InterpolateType, InterpolatedType>::new();
         let core_sender = self.clone();
 
         self.send(move |core|{
@@ -135,12 +143,14 @@ impl<StateType, InputType, StateUpdateType, InputEventHandlerType, InputEventTyp
     }
 }
 
-impl<StateType, InputType, StateUpdateType, InputEventHandlerType, InputEventType> Consumer<InitialInformation<StateType>> for Sender<Core<StateType, InputType, StateUpdateType, InputEventHandlerType, InputEventType>>
+impl<StateType, InputType, StateUpdateType, InputEventHandlerType, InputEventType, InterpolateType, InterpolatedType> Consumer<InitialInformation<StateType>> for Sender<Core<StateType, InputType, StateUpdateType, InputEventHandlerType, InputEventType, InterpolateType, InterpolatedType>>
     where StateType: State,
           InputType: Input,
           StateUpdateType: StateUpdate<StateType, InputType>,
           InputEventHandlerType: InputEventHandler<InputType, InputEventType>,
-          InputEventType: InputEvent {
+          InputEventType: InputEvent,
+          InterpolateType: Interpolate<StateType, InterpolatedType>,
+          InterpolatedType: InterpolationResult {
 
     fn accept(&self, initial_information: InitialInformation<StateType>) {
         self.send(move |core|{
@@ -150,12 +160,14 @@ impl<StateType, InputType, StateUpdateType, InputEventHandlerType, InputEventTyp
     }
 }
 
-impl<StateType, InputType, StateUpdateType, InputEventHandlerType, InputEventType> Consumer<TimeMessage> for Sender<Core<StateType, InputType, StateUpdateType, InputEventHandlerType, InputEventType>>
+impl<StateType, InputType, StateUpdateType, InputEventHandlerType, InputEventType, InterpolateType, InterpolatedType> Consumer<TimeMessage> for Sender<Core<StateType, InputType, StateUpdateType, InputEventHandlerType, InputEventType, InterpolateType, InterpolatedType>>
     where StateType: State,
           InputType: Input,
           StateUpdateType: StateUpdate<StateType, InputType>,
           InputEventHandlerType: InputEventHandler<InputType, InputEventType>,
-          InputEventType: InputEvent {
+          InputEventType: InputEvent,
+          InterpolateType: Interpolate<StateType, InterpolatedType>,
+          InterpolatedType: InterpolationResult {
 
     fn accept(&self, time_message: TimeMessage) {
 
@@ -203,12 +215,14 @@ impl<StateType, InputType, StateUpdateType, InputEventHandlerType, InputEventTyp
     }
 }
 
-impl<StateType, InputType, StateUpdateType, InputEventHandlerType, InputEventType> Consumer<InputEventType> for Sender<Core<StateType, InputType, StateUpdateType, InputEventHandlerType, InputEventType>>
+impl<StateType, InputType, StateUpdateType, InputEventHandlerType, InputEventType, InterpolateType, InterpolatedType> Consumer<InputEventType> for Sender<Core<StateType, InputType, StateUpdateType, InputEventHandlerType, InputEventType, InterpolateType, InterpolatedType>>
     where StateType: State,
           InputType: Input,
           StateUpdateType: StateUpdate<StateType, InputType>,
           InputEventHandlerType: InputEventHandler<InputType, InputEventType>,
-          InputEventType: InputEvent {
+          InputEventType: InputEvent,
+          InterpolateType: Interpolate<StateType, InterpolatedType>,
+          InterpolatedType: InterpolationResult {
 
     fn accept(&self, input_event: InputEventType) {
         self.send(move |core|{

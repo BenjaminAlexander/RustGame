@@ -10,14 +10,14 @@ use glutin_window::GlutinWindow as Window;
 use log::info;
 
 pub struct SimpleWindow {
-    render_receiver: RenderReceiver<SimpleState, SimpleInput>,
-    client_core_sender_option: Option<Sender<Core<SimpleState, SimpleInput, SimpleState, SimpleInputEventHandler, SimpleInputEvent>>>
+    render_receiver: RenderReceiver<SimpleState, SimpleInput, SimpleState, SimpleState>,
+    client_core_sender_option: Option<Sender<Core<SimpleState, SimpleInput, SimpleState, SimpleInputEventHandler, SimpleInputEvent, SimpleState, SimpleState>>>
 }
 
 impl SimpleWindow {
 
-    pub fn new(render_receiver: RenderReceiver<SimpleState, SimpleInput>,
-               client_core_sender_option: Option<Sender<Core<SimpleState, SimpleInput, SimpleState, SimpleInputEventHandler, SimpleInputEvent>>>) -> Self {
+    pub fn new(render_receiver: RenderReceiver<SimpleState, SimpleInput, SimpleState, SimpleState>,
+               client_core_sender_option: Option<Sender<Core<SimpleState, SimpleInput, SimpleState, SimpleInputEventHandler, SimpleInputEvent, SimpleState, SimpleState>>>) -> Self {
 
         return Self{
             render_receiver,
@@ -80,7 +80,7 @@ impl SimpleWindow {
             if step_message.is_some() {
                 let (duration_since_game_start, step_message) = step_message.unwrap();
                 //let duration_since_game_start = STEP_DURATION * step_message.get_step_index() as i64;
-                step_message.get_state().draw(duration_since_game_start, args, c, gl);
+                step_message.draw(duration_since_game_start, args, c, gl);
             }
 
         });

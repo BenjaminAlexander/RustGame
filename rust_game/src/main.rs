@@ -57,7 +57,7 @@ pub fn main() {
     let mut client_core_sender_option = None;
 
     if run_server {
-        let server_core  = server::Core::<SimpleState, SimpleInput, SimpleState>::new(
+        let server_core  = server::Core::<SimpleState, SimpleInput, SimpleState, SimpleState, SimpleState>::new(
             3456,
             3457,
             STEP_DURATION,
@@ -75,7 +75,7 @@ pub fn main() {
 
     if run_client {
 
-        let client_core = client::Core::<SimpleState, SimpleInput, SimpleState, SimpleInputEventHandler, SimpleInputEvent>::new(
+        let client_core = client::Core::<SimpleState, SimpleInput, SimpleState, SimpleInputEventHandler, SimpleInputEvent, SimpleState, SimpleState>::new(
             "127.0.0.1",
             3456,
             3457,

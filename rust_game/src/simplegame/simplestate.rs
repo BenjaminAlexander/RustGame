@@ -1,5 +1,5 @@
 use crate::simplegame::{Vector2, SimpleInputEvent, SimpleInput};
-use crate::interface::{State, NextStateArg, StateUpdate};
+use crate::interface::{State, NextStateArg, StateUpdate, Interpolate, InterpolationArg, InterpolationResult};
 use serde::{Deserialize, Serialize};
 use crate::simplegame::character::Character;
 use opengl_graphics::GlGraphics;
@@ -9,7 +9,7 @@ use crate::gametime::TimeDuration;
 use crate::simplegame::bullet::Bullet;
 use std::collections::HashMap;
 
-pub const STEP_DURATION: TimeDuration = TimeDuration::from_millis(100);
+pub const STEP_DURATION: TimeDuration = TimeDuration::from_millis(250);
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct SimpleState {
@@ -65,13 +65,11 @@ impl SimpleState {
         }
 
         for i in 0..self.player_characters.len() {
-            let input = arg.get_input(i);
-
-            self.player_characters[i].move_character(&arg);
-
             if let Some(bullet) = self.player_characters[i].get_fired_bullet(&arg) {
                 self.bullets.push(bullet);
             }
+
+            self.player_characters[i].move_character(&arg);
         }
     }
 
@@ -84,4 +82,23 @@ impl SimpleState {
             bullet.draw(duration_since_game_start, args, context, gl);
         }
     }
+}
+
+impl Interpolate<SimpleState, SimpleState> for SimpleState {
+    fn interpolate(first: &Self, second: &Self, arg: &InterpolationArg) -> Self {
+        let mut second_clone = second.clone();
+
+        for i in 0..second_clone.player_characters.len() {
+            if let Some(first_character) = first.player_characters.get(i) {
+                let new_position = first_character.get_position().lerp(second_clone.player_characters[i].get_position(), arg.get_weight());
+                second_clone.player_characters[i].set_position(new_position);
+            }
+        }
+
+        return second_clone;
+    }
+}
+
+impl InterpolationResult for SimpleState {
+
 }
