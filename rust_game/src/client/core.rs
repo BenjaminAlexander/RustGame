@@ -3,7 +3,7 @@ use std::str::FromStr;
 use crate::gametime::{TimeDuration, GameTimer, TimeMessage};
 use crate::threading::{ChannelThread, Sender, ChannelDrivenThread, Consumer};
 use crate::client::tcpinput::TcpInput;
-use crate::interface::{Input, State, InputEvent, InputEventHandler, StateUpdate, Interpolate, InterpolationResult};
+use crate::interface::{Input, State, InputEvent, InputEventHandler, StateUpdate, Interpolate, InterpolationResult, ServerInput};
 use std::marker::PhantomData;
 use crate::client::tcpoutput::TcpOutput;
 use crate::messaging::{StateMessage, InitialInformation, InputMessage};
@@ -12,10 +12,11 @@ use log::{info, trace};
 use crate::client::udpoutput::UdpOutput;
 use crate::client::udpinput::UdpInput;
 
-pub struct Core<StateType, InputType, StateUpdateType, InputEventHandlerType, InputEventType, InterpolateType, InterpolatedType>
+pub struct Core<StateType, InputType, ServerInputType, StateUpdateType, InputEventHandlerType, InputEventType, InterpolateType, InterpolatedType>
     where StateType: State,
           InputType: Input,
-          StateUpdateType: StateUpdate<StateType, InputType>,
+          ServerInputType: ServerInput,
+          StateUpdateType: StateUpdate<StateType, InputType, ServerInputType>,
           InputEventHandlerType: InputEventHandler<InputType, InputEventType>,
           InputEventType: InputEvent,
           InterpolateType: Interpolate<StateType, InterpolatedType>,
@@ -28,7 +29,7 @@ pub struct Core<StateType, InputType, StateUpdateType, InputEventHandlerType, In
     grace_period: TimeDuration,
     clock_average_size: usize,
     input_event_handler: InputEventHandlerType,
-    manager_sender: Option<Sender<Manager<StateType, InputType, StateUpdateType>>>,
+    manager_sender: Option<Sender<Manager<StateType, InputType, ServerInputType, StateUpdateType>>>,
     udp_output_sender: Option<Sender<UdpOutput<StateType, InputType>>>,
     tcp_output_sender: Option<Sender<TcpOutput>>,
     initial_information: Option<InitialInformation<StateType>>,
@@ -36,10 +37,11 @@ pub struct Core<StateType, InputType, StateUpdateType, InputEventHandlerType, In
     phantom: PhantomData<(InputEventType, InterpolateType, InterpolatedType)>
 }
 
-impl<StateType, InputType, StateUpdateType, InputEventHandlerType, InputEventType, InterpolateType, InterpolatedType> Core<StateType, InputType, StateUpdateType, InputEventHandlerType, InputEventType, InterpolateType, InterpolatedType>
+impl<StateType, InputType, ServerInputType, StateUpdateType, InputEventHandlerType, InputEventType, InterpolateType, InterpolatedType> Core<StateType, InputType, ServerInputType, StateUpdateType, InputEventHandlerType, InputEventType, InterpolateType, InterpolatedType>
     where StateType: State,
           InputType: Input,
-          StateUpdateType: StateUpdate<StateType, InputType>,
+          ServerInputType: ServerInput,
+          StateUpdateType: StateUpdate<StateType, InputType, ServerInputType>,
           InputEventHandlerType: InputEventHandler<InputType, InputEventType>,
           InputEventType: InputEvent,
           InterpolateType: Interpolate<StateType, InterpolatedType>,
@@ -69,10 +71,11 @@ impl<StateType, InputType, StateUpdateType, InputEventHandlerType, InputEventTyp
     }
 }
 
-impl<StateType, InputType, StateUpdateType, InputEventHandlerType, InputEventType, InterpolateType, InterpolatedType> ChannelDrivenThread<()> for Core<StateType, InputType, StateUpdateType, InputEventHandlerType, InputEventType, InterpolateType, InterpolatedType>
+impl<StateType, InputType, ServerInputType, StateUpdateType, InputEventHandlerType, InputEventType, InterpolateType, InterpolatedType> ChannelDrivenThread<()> for Core<StateType, InputType, ServerInputType, StateUpdateType, InputEventHandlerType, InputEventType, InterpolateType, InterpolatedType>
     where StateType: State,
           InputType: Input,
-          StateUpdateType: StateUpdate<StateType, InputType>,
+          ServerInputType: ServerInput,
+          StateUpdateType: StateUpdate<StateType, InputType, ServerInputType>,
           InputEventHandlerType: InputEventHandler<InputType, InputEventType>,
           InputEventType: InputEvent,
           InterpolateType: Interpolate<StateType, InterpolatedType>,
@@ -83,10 +86,11 @@ impl<StateType, InputType, StateUpdateType, InputEventHandlerType, InputEventTyp
     }
 }
 
-impl<StateType, InputType, StateUpdateType, InputEventHandlerType, InputEventType, InterpolateType, InterpolatedType> Sender<Core<StateType, InputType, StateUpdateType, InputEventHandlerType, InputEventType, InterpolateType, InterpolatedType>>
+impl<StateType, InputType, ServerInputType, StateUpdateType, InputEventHandlerType, InputEventType, InterpolateType, InterpolatedType> Sender<Core<StateType, InputType, ServerInputType, StateUpdateType, InputEventHandlerType, InputEventType, InterpolateType, InterpolatedType>>
     where StateType: State,
           InputType: Input,
-          StateUpdateType: StateUpdate<StateType, InputType>,
+          ServerInputType: ServerInput,
+          StateUpdateType: StateUpdate<StateType, InputType, ServerInputType>,
           InputEventHandlerType: InputEventHandler<InputType, InputEventType>,
           InputEventType: InputEvent,
           InterpolateType: Interpolate<StateType, InterpolatedType>,
@@ -106,7 +110,7 @@ impl<StateType, InputType, StateUpdateType, InputEventHandlerType, InputEventTyp
 
             let udp_socket = UdpSocket::bind("127.0.0.1:0").unwrap();
 
-            let (manager_sender, manager_builder) = Manager::<StateType, InputType, StateUpdateType>::new(core.step_duration, core.grace_period).build();
+            let (manager_sender, manager_builder) = Manager::<StateType, InputType, ServerInputType, StateUpdateType>::new(core.step_duration, core.grace_period).build();
             let (game_timer_sender, game_timer_builder) = GameTimer::new(core.step_duration, core.clock_average_size).build();
             let (tcp_input_sender, tcp_input_builder) = TcpInput::<StateType, InputType>::new(&tcp_stream).unwrap().build();
             let (tcp_output_sender, tcp_output_builder) = TcpOutput::new(&tcp_stream).unwrap().build();
@@ -116,6 +120,7 @@ impl<StateType, InputType, StateUpdateType, InputEventHandlerType, InputEventTyp
             tcp_input_sender.add_initial_information_message_consumer(manager_sender.clone());
             tcp_input_sender.add_initial_information_message_consumer(core_sender.clone());
             tcp_input_sender.add_initial_information_message_consumer(udp_output_sender.clone());
+            tcp_input_sender.add_initial_information_message_consumer(render_receiver_sender.clone());
 
             udp_input_sender.add_time_message_consumer(game_timer_sender.clone()).unwrap();
             udp_input_sender.add_input_message_consumer(manager_sender.clone());
@@ -143,10 +148,11 @@ impl<StateType, InputType, StateUpdateType, InputEventHandlerType, InputEventTyp
     }
 }
 
-impl<StateType, InputType, StateUpdateType, InputEventHandlerType, InputEventType, InterpolateType, InterpolatedType> Consumer<InitialInformation<StateType>> for Sender<Core<StateType, InputType, StateUpdateType, InputEventHandlerType, InputEventType, InterpolateType, InterpolatedType>>
+impl<StateType, InputType, ServerInputType, StateUpdateType, InputEventHandlerType, InputEventType, InterpolateType, InterpolatedType> Consumer<InitialInformation<StateType>> for Sender<Core<StateType, InputType, ServerInputType, StateUpdateType, InputEventHandlerType, InputEventType, InterpolateType, InterpolatedType>>
     where StateType: State,
           InputType: Input,
-          StateUpdateType: StateUpdate<StateType, InputType>,
+          ServerInputType: ServerInput,
+          StateUpdateType: StateUpdate<StateType, InputType, ServerInputType>,
           InputEventHandlerType: InputEventHandler<InputType, InputEventType>,
           InputEventType: InputEvent,
           InterpolateType: Interpolate<StateType, InterpolatedType>,
@@ -160,10 +166,11 @@ impl<StateType, InputType, StateUpdateType, InputEventHandlerType, InputEventTyp
     }
 }
 
-impl<StateType, InputType, StateUpdateType, InputEventHandlerType, InputEventType, InterpolateType, InterpolatedType> Consumer<TimeMessage> for Sender<Core<StateType, InputType, StateUpdateType, InputEventHandlerType, InputEventType, InterpolateType, InterpolatedType>>
+impl<StateType, InputType, ServerInputType, StateUpdateType, InputEventHandlerType, InputEventType, InterpolateType, InterpolatedType> Consumer<TimeMessage> for Sender<Core<StateType, InputType, ServerInputType, StateUpdateType, InputEventHandlerType, InputEventType, InterpolateType, InterpolatedType>>
     where StateType: State,
           InputType: Input,
-          StateUpdateType: StateUpdate<StateType, InputType>,
+          ServerInputType: ServerInput,
+          StateUpdateType: StateUpdate<StateType, InputType, ServerInputType>,
           InputEventHandlerType: InputEventHandler<InputType, InputEventType>,
           InputEventType: InputEvent,
           InterpolateType: Interpolate<StateType, InterpolatedType>,
@@ -215,10 +222,11 @@ impl<StateType, InputType, StateUpdateType, InputEventHandlerType, InputEventTyp
     }
 }
 
-impl<StateType, InputType, StateUpdateType, InputEventHandlerType, InputEventType, InterpolateType, InterpolatedType> Consumer<InputEventType> for Sender<Core<StateType, InputType, StateUpdateType, InputEventHandlerType, InputEventType, InterpolateType, InterpolatedType>>
+impl<StateType, InputType, ServerInputType, StateUpdateType, InputEventHandlerType, InputEventType, InterpolateType, InterpolatedType> Consumer<InputEventType> for Sender<Core<StateType, InputType, ServerInputType, StateUpdateType, InputEventHandlerType, InputEventType, InterpolateType, InterpolatedType>>
     where StateType: State,
           InputType: Input,
-          StateUpdateType: StateUpdate<StateType, InputType>,
+          ServerInputType: ServerInput,
+          StateUpdateType: StateUpdate<StateType, InputType, ServerInputType>,
           InputEventHandlerType: InputEventHandler<InputType, InputEventType>,
           InputEventType: InputEvent,
           InterpolateType: Interpolate<StateType, InterpolatedType>,

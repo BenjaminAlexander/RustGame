@@ -1,40 +1,41 @@
 use log::{warn, trace, info};
 use crate::messaging::{StateMessage, InputMessage, InitialInformation};
 use std::collections::VecDeque;
-use crate::interface::{Input, State, InputEvent, StateUpdate};
+use crate::interface::{Input, State, InputEvent, StateUpdate, ServerInput};
 use crate::threading::{ConsumerList, ChannelDrivenThread, Sender, Consumer};
 use crate::gamemanager::step::Step;
 use crate::gamemanager::stepmessage::StepMessage;
 use crate::gametime::{TimeMessage, TimeReceived, TimeDuration, TimeValue};
 use std::marker::PhantomData;
 
-pub struct Manager<StateType, InputType, StateUpdateType>
+pub struct Manager<StateType, InputType, ServerInputType, StateUpdateType>
     where StateType: State,
           InputType: Input,
-          StateUpdateType: StateUpdate<StateType, InputType>{
+          ServerInputType: ServerInput,
+          StateUpdateType: StateUpdate<StateType, InputType, ServerInputType> {
 
     drop_steps_before: usize,
     //TODO: send requested state immediately if available
     requested_step: usize,
     player_count: Option<usize>,
     //New states at the back, old at the front (index 0)
-    steps: VecDeque<Step<StateType, InputType, StateUpdateType>>,
+    steps: VecDeque<Step<StateType, InputType>>,
     requested_step_consumer_list: ConsumerList<StepMessage<StateType, InputType>>,
     completed_step_consumer_list: ConsumerList<StateMessage<StateType>>,
     step_duration: TimeDuration,
     grace_period: TimeDuration,
-    //TODO: why is this needed?
-    phantom: PhantomData<StateUpdateType>,
+    phantom: PhantomData<(StateUpdateType, ServerInputType)>,
 
     //metrics
     time_of_last_state_receive: TimeValue,
     time_of_last_input_receive: TimeValue,
 }
 
-impl<StateType, InputType, StateUpdateType> Manager<StateType, InputType, StateUpdateType>
+impl<StateType, InputType, ServerInputType, StateUpdateType> Manager<StateType, InputType, ServerInputType, StateUpdateType>
     where StateType: State,
           InputType: Input,
-          StateUpdateType: StateUpdate<StateType, InputType>{
+          ServerInputType: ServerInput,
+          StateUpdateType: StateUpdate<StateType, InputType, ServerInputType> {
 
     pub fn new(step_duration: TimeDuration, grace_period: TimeDuration) -> Self {
         Self{
@@ -54,7 +55,7 @@ impl<StateType, InputType, StateUpdateType> Manager<StateType, InputType, StateU
         }
     }
 
-    fn get_state(&mut self, step_index: usize) -> &mut Step<StateType, InputType, StateUpdateType> {
+    fn get_state(&mut self, step_index: usize) -> &mut Step<StateType, InputType> {
 
         if self.steps.is_empty() {
             let step = Step::blank(step_index);
@@ -110,10 +111,11 @@ impl<StateType, InputType, StateUpdateType> Manager<StateType, InputType, StateU
     }
 }
 
-impl<StateType, InputType, StateUpdateType> ChannelDrivenThread<()> for Manager<StateType, InputType, StateUpdateType>
+impl<StateType, InputType, ServerInputType, StateUpdateType> ChannelDrivenThread<()> for Manager<StateType, InputType, ServerInputType, StateUpdateType>
     where StateType: State,
           InputType: Input,
-          StateUpdateType: StateUpdate<StateType, InputType>{
+          ServerInputType: ServerInput,
+          StateUpdateType: StateUpdate<StateType, InputType, ServerInputType> {
 
     fn on_none_pending(&mut self) -> Option<()> {
 
@@ -152,7 +154,11 @@ impl<StateType, InputType, StateUpdateType> ChannelDrivenThread<()> for Manager<
                 (self.steps[current].need_to_compute_next_state() ||
                 (should_drop_current && self.steps[next].get_state().is_none())) {
 
-                let next_state = self.steps[current].calculate_next_state();
+                let next_state = StateUpdateType::get_next_state(
+                    self.steps[current].get_state().unwrap(),
+                    self.steps[current].get_update_arg()
+                );
+
                 self.steps[next].set_calculated_state(next_state);
 
                 if self.steps[current].is_complete() && self.steps[current].get_input_count() == player_count {
@@ -180,10 +186,11 @@ impl<StateType, InputType, StateUpdateType> ChannelDrivenThread<()> for Manager<
     }
 }
 
-impl<StateType, InputType, StateUpdateType> Sender<Manager<StateType, InputType, StateUpdateType>>
+impl<StateType, InputType, ServerInputType, StateUpdateType> Sender<Manager<StateType, InputType, ServerInputType, StateUpdateType>>
     where StateType: State,
           InputType: Input,
-          StateUpdateType: StateUpdate<StateType, InputType>{
+          ServerInputType: ServerInput,
+          StateUpdateType: StateUpdate<StateType, InputType, ServerInputType> {
 
     pub fn add_requested_step_consumer<T>(&self, consumer: T)
         where T: Consumer<StepMessage<StateType, InputType>> {
@@ -213,10 +220,11 @@ impl<StateType, InputType, StateUpdateType> Sender<Manager<StateType, InputType,
     }
 }
 
-impl<StateType, InputType, StateUpdateType> Consumer<InputMessage<InputType>> for Sender<Manager<StateType, InputType, StateUpdateType>>
+impl<StateType, InputType, ServerInputType, StateUpdateType> Consumer<InputMessage<InputType>> for Sender<Manager<StateType, InputType, ServerInputType, StateUpdateType>>
     where StateType: State,
           InputType: Input,
-          StateUpdateType: StateUpdate<StateType, InputType>{
+          ServerInputType: ServerInput,
+          StateUpdateType: StateUpdate<StateType, InputType, ServerInputType> {
 
     fn accept(&self, input_message: InputMessage<InputType>) {
         self.send(move |manager|{
@@ -229,10 +237,11 @@ impl<StateType, InputType, StateUpdateType> Consumer<InputMessage<InputType>> fo
     }
 }
 
-impl<StateType, InputType, StateUpdateType> Consumer<StateMessage<StateType>> for Sender<Manager<StateType, InputType, StateUpdateType>>
+impl<StateType, InputType, ServerInputType, StateUpdateType> Consumer<StateMessage<StateType>> for Sender<Manager<StateType, InputType, ServerInputType, StateUpdateType>>
     where StateType: State,
           InputType: Input,
-          StateUpdateType: StateUpdate<StateType, InputType>{
+          ServerInputType: ServerInput,
+          StateUpdateType: StateUpdate<StateType, InputType, ServerInputType> {
 
     fn accept(&self, mut state_message: StateMessage<StateType>) {
         self.send(move |manager|{
@@ -244,10 +253,11 @@ impl<StateType, InputType, StateUpdateType> Consumer<StateMessage<StateType>> fo
     }
 }
 
-impl<StateType, InputType, StateUpdateType> Consumer<InitialInformation<StateType>> for Sender<Manager<StateType, InputType, StateUpdateType>>
+impl<StateType, InputType, ServerInputType, StateUpdateType> Consumer<InitialInformation<StateType>> for Sender<Manager<StateType, InputType, ServerInputType, StateUpdateType>>
     where StateType: State,
           InputType: Input,
-          StateUpdateType: StateUpdate<StateType, InputType>{
+          ServerInputType: ServerInput,
+          StateUpdateType: StateUpdate<StateType, InputType, ServerInputType> {
 
     fn accept(&self, initial_information: InitialInformation<StateType>) {
         self.send(move |manager|{

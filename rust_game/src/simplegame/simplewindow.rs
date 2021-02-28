@@ -8,16 +8,17 @@ use piston::input::Input as PistonInput;
 use graphics::*;
 use glutin_window::GlutinWindow as Window;
 use log::info;
+use crate::simplegame::simpleserverinput::SimpleServerInput;
 
 pub struct SimpleWindow {
     render_receiver: RenderReceiver<SimpleState, SimpleInput, SimpleState, SimpleState>,
-    client_core_sender_option: Option<Sender<Core<SimpleState, SimpleInput, SimpleState, SimpleInputEventHandler, SimpleInputEvent, SimpleState, SimpleState>>>
+    client_core_sender_option: Option<Sender<Core<SimpleState, SimpleInput, SimpleServerInput, SimpleState, SimpleInputEventHandler, SimpleInputEvent, SimpleState, SimpleState>>>
 }
 
 impl SimpleWindow {
 
     pub fn new(render_receiver: RenderReceiver<SimpleState, SimpleInput, SimpleState, SimpleState>,
-               client_core_sender_option: Option<Sender<Core<SimpleState, SimpleInput, SimpleState, SimpleInputEventHandler, SimpleInputEvent, SimpleState, SimpleState>>>) -> Self {
+               client_core_sender_option: Option<Sender<Core<SimpleState, SimpleInput, SimpleServerInput, SimpleState, SimpleInputEventHandler, SimpleInputEvent, SimpleState, SimpleState>>>) -> Self {
 
         return Self{
             render_receiver,
@@ -72,7 +73,7 @@ impl SimpleWindow {
 
         gl_graphics.draw(args.viewport(), |c, gl| {
 
-            const GREEN: [f32; 4] = [0.0, 1.0, 0.0, 1.0];
+            const GREEN: [f32; 4] = [0.7, 0.7, 0.3, 1.0];
 
             // Clear the screen.
             clear(GREEN, gl);

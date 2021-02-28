@@ -7,6 +7,8 @@ mod stateupdate;
 mod interpolate;
 mod interpolationarg;
 mod interpolationresult;
+mod serverinput;
+mod serverupdatearg;
 
 pub use self::nextstatearg::NextStateArg;
 pub use self::inputevent::InputEvent;
@@ -17,6 +19,8 @@ pub use self::stateupdate::StateUpdate;
 pub use self::interpolate::Interpolate;
 pub use self::interpolationarg::InterpolationArg;
 pub use self::interpolationresult::InterpolationResult;
+pub use self::serverinput::ServerInput;
+pub use self::serverupdatearg::ServerUpdateArg;
 
 
 

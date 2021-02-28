@@ -45,4 +45,8 @@ impl TimeMessage {
     pub fn get_duration_since_start(&self, time_value: TimeValue) -> TimeDuration {
         return time_value.duration_since(self.start);
     }
+
+    pub fn get_step_duration(&self) -> TimeDuration {
+        return self.step_duration;
+    }
 }

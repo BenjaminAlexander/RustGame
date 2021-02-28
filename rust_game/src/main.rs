@@ -1,7 +1,7 @@
 use std::{thread, time, io};
 use log::info;
 use crate::messaging::*;
-use crate::simplegame::{Vector2, SimpleInput, SimpleState, SimpleInputEvent, STEP_DURATION, SimpleInputEventHandler, SimpleWindow};
+use crate::simplegame::{Vector2, SimpleInput, SimpleState, SimpleInputEvent, STEP_DURATION, SimpleInputEventHandler, SimpleWindow, SimpleServerInput};
 use crate::threading::{ChannelThread, Consumer, Thread};
 use crate::gametime::TimeDuration;
 
@@ -57,7 +57,7 @@ pub fn main() {
     let mut client_core_sender_option = None;
 
     if run_server {
-        let server_core  = server::Core::<SimpleState, SimpleInput, SimpleState, SimpleState, SimpleState>::new(
+        let server_core  = server::Core::<SimpleState, SimpleInput, SimpleServerInput, SimpleState, SimpleState, SimpleState>::new(
             3456,
             3457,
             STEP_DURATION,
@@ -75,7 +75,7 @@ pub fn main() {
 
     if run_client {
 
-        let client_core = client::Core::<SimpleState, SimpleInput, SimpleState, SimpleInputEventHandler, SimpleInputEvent, SimpleState, SimpleState>::new(
+        let client_core = client::Core::<SimpleState, SimpleInput, SimpleServerInput, SimpleState, SimpleInputEventHandler, SimpleInputEvent, SimpleState, SimpleState>::new(
             "127.0.0.1",
             3456,
             3457,

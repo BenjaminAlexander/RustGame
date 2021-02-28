@@ -4,6 +4,7 @@ use crate::gamemanager::stepmessage::StepMessage;
 use crate::threading::{Consumer, Sender, Receiver, channel};
 use crate::gametime::{TimeMessage, TimeValue, TimeDuration};
 use std::marker::PhantomData;
+use crate::messaging::InitialInformation;
 
 pub struct RenderReceiver<StateType, InputType, InterpolateType, InterpolatedType>
     where StateType: State,
@@ -23,6 +24,7 @@ pub struct Data<StateType, InputType>
     //TODO: use vec deque so that this is more efficient
     step_queue: Vec<StepMessage<StateType, InputType>>,
     latest_time_message: Option<TimeMessage>,
+    initial_information: Option<InitialInformation<StateType>>,
 
     //metrics
     next_expected_step_index: usize
@@ -57,6 +59,7 @@ impl<StateType, InputType, InterpolateType, InterpolatedType> RenderReceiver<Sta
             data: Data {
                 step_queue: Vec::new(),
                 latest_time_message: None,
+                initial_information: None,
                 next_expected_step_index: 0
             }
         };
@@ -69,14 +72,17 @@ impl<StateType, InputType, InterpolateType, InterpolatedType> RenderReceiver<Sta
 
         self.receiver.try_iter(&mut self.data);
 
-        if self.data.step_queue.is_empty() {
+        if self.data.initial_information.is_none() {
+            return None;
+
+        } else if self.data.step_queue.is_empty() {
             return None;
 
         } else if self.data.latest_time_message.is_some() {
 
             let now = TimeValue::now();
             let latest_time_message = self.data.latest_time_message.as_ref().unwrap();
-            let duration_since_start = latest_time_message.get_duration_since_start(now);
+            let mut duration_since_start = latest_time_message.get_duration_since_start(now);
             //used to be floor
             let now_as_fractional_step_index = latest_time_message.get_step_from_actual_time(now);
             let desired_first_step_index = now_as_fractional_step_index.floor() as usize;
@@ -97,16 +103,27 @@ impl<StateType, InputType, InterpolateType, InterpolatedType> RenderReceiver<Sta
                 warn!("Needed step: {:?}, Gotten step: {:?}", desired_first_step_index, first_step.get_step_index());
             }
 
-            let weight = if second_step.get_step_index() == first_step.get_step_index() {
+            let mut weight = if second_step.get_step_index() == first_step.get_step_index() {
                 1 as f64
             } else {
                 (now_as_fractional_step_index - first_step.get_step_index() as f64) /
                     ((second_step.get_step_index() - first_step.get_step_index()) as f64)
             };
 
-            let arg = InterpolationArg::new(weight, duration_since_start);
+            let interpolate = true;
+            if !interpolate {
+                weight = 1 as f64;
+                duration_since_start = (latest_time_message.get_step_duration() * second_step.get_step_index() as i64).clone();
+            }
 
-            return Some((duration_since_start, InterpolateType::interpolate(first_step.get_state(),second_step.get_state(), &arg)));
+            let arg = InterpolationArg::new(weight, duration_since_start);
+            let interpolation_result = InterpolateType::interpolate(
+                self.data.initial_information.as_ref().unwrap(),
+                first_step.get_state(),
+                second_step.get_state(), 
+                &arg);
+
+            return Some((duration_since_start, interpolation_result));
 
         } else {
             return None;
@@ -114,8 +131,6 @@ impl<StateType, InputType, InterpolateType, InterpolatedType> RenderReceiver<Sta
     }
 
 }
-
-//TODO: dropping steps in a strange way
 
 impl<StateType, InputType> Consumer<StepMessage<StateType, InputType>> for Sender<Data<StateType, InputType>>
     where StateType: State,
@@ -168,6 +183,17 @@ impl<StateType, InputType> Consumer<TimeMessage> for Sender<Data<StateType, Inpu
 
             data.drop_steps_before(latest_step);
 
+        }).unwrap();
+    }
+}
+
+impl<StateType, InputType> Consumer<InitialInformation<StateType>> for Sender<Data<StateType, InputType>>
+    where StateType: State,
+          InputType: Input {
+
+    fn accept(&self, initial_information: InitialInformation<StateType>) {
+        self.send(|data|{
+            data.initial_information = Some(initial_information);
         }).unwrap();
     }
 }

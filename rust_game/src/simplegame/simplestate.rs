@@ -1,5 +1,5 @@
 use crate::simplegame::{Vector2, SimpleInputEvent, SimpleInput};
-use crate::interface::{State, NextStateArg, StateUpdate, Interpolate, InterpolationArg, InterpolationResult};
+use crate::interface::{State, NextStateArg, StateUpdate, Interpolate, InterpolationArg, InterpolationResult, ServerUpdateArg};
 use serde::{Deserialize, Serialize};
 use crate::simplegame::character::Character;
 use opengl_graphics::GlGraphics;
@@ -8,6 +8,8 @@ use piston::RenderArgs;
 use crate::gametime::TimeDuration;
 use crate::simplegame::bullet::Bullet;
 use std::collections::HashMap;
+use crate::messaging::InitialInformation;
+use crate::simplegame::simpleserverinput::SimpleServerInput;
 
 pub const STEP_DURATION: TimeDuration = TimeDuration::from_millis(250);
 
@@ -39,7 +41,11 @@ impl State for SimpleState {
     }
 }
 
-impl StateUpdate<SimpleState, SimpleInput> for SimpleState {
+impl StateUpdate<SimpleState, SimpleInput, SimpleServerInput> for SimpleState {
+
+    fn get_server_input(state: &SimpleState, arg: &ServerUpdateArg<SimpleInput>) -> SimpleServerInput {
+        return SimpleServerInput::new();
+    }
 
     fn get_next_state(state: &SimpleState, arg: &NextStateArg<SimpleInput>) -> SimpleState {
         let mut new = state.clone();
@@ -85,7 +91,9 @@ impl SimpleState {
 }
 
 impl Interpolate<SimpleState, SimpleState> for SimpleState {
-    fn interpolate(first: &Self, second: &Self, arg: &InterpolationArg) -> Self {
+
+    fn interpolate(initial_information: &InitialInformation<SimpleState>, first: &Self, second: &Self, arg: &InterpolationArg) -> Self {
+
         let mut second_clone = second.clone();
 
         for i in 0..second_clone.player_characters.len() {
