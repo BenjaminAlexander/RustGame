@@ -14,6 +14,7 @@ pub struct Manager<StateType, InputType, ServerInputType, StateUpdateType>
           ServerInputType: ServerInput,
           StateUpdateType: StateUpdate<StateType, InputType, ServerInputType> {
 
+    is_server: bool,
     drop_steps_before: usize,
     //TODO: send requested state immediately if available
     requested_step: usize,
@@ -37,8 +38,9 @@ impl<StateType, InputType, ServerInputType, StateUpdateType> Manager<StateType, 
           ServerInputType: ServerInput,
           StateUpdateType: StateUpdate<StateType, InputType, ServerInputType> {
 
-    pub fn new(step_duration: TimeDuration, grace_period: TimeDuration) -> Self {
+    pub fn new(is_server: bool, step_duration: TimeDuration, grace_period: TimeDuration) -> Self {
         Self{
+            is_server,
             player_count: None,
             steps: VecDeque::new(),
             requested_step: 0,
