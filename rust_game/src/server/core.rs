@@ -116,8 +116,8 @@ impl<StateType, InputType, ServerInputType, StateUpdateType, InterpolateType, In
         }).unwrap();
     }
 
-    pub fn start_game(&self) -> RenderReceiver<StateType, InputType, InterpolateType, InterpolatedType> {
-        let (render_receiver_sender, render_receiver) = RenderReceiver::<StateType, InputType, InterpolateType, InterpolatedType>::new();
+    pub fn start_game(&self) -> RenderReceiver<StateType, InterpolateType, InterpolatedType> {
+        let (render_receiver_sender, render_receiver) = RenderReceiver::<StateType, InterpolateType, InterpolatedType>::new();
         let core_sender = self.clone();
         self.send(move |core| {
             if !core.game_is_started {

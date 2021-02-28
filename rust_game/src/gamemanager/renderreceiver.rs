@@ -6,23 +6,21 @@ use crate::gametime::{TimeMessage, TimeValue, TimeDuration};
 use std::marker::PhantomData;
 use crate::messaging::InitialInformation;
 
-pub struct RenderReceiver<StateType, InputType, InterpolateType, InterpolatedType>
+pub struct RenderReceiver<StateType, InterpolateType, InterpolatedType>
     where StateType: State,
-          InputType: Input,
           InterpolateType: Interpolate<StateType, InterpolatedType>,
           InterpolatedType: InterpolationResult {
 
-    receiver: Receiver<Data<StateType, InputType>>,
-    data: Data<StateType, InputType>,
+    receiver: Receiver<Data<StateType>>,
+    data: Data<StateType>,
     phantom: PhantomData<(InterpolateType, InterpolatedType)>
 }
 
-pub struct Data<StateType, InputType>
-    where StateType: State,
-          InputType: Input {
+pub struct Data<StateType>
+    where StateType: State {
 
     //TODO: use vec deque so that this is more efficient
-    step_queue: Vec<StepMessage<StateType, InputType>>,
+    step_queue: Vec<StepMessage<StateType>>,
     latest_time_message: Option<TimeMessage>,
     initial_information: Option<InitialInformation<StateType>>,
 
@@ -30,9 +28,8 @@ pub struct Data<StateType, InputType>
     next_expected_step_index: usize
 }
 
-impl<StateType, InputType> Data<StateType, InputType>
-    where StateType: State,
-          InputType: Input {
+impl<StateType> Data<StateType>
+    where StateType: State {
 
     fn drop_steps_before(&mut self, drop_before: usize) {
         while self.step_queue.len() > 2 &&
@@ -44,14 +41,13 @@ impl<StateType, InputType> Data<StateType, InputType>
     }
 }
 
-impl<StateType, InputType, InterpolateType, InterpolatedType> RenderReceiver<StateType, InputType, InterpolateType, InterpolatedType>
+impl<StateType, InterpolateType, InterpolatedType> RenderReceiver<StateType, InterpolateType, InterpolatedType>
     where StateType: State,
-          InputType: Input,
           InterpolateType: Interpolate<StateType, InterpolatedType>,
           InterpolatedType: InterpolationResult {
 
-    pub fn new() -> (Sender<Data<StateType, InputType>>, Self) {
-        let (sender, receiver) = channel::<Data<StateType, InputType>>();
+    pub fn new() -> (Sender<Data<StateType>>, Self) {
+        let (sender, receiver) = channel::<Data<StateType>>();
 
         let render_receiver = Self{
             receiver,
@@ -120,7 +116,7 @@ impl<StateType, InputType, InterpolateType, InterpolatedType> RenderReceiver<Sta
             let interpolation_result = InterpolateType::interpolate(
                 self.data.initial_information.as_ref().unwrap(),
                 first_step.get_state(),
-                second_step.get_state(), 
+                second_step.get_state(),
                 &arg);
 
             return Some((duration_since_start, interpolation_result));
@@ -132,11 +128,10 @@ impl<StateType, InputType, InterpolateType, InterpolatedType> RenderReceiver<Sta
 
 }
 
-impl<StateType, InputType> Consumer<StepMessage<StateType, InputType>> for Sender<Data<StateType, InputType>>
-    where StateType: State,
-          InputType: Input {
+impl<StateType> Consumer<StepMessage<StateType>> for Sender<Data<StateType>>
+    where StateType: State {
 
-    fn accept(&self, step_message: StepMessage<StateType, InputType>) {
+    fn accept(&self, step_message: StepMessage<StateType>) {
 
         //info!("StepMessage: {:?}", step_message.get_step_index());
         self.send(|data|{
@@ -168,9 +163,8 @@ impl<StateType, InputType> Consumer<StepMessage<StateType, InputType>> for Sende
 
 }
 
-impl<StateType, InputType> Consumer<TimeMessage> for Sender<Data<StateType, InputType>>
-    where StateType: State,
-          InputType: Input {
+impl<StateType> Consumer<TimeMessage> for Sender<Data<StateType>>
+    where StateType: State {
 
     fn accept(&self, time_message: TimeMessage) {
         self.send(move |data|{
@@ -187,9 +181,8 @@ impl<StateType, InputType> Consumer<TimeMessage> for Sender<Data<StateType, Inpu
     }
 }
 
-impl<StateType, InputType> Consumer<InitialInformation<StateType>> for Sender<Data<StateType, InputType>>
-    where StateType: State,
-          InputType: Input {
+impl<StateType> Consumer<InitialInformation<StateType>> for Sender<Data<StateType>>
+    where StateType: State {
 
     fn accept(&self, initial_information: InitialInformation<StateType>) {
         self.send(|data|{

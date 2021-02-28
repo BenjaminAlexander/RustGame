@@ -11,13 +11,13 @@ use log::info;
 use crate::simplegame::simpleserverinput::SimpleServerInput;
 
 pub struct SimpleWindow {
-    render_receiver: RenderReceiver<SimpleState, SimpleInput, SimpleState, SimpleState>,
+    render_receiver: RenderReceiver<SimpleState, SimpleState, SimpleState>,
     client_core_sender_option: Option<Sender<Core<SimpleState, SimpleInput, SimpleServerInput, SimpleState, SimpleInputEventHandler, SimpleInputEvent, SimpleState, SimpleState>>>
 }
 
 impl SimpleWindow {
 
-    pub fn new(render_receiver: RenderReceiver<SimpleState, SimpleInput, SimpleState, SimpleState>,
+    pub fn new(render_receiver: RenderReceiver<SimpleState, SimpleState, SimpleState>,
                client_core_sender_option: Option<Sender<Core<SimpleState, SimpleInput, SimpleServerInput, SimpleState, SimpleInputEventHandler, SimpleInputEvent, SimpleState, SimpleState>>>) -> Self {
 
         return Self{

@@ -1,7 +1,7 @@
 use log::{warn, trace, info};
 use crate::messaging::{StateMessage, InputMessage, InitialInformation};
 use std::collections::VecDeque;
-use crate::interface::{Input, State, InputEvent, StateUpdate, ServerInput};
+use crate::interface::{Input, State, InputEvent, StateUpdate, ServerInput, NextStateArg};
 use crate::threading::{ConsumerList, ChannelDrivenThread, Sender, Consumer};
 use crate::gamemanager::step::Step;
 use crate::gamemanager::stepmessage::StepMessage;
@@ -20,8 +20,8 @@ pub struct Manager<StateType, InputType, ServerInputType, StateUpdateType>
     requested_step: usize,
     player_count: Option<usize>,
     //New states at the back, old at the front (index 0)
-    steps: VecDeque<Step<StateType, InputType>>,
-    requested_step_consumer_list: ConsumerList<StepMessage<StateType, InputType>>,
+    steps: VecDeque<Step<StateType, InputType, ServerInputType>>,
+    requested_step_consumer_list: ConsumerList<StepMessage<StateType>>,
     completed_step_consumer_list: ConsumerList<StateMessage<StateType>>,
     step_duration: TimeDuration,
     grace_period: TimeDuration,
@@ -57,7 +57,7 @@ impl<StateType, InputType, ServerInputType, StateUpdateType> Manager<StateType, 
         }
     }
 
-    fn get_state(&mut self, step_index: usize) -> &mut Step<StateType, InputType> {
+    fn get_state(&mut self, step_index: usize) -> &mut Step<StateType, InputType, ServerInputType> {
 
         if self.steps.is_empty() {
             let step = Step::blank(step_index);
@@ -156,9 +156,19 @@ impl<StateType, InputType, ServerInputType, StateUpdateType> ChannelDrivenThread
                 (self.steps[current].need_to_compute_next_state() ||
                 (should_drop_current && self.steps[next].get_state().is_none())) {
 
+                if self.is_server {
+                    let server_input = StateUpdateType::get_server_input(
+                        self.steps[current].get_state().unwrap(),
+                        &self.steps[current].get_server_update_arg()
+                    );
+
+                    self.steps[current].set_server_input(server_input);
+                    //TODO:send update
+                }
+
                 let next_state = StateUpdateType::get_next_state(
                     self.steps[current].get_state().unwrap(),
-                    self.steps[current].get_update_arg()
+                    &self.steps[current].get_update_arg()
                 );
 
                 self.steps[next].set_calculated_state(next_state);
@@ -170,6 +180,7 @@ impl<StateType, InputType, ServerInputType, StateUpdateType> ChannelDrivenThread
             self.steps[current].mark_as_calculation_not_needed();
 
             if should_drop_current {
+                //TODO: send server input if it hasn't been done already
                 self.steps[next].mark_as_complete();
                 let dropped = self.steps.pop_front().unwrap();
                 trace!("Dropped step: {:?}", dropped.get_step_index());
@@ -195,7 +206,7 @@ impl<StateType, InputType, ServerInputType, StateUpdateType> Sender<Manager<Stat
           StateUpdateType: StateUpdate<StateType, InputType, ServerInputType> {
 
     pub fn add_requested_step_consumer<T>(&self, consumer: T)
-        where T: Consumer<StepMessage<StateType, InputType>> {
+        where T: Consumer<StepMessage<StateType>> {
 
         self.send(move |manager|{
             manager.requested_step_consumer_list.add_consumer(consumer);

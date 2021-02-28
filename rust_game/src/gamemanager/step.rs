@@ -1,16 +1,20 @@
-use crate::interface::{Input, State, InputEvent, NextStateArg, StateUpdate};
+use crate::interface::{Input, State, InputEvent, NextStateArg, StateUpdate, ServerInput, ServerUpdateArg};
 use crate::messaging::{InputMessage, StateMessage};
 use crate::gamemanager::stepmessage::StepMessage;
 use std::marker::PhantomData;
 use log::{trace, info, warn};
 use crate::gametime::TimeDuration;
 
-pub struct Step<StateType, InputType>
+pub struct Step<StateType, InputType, ServerInputType>
     where StateType: State,
-          InputType: Input {
+          InputType: Input,
+          ServerInputType: ServerInput {
 
-    next_state_arg: NextStateArg<InputType>,
+    step: usize,
     state: Option<StateType>,
+    server_input: Option<ServerInputType>,
+    inputs: Vec<Option<InputType>>,
+    input_count: usize,
     is_state_final: bool,
     is_state_complete: bool,
     need_to_compute_next_state: bool,
@@ -18,15 +22,19 @@ pub struct Step<StateType, InputType>
     need_to_send_as_changed: bool,
 }
 
-impl<StateType, InputType> Step<StateType, InputType>
+impl<StateType, InputType, ServerInputType> Step<StateType, InputType, ServerInputType>
     where StateType: State,
-          InputType: Input {
+          InputType: Input,
+          ServerInputType: ServerInput {
 
     pub fn blank(step_index: usize) -> Self {
 
         return Self{
-            next_state_arg: NextStateArg::new(step_index),
+            step: step_index,
             state: None,
+            server_input: None,
+            inputs: Vec::new(),
+            input_count: 0,
             is_state_final: false,
             is_state_complete: false,
             need_to_compute_next_state: false,
@@ -36,7 +44,24 @@ impl<StateType, InputType> Step<StateType, InputType>
     }
 
     pub fn set_input(&mut self, input_message: InputMessage<InputType>) {
-        self.next_state_arg.set_input(input_message);
+        let index = input_message.get_player_index();
+        while self.inputs.len() <= index {
+            self.inputs.push(None);
+        }
+
+        if self.inputs[index].is_none() {
+            self.input_count = self.input_count + 1;
+        }
+
+        self.inputs[index] = Some(input_message.get_input());
+
+        if self.state.is_some() {
+            self.need_to_compute_next_state = true;
+        }
+    }
+
+    pub fn set_server_input(&mut self, server_input: ServerInputType) {
+        self.server_input = Some(server_input);
 
         if self.state.is_some() {
             self.need_to_compute_next_state = true;
@@ -104,11 +129,11 @@ impl<StateType, InputType> Step<StateType, InputType>
     }
 
     pub fn get_step_index(&self) -> usize {
-        return self.next_state_arg.get_current_step();
+        return self.step;
     }
 
     pub fn get_input_count(&self) -> usize {
-        return self.next_state_arg.get_input_count();
+        return self.input_count;
     }
 
     pub fn is_state_final(&self) -> bool {
@@ -119,17 +144,20 @@ impl<StateType, InputType> Step<StateType, InputType>
         self.state.as_ref()
     }
 
-    pub fn get_update_arg(&self) -> &NextStateArg<InputType> {
-        return &self.next_state_arg;
+    pub fn get_server_update_arg(&self) -> ServerUpdateArg<InputType> {
+        return ServerUpdateArg::new(self.step, &self.inputs);
     }
 
-    pub fn get_changed_message(&mut self) -> Option<StepMessage<StateType, InputType>> {
+    pub fn get_update_arg(&self) -> NextStateArg<InputType> {
+        return NextStateArg::new(self.step, &self.inputs);
+    }
+
+    pub fn get_changed_message(&mut self) -> Option<StepMessage<StateType>> {
         if self.need_to_send_as_changed {
             self.need_to_send_as_changed = false;
 
             return Some(StepMessage::new(
-                self.next_state_arg.get_current_step(),
-                self.next_state_arg.clone(),
+                self.step,
                 self.state.as_ref().unwrap().clone()
             ));
         } else {
@@ -143,7 +171,7 @@ impl<StateType, InputType> Step<StateType, InputType>
             self.need_to_send_as_complete = false;
 
             return Some(StateMessage::new(
-                self.next_state_arg.get_current_step(),
+                self.step,
                 self.state.as_ref().unwrap().clone())
             );
         } else {
@@ -154,14 +182,18 @@ impl<StateType, InputType> Step<StateType, InputType>
 }
 
 //TODO: is this needed?
-impl<StateType, InputType> Clone for Step<StateType, InputType>
+impl<StateType, InputType, ServerInputType> Clone for Step<StateType, InputType, ServerInputType>
     where StateType: State,
-          InputType: Input {
+          InputType: Input,
+          ServerInputType: ServerInput {
 
     fn clone(&self) -> Self {
-        Self{
-            next_state_arg: self.next_state_arg.clone(),
+        Self {
+            step: self.step,
             state: self.state.clone(),
+            server_input: self.server_input.clone(),
+            inputs: self.inputs.clone(),
+            input_count: self.input_count,
             is_state_final: self.is_state_final,
             is_state_complete: self.is_state_complete,
             need_to_compute_next_state: self.need_to_compute_next_state,

@@ -96,8 +96,8 @@ impl<StateType, InputType, ServerInputType, StateUpdateType, InputEventHandlerTy
           InterpolateType: Interpolate<StateType, InterpolatedType>,
           InterpolatedType: InterpolationResult {
 
-    pub fn connect(&self) -> RenderReceiver<StateType, InputType, InterpolateType, InterpolatedType> {
-        let (render_receiver_sender, render_receiver) = RenderReceiver::<StateType, InputType, InterpolateType, InterpolatedType>::new();
+    pub fn connect(&self) -> RenderReceiver<StateType, InterpolateType, InterpolatedType> {
+        let (render_receiver_sender, render_receiver) = RenderReceiver::<StateType, InterpolateType, InterpolatedType>::new();
         let core_sender = self.clone();
 
         self.send(move |core|{

@@ -4,37 +4,18 @@ use std::marker::PhantomData;
 use crate::gametime::TimeDuration;
 
 #[derive(Debug)]
-pub struct ServerUpdateArg<InputType: Input> {
+pub struct ServerUpdateArg<'a, InputType: Input> {
     step: usize,
-    inputs: Vec<Option<InputType>>,
-    input_count: usize,
+    inputs: &'a Vec<Option<InputType>>,
 }
 
-impl<InputType: Input> ServerUpdateArg<InputType> {
+impl<'a, InputType: Input> ServerUpdateArg<'a, InputType> {
 
-    pub fn new(step: usize) -> Self {
+    pub fn new(step: usize, inputs: &'a Vec<Option<InputType>>) -> Self {
         return Self{
             step,
-            inputs: Vec::new(),
-            input_count: 0
+            inputs,
         }
-    }
-
-    pub fn set_input(&mut self, input_message: InputMessage<InputType>) {
-        let index = input_message.get_player_index();
-        while self.inputs.len() <= index {
-            self.inputs.push(None);
-        }
-
-        if self.inputs[index].is_none() {
-            self.input_count = self.input_count + 1;
-        }
-
-        self.inputs[index] = Some(input_message.get_input());
-    }
-
-    pub fn get_input_count(&self) -> usize {
-        return self.input_count;
     }
 
     pub fn get_input(&self, player_index: usize) -> Option<&InputType> {
@@ -48,19 +29,14 @@ impl<InputType: Input> ServerUpdateArg<InputType> {
     pub fn get_current_step(&self) -> usize {
         return self.step;
     }
-
-    pub fn get_next_step(&self) -> usize {
-        return self.step;
-    }
 }
 
-impl<InputType: Input> Clone for ServerUpdateArg<InputType> {
+impl<'a, InputType: Input> Clone for ServerUpdateArg<'a, InputType> {
 
     fn clone(&self) -> Self {
         return Self{
             step: self.step,
-            inputs: self.inputs.clone(),
-            input_count: self.input_count
+            inputs: self.inputs,
         }
     }
 }
