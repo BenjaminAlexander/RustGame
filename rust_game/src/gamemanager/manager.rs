@@ -1,5 +1,5 @@
 use log::{warn, trace, info};
-use crate::messaging::{StateMessage, InputMessage, InitialInformation};
+use crate::messaging::{StateMessage, InputMessage, InitialInformation, ServerInputMessage};
 use std::collections::VecDeque;
 use crate::interface::{Input, State, InputEvent, StateUpdate, ServerInput, NextStateArg};
 use crate::threading::{ConsumerList, ChannelDrivenThread, Sender, Consumer};
@@ -23,6 +23,7 @@ pub struct Manager<StateType, InputType, ServerInputType, StateUpdateType>
     steps: VecDeque<Step<StateType, InputType, ServerInputType>>,
     requested_step_consumer_list: ConsumerList<StepMessage<StateType>>,
     completed_step_consumer_list: ConsumerList<StateMessage<StateType>>,
+    server_input_consumer_list: ConsumerList<ServerInputMessage<ServerInputType>>,
     step_duration: TimeDuration,
     grace_period: TimeDuration,
     phantom: PhantomData<(StateUpdateType, ServerInputType)>,
@@ -47,6 +48,7 @@ impl<StateType, InputType, ServerInputType, StateUpdateType> Manager<StateType, 
             drop_steps_before: 0,
             requested_step_consumer_list: ConsumerList::new(),
             completed_step_consumer_list: ConsumerList::new(),
+            server_input_consumer_list: ConsumerList::new(),
             step_duration,
             grace_period,
             phantom: PhantomData,
@@ -111,6 +113,12 @@ impl<StateType, InputType, ServerInputType, StateUpdateType> Manager<StateType, 
             self.completed_step_consumer_list.accept(&complete_message_option.unwrap());
         }
     }
+
+    fn send_server_input(&mut self, step_index: usize) {
+        if self.is_server {
+            self.server_input_consumer_list.accept(&self.steps[step_index].get_server_input_message());
+        }
+    }
 }
 
 impl<StateType, InputType, ServerInputType, StateUpdateType> ChannelDrivenThread<()> for Manager<StateType, InputType, ServerInputType, StateUpdateType>
@@ -152,7 +160,7 @@ impl<StateType, InputType, ServerInputType, StateUpdateType> ChannelDrivenThread
 
             trace!("Trying update current: {:?}, next: {:?}", self.steps[current].get_step_index(), self.steps[next].get_step_index());
 
-            if !self.steps[next].is_state_final() &&
+            if (self.is_server || !self.steps[next].is_state_final()) &&
                 (self.steps[current].need_to_compute_next_state() ||
                 (should_drop_current && self.steps[next].get_state().is_none())) {
 
@@ -163,7 +171,6 @@ impl<StateType, InputType, ServerInputType, StateUpdateType> ChannelDrivenThread
                     );
 
                     self.steps[current].set_server_input(server_input);
-                    //TODO:send update
                 }
 
                 let next_state = StateUpdateType::get_next_state(
@@ -174,14 +181,28 @@ impl<StateType, InputType, ServerInputType, StateUpdateType> ChannelDrivenThread
                 self.steps[next].set_calculated_state(next_state);
 
                 if self.steps[current].is_complete() && self.steps[current].get_input_count() == player_count {
+
+                    self.send_server_input(current);
                     self.steps[next].mark_as_complete();
                 }
             }
             self.steps[current].mark_as_calculation_not_needed();
 
-            if should_drop_current {
-                //TODO: send server input if it hasn't been done already
+            if !self.steps[next].is_complete() &&
+                self.steps[current].is_complete() &&
+                self.steps[current].get_input_count() == player_count {
+
+                self.send_server_input(current);
                 self.steps[next].mark_as_complete();
+            }
+
+            if should_drop_current {
+
+                if !self.steps[next].is_complete() {
+                    self.send_server_input(current);
+                    self.steps[next].mark_as_complete();
+                }
+
                 let dropped = self.steps.pop_front().unwrap();
                 trace!("Dropped step: {:?}", dropped.get_step_index());
             } else {
@@ -220,6 +241,13 @@ impl<StateType, InputType, ServerInputType, StateUpdateType> Sender<Manager<Stat
         }).unwrap();
     }
 
+    pub fn add_server_input_consumer<T>(&self, consumer: T)
+        where T: Consumer<ServerInputMessage<ServerInputType>> {
+        self.send(move |manager|{
+            manager.server_input_consumer_list.add_consumer(consumer);
+        }).unwrap();
+    }
+
     pub fn drop_steps_before(&self, step :usize) {
         self.send(move |manager|{
             manager.drop_steps_before(step);
@@ -245,6 +273,23 @@ impl<StateType, InputType, ServerInputType, StateUpdateType> Consumer<InputMessa
             step.set_input(input_message);
 
             manager.time_of_last_input_receive = TimeValue::now();
+
+        }).unwrap();
+    }
+}
+
+impl<StateType, InputType, ServerInputType, StateUpdateType> Consumer<ServerInputMessage<ServerInputType>> for Sender<Manager<StateType, InputType, ServerInputType, StateUpdateType>>
+    where StateType: State,
+          InputType: Input,
+          ServerInputType: ServerInput,
+          StateUpdateType: StateUpdate<StateType, InputType, ServerInputType> {
+
+    fn accept(&self, server_input_message: ServerInputMessage<ServerInputType>) {
+        self.send(move |manager|{
+
+            //info!("Server Input received: {:?}", server_input_message.get_step());
+            let step = manager.get_state(server_input_message.get_step());
+            step.set_server_input(server_input_message.get_server_input());
 
         }).unwrap();
     }

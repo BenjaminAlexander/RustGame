@@ -1,33 +1,37 @@
 use std::net::{UdpSocket, Ipv4Addr, SocketAddrV4, SocketAddr};
 use crate::gametime::{TimeMessage, TimeReceived, TimeValue, TimeDuration};
-use crate::messaging::{InputMessage, StateMessage, ToClientMessageUDP, MAX_UDP_DATAGRAM_SIZE, MessageFragment, FragmentAssembler};
+use crate::messaging::{InputMessage, StateMessage, ToClientMessageUDP, MAX_UDP_DATAGRAM_SIZE, MessageFragment, FragmentAssembler, ServerInputMessage};
 use crate::threading::{ConsumerList, Consumer, Sender, Receiver, ChannelThread};
-use crate::interface::{State, Input};
+use crate::interface::{State, Input, ServerInput};
 use crate::threading::sender::SendError;
 use rmp_serde::decode::Error;
 use std::io;
 use log::{error, info, warn};
 use std::time::Duration;
 
-pub struct UdpInput<StateType, InputType>
+pub struct UdpInput<StateType, InputType, ServerInputType>
     where StateType: State,
-          InputType: Input {
+          InputType: Input,
+          ServerInputType: ServerInput {
 
     server_socket_addr: SocketAddr,
     socket: UdpSocket,
     fragment_assembler: FragmentAssembler,
     time_message_consumers: ConsumerList<TimeReceived<TimeMessage>>,
     input_message_consumers: ConsumerList<InputMessage<InputType>>,
+    server_input_message_consumers: ConsumerList<ServerInputMessage<ServerInputType>>,
     state_message_consumers: ConsumerList<StateMessage<StateType>>,
 
     //metrics
     time_of_last_state_receive: TimeValue,
     time_of_last_input_receive: TimeValue,
+    time_of_last_server_input_receive: TimeValue,
 }
 
-impl<StateType, InputType> UdpInput<StateType, InputType>
+impl<StateType, InputType, ServerInputType> UdpInput<StateType, InputType, ServerInputType>
     where StateType: State,
-          InputType: Input {
+          InputType: Input,
+          ServerInputType: ServerInput {
 
     pub fn new(server_socket_addr_v4: SocketAddrV4, socket: &UdpSocket) -> io::Result<Self> {
 
@@ -40,18 +44,21 @@ impl<StateType, InputType> UdpInput<StateType, InputType>
             fragment_assembler: FragmentAssembler::new(5),
             time_message_consumers: ConsumerList::new(),
             input_message_consumers: ConsumerList::new(),
+            server_input_message_consumers: ConsumerList::new(),
             state_message_consumers: ConsumerList::new(),
 
             //metrics
             time_of_last_state_receive: TimeValue::now(),
             time_of_last_input_receive: TimeValue::now(),
+            time_of_last_server_input_receive: TimeValue::now(),
         });
     }
 }
 
-impl<StateType, InputType> ChannelThread<()> for UdpInput<StateType, InputType>
+impl<StateType, InputType, ServerInputType> ChannelThread<()> for UdpInput<StateType, InputType, ServerInputType>
     where StateType: State,
-          InputType: Input {
+          InputType: Input,
+          ServerInputType: ServerInput {
 
     fn run(mut self, receiver: Receiver<Self>) {
         info!("Starting");
@@ -89,7 +96,7 @@ impl<StateType, InputType> ChannelThread<()> for UdpInput<StateType, InputType>
 
             if let Some(message_buf) = self.fragment_assembler.add_fragment(fragment) {
 
-                let result: Result<ToClientMessageUDP::<StateType, InputType>, Error> = rmp_serde::from_read_ref(&message_buf);
+                let result: Result<ToClientMessageUDP::<StateType, InputType, ServerInputType>, Error> = rmp_serde::from_read_ref(&message_buf);
 
                 match result {
                     Ok(message) => {
@@ -114,6 +121,12 @@ impl<StateType, InputType> ChannelThread<()> for UdpInput<StateType, InputType>
                                 self.input_message_consumers.accept(&input_message);
 
                             }
+                            ToClientMessageUDP::ServerInputMessage(server_input_message) => {
+                                //info!("Server Input message: {:?}", server_input_message.get_step());
+                                self.time_of_last_server_input_receive = TimeValue::now();
+                                self.server_input_message_consumers.accept(&server_input_message);
+
+                            }
                             ToClientMessageUDP::StateMessage(state_message) => {
                                 //info!("State message: {:?}", state_message.get_sequence());
                                 self.time_of_last_state_receive = TimeValue::now();
@@ -131,11 +144,12 @@ impl<StateType, InputType> ChannelThread<()> for UdpInput<StateType, InputType>
         }
     }
 }
-impl<StateType, InputType> Sender<UdpInput<StateType, InputType>>
+impl<StateType, InputType, ServerInputType> Sender<UdpInput<StateType, InputType, ServerInputType>>
     where StateType: State,
-          InputType: Input {
+          InputType: Input,
+          ServerInputType: ServerInput {
 
-    pub fn add_time_message_consumer<T>(&self, consumer: T) -> Result<(), SendError<UdpInput<StateType, InputType>>>
+    pub fn add_time_message_consumer<T>(&self, consumer: T) -> Result<(), SendError<UdpInput<StateType, InputType, ServerInputType>>>
         where T: Consumer<TimeReceived<TimeMessage>> {
 
         self.send(|tcp_input|{
@@ -143,7 +157,7 @@ impl<StateType, InputType> Sender<UdpInput<StateType, InputType>>
         })
     }
 
-    pub fn add_input_message_consumer<T>(&self, consumer: T) -> Result<(), SendError<UdpInput<StateType, InputType>>>
+    pub fn add_input_message_consumer<T>(&self, consumer: T) -> Result<(), SendError<UdpInput<StateType, InputType, ServerInputType>>>
         where T: Consumer<InputMessage<InputType>> {
 
         self.send(|tcp_input|{
@@ -151,7 +165,15 @@ impl<StateType, InputType> Sender<UdpInput<StateType, InputType>>
         })
     }
 
-    pub fn add_state_message_consumer<T>(&self, consumer: T) -> Result<(), SendError<UdpInput<StateType, InputType>>>
+    pub fn add_server_input_message_consumer<T>(&self, consumer: T) -> Result<(), SendError<UdpInput<StateType, InputType, ServerInputType>>>
+        where T: Consumer<ServerInputMessage<ServerInputType>> {
+
+        self.send(|tcp_input|{
+            tcp_input.server_input_message_consumers.add_consumer(consumer);
+        })
+    }
+
+    pub fn add_state_message_consumer<T>(&self, consumer: T) -> Result<(), SendError<UdpInput<StateType, InputType, ServerInputType>>>
         where T: Consumer<StateMessage<StateType>> {
 
         self.send(|tcp_input|{

@@ -23,9 +23,6 @@ pub struct Data<StateType>
     step_queue: Vec<StepMessage<StateType>>,
     latest_time_message: Option<TimeMessage>,
     initial_information: Option<InitialInformation<StateType>>,
-
-    //metrics
-    next_expected_step_index: usize
 }
 
 impl<StateType> Data<StateType>
@@ -56,7 +53,6 @@ impl<StateType, InterpolateType, InterpolatedType> RenderReceiver<StateType, Int
                 step_queue: Vec::new(),
                 latest_time_message: None,
                 initial_information: None,
-                next_expected_step_index: 0
             }
         };
 
@@ -136,11 +132,11 @@ impl<StateType> Consumer<StepMessage<StateType>> for Sender<Data<StateType>>
         //info!("StepMessage: {:?}", step_message.get_step_index());
         self.send(|data|{
 
-            if data.next_expected_step_index != step_message.get_step_index() {
+            if !data.step_queue.is_empty() &&
+                data.step_queue[0].get_step_index() + 1 < step_message.get_step_index() {
                 warn!("Received steps out of order.  Waiting for {:?} but got {:?}.",
-                      data.next_expected_step_index, step_message.get_step_index());
+                      data.step_queue[0].get_step_index() + 1, step_message.get_step_index());
             }
-            data.next_expected_step_index = step_message.get_step_index() + 1;
 
             //info!("StepMessage: {:?}", step_message.get_step_index());
             //insert in reverse sorted order

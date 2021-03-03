@@ -10,6 +10,7 @@ pub use self::initialinformation::InitialInformation;
 pub use self::messagefragment::MessageFragment;
 pub use self::fragmentassembler::FragmentAssembler;
 pub use self::fragmenter::Fragmenter;
+pub use self::serverinputmessage::ServerInputMessage;
 
 mod toservermessagetcp;
 mod inputmessage;
@@ -21,5 +22,7 @@ mod toservermessageudp;
 mod messagefragment;
 mod fragmentassembler;
 mod fragmenter;
+mod serverinputmessage;
 
+//TODO: make this configurable
 pub const MAX_UDP_DATAGRAM_SIZE: usize = 1000;

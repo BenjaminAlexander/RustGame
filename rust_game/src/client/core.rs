@@ -115,7 +115,7 @@ impl<StateType, InputType, ServerInputType, StateUpdateType, InputEventHandlerTy
             let (tcp_input_sender, tcp_input_builder) = TcpInput::<StateType, InputType>::new(&tcp_stream).unwrap().build();
             let (tcp_output_sender, tcp_output_builder) = TcpOutput::new(&tcp_stream).unwrap().build();
             let (udp_output_sender, udp_output_builder) = UdpOutput::<StateType, InputType>::new(server_udp_socket_addr_v4, &udp_socket).unwrap().build();
-            let (udp_input_sender, udp_input_builder) = UdpInput::<StateType, InputType>::new(server_udp_socket_addr_v4, &udp_socket).unwrap().build();
+            let (udp_input_sender, udp_input_builder) = UdpInput::<StateType, InputType, ServerInputType>::new(server_udp_socket_addr_v4, &udp_socket).unwrap().build();
 
             tcp_input_sender.add_initial_information_message_consumer(manager_sender.clone());
             tcp_input_sender.add_initial_information_message_consumer(core_sender.clone());
@@ -124,6 +124,7 @@ impl<StateType, InputType, ServerInputType, StateUpdateType, InputEventHandlerTy
 
             udp_input_sender.add_time_message_consumer(game_timer_sender.clone()).unwrap();
             udp_input_sender.add_input_message_consumer(manager_sender.clone());
+            udp_input_sender.add_server_input_message_consumer(manager_sender.clone());
             udp_input_sender.add_state_message_consumer(manager_sender.clone());
 
             game_timer_sender.add_timer_message_consumer(core_sender.clone());

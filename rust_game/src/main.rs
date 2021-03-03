@@ -61,7 +61,7 @@ pub fn main() {
             3456,
             3457,
             STEP_DURATION,
-            TimeDuration::from_millis(500),
+            TimeDuration::from_millis(1000),
             TimeDuration::from_millis(1000)
         );
 
@@ -80,7 +80,7 @@ pub fn main() {
             3456,
             3457,
             STEP_DURATION,
-            TimeDuration::from_millis(500),
+            TimeDuration::from_millis(1000),
             100);
 
         let (client_core_sender, client_core_builder) = client_core.build();

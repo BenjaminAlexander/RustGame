@@ -36,7 +36,7 @@ pub struct Core<StateType, InputType, ServerInputType, StateUpdateType, Interpol
     tcp_inputs: Vec<Sender<TcpInput>>,
     tcp_outputs: Vec<Sender<TcpOutput<StateType, InputType>>>,
     udp_socket: Option<UdpSocket>,
-    udp_outputs: Vec<Sender<UdpOutput<StateType, InputType>>>,
+    udp_outputs: Vec<Sender<UdpOutput<StateType, InputType, ServerInputType>>>,
     udp_input_sender: Option<Sender<UdpInput<InputType>>>,
     manager_sender: Option<Sender<Manager<StateType, InputType, ServerInputType, StateUpdateType>>>,
     drop_steps_before: usize,
@@ -150,6 +150,7 @@ impl<StateType, InputType, ServerInputType, StateUpdateType, InterpolateType, In
                     timer_sender.add_timer_message_consumer(udp_output.clone());
 
                     manager_sender.add_completed_step_consumer(udp_output.clone());
+                    manager_sender.add_server_input_consumer(udp_output.clone());
                 }
 
                 for tcp_output in core.tcp_outputs.iter() {
@@ -231,7 +232,11 @@ impl<StateType, InputType, ServerInputType, StateUpdateType, InterpolateType, In
 
             if core.manager_sender.is_some() {
                 let manager_sender = core.manager_sender.as_ref().unwrap();
-                manager_sender.drop_steps_before(core.drop_steps_before);
+
+                //the manager needs its lowest step to not have any new inputs
+                if core.drop_steps_before > 1 {
+                    manager_sender.drop_steps_before(core.drop_steps_before - 1);
+                }
                 manager_sender.set_requested_step(time_message.get_step() + 1);
             }
 

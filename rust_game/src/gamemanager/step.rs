@@ -1,5 +1,5 @@
 use crate::interface::{Input, State, InputEvent, NextStateArg, StateUpdate, ServerInput, ServerUpdateArg};
-use crate::messaging::{InputMessage, StateMessage};
+use crate::messaging::{InputMessage, StateMessage, ServerInputMessage};
 use crate::gamemanager::stepmessage::StepMessage;
 use std::marker::PhantomData;
 use log::{trace, info, warn};
@@ -178,6 +178,13 @@ impl<StateType, InputType, ServerInputType> Step<StateType, InputType, ServerInp
             return None;
         }
 
+    }
+
+    pub fn get_server_input_message(&self) -> ServerInputMessage<ServerInputType> {
+        return ServerInputMessage::new(
+            self.step,
+            self.server_input.as_ref().unwrap().clone()
+        );
     }
 }
 
