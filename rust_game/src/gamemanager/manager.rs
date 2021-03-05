@@ -167,24 +167,19 @@ impl<StateType, InputType, ServerInputType, StateUpdateType> ChannelDrivenThread
                 (should_drop_current && self.steps[next].get_state().is_none())) {
 
                 let initial_information = self.initial_information.as_ref().unwrap();
-                let server_update_arg = self.steps[current].get_server_update_arg(initial_information);
-
                 if self.is_server {
 
                     let server_input = StateUpdateType::get_server_input(
                         self.steps[current].get_state().unwrap(),
-                        &server_update_arg
+                        &self.steps[current].get_server_update_arg(initial_information)
                     );
 
                     self.steps[current].set_server_input(server_input);
                 }
 
-                let server_update_arg = self.steps[current].get_server_update_arg(initial_information);
-                let update_arg = self.steps[current].get_update_arg(server_update_arg);
-
                 let next_state = StateUpdateType::get_next_state(
                     self.steps[current].get_state().unwrap(),
-                    &update_arg
+                    &self.steps[current].get_update_arg(initial_information)
                 );
 
                 self.steps[next].set_calculated_state(next_state);

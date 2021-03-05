@@ -148,8 +148,8 @@ impl<StateType, InputType, ServerInputType> Step<StateType, InputType, ServerInp
         return ServerUpdateArg::new(initial_information, self.step, &self.inputs);
     }
 
-    pub fn get_update_arg<'a, 'b>(&self, server_update_arg: ServerUpdateArg<'a, 'b, StateType, InputType>) -> NextStateArg<'a, 'b, StateType, InputType> {
-        return NextStateArg::new(server_update_arg);
+    pub fn get_update_arg<'a>(&self, initial_information: &'a InitialInformation<StateType>) -> NextStateArg<'a, '_, StateType, InputType> {
+        return NextStateArg::new(self.get_server_update_arg(initial_information));
     }
 
     pub fn get_changed_message(&mut self) -> Option<StepMessage<StateType>> {
