@@ -1,4 +1,4 @@
-use crate::interface::{Input, State, InputEvent, NextStateArg};
+use crate::interface::{Input, State, InputEvent, UpdateArg};
 use crate::messaging::{InputMessage, StateMessage};
 use std::marker::PhantomData;
 use std::cmp::Ordering;

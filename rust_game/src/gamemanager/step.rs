@@ -1,4 +1,4 @@
-use crate::interface::{Input, State, InputEvent, NextStateArg, StateUpdate, ServerInput, ServerUpdateArg};
+use crate::interface::{Input, State, InputEvent, UpdateArg, StateUpdate, ServerInput, ServerUpdateArg};
 use crate::messaging::{InputMessage, StateMessage, ServerInputMessage, InitialInformation};
 use crate::gamemanager::stepmessage::StepMessage;
 use std::marker::PhantomData;
@@ -148,8 +148,8 @@ impl<StateType, InputType, ServerInputType> Step<StateType, InputType, ServerInp
         return ServerUpdateArg::new(initial_information, self.step, &self.inputs);
     }
 
-    pub fn get_update_arg<'a>(&self, initial_information: &'a InitialInformation<StateType>) -> NextStateArg<'a, '_, StateType, InputType> {
-        return NextStateArg::new(self.get_server_update_arg(initial_information));
+    pub fn get_update_arg<'a>(&self, initial_information: &'a InitialInformation<StateType>) -> UpdateArg<'a, '_, '_, StateType, InputType, ServerInputType> {
+        return UpdateArg::new(self.get_server_update_arg(initial_information), self.server_input.as_ref());
     }
 
     pub fn get_changed_message(&mut self) -> Option<StepMessage<StateType>> {

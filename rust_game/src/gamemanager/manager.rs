@@ -1,7 +1,7 @@
 use log::{warn, trace, info};
 use crate::messaging::{StateMessage, InputMessage, InitialInformation, ServerInputMessage};
 use std::collections::VecDeque;
-use crate::interface::{Input, State, InputEvent, StateUpdate, ServerInput, NextStateArg};
+use crate::interface::{Input, State, InputEvent, StateUpdate, ServerInput, UpdateArg};
 use crate::threading::{ConsumerList, ChannelDrivenThread, Sender, Consumer};
 use crate::gamemanager::step::Step;
 use crate::gamemanager::stepmessage::StepMessage;

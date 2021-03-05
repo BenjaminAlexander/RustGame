@@ -1,4 +1,4 @@
-use crate::simplegame::{Vector2, STEP_DURATION, SimpleInput, SimpleState};
+use crate::simplegame::{Vector2, STEP_DURATION, SimpleInput, SimpleState, SimpleServerInput};
 use serde::{Deserialize, Serialize};
 use piston::{RenderArgs, ButtonState};
 use opengl_graphics::{GlGraphics, OpenGL};
@@ -6,7 +6,7 @@ use graphics::{Context, rectangle};
 use graphics::*;
 use crate::simplegame::bullet::Bullet;
 use log::{warn, trace, info};
-use crate::interface::NextStateArg;
+use crate::interface::UpdateArg;
 use crate::gametime::TimeDuration;
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -41,7 +41,7 @@ impl Character {
 
     pub fn is_hit(&self, bullet: &Bullet, duration_since_start: TimeDuration) -> bool {
         if let Some(bullet_position) = bullet.get_position(duration_since_start) {
-            if (bullet_position - self.position).get_length() < 25.0 {
+            if (bullet_position - self.position).get_length() < 75.0 {
                 return true;
             }
         }
@@ -54,7 +54,7 @@ impl Character {
         }
     }
 
-    pub fn move_character(&mut self, arg: &NextStateArg<SimpleState, SimpleInput>) {
+    pub fn move_character(&mut self, arg: &UpdateArg<SimpleState, SimpleInput, SimpleServerInput>) {
 
         if let Some(input) = arg.get_input(self.player_index) {
             self.velocity = input.get_velocity();
@@ -63,7 +63,7 @@ impl Character {
         self.position = self.position + self.velocity * STEP_DURATION.get_millis() as f64 * 0.5;
     }
 
-    pub fn get_fired_bullet(&self, arg: &NextStateArg<SimpleState, SimpleInput>) -> Option<Bullet> {
+    pub fn get_fired_bullet(&self, arg: &UpdateArg<SimpleState, SimpleInput, SimpleServerInput>) -> Option<Bullet> {
         if let Some(input) = arg.get_input(self.player_index) {
             if input.should_fire() {
                 return Some(Bullet::new(
@@ -96,7 +96,8 @@ impl Character {
         rectangle(RED, square, transform, gl);
 
         //draw health bar
-        let health_rectangle = rectangle::rectangle_by_corners(0.0, 0.0, 10.0 * self.health as f64, 10.0);
+        let base = self.player_index as f64 * 10.0;
+        let health_rectangle = rectangle::rectangle_by_corners(0.0, base, 10.0 * self.health as f64, base + 10.0);
         let health_trasform = context.transform;
         rectangle(RED, health_rectangle, health_trasform, gl);
 

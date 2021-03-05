@@ -1,5 +1,5 @@
 use crate::simplegame::{Vector2, SimpleInputEvent, SimpleInput, SimplServerInputEvent};
-use crate::interface::{State, NextStateArg, StateUpdate, Interpolate, InterpolationArg, InterpolationResult, ServerUpdateArg};
+use crate::interface::{State, UpdateArg, StateUpdate, Interpolate, InterpolationArg, InterpolationResult, ServerUpdateArg};
 use serde::{Deserialize, Serialize};
 use crate::simplegame::character::Character;
 use opengl_graphics::GlGraphics;
@@ -10,8 +10,9 @@ use crate::simplegame::bullet::Bullet;
 use std::collections::HashMap;
 use crate::messaging::InitialInformation;
 use crate::simplegame::simpleserverinput::SimpleServerInput;
+use log::{warn, trace, info};
 
-pub const STEP_DURATION: TimeDuration = TimeDuration::from_millis(250);
+pub const STEP_DURATION: TimeDuration = TimeDuration::from_millis(100);
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct SimpleState {
@@ -59,7 +60,7 @@ impl StateUpdate<SimpleState, SimpleInput, SimpleServerInput> for SimpleState {
         return server_input;
     }
 
-    fn get_next_state(state: &SimpleState, arg: &NextStateArg<SimpleState, SimpleInput>) -> SimpleState {
+    fn get_next_state(state: &SimpleState, arg: &UpdateArg<SimpleState, SimpleInput, SimpleServerInput>) -> SimpleState {
         let mut new = state.clone();
         new.update(arg);
         return new;
@@ -69,7 +70,11 @@ impl StateUpdate<SimpleState, SimpleInput, SimpleServerInput> for SimpleState {
 
 impl SimpleState {
 
-    fn update(&mut self, arg: &NextStateArg<SimpleState, SimpleInput>) {
+    fn update(&mut self, arg: &UpdateArg<SimpleState, SimpleInput, SimpleServerInput>) {
+
+        if let Some(server_input) = arg.get_server_input() {
+            server_input.apply_to_state(self);
+        }
 
         let duration_of_start_to_current = STEP_DURATION * arg.get_current_step() as i64;
 

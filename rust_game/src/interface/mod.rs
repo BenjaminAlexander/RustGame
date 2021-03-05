@@ -1,4 +1,4 @@
-mod nextstatearg;
+mod updatearg;
 mod inputevent;
 mod input;
 mod state;
@@ -10,7 +10,7 @@ mod interpolationresult;
 mod serverinput;
 mod serverupdatearg;
 
-pub use self::nextstatearg::NextStateArg;
+pub use self::updatearg::UpdateArg;
 pub use self::inputevent::InputEvent;
 pub use self::input::Input;
 pub use self::state::State;
