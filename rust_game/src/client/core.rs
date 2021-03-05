@@ -25,6 +25,7 @@ pub struct Core<StateType, InputType, ServerInputType, StateUpdateType, InputEve
     server_ip: String,
     tcp_port: u16,
     udp_port: u16,
+    //TODO: remove
     step_duration: TimeDuration,
     grace_period: TimeDuration,
     clock_average_size: usize,
@@ -110,8 +111,8 @@ impl<StateType, InputType, ServerInputType, StateUpdateType, InputEventHandlerTy
 
             let udp_socket = UdpSocket::bind("127.0.0.1:0").unwrap();
 
-            let (manager_sender, manager_builder) = Manager::<StateType, InputType, ServerInputType, StateUpdateType>::new(false, core.step_duration, core.grace_period).build();
-            let (game_timer_sender, game_timer_builder) = GameTimer::new(core.step_duration, core.clock_average_size).build();
+            let (manager_sender, manager_builder) = Manager::<StateType, InputType, ServerInputType, StateUpdateType>::new(false, core.grace_period).build();
+            let (game_timer_sender, game_timer_builder) = GameTimer::new(core.clock_average_size).build();
             let (tcp_input_sender, tcp_input_builder) = TcpInput::<StateType, InputType>::new(&tcp_stream).unwrap().build();
             let (tcp_output_sender, tcp_output_builder) = TcpOutput::new(&tcp_stream).unwrap().build();
             let (udp_output_sender, udp_output_builder) = UdpOutput::<StateType, InputType>::new(server_udp_socket_addr_v4, &udp_socket).unwrap().build();
@@ -121,6 +122,7 @@ impl<StateType, InputType, ServerInputType, StateUpdateType, InputEventHandlerTy
             tcp_input_sender.add_initial_information_message_consumer(core_sender.clone());
             tcp_input_sender.add_initial_information_message_consumer(udp_output_sender.clone());
             tcp_input_sender.add_initial_information_message_consumer(render_receiver_sender.clone());
+            tcp_input_sender.add_initial_information_message_consumer(game_timer_sender.clone());
 
             udp_input_sender.add_time_message_consumer(game_timer_sender.clone()).unwrap();
             udp_input_sender.add_input_message_consumer(manager_sender.clone());

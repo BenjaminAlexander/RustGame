@@ -1,4 +1,4 @@
-use crate::simplegame::{Vector2, SimpleInputEvent, SimpleInput};
+use crate::simplegame::{Vector2, SimpleInputEvent, SimpleInput, SimplServerInputEvent};
 use crate::interface::{State, NextStateArg, StateUpdate, Interpolate, InterpolationArg, InterpolationResult, ServerUpdateArg};
 use serde::{Deserialize, Serialize};
 use crate::simplegame::character::Character;
@@ -43,11 +43,23 @@ impl State for SimpleState {
 
 impl StateUpdate<SimpleState, SimpleInput, SimpleServerInput> for SimpleState {
 
-    fn get_server_input(state: &SimpleState, arg: &ServerUpdateArg<SimpleInput>) -> SimpleServerInput {
-        return SimpleServerInput::new();
+    fn get_server_input(state: &SimpleState, arg: &ServerUpdateArg<SimpleState, SimpleInput>) -> SimpleServerInput {
+        let mut server_input = SimpleServerInput::new();
+
+        for character in &state.player_characters {
+            for bullet in &state.bullets {
+                if character.is_hit(bullet, arg.get_current_duration_since_start()) {
+                    server_input.add_event(SimplServerInputEvent::CharacterHit{
+                        index: character.get_player_index()
+                    });
+                }
+            }
+        }
+
+        return server_input;
     }
 
-    fn get_next_state(state: &SimpleState, arg: &NextStateArg<SimpleInput>) -> SimpleState {
+    fn get_next_state(state: &SimpleState, arg: &NextStateArg<SimpleState, SimpleInput>) -> SimpleState {
         let mut new = state.clone();
         new.update(arg);
         return new;
@@ -57,7 +69,7 @@ impl StateUpdate<SimpleState, SimpleInput, SimpleServerInput> for SimpleState {
 
 impl SimpleState {
 
-    fn update(&mut self, arg: &NextStateArg<SimpleInput>) {
+    fn update(&mut self, arg: &NextStateArg<SimpleState, SimpleInput>) {
 
         let duration_of_start_to_current = STEP_DURATION * arg.get_current_step() as i64;
 
@@ -87,6 +99,10 @@ impl SimpleState {
         for bullet in &self.bullets {
             bullet.draw(duration_since_game_start, args, context, gl);
         }
+    }
+
+    pub fn hit_character(&mut self, index: usize) {
+        self.player_characters[index].reduce_health();
     }
 }
 

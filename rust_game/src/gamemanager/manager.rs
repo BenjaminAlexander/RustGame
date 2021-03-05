@@ -18,13 +18,12 @@ pub struct Manager<StateType, InputType, ServerInputType, StateUpdateType>
     drop_steps_before: usize,
     //TODO: send requested state immediately if available
     requested_step: usize,
-    player_count: Option<usize>,
+    initial_information: Option<InitialInformation<StateType>>,
     //New states at the back, old at the front (index 0)
     steps: VecDeque<Step<StateType, InputType, ServerInputType>>,
     requested_step_consumer_list: ConsumerList<StepMessage<StateType>>,
     completed_step_consumer_list: ConsumerList<StateMessage<StateType>>,
     server_input_consumer_list: ConsumerList<ServerInputMessage<ServerInputType>>,
-    step_duration: TimeDuration,
     grace_period: TimeDuration,
     phantom: PhantomData<(StateUpdateType, ServerInputType)>,
 
@@ -39,17 +38,16 @@ impl<StateType, InputType, ServerInputType, StateUpdateType> Manager<StateType, 
           ServerInputType: ServerInput,
           StateUpdateType: StateUpdate<StateType, InputType, ServerInputType> {
 
-    pub fn new(is_server: bool, step_duration: TimeDuration, grace_period: TimeDuration) -> Self {
+    pub fn new(is_server: bool, grace_period: TimeDuration) -> Self {
         Self{
             is_server,
-            player_count: None,
+            initial_information: None,
             steps: VecDeque::new(),
             requested_step: 0,
             drop_steps_before: 0,
             requested_step_consumer_list: ConsumerList::new(),
             completed_step_consumer_list: ConsumerList::new(),
             server_input_consumer_list: ConsumerList::new(),
-            step_duration,
             grace_period,
             phantom: PhantomData,
 
@@ -141,13 +139,17 @@ impl<StateType, InputType, ServerInputType, StateUpdateType> ChannelDrivenThread
             return None;
         }
 
+        if self.initial_information.is_none() {
+            return None;
+        }
+
         let mut current: usize = 0;
 
         self.send_messages(current);
 
-        let player_count = match self.player_count {
+        let player_count = match &self.initial_information {
             None => usize::MAX,
-            Some(count) => count
+            Some(initial_info) => initial_info.get_player_count()
         };
 
         while (self.steps[current].is_complete() && self.steps[current].get_input_count() == player_count) ||
@@ -164,18 +166,25 @@ impl<StateType, InputType, ServerInputType, StateUpdateType> ChannelDrivenThread
                 (self.steps[current].need_to_compute_next_state() ||
                 (should_drop_current && self.steps[next].get_state().is_none())) {
 
+                let initial_information = self.initial_information.as_ref().unwrap();
+                let server_update_arg = self.steps[current].get_server_update_arg(initial_information);
+
                 if self.is_server {
+
                     let server_input = StateUpdateType::get_server_input(
                         self.steps[current].get_state().unwrap(),
-                        &self.steps[current].get_server_update_arg()
+                        &server_update_arg
                     );
 
                     self.steps[current].set_server_input(server_input);
                 }
 
+                let server_update_arg = self.steps[current].get_server_update_arg(initial_information);
+                let update_arg = self.steps[current].get_update_arg(server_update_arg);
+
                 let next_state = StateUpdateType::get_next_state(
                     self.steps[current].get_state().unwrap(),
-                    &self.steps[current].get_update_arg()
+                    &update_arg
                 );
 
                 self.steps[next].set_calculated_state(next_state);
@@ -319,8 +328,12 @@ impl<StateType, InputType, ServerInputType, StateUpdateType> Consumer<InitialInf
 
     fn accept(&self, initial_information: InitialInformation<StateType>) {
         self.send(move |manager|{
-            manager.player_count = Some(initial_information.get_player_count());
-            manager.handle_state_message(StateMessage::new(0, initial_information.get_state()));
+            manager.initial_information = Some(initial_information);
+            let state = manager.initial_information.as_ref().unwrap().get_state().clone();
+            manager.handle_state_message(StateMessage::new(
+                0,
+                state
+            ));
         }).unwrap();
     }
 }

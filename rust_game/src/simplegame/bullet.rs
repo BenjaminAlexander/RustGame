@@ -5,6 +5,7 @@ use opengl_graphics::{GlGraphics, OpenGL};
 use graphics::{Context, rectangle};
 use graphics::*;
 use crate::gametime::{TimeDuration, EPOCH};
+use log::{info, warn, trace};
 
 const MAX_RANGE: f64 = 5000 as f64;
 
@@ -49,6 +50,7 @@ impl Bullet {
         const BLUE: [f32; 4] = [0.0, 0.0, 1.0, 1.0];
 
         if let Some(current_position) = self.get_position(duration_since_game_start) {
+
             let (x, y) = current_position.get();
             let x_in_window = (x as f64 / args.draw_size[0] as f64) * args.window_size[0];
             let y_in_window = (y as f64 / args.draw_size[1] as f64) * args.window_size[1];

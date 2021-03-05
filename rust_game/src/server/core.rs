@@ -4,7 +4,7 @@ use log::{warn, trace, info};
 use crate::interface::{Input, State, InputEvent, StateUpdate, Interpolate, InterpolationResult, ServerInput};
 use crate::server::tcpinput::TcpInput;
 use crate::threading::{ChannelDrivenThread, ChannelThread, Consumer, Sender};
-use crate::server::TcpListenerThread;
+use crate::server::{TcpListenerThread, ServerConfig};
 use crate::server::tcpoutput::TcpOutput;
 use crate::gametime::{GameTimer, TimeDuration, TimeMessage};
 use crate::gamemanager::{Manager, RenderReceiver};
@@ -30,7 +30,7 @@ pub struct Core<StateType, InputType, ServerInputType, StateUpdateType, Interpol
     game_is_started: bool,
     tcp_port: u16,
     udp_port: u16,
-    step_duration: TimeDuration,
+    server_config: ServerConfig,
     grace_period: TimeDuration,
     timer_message_period: TimeDuration,
     tcp_inputs: Vec<Sender<TcpInput>>,
@@ -70,11 +70,15 @@ impl<StateType, InputType, ServerInputType, StateUpdateType, InterpolateType, In
                grace_period: TimeDuration,
                timer_message_period: TimeDuration) -> Self {
 
+        let server_config = ServerConfig::new(
+            step_duration
+        );
+
         Self {
             game_is_started: false,
             tcp_port,
             udp_port,
-            step_duration,
+            server_config,
             grace_period,
             timer_message_period,
             tcp_inputs: Vec::new(),
@@ -125,8 +129,8 @@ impl<StateType, InputType, ServerInputType, StateUpdateType, InterpolateType, In
 
                 let initial_state = StateType::new(core.tcp_outputs.len());
 
-                let (manager_sender, manager_builder) = Manager::<StateType, InputType, ServerInputType, StateUpdateType>::new(true, core.step_duration, core.grace_period).build();
-                let (timer_sender, timer_builder) = GameTimer::new(core.step_duration, 0).build();
+                let (manager_sender, manager_builder) = Manager::<StateType, InputType, ServerInputType, StateUpdateType>::new(true, core.grace_period).build();
+                let (timer_sender, timer_builder) = GameTimer::new(0).build();
 
                 timer_sender.add_timer_message_consumer(core_sender.clone());
                 timer_sender.add_timer_message_consumer(render_receiver_sender.clone());
@@ -137,12 +141,14 @@ impl<StateType, InputType, ServerInputType, StateUpdateType, InterpolateType, In
                 manager_sender.drop_steps_before(core.drop_steps_before);
 
                 let server_initial_information = InitialInformation::<StateType>::new(
+                    core.server_config.clone(),
                     core.tcp_outputs.len(),
                     usize::MAX,
                     initial_state.clone());
 
                 manager_sender.accept(server_initial_information.clone());
                 render_receiver_sender.accept(server_initial_information.clone());
+                timer_sender.accept(server_initial_information.clone());
 
                 timer_sender.start().unwrap();
 
@@ -154,7 +160,11 @@ impl<StateType, InputType, ServerInputType, StateUpdateType, InterpolateType, In
                 }
 
                 for tcp_output in core.tcp_outputs.iter() {
-                    tcp_output.send_initial_information(core.tcp_outputs.len(), initial_state.clone());
+                    tcp_output.send_initial_information(
+                        core.server_config.clone(),
+                        core.tcp_outputs.len(),
+                        initial_state.clone()
+                    );
                 }
 
                 core.udp_input_sender.as_ref().unwrap().add_input_consumer(core_sender.clone());

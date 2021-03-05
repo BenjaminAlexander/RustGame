@@ -1,42 +1,26 @@
-use crate::interface::{Input, InputEvent};
+use crate::interface::{Input, InputEvent, ServerUpdateArg, State};
 use crate::messaging::InputMessage;
 use std::marker::PhantomData;
 use crate::gametime::TimeDuration;
 
 #[derive(Debug)]
-pub struct NextStateArg<'a, InputType: Input> {
-    step: usize,
-    inputs: &'a Vec<Option<InputType>>,
+pub struct NextStateArg<'a, 'b, StateType: State, InputType: Input> {
+    server_update_arg: ServerUpdateArg<'a, 'b, StateType, InputType>,
 }
 
-impl<'a, InputType: Input> NextStateArg<'a, InputType> {
+impl<'a, 'b, StateType: State, InputType: Input> NextStateArg<'a, 'b, StateType, InputType> {
 
-    pub fn new(step: usize, inputs: &'a Vec<Option<InputType>>) -> Self {
+    pub fn new(server_update_arg: ServerUpdateArg<'a, 'b, StateType, InputType>) -> Self {
         return Self{
-            step,
-            inputs,
+            server_update_arg
         }
     }
 
     pub fn get_input(&self, player_index: usize) -> Option<&InputType> {
-        if let Some(option) = self.inputs.get(player_index) {
-            return option.as_ref();
-        } else {
-            return None;
-        }
+        return self.server_update_arg.get_input(player_index);
     }
 
     pub fn get_current_step(&self) -> usize {
-        return self.step;
-    }
-}
-
-impl<'a, InputType: Input> Clone for NextStateArg<'a, InputType> {
-
-    fn clone(&self) -> Self {
-        return Self{
-            step: self.step,
-            inputs: self.inputs,
-        }
+        return self.server_update_arg.get_current_step();
     }
 }

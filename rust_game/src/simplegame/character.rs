@@ -7,12 +7,14 @@ use graphics::*;
 use crate::simplegame::bullet::Bullet;
 use log::{warn, trace, info};
 use crate::interface::NextStateArg;
+use crate::gametime::TimeDuration;
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Character {
     player_index: usize,
     velocity: Vector2,
-    position: Vector2
+    position: Vector2,
+    health: u8
 }
 
 impl Character {
@@ -20,8 +22,13 @@ impl Character {
         return Self{
             player_index,
             velocity: Vector2::new(0 as f64, 0 as f64),
-            position
+            position,
+            health: 10
         };
+    }
+
+    pub fn get_player_index(&self) -> usize {
+        return self.player_index;
     }
 
     pub fn get_position(&self) -> &Vector2 {
@@ -32,7 +39,22 @@ impl Character {
         self.position = position;
     }
 
-    pub fn move_character(&mut self, arg: &NextStateArg<SimpleInput>) {
+    pub fn is_hit(&self, bullet: &Bullet, duration_since_start: TimeDuration) -> bool {
+        if let Some(bullet_position) = bullet.get_position(duration_since_start) {
+            if (bullet_position - self.position).get_length() < 25.0 {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    pub fn reduce_health(&mut self) {
+        if self.health > 0 {
+            self.health = self.health - 1;
+        }
+    }
+
+    pub fn move_character(&mut self, arg: &NextStateArg<SimpleState, SimpleInput>) {
 
         if let Some(input) = arg.get_input(self.player_index) {
             self.velocity = input.get_velocity();
@@ -41,7 +63,7 @@ impl Character {
         self.position = self.position + self.velocity * STEP_DURATION.get_millis() as f64 * 0.5;
     }
 
-    pub fn get_fired_bullet(&self, arg: &NextStateArg<SimpleInput>) -> Option<Bullet> {
+    pub fn get_fired_bullet(&self, arg: &NextStateArg<SimpleState, SimpleInput>) -> Option<Bullet> {
         if let Some(input) = arg.get_input(self.player_index) {
             if input.should_fire() {
                 return Some(Bullet::new(
@@ -72,5 +94,11 @@ impl Character {
             .trans(-25.0, -25.0);
 
         rectangle(RED, square, transform, gl);
+
+        //draw health bar
+        let health_rectangle = rectangle::rectangle_by_corners(0.0, 0.0, 10.0 * self.health as f64, 10.0);
+        let health_trasform = context.transform;
+        rectangle(RED, health_rectangle, health_trasform, gl);
+
     }
 }

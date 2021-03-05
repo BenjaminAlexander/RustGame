@@ -5,6 +5,7 @@ pub use self::simpleinputeventhandler::SimpleInputEventHandler;
 pub use self::simplewindow::SimpleWindow;
 pub use self::simplestate::*;
 pub use self::simpleserverinput::SimpleServerInput;
+pub use self::simpleserverinput::SimplServerInputEvent;
 
 mod vector2;
 mod simpleinputevent;
