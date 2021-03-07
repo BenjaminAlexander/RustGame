@@ -123,7 +123,9 @@ impl<StateType, InputType, ServerInputType, StateUpdateType> Manager<StateType, 
 
     fn send_server_input(&mut self, step_index: usize) {
         if self.is_server {
-            self.server_input_consumer_list.accept(&self.steps[step_index].get_server_input_message());
+            if let Some(message) = self.steps[step_index].get_server_input_message() {
+                self.server_input_consumer_list.accept(&message);
+            }
         }
     }
 }
@@ -173,12 +175,7 @@ impl<StateType, InputType, ServerInputType, StateUpdateType> ChannelDrivenThread
                 let initial_information = self.initial_information.as_ref().unwrap();
                 if self.is_server {
 
-                    let server_input = StateUpdateType::get_server_input(
-                        self.steps[current].get_state().unwrap(),
-                        &self.steps[current].get_server_update_arg()
-                    );
-
-                    self.steps[current].set_server_input(server_input);
+                    self.steps[current].calculate_server_input();
                 }
 
                 let next_state = self.steps[current].calculate_next_state();

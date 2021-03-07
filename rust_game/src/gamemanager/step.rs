@@ -15,7 +15,7 @@ pub struct Step<StateType, InputType, ServerInputType, StateUpdateType>
     initial_information: Arc<InitialInformation<StateType>>,
     step: usize,
     state: StateHolder<StateType>,
-    server_input: Option<ServerInputType>,
+    server_input: ServerInputHolder<ServerInputType>,
     inputs: Vec<Option<InputType>>,
     input_count: usize,
     is_state_final: bool,
@@ -38,7 +38,7 @@ impl<StateType, InputType, ServerInputType, StateUpdateType> Step<StateType, Inp
             initial_information,
             step: step_index,
             state: StateHolder::None,
-            server_input: None,
+            server_input: ServerInputHolder::None,
             inputs: Vec::new(),
             input_count: 0,
             is_state_final: false,
@@ -61,6 +61,7 @@ impl<StateType, InputType, ServerInputType, StateUpdateType> Step<StateType, Inp
         }
 
         self.inputs[index] = Some(input_message.get_input());
+        self.server_input = ServerInputHolder::None;
 
         if self.state.is_some() {
             self.need_to_compute_next_state = true;
@@ -68,7 +69,7 @@ impl<StateType, InputType, ServerInputType, StateUpdateType> Step<StateType, Inp
     }
 
     pub fn set_server_input(&mut self, server_input: ServerInputType) {
-        self.server_input = Some(server_input);
+        self.server_input = ServerInputHolder::Deserialized(server_input);
 
         if self.state.is_some() {
             self.need_to_compute_next_state = true;
@@ -77,7 +78,7 @@ impl<StateType, InputType, ServerInputType, StateUpdateType> Step<StateType, Inp
 
     pub fn are_inputs_complete(&self) -> bool {
         return self.input_count == self.initial_information.get_player_count() &&
-            self.server_input.is_some();
+            self.server_input.is_complete();
     }
 
     pub fn set_final_state(&mut self, state_message: StateMessage<StateType>) {
@@ -104,7 +105,10 @@ impl<StateType, InputType, ServerInputType, StateUpdateType> Step<StateType, Inp
             has_changed = true;
         }
 
-        self.state = StateHolder::Deserialized(new_state);
+        self.state = StateHolder::Deserialized{
+            state: new_state,
+            need_to_send_as_changed: has_changed
+        };
         self.is_state_final = true;
         self.is_state_complete = true;
         self.need_to_send_as_complete = true;
@@ -112,9 +116,33 @@ impl<StateType, InputType, ServerInputType, StateUpdateType> Step<StateType, Inp
         if has_changed {
             self.need_to_compute_next_state = true;
             self.need_to_send_as_changed = true;
+            self.server_input = ServerInputHolder::None;
         }
 
         //info!("Set final Step: {:?}", self.step_index);
+    }
+
+    pub fn calculate_server_input(&mut self) {
+
+        if let ServerInputHolder::None = self.server_input {
+            if let Some(state) = self.get_state() {
+                let server_input = StateUpdateType::get_server_input(
+                    state,
+                    &self.get_server_update_arg()
+                );
+
+                if self.is_complete() && self.are_inputs_complete() {
+                    self.server_input = ServerInputHolder::ComputedComplete {
+                        server_input,
+                        need_to_send_as_complete: true
+                    };
+                } else {
+                    self.server_input = ServerInputHolder::ComputedIncomplete(server_input);
+                }
+
+                self.need_to_compute_next_state = true;
+            }
+        }
     }
 
     pub fn calculate_next_state(&self) -> StateHolder<StateType> {
@@ -127,9 +155,16 @@ impl<StateType, InputType, ServerInputType, StateUpdateType> Step<StateType, Inp
             );
 
             if self.is_complete() && self.are_inputs_complete() {
-                return StateHolder::ComputedComplete(next_state);
+                return StateHolder::ComputedComplete{
+                    state: next_state,
+                    need_to_send_as_changed: true,
+                    need_to_send_as_complete: true
+                };
             } else {
-                return StateHolder::ComputedIncomplete(next_state);
+                return StateHolder::ComputedIncomplete{
+                    state: next_state,
+                    need_to_send_as_changed: true
+                };
             }
 
         } else {
@@ -151,6 +186,7 @@ impl<StateType, InputType, ServerInputType, StateUpdateType> Step<StateType, Inp
         self.state = state_holder;
     }
 
+    //TODO: make this work with enums
     pub fn mark_as_complete(&mut self) {
         self.is_state_complete = true;
         self.need_to_send_as_complete = true;
@@ -181,60 +217,81 @@ impl<StateType, InputType, ServerInputType, StateUpdateType> Step<StateType, Inp
     }
 
     pub fn get_update_arg(&self) -> UpdateArg<StateType, InputType, ServerInputType> {
-        return UpdateArg::new(self.get_server_update_arg(), self.server_input.as_ref());
+        return UpdateArg::new(self.get_server_update_arg(), self.server_input.get_server_input());
     }
 
     pub fn get_changed_message(&mut self) -> Option<StepMessage<StateType>> {
-        if self.need_to_send_as_changed {
-            self.need_to_send_as_changed = false;
+        self.need_to_send_as_changed = false;
 
+        if let Some(state) = self.state.get_changed_state() {
             return Some(StepMessage::new(
                 self.step,
-                self.state.get_state().unwrap().clone()
+                state.clone()
             ));
         } else {
             return None;
         }
-
     }
 
     pub fn get_complete_message(&mut self) -> Option<StateMessage<StateType>> {
-        if self.need_to_send_as_complete {
-            self.need_to_send_as_complete = false;
+        self.need_to_send_as_complete = false;
 
+        if let Some(state) = self.state.get_complete_state() {
             return Some(StateMessage::new(
                 self.step,
-                self.state.get_state().unwrap().clone())
-            );
+                state.clone()
+            ));
         } else {
             return None;
         }
-
     }
 
-    pub fn get_server_input_message(&self) -> ServerInputMessage<ServerInputType> {
-        return ServerInputMessage::new(
-            self.step,
-            self.server_input.as_ref().unwrap().clone()
-        );
+    pub fn get_server_input_message(&mut self) -> Option<ServerInputMessage<ServerInputType>> {
+        if let Some(server_input) = self.server_input.get_server_input_to_send() {
+            return Some(ServerInputMessage::new(
+                self.step,
+                server_input.clone()
+            ));
+        }
+
+        return None;
+
     }
 }
 
 pub enum StateHolder<StateType> {
     None,
-    Deserialized(StateType),
-    ComputedIncomplete(StateType),
-    ComputedComplete(StateType)
+    Deserialized{
+        state: StateType,
+        need_to_send_as_changed: bool
+    },
+    ComputedIncomplete{
+        state: StateType,
+        need_to_send_as_changed: bool
+    },
+    ComputedComplete{
+        state: StateType,
+        need_to_send_as_changed: bool,
+        need_to_send_as_complete: bool
+    }
 }
 
 impl<StateType> StateHolder<StateType> {
 
+    pub fn is_complete(&self) -> bool {
+        return match self {
+            StateHolder::Deserialized { .. } => true,
+            StateHolder::ComputedComplete { .. } => true,
+            _ => false,
+        };
+    }
+
     pub fn get_state(&self) -> Option<&StateType> {
         return match self {
             StateHolder::None => None,
-            StateHolder::Deserialized(state) => Some(state),
-            StateHolder::ComputedIncomplete(state) => Some(state),
-            StateHolder::ComputedComplete(state) => Some(state),
+            StateHolder::Deserialized{state, .. } => Some(state),
+            StateHolder::ComputedIncomplete{state, .. } => Some(state),
+            StateHolder::ComputedComplete{state, .. } => Some(state),
         }
     }
 
@@ -244,5 +301,75 @@ impl<StateType> StateHolder<StateType> {
             _ => true,
         }
     }
+
+    pub fn get_changed_state(&mut self) -> Option<&StateType> {
+
+        if let StateHolder::Deserialized{state, need_to_send_as_changed} = self {
+            if *need_to_send_as_changed {
+                *need_to_send_as_changed = false;
+                return Some(state);
+            }
+        } else if let StateHolder::ComputedIncomplete{state, need_to_send_as_changed} = self {
+            if *need_to_send_as_changed {
+                *need_to_send_as_changed = false;
+                return Some(state);
+            }
+        } else if let StateHolder::ComputedComplete{state, need_to_send_as_changed, .. } = self {
+            if *need_to_send_as_changed {
+                *need_to_send_as_changed = false;
+                return Some(state);
+            }
+        }
+        return None;
+    }
+
+    pub fn get_complete_state(&mut self) -> Option<&StateType> {
+        if let StateHolder::ComputedComplete{state, need_to_send_as_complete, .. } = self {
+            if *need_to_send_as_complete {
+                *need_to_send_as_complete = false;
+                return Some(state);
+            }
+        }
+        return None;
+    }
 }
 
+pub enum ServerInputHolder<ServerInputType> {
+    None,
+    Deserialized(ServerInputType),
+    ComputedIncomplete(ServerInputType),
+    ComputedComplete{
+        server_input: ServerInputType,
+        need_to_send_as_complete: bool
+    }
+}
+
+impl<ServerInputType> ServerInputHolder<ServerInputType> {
+    pub fn is_complete(&self) -> bool {
+        return match self {
+            ServerInputHolder::Deserialized(_) => true,
+            ServerInputHolder::ComputedComplete { .. } => true,
+            _ => false,
+        };
+    }
+
+    pub fn get_server_input(&self) -> Option<&ServerInputType> {
+        match self {
+            ServerInputHolder::None => None,
+            ServerInputHolder::Deserialized(server_input) => Some(server_input),
+            ServerInputHolder::ComputedIncomplete(server_input) => Some(server_input),
+            ServerInputHolder::ComputedComplete { server_input, .. } => Some(server_input)
+        }
+    }
+
+    pub fn get_server_input_to_send(&mut self) -> Option<&ServerInputType> {
+
+        if let ServerInputHolder::ComputedComplete {server_input, need_to_send_as_complete} = self {
+            if *need_to_send_as_complete {
+                *need_to_send_as_complete = false;
+                return Some(server_input);
+            }
+        }
+        return None;
+    }
+}
