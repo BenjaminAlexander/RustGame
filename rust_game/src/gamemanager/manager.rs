@@ -119,9 +119,7 @@ impl<StateType, InputType, ServerInputType, StateUpdateType> Manager<StateType, 
         if complete_message_option.is_some() {
             self.completed_step_consumer_list.accept(&complete_message_option.unwrap());
         }
-    }
 
-    fn send_server_input(&mut self, step_index: usize) {
         if self.is_server {
             if let Some(message) = self.steps[step_index].get_server_input_message() {
                 self.server_input_consumer_list.accept(&message);
@@ -158,8 +156,8 @@ impl<StateType, InputType, ServerInputType, StateUpdateType> ChannelDrivenThread
 
         self.send_messages(current);
 
-        while (self.steps[current].is_complete() && self.steps[current].are_inputs_complete()) ||
-                (self.steps[current].get_step_index() < self.requested_step) {
+        while self.steps[current].are_inputs_complete() ||
+                self.steps[current].get_step_index() < self.requested_step {
 
             let next = current + 1;
             let should_drop_current = current == 0 && self.steps[current].get_step_index() < self.drop_steps_before;
@@ -168,51 +166,39 @@ impl<StateType, InputType, ServerInputType, StateUpdateType> ChannelDrivenThread
 
             trace!("Trying update current: {:?}, next: {:?}", self.steps[current].get_step_index(), self.steps[next].get_step_index());
 
-            if (self.is_server || !self.steps[next].is_state_final()) &&
+            if (self.is_server || !self.steps[next].is_state_deserialized()) &&
                 (self.steps[current].need_to_compute_next_state() ||
                 (should_drop_current && self.steps[next].get_state().is_none())) {
 
-                let initial_information = self.initial_information.as_ref().unwrap();
                 if self.is_server {
-
                     self.steps[current].calculate_server_input();
                 }
 
                 let next_state = self.steps[current].calculate_next_state();
-
                 self.steps[next].set_calculated_state(next_state);
 
-                if self.steps[current].is_complete() && self.steps[current].are_inputs_complete() {
-
-                    self.send_server_input(current);
-                    self.steps[next].mark_as_complete();
-                }
             }
+
             self.steps[current].mark_as_calculation_not_needed();
 
-            if !self.steps[next].is_complete() &&
-                self.steps[current].is_complete() &&
-                self.steps[current].are_inputs_complete() {
-
-                self.send_server_input(current);
+            if self.steps[current].are_inputs_complete() {
                 self.steps[next].mark_as_complete();
             }
 
+            self.send_messages(current);
+
             if should_drop_current {
 
-                if !self.steps[next].is_complete() {
-                    self.send_server_input(current);
-                    self.steps[next].mark_as_complete();
-                }
+                self.steps[next].mark_as_complete();
 
                 let dropped = self.steps.pop_front().unwrap();
                 trace!("Dropped step: {:?}", dropped.get_step_index());
             } else {
                 current = current + 1;
             }
-
-            self.send_messages(current);
         }
+
+        self.send_messages(current);
 
         None
     }
