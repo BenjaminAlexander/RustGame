@@ -168,7 +168,7 @@ impl<StateType, InputType, ServerInputType, StateUpdateType> ChannelDrivenThread
 
             if (self.is_server || !self.steps[next].is_state_deserialized()) &&
                 (self.steps[current].need_to_compute_next_state() ||
-                (should_drop_current && self.steps[next].get_state().is_none())) {
+                (should_drop_current && self.steps[next].is_state_none())) {
 
                 if self.is_server {
                     self.steps[current].calculate_server_input();
@@ -176,7 +176,6 @@ impl<StateType, InputType, ServerInputType, StateUpdateType> ChannelDrivenThread
 
                 let next_state = self.steps[current].calculate_next_state();
                 self.steps[next].set_calculated_state(next_state);
-
             }
 
             self.steps[current].mark_as_calculation_not_needed();

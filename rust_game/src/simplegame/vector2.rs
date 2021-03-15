@@ -34,11 +34,11 @@ impl Vector2 {
         self.y = value;
     }
 
-    pub fn get_x(&mut self) -> f64 {
+    pub fn get_x(self) -> f64 {
         return self.x;
     }
 
-    pub fn get_y(&mut self) -> f64 {
+    pub fn get_y(self) -> f64 {
         return self.y;
     }
 
