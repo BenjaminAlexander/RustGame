@@ -131,13 +131,20 @@ impl<InputType: Input> ChannelThread<()> for UdpInput<InputType> {
         loop {
 
             let mut buf = [0; MAX_UDP_DATAGRAM_SIZE];
-            //TODO: check source against valid sources
-            let (number_of_bytes, source) = self.socket.recv_from(&mut buf).unwrap();
-            let filled_buf = &mut buf[..number_of_bytes];
 
-            receiver.try_iter(&mut self);
-
-            self.handle_receive(filled_buf, source);
+            let recv_result = self.socket.recv_from(&mut buf);
+            self.socket.
+            match recv_result {
+                Ok((number_of_bytes, source)) => {
+                    //TODO: check source against valid sources
+                    let filled_buf = &mut buf[..number_of_bytes];
+                    receiver.try_iter(&mut self);
+                    self.handle_receive(filled_buf, source);
+                }
+                Err(error) => {
+                    warn!("{:?}", error);
+                }
+            }
         }
     }
 }

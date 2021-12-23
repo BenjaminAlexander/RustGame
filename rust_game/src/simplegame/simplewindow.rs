@@ -11,16 +11,19 @@ use log::info;
 use crate::simplegame::simpleserverinput::SimpleServerInput;
 
 pub struct SimpleWindow {
+    window_name: String,
     render_receiver: RenderReceiver<SimpleState, SimpleState, SimpleState>,
     client_core_sender_option: Option<Sender<Core<SimpleState, SimpleInput, SimpleServerInput, SimpleState, SimpleInputEventHandler, SimpleInputEvent, SimpleState, SimpleState>>>
 }
 
 impl SimpleWindow {
 
-    pub fn new(render_receiver: RenderReceiver<SimpleState, SimpleState, SimpleState>,
+    pub fn new(window_name: String,
+               render_receiver: RenderReceiver<SimpleState, SimpleState, SimpleState>,
                client_core_sender_option: Option<Sender<Core<SimpleState, SimpleInput, SimpleServerInput, SimpleState, SimpleInputEventHandler, SimpleInputEvent, SimpleState, SimpleState>>>) -> Self {
 
         return Self{
+            window_name,
             render_receiver,
             client_core_sender_option
         }
@@ -33,7 +36,7 @@ impl SimpleWindow {
 
         // Create an Glutin window.
         //EventLoopExtWindows::new_any_thread
-        let mut window: Window = WindowSettings::new("spinning-square", [200, 200])
+        let mut window: Window = WindowSettings::new(self.window_name.clone(), [200, 200])
             .graphics_api(opengl)
             .exit_on_esc(true)
             .build()
@@ -42,6 +45,7 @@ impl SimpleWindow {
         let mut gl = GlGraphics::new(opengl);
 
         let mut simple_window = SimpleWindow{
+            window_name: self.window_name,
             render_receiver: self.render_receiver,
             client_core_sender_option: self.client_core_sender_option
         };

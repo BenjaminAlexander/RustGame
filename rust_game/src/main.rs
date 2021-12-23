@@ -31,8 +31,6 @@ mod gamemanager;
 
 pub fn main() {
 
-
-
     logging::init_logging();
 
     let args: Vec<String> = std::env::args().collect();
@@ -41,13 +39,15 @@ pub fn main() {
 
     let mut run_client = true;
     let mut run_server = true;
+    let mut window_name:String = String::from("Server");
 
-    if args.len() == 2 {
+    if args.len() > 2  {
         if args[1].eq("-s") {
             run_client = false;
 
         } else if args[1].eq("-c") {
             run_server = false;
+            window_name = String::from(&args[2]);
         }
     }
 
@@ -114,6 +114,6 @@ pub fn main() {
     }
 
 
-    let client_window = SimpleWindow::new(render_receiver_option.unwrap(), client_core_sender_option);
+    let client_window = SimpleWindow::new(window_name, render_receiver_option.unwrap(), client_core_sender_option);
     client_window.run();
 }
