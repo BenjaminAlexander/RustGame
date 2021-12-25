@@ -6,36 +6,27 @@ use crate::messaging::{ToClientMessageTCP, InputMessage, StateMessage, InitialIn
 use rmp_serde::decode::Error;
 use crate::threading::sender::SendError;
 use std::io;
-use crate::interface::{Input, State, InputEvent};
+use crate::interface::{Input, State, InputEvent, Game};
 use std::marker::PhantomData;
 
-pub struct TcpInput <StateType, InputType>
-    where StateType: State,
-          InputType: Input {
-
+pub struct TcpInput <GameType: Game> {
     player_index: Option<usize>,
     tcp_stream: TcpStream,
-    initial_information_message_consumers: ConsumerList<InitialInformation<StateType>>,
-    phantom: PhantomData<InputType>
+    initial_information_message_consumers: ConsumerList<InitialInformation<GameType>>
 }
 
-impl<StateType, InputType> TcpInput<StateType, InputType>
-    where StateType: State,
-          InputType: Input {
+impl<GameType: Game> TcpInput<GameType> {
 
     pub fn new(tcp_stream: &TcpStream) -> io::Result<Self> {
         Ok(Self {
             player_index: None,
             tcp_stream: tcp_stream.try_clone()?,
             initial_information_message_consumers: ConsumerList::new(),
-            phantom: PhantomData
         })
     }
 }
 
-impl<StateType, InputType> ChannelThread<()> for TcpInput<StateType, InputType>
-    where StateType: State,
-          InputType: Input {
+impl<GameType: Game> ChannelThread<()> for TcpInput<GameType> {
 
     fn run(mut self, receiver: Receiver<Self>) {
         info!("Starting");
@@ -43,7 +34,7 @@ impl<StateType, InputType> ChannelThread<()> for TcpInput<StateType, InputType>
         let receiver = receiver;
 
         loop {
-            let result: Result<ToClientMessageTCP::<StateType>, Error> = rmp_serde::from_read(&self.tcp_stream);
+            let result: Result<ToClientMessageTCP::<GameType>, Error> = rmp_serde::from_read(&self.tcp_stream);
 
             match result {
                 Ok(message) => {
@@ -71,12 +62,10 @@ impl<StateType, InputType> ChannelThread<()> for TcpInput<StateType, InputType>
     }
 }
 
-impl<StateType, InputType> Sender<TcpInput<StateType, InputType>>
-    where StateType: State,
-          InputType: Input {
+impl<GameType: Game> Sender<TcpInput<GameType>> {
 
-    pub fn add_initial_information_message_consumer<T>(&self, consumer: T) -> Result<(), SendError<TcpInput<StateType, InputType>>>
-        where T: Consumer<InitialInformation<StateType>> {
+    pub fn add_initial_information_message_consumer<T>(&self, consumer: T) -> Result<(), SendError<TcpInput<GameType>>>
+        where T: Consumer<InitialInformation<GameType>> {
 
         self.send(|tcp_input|{
             tcp_input.initial_information_message_consumers.add_consumer(consumer);

@@ -1,19 +1,17 @@
 use serde::{Deserialize, Serialize};
 use std::cmp::Ordering;
+use crate::interface::Game;
 
 #[derive(Serialize, Deserialize, Debug)]
-pub struct InputMessage<InputType>
-    where InputType: Clone {
-
+pub struct InputMessage<GameType: Game> {
     sequence: usize,
     player_index: usize,
-    input: InputType
+    input: GameType::InputType
 }
 
-impl<InputType> InputMessage<InputType>
-    where InputType: Clone {
+impl<GameType: Game> InputMessage<GameType> {
 
-    pub fn new(sequence: usize, player_index: usize, input: InputType) -> InputMessage<InputType> {
+    pub fn new(sequence: usize, player_index: usize, input: GameType::InputType) -> InputMessage<GameType> {
         InputMessage{ sequence, player_index, input }
     }
 
@@ -25,13 +23,12 @@ impl<InputType> InputMessage<InputType>
         self.player_index
     }
 
-    pub fn get_input(self) -> InputType {
+    pub fn get_input(self) -> GameType::InputType {
         self.input
     }
 }
 
-impl<InputType> Clone for InputMessage<InputType>
-    where InputType: Clone {
+impl<GameType: Game> Clone for InputMessage<GameType> {
 
     fn clone(&self) -> Self {
         Self{
@@ -42,28 +39,24 @@ impl<InputType> Clone for InputMessage<InputType>
     }
 }
 
-impl<InputType> PartialEq for InputMessage<InputType>
-    where InputType: Clone {
+impl<GameType: Game> PartialEq for InputMessage<GameType> {
     fn eq(&self, other: &Self) -> bool {
         self.sequence.eq(&other.sequence) &&
             self.player_index.eq(&other.player_index)
     }
 }
 
-impl<InputType> Eq for InputMessage<InputType>
-    where InputType: Clone {
+impl<GameType: Game> Eq for InputMessage<GameType> {
 
 }
 
-impl<InputType> PartialOrd for InputMessage<InputType>
-    where InputType: Clone {
+impl<GameType: Game> PartialOrd for InputMessage<GameType> {
     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
         Some(self.cmp(&other))
     }
 }
 
-impl<InputType> Ord for InputMessage<InputType>
-    where InputType: Clone {
+impl<GameType: Game> Ord for InputMessage<GameType> {
 
     fn cmp(&self, other: &Self) -> Ordering {
         match self.sequence.cmp(&other.sequence) {

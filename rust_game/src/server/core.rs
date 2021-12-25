@@ -1,7 +1,7 @@
 use std::net::{TcpStream, Ipv4Addr, SocketAddrV4, UdpSocket};
 
 use log::{warn, trace, info};
-use crate::interface::{Input, State, InputEvent, StateUpdate, Interpolate, InterpolationResult, ServerInput};
+use crate::interface::{Input, State, InputEvent, InterpolationResult, ServerInput, Game};
 use crate::server::tcpinput::TcpInput;
 use crate::threading::{ChannelDrivenThread, ChannelThread, Consumer, Sender};
 use crate::server::{TcpListenerThread, ServerConfig};
@@ -19,13 +19,7 @@ use std::marker::PhantomData;
 //TODO: route game timer and player inputs through the core to
 // get synchronous enforcement of the grace period
 
-pub struct Core<StateType, InputType, ServerInputType, StateUpdateType, InterpolateType, InterpolatedType>
-    where StateType: State,
-          InputType: Input,
-          ServerInputType: ServerInput,
-          StateUpdateType: StateUpdate<StateType, InputType, ServerInputType>,
-          InterpolateType: Interpolate<StateType, InterpolatedType>,
-          InterpolatedType: InterpolationResult {
+pub struct Core<GameType: Game> {
 
     game_is_started: bool,
     tcp_port: u16,
@@ -34,35 +28,21 @@ pub struct Core<StateType, InputType, ServerInputType, StateUpdateType, Interpol
     grace_period: TimeDuration,
     timer_message_period: TimeDuration,
     tcp_inputs: Vec<Sender<TcpInput>>,
-    tcp_outputs: Vec<Sender<TcpOutput<StateType, InputType>>>,
+    tcp_outputs: Vec<Sender<TcpOutput<GameType>>>,
     udp_socket: Option<UdpSocket>,
-    udp_outputs: Vec<Sender<UdpOutput<StateType, InputType, ServerInputType>>>,
-    udp_input_sender: Option<Sender<UdpInput<InputType>>>,
-    manager_sender: Option<Sender<Manager<StateType, InputType, ServerInputType, StateUpdateType>>>,
-    drop_steps_before: usize,
-    phantom: PhantomData<(InterpolateType, InterpolatedType)>
+    udp_outputs: Vec<Sender<UdpOutput<GameType>>>,
+    udp_input_sender: Option<Sender<UdpInput<GameType>>>,
+    manager_sender: Option<Sender<Manager<GameType>>>,
+    drop_steps_before: usize
 }
 
-impl<StateType, InputType, ServerInputType, StateUpdateType, InterpolateType, InterpolatedType> ChannelDrivenThread<()> for Core<StateType, InputType, ServerInputType, StateUpdateType, InterpolateType, InterpolatedType>
-    where StateType: State,
-          InputType: Input,
-          ServerInputType: ServerInput,
-          StateUpdateType: StateUpdate<StateType, InputType, ServerInputType>,
-          InterpolateType: Interpolate<StateType, InterpolatedType>,
-          InterpolatedType: InterpolationResult {
-
+impl<GameType: Game> ChannelDrivenThread<()> for Core<GameType> {
     fn on_channel_disconnect(&mut self) -> () {
         ()
     }
 }
 
-impl<StateType, InputType, ServerInputType, StateUpdateType, InterpolateType, InterpolatedType> Core<StateType, InputType, ServerInputType, StateUpdateType, InterpolateType, InterpolatedType>
-    where StateType: State,
-          InputType: Input,
-          ServerInputType: ServerInput,
-          StateUpdateType: StateUpdate<StateType, InputType, ServerInputType>,
-          InterpolateType: Interpolate<StateType, InterpolatedType>,
-          InterpolatedType: InterpolationResult {
+impl<GameType: Game> Core<GameType> {
 
     pub fn new(tcp_port: u16,
                udp_port: u16,
@@ -87,19 +67,12 @@ impl<StateType, InputType, ServerInputType, StateUpdateType, InterpolateType, In
             drop_steps_before: 0,
             udp_socket: None,
             udp_input_sender: None,
-            manager_sender: None,
-            phantom: PhantomData
+            manager_sender: None
         }
     }
 }
 
-impl<StateType, InputType, ServerInputType, StateUpdateType, InterpolateType, InterpolatedType> Sender<Core<StateType, InputType, ServerInputType, StateUpdateType, InterpolateType, InterpolatedType>>
-    where StateType: State,
-          InputType: Input,
-          ServerInputType: ServerInput,
-          StateUpdateType: StateUpdate<StateType, InputType, ServerInputType>,
-          InterpolateType: Interpolate<StateType, InterpolatedType>,
-          InterpolatedType: InterpolationResult {
+impl<GameType: Game> Sender<Core<GameType>> {
 
     pub fn start_listener(&self) {
         let clone = self.clone();
@@ -109,7 +82,7 @@ impl<StateType, InputType, ServerInputType, StateUpdateType, InterpolateType, In
             let socket_addr_v4 = SocketAddrV4::new(ip_addr_v4, core.udp_port);
             core.udp_socket = Some(UdpSocket::bind(socket_addr_v4).unwrap());
 
-            let udp_input = UdpInput::<InputType>::new(core.udp_socket.as_ref().unwrap()).unwrap();
+            let udp_input = UdpInput::<GameType>::new(core.udp_socket.as_ref().unwrap()).unwrap();
             let (udp_input_sender, udp_input_builder) = udp_input.build();
             udp_input_builder.name("ServerUdpInput").start().unwrap();
             core.udp_input_sender = Some(udp_input_sender);
@@ -120,16 +93,16 @@ impl<StateType, InputType, ServerInputType, StateUpdateType, InterpolateType, In
         }).unwrap();
     }
 
-    pub fn start_game(&self) -> RenderReceiver<StateType, InterpolateType, InterpolatedType> {
-        let (render_receiver_sender, render_receiver) = RenderReceiver::<StateType, InterpolateType, InterpolatedType>::new();
+    pub fn start_game(&self) -> RenderReceiver<GameType> {
+        let (render_receiver_sender, render_receiver) = RenderReceiver::<GameType>::new();
         let core_sender = self.clone();
         self.send(move |core| {
             if !core.game_is_started {
                 core.game_is_started = true;
 
-                let initial_state = StateType::new(core.tcp_outputs.len());
+                let initial_state = GameType::StateType::new(core.tcp_outputs.len());
 
-                let (manager_sender, manager_builder) = Manager::<StateType, InputType, ServerInputType, StateUpdateType>::new(true, core.grace_period).build();
+                let (manager_sender, manager_builder) = Manager::<GameType>::new(true, core.grace_period).build();
                 let (timer_sender, timer_builder) = GameTimer::new(0).build();
 
                 timer_sender.add_timer_message_consumer(core_sender.clone());
@@ -140,7 +113,7 @@ impl<StateType, InputType, ServerInputType, StateUpdateType, InterpolateType, In
                 core.manager_sender = Some(manager_sender.clone());
                 manager_sender.drop_steps_before(core.drop_steps_before);
 
-                let server_initial_information = InitialInformation::<StateType>::new(
+                let server_initial_information = InitialInformation::<GameType>::new(
                     core.server_config.clone(),
                     core.tcp_outputs.len(),
                     usize::MAX,
@@ -179,13 +152,7 @@ impl<StateType, InputType, ServerInputType, StateUpdateType, InterpolateType, In
 
 }
 
-impl<StateType, InputType, ServerInputType, StateUpdateType, InterpolateType, InterpolatedType> Consumer<TcpStream> for Sender<Core<StateType, InputType, ServerInputType, StateUpdateType, InterpolateType, InterpolatedType>>
-    where StateType: State,
-          InputType: Input,
-          ServerInputType: ServerInput,
-          StateUpdateType: StateUpdate<StateType, InputType, ServerInputType>,
-          InterpolateType: Interpolate<StateType, InterpolatedType>,
-          InterpolatedType: InterpolationResult {
+impl<GameType: Game> Consumer<TcpStream> for Sender<Core<GameType>> {
 
     fn accept(&self, tcp_stream: TcpStream) {
         self.send(move |core|{
@@ -228,13 +195,7 @@ impl<StateType, InputType, ServerInputType, StateUpdateType, InterpolateType, In
     }
 }
 
-impl<StateType, InputType, ServerInputType, StateUpdateType, InterpolateType, InterpolatedType> Consumer<TimeMessage> for Sender<Core<StateType, InputType, ServerInputType, StateUpdateType, InterpolateType, InterpolatedType>>
-    where StateType: State,
-          InputType: Input,
-          ServerInputType: ServerInput,
-          StateUpdateType: StateUpdate<StateType, InputType, ServerInputType>,
-          InterpolateType: Interpolate<StateType, InterpolatedType>,
-          InterpolatedType: InterpolationResult {
+impl<GameType: Game> Consumer<TimeMessage> for Sender<Core<GameType>> {
 
     fn accept(&self, time_message: TimeMessage) {
         self.send(move |core|{
@@ -254,15 +215,9 @@ impl<StateType, InputType, ServerInputType, StateUpdateType, InterpolateType, In
     }
 }
 
-impl<StateType, InputType, ServerInputType, StateUpdateType, InterpolateType, InterpolatedType> Consumer<InputMessage<InputType>> for Sender<Core<StateType, InputType, ServerInputType, StateUpdateType, InterpolateType, InterpolatedType>>
-    where StateType: State,
-          InputType: Input,
-          ServerInputType: ServerInput,
-          StateUpdateType: StateUpdate<StateType, InputType, ServerInputType>,
-          InterpolateType: Interpolate<StateType, InterpolatedType>,
-          InterpolatedType: InterpolationResult {
+impl<GameType: Game> Consumer<InputMessage<GameType>> for Sender<Core<GameType>> {
 
-    fn accept(&self, input_message: InputMessage<InputType>) {
+    fn accept(&self, input_message: InputMessage<GameType>) {
         self.send(move |core|{
 
             if core.drop_steps_before <= input_message.get_step() &&

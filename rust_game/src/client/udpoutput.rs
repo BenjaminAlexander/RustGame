@@ -1,21 +1,21 @@
 use log::{trace, info, error};
-use crate::interface::{Input, State};
+use crate::interface::{Game, Input, State};
 use std::net::{UdpSocket, Ipv4Addr, SocketAddrV4};
 use crate::messaging::{InputMessage, ToServerMessageUDP, InitialInformation, MAX_UDP_DATAGRAM_SIZE, Fragmenter};
 use std::io;
 use crate::threading::{ChannelThread, Receiver, Consumer, Sender};
 use std::str::FromStr;
 
-pub struct UdpOutput<StateType: State, InputType: Input> {
+pub struct UdpOutput<GameType: Game> {
     server_address: SocketAddrV4,
     socket: UdpSocket,
     fragmenter: Fragmenter,
-    input_queue: Vec<InputMessage<InputType>>,
+    input_queue: Vec<InputMessage<GameType>>,
     max_observed_input_queue: usize,
-    initial_information: Option<InitialInformation<StateType>>
+    initial_information: Option<InitialInformation<GameType>>
 }
 
-impl<StateType: State, InputType: Input> UdpOutput<StateType, InputType> {
+impl<GameType: Game> UdpOutput<GameType> {
 
     pub fn new(server_socket_addr_v4: SocketAddrV4,
                socket: &UdpSocket) -> io::Result<Self> {
@@ -31,7 +31,7 @@ impl<StateType: State, InputType: Input> UdpOutput<StateType, InputType> {
         });
     }
 
-    fn send_message(&mut self, message: ToServerMessageUDP<InputType>) {
+    fn send_message(&mut self, message: ToServerMessageUDP<GameType>) {
 
         let buf = rmp_serde::to_vec(&message).unwrap();
         let fragments = self.fragmenter.make_fragments(buf);
@@ -47,7 +47,7 @@ impl<StateType: State, InputType: Input> UdpOutput<StateType, InputType> {
     }
 }
 
-impl<StateType: State, InputType: Input> ChannelThread<()> for UdpOutput<StateType, InputType> {
+impl<GameType: Game> ChannelThread<()> for UdpOutput<GameType> {
 
     fn run(mut self, receiver: Receiver<Self>) -> () {
 
@@ -73,7 +73,7 @@ impl<StateType: State, InputType: Input> ChannelThread<()> for UdpOutput<StateTy
                 match self.input_queue.pop() {
                     None => send_another_message = false,
                     Some(input_to_send) => {
-                        let message = ToServerMessageUDP::<InputType>::Input(input_to_send);
+                        let message = ToServerMessageUDP::<GameType>::Input(input_to_send);
                         self.send_message(message);
                     }
                 }
@@ -82,25 +82,23 @@ impl<StateType: State, InputType: Input> ChannelThread<()> for UdpOutput<StateTy
     }
 }
 
-impl<StateType, InputType> Consumer<InitialInformation<StateType>> for Sender<UdpOutput<StateType, InputType>>
-    where StateType: State,
-          InputType: Input {
+impl<GameType: Game> Consumer<InitialInformation<GameType>> for Sender<UdpOutput<GameType>> {
 
-    fn accept(&self, initial_information: InitialInformation<StateType>) {
+    fn accept(&self, initial_information: InitialInformation<GameType>) {
         self.send(move |udp_output|{
             info!("InitialInformation Received.");
             udp_output.initial_information = Some(initial_information);
 
-            let message = ToServerMessageUDP::<InputType>::Hello{player_index: udp_output.initial_information.as_ref().unwrap().get_player_index()};
+            let message = ToServerMessageUDP::<GameType>::Hello{player_index: udp_output.initial_information.as_ref().unwrap().get_player_index()};
             udp_output.send_message(message);
 
         }).unwrap();
     }
 }
 
-impl<StateType: State, InputType: Input> Consumer<InputMessage<InputType>> for Sender<UdpOutput<StateType, InputType>> {
+impl<GameType: Game> Consumer<InputMessage<GameType>> for Sender<UdpOutput<GameType>> {
 
-    fn accept(&self, input_message: InputMessage<InputType>) {
+    fn accept(&self, input_message: InputMessage<GameType>) {
         self.send(move |udp_output|{
 
             //insert in reverse sorted order

@@ -8,19 +8,20 @@ use piston::input::Input as PistonInput;
 use graphics::*;
 use glutin_window::GlutinWindow as Window;
 use log::info;
+use crate::simplegame::simplegameimpl::SimpleGameImpl;
 use crate::simplegame::simpleserverinput::SimpleServerInput;
 
 pub struct SimpleWindow {
     window_name: String,
-    render_receiver: RenderReceiver<SimpleState, SimpleState, SimpleState>,
-    client_core_sender_option: Option<Sender<Core<SimpleState, SimpleInput, SimpleServerInput, SimpleState, SimpleInputEventHandler, SimpleInputEvent, SimpleState, SimpleState>>>
+    render_receiver: RenderReceiver<SimpleGameImpl>,
+    client_core_sender_option: Option<Sender<Core<SimpleGameImpl>>>
 }
 
 impl SimpleWindow {
 
     pub fn new(window_name: String,
-               render_receiver: RenderReceiver<SimpleState, SimpleState, SimpleState>,
-               client_core_sender_option: Option<Sender<Core<SimpleState, SimpleInput, SimpleServerInput, SimpleState, SimpleInputEventHandler, SimpleInputEvent, SimpleState, SimpleState>>>) -> Self {
+               render_receiver: RenderReceiver<SimpleGameImpl>,
+               client_core_sender_option: Option<Sender<Core<SimpleGameImpl>>>) -> Self {
 
         return Self{
             window_name,
@@ -93,7 +94,7 @@ impl SimpleWindow {
 
     fn input(&mut self, input: PistonInput) {
         if let Some(core_sender) = self.client_core_sender_option.as_ref() {
-            core_sender.accept(SimpleInputEvent::new(input));
+            core_sender.onInputEvent(SimpleInputEvent::new(input));
         }
     }
 }

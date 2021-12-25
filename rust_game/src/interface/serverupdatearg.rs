@@ -2,17 +2,18 @@ use crate::interface::{Input, InputEvent, State};
 use crate::messaging::{InputMessage, InitialInformation};
 use std::marker::PhantomData;
 use crate::gametime::TimeDuration;
+use crate::interface::game::Game;
 
 #[derive(Debug)]
-pub struct ServerUpdateArg<'a, 'b, StateType: State, InputType: Input> {
-    initial_information: &'a InitialInformation<StateType>,
+pub struct ServerUpdateArg<'a, 'b, GameType: Game> {
+    initial_information: &'a InitialInformation<GameType>,
     step: usize,
-    inputs: &'b Vec<Option<InputType>>,
+    inputs: &'b Vec<Option<GameType::InputType>>,
 }
 
-impl<'a, 'b, StateType: State, InputType: Input> ServerUpdateArg<'a, 'b, StateType, InputType> {
+impl<'a, 'b, GameType: Game> ServerUpdateArg<'a, 'b, GameType> {
 
-    pub fn new(initial_information: &'a InitialInformation<StateType>, step: usize, inputs: &'b Vec<Option<InputType>>) -> Self {
+    pub fn new(initial_information: &'a InitialInformation<GameType>, step: usize, inputs: &'b Vec<Option<GameType::InputType>>) -> Self {
         return Self{
             initial_information,
             step,
@@ -20,7 +21,7 @@ impl<'a, 'b, StateType: State, InputType: Input> ServerUpdateArg<'a, 'b, StateTy
         }
     }
 
-    pub fn get_input(&self, player_index: usize) -> Option<&InputType> {
+    pub fn get_input(&self, player_index: usize) -> Option<&GameType::InputType> {
         if let Some(option) = self.inputs.get(player_index) {
             return option.as_ref();
         } else {

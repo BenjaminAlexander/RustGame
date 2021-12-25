@@ -1,5 +1,5 @@
 use log::{trace, info, warn, error};
-use crate::interface::{Input, State, ServerInput};
+use crate::interface::{Input, State, ServerInput, Game};
 use std::net::{UdpSocket, SocketAddr};
 use crate::gametime::{TimeDuration, TimeMessage, TimeValue};
 use crate::messaging::{InputMessage, StateMessage, ToClientMessageUDP, Fragmenter, MAX_UDP_DATAGRAM_SIZE, ServerInputMessage};
@@ -12,11 +12,7 @@ use std::sync::mpsc::RecvTimeoutError;
 use std::marker::PhantomData;
 use crate::util::RollingAverage;
 
-pub struct UdpOutput<StateType, InputType, ServerInputType>
-    where InputType: Input,
-          StateType: State,
-          ServerInputType: ServerInput {
-
+pub struct UdpOutput<GameType: Game> {
     player_index: usize,
     socket: UdpSocket,
     remote_peer: Option<RemoteUdpPeer>,
@@ -24,7 +20,7 @@ pub struct UdpOutput<StateType, InputType, ServerInputType>
     time_message_period: TimeDuration,
     last_time_message: Option<TimeMessage>,
     last_state_sequence: Option<usize>,
-    phantom: PhantomData<(StateType, InputType, ServerInputType)>,
+    phantom: PhantomData<GameType>,
 
     //metrics
     time_in_queue_rolling_average: RollingAverage<u64>,
@@ -33,10 +29,7 @@ pub struct UdpOutput<StateType, InputType, ServerInputType>
     time_of_last_server_input_send: TimeValue,
 }
 
-impl<StateType, InputType, ServerInputType> UdpOutput<StateType, InputType, ServerInputType>
-    where InputType: Input,
-          StateType: State,
-          ServerInputType: ServerInput {
+impl<GameType: Game> UdpOutput<GameType> {
 
     pub fn new(time_message_period: TimeDuration,
                player_index: usize,
@@ -73,7 +66,7 @@ impl<StateType, InputType, ServerInputType> UdpOutput<StateType, InputType, Serv
         }
     }
 
-    fn send_message(&mut self, message: ToClientMessageUDP<StateType, InputType, ServerInputType>) {
+    fn send_message(&mut self, message: ToClientMessageUDP<GameType>) {
 
         if let Some(remote_peer) = &self.remote_peer {
             let buf = rmp_serde::to_vec(&message).unwrap();
@@ -91,10 +84,7 @@ impl<StateType, InputType, ServerInputType> UdpOutput<StateType, InputType, Serv
     }
 }
 
-impl<StateType, InputType, ServerInputType> ChannelThread<()> for UdpOutput<StateType, InputType, ServerInputType>
-    where InputType: Input,
-          StateType: State,
-          ServerInputType: ServerInput {
+impl<GameType: Game> ChannelThread<()> for UdpOutput<GameType> {
 
     fn run(mut self, receiver: Receiver<Self>) -> () {
 
@@ -131,10 +121,7 @@ impl<StateType, InputType, ServerInputType> ChannelThread<()> for UdpOutput<Stat
     }
 }
 
-impl<StateType, InputType, ServerInputType> Consumer<TimeMessage> for Sender<UdpOutput<StateType, InputType, ServerInputType>>
-    where InputType: Input,
-          StateType: State,
-          ServerInputType: ServerInput {
+impl<GameType: Game> Consumer<TimeMessage> for Sender<UdpOutput<GameType>> {
 
     fn accept(&self, time_message: TimeMessage) {
 
@@ -157,7 +144,7 @@ impl<StateType, InputType, ServerInputType> Consumer<TimeMessage> for Sender<Udp
                 udp_output.last_time_message = Some(time_message.clone());
 
                 //TODO: timestamp when the time message is set, then use that info in client side time calc
-                let message = ToClientMessageUDP::<StateType, InputType, ServerInputType>::TimeMessage(time_message);
+                let message = ToClientMessageUDP::<GameType>::TimeMessage(time_message);
                 udp_output.send_message(message);
 
                 //info!("time_message");
@@ -168,12 +155,9 @@ impl<StateType, InputType, ServerInputType> Consumer<TimeMessage> for Sender<Udp
     }
 }
 
-impl<StateType, InputType, ServerInputType> Consumer<InputMessage<InputType>> for Sender<UdpOutput<StateType, InputType, ServerInputType>>
-    where InputType: Input,
-          StateType: State,
-          ServerInputType: ServerInput {
+impl<GameType: Game> Consumer<InputMessage<GameType>> for Sender<UdpOutput<GameType>> {
 
-    fn accept(&self, input_message: InputMessage<InputType>) {
+    fn accept(&self, input_message: InputMessage<GameType>) {
 
         let time_in_queue = TimeValue::now();
 
@@ -185,7 +169,7 @@ impl<StateType, InputType, ServerInputType> Consumer<InputMessage<InputType>> fo
 
                 udp_output.time_of_last_input_send = TimeValue::now();
 
-                let message = ToClientMessageUDP::<StateType, InputType, ServerInputType>::InputMessage(input_message);
+                let message = ToClientMessageUDP::<GameType>::InputMessage(input_message);
                 udp_output.send_message(message);
 
                 //info!("input_message");
@@ -197,12 +181,9 @@ impl<StateType, InputType, ServerInputType> Consumer<InputMessage<InputType>> fo
     }
 }
 
-impl<StateType, InputType, ServerInputType> Consumer<ServerInputMessage<ServerInputType>> for Sender<UdpOutput<StateType, InputType, ServerInputType>>
-    where InputType: Input,
-          StateType: State,
-          ServerInputType: ServerInput {
+impl<GameType: Game> Consumer<ServerInputMessage<GameType>> for Sender<UdpOutput<GameType>> {
 
-    fn accept(&self, server_input_message: ServerInputMessage<ServerInputType>) {
+    fn accept(&self, server_input_message: ServerInputMessage<GameType>) {
 
         let time_in_queue = TimeValue::now();
 
@@ -213,7 +194,7 @@ impl<StateType, InputType, ServerInputType> Consumer<ServerInputMessage<ServerIn
 
                 udp_output.time_of_last_server_input_send = TimeValue::now();
 
-                let message = ToClientMessageUDP::<StateType, InputType, ServerInputType>::ServerInputMessage(server_input_message);
+                let message = ToClientMessageUDP::<GameType>::ServerInputMessage(server_input_message);
                 udp_output.send_message(message);
 
                 //info!("server_input_message");
@@ -225,12 +206,9 @@ impl<StateType, InputType, ServerInputType> Consumer<ServerInputMessage<ServerIn
     }
 }
 
-impl<StateType, InputType, ServerInputType> Consumer<StateMessage<StateType>> for Sender<UdpOutput<StateType, InputType, ServerInputType>>
-    where InputType: Input,
-          StateType: State,
-          ServerInputType: ServerInput {
+impl<GameType: Game> Consumer<StateMessage<GameType>> for Sender<UdpOutput<GameType>> {
 
-    fn accept(&self, state_message: StateMessage<StateType>) {
+    fn accept(&self, state_message: StateMessage<GameType>) {
 
         let time_in_queue = TimeValue::now();
 
@@ -244,7 +222,7 @@ impl<StateType, InputType, ServerInputType> Consumer<StateMessage<StateType>> fo
                 udp_output.last_state_sequence = Some(state_message.get_sequence());
                 udp_output.time_of_last_state_send = TimeValue::now();
 
-                let message = ToClientMessageUDP::<StateType, InputType, ServerInputType>::StateMessage(state_message);
+                let message = ToClientMessageUDP::<GameType>::StateMessage(state_message);
                 udp_output.send_message(message);
 
                 //info!("state_message");
@@ -255,10 +233,7 @@ impl<StateType, InputType, ServerInputType> Consumer<StateMessage<StateType>> fo
     }
 }
 
-impl<StateType, InputType, ServerInputType> Consumer<RemoteUdpPeer> for Sender<UdpOutput<StateType, InputType, ServerInputType>>
-    where InputType: Input,
-          StateType: State,
-          ServerInputType: ServerInput {
+impl<GameType: Game> Consumer<RemoteUdpPeer> for Sender<UdpOutput<GameType>> {
 
     fn accept(&self, remote_peer: RemoteUdpPeer) {
         self.send(|udp_output|{

@@ -1,22 +1,8 @@
 use std::{thread, time, io};
 use log::info;
-use crate::messaging::*;
-use crate::simplegame::{Vector2, SimpleInput, SimpleState, SimpleInputEvent, STEP_DURATION, SimpleInputEventHandler, SimpleWindow, SimpleServerInput};
-use crate::threading::{ChannelThread, Consumer, Thread};
+use crate::simplegame::{SimpleInput, SimpleState, SimpleInputEvent, STEP_DURATION, SimpleInputEventHandler, SimpleWindow, SimpleServerInput, SimpleGameImpl};
+use crate::threading::{ChannelThread, Thread};
 use crate::gametime::TimeDuration;
-
-use glutin_window::GlutinWindow as Window;
-use opengl_graphics::{GlGraphics, OpenGL};
-use piston::event_loop::{EventSettings, Events};
-use piston::input::{RenderArgs, RenderEvent, UpdateArgs, UpdateEvent};
-use piston::window::WindowSettings;
-use piston::{Event, MouseRelativeEvent, MouseCursorEvent};
-use crate::gamemanager::RenderReceiver;
-use graphics::*;
-use piston::input::Input as PistonInput;
-use std::io::Read;
-use std::collections::hash_map::{DefaultHasher, RandomState};
-use std::hash::{Hash, Hasher, BuildHasher};
 
 mod simplegame;
 mod messaging;
@@ -57,7 +43,7 @@ pub fn main() {
     let mut client_core_sender_option = None;
 
     if run_server {
-        let server_core  = server::Core::<SimpleState, SimpleInput, SimpleServerInput, SimpleState, SimpleState, SimpleState>::new(
+        let server_core  = server::Core::<SimpleGameImpl>::new(
             3456,
             3457,
             STEP_DURATION,
@@ -75,7 +61,7 @@ pub fn main() {
 
     if run_client {
 
-        let client_core = client::Core::<SimpleState, SimpleInput, SimpleServerInput, SimpleState, SimpleInputEventHandler, SimpleInputEvent, SimpleState, SimpleState>::new(
+        let client_core = client::Core::<SimpleGameImpl>::new(
             "127.0.0.1",
             3456,
             3457,

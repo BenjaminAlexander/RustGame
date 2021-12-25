@@ -1,17 +1,16 @@
 use serde::{Deserialize, Serialize};
 
 use crate::gametime::TimeMessage;
+use crate::interface::Game;
 use crate::messaging::{InputMessage, StateMessage, InitialInformation, ServerInputMessage};
 
 #[derive(Serialize, Deserialize, Debug)]
-pub enum ToClientMessageUDP<StateType, InputType, ServerInputType>
-    where InputType: Clone,
-          StateType: Clone,
-          ServerInputType: Clone {
+#[serde(bound = "")]
+pub enum ToClientMessageUDP<GameType: Game> {
 
     //TODO: see if these can be borrowed
     TimeMessage(TimeMessage),
-    InputMessage(InputMessage<InputType>),
-    ServerInputMessage(ServerInputMessage<ServerInputType>),
-    StateMessage(StateMessage<StateType>)
+    InputMessage(InputMessage<GameType>),
+    ServerInputMessage(ServerInputMessage<GameType>),
+    StateMessage(StateMessage<GameType>)
 }

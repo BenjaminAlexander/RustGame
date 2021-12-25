@@ -7,7 +7,7 @@ use crate::threading::sender::SendError;
 use log::{trace, info, warn};
 use crate::server::ServerConfig;
 use crate::messaging::InitialInformation;
-use crate::interface::State;
+use crate::interface::{Game, State};
 
 const TICK_LATENESS_WARN_DURATION: TimeDuration = TimeDuration(20);
 const CLIENT_ERROR_WARN_DURATION: TimeDuration = TimeDuration(20);
@@ -150,8 +150,8 @@ impl Consumer<TimeReceived<TimeMessage>> for Sender<GameTimer> {
     }
 }
 
-impl<StateType: State> Consumer<InitialInformation<StateType>> for Sender<GameTimer> {
-    fn accept(&self, initial_information: InitialInformation<StateType>) {
+impl<GameType: Game> Consumer<InitialInformation<GameType>> for Sender<GameTimer> {
+    fn accept(&self, initial_information: InitialInformation<GameType>) {
         self.send(|game_timer|{
             game_timer.server_config = Some(initial_information.move_server_config());
         }).unwrap();

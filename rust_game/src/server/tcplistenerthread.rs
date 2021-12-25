@@ -33,7 +33,6 @@ impl ChannelThread<()> for TcpListenerThread {
                     receiver.try_iter(&mut self);
 
                     if self.consumer.is_some() {
-
                         self.consumer.as_ref().unwrap().accept(tcp_stream);
                     }
                 }

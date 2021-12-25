@@ -1,7 +1,7 @@
 use log::{warn, trace, info};
 use crate::messaging::{StateMessage, InputMessage, InitialInformation, ServerInputMessage};
 use std::collections::VecDeque;
-use crate::interface::{Input, State, InputEvent, StateUpdate, ServerInput, UpdateArg};
+use crate::interface::{Input, State, InputEvent, ClientUpdateArg, Game};
 use crate::threading::{ConsumerList, ChannelDrivenThread, Sender, Consumer};
 use crate::gamemanager::step::Step;
 use crate::gamemanager::stepmessage::StepMessage;
@@ -9,35 +9,26 @@ use crate::gametime::{TimeMessage, TimeReceived, TimeDuration, TimeValue};
 use std::marker::PhantomData;
 use std::sync::Arc;
 
-pub struct Manager<StateType, InputType, ServerInputType, StateUpdateType>
-    where StateType: State,
-          InputType: Input,
-          ServerInputType: ServerInput,
-          StateUpdateType: StateUpdate<StateType, InputType, ServerInputType> {
+pub struct Manager<GameType: Game> {
 
     is_server: bool,
     drop_steps_before: usize,
     //TODO: send requested state immediately if available
     requested_step: usize,
-    initial_information: Option<Arc<InitialInformation<StateType>>>,
+    initial_information: Option<Arc<InitialInformation<GameType>>>,
     //New states at the back, old at the front (index 0)
-    steps: VecDeque<Step<StateType, InputType, ServerInputType, StateUpdateType>>,
-    requested_step_consumer_list: ConsumerList<StepMessage<StateType>>,
-    completed_step_consumer_list: ConsumerList<StateMessage<StateType>>,
-    server_input_consumer_list: ConsumerList<ServerInputMessage<ServerInputType>>,
+    steps: VecDeque<Step<GameType>>,
+    requested_step_consumer_list: ConsumerList<StepMessage<GameType>>,
+    completed_step_consumer_list: ConsumerList<StateMessage<GameType>>,
+    server_input_consumer_list: ConsumerList<ServerInputMessage<GameType>>,
     grace_period: TimeDuration,
-    phantom: PhantomData<(StateUpdateType, ServerInputType)>,
 
     //metrics
     time_of_last_state_receive: TimeValue,
     time_of_last_input_receive: TimeValue,
 }
 
-impl<StateType, InputType, ServerInputType, StateUpdateType> Manager<StateType, InputType, ServerInputType, StateUpdateType>
-    where StateType: State,
-          InputType: Input,
-          ServerInputType: ServerInput,
-          StateUpdateType: StateUpdate<StateType, InputType, ServerInputType> {
+impl<GameType: Game> Manager<GameType> {
 
     pub fn new(is_server: bool, grace_period: TimeDuration) -> Self {
         Self{
@@ -50,7 +41,6 @@ impl<StateType, InputType, ServerInputType, StateUpdateType> Manager<StateType, 
             completed_step_consumer_list: ConsumerList::new(),
             server_input_consumer_list: ConsumerList::new(),
             grace_period,
-            phantom: PhantomData,
 
             //metrics
             time_of_last_state_receive: TimeValue::now(),
@@ -58,7 +48,7 @@ impl<StateType, InputType, ServerInputType, StateUpdateType> Manager<StateType, 
         }
     }
 
-    fn get_state(&mut self, step_index: usize) -> Option<&mut Step<StateType, InputType, ServerInputType, StateUpdateType>> {
+    fn get_state(&mut self, step_index: usize) -> Option<&mut Step<GameType>> {
 
         if self.initial_information.is_none() {
             return None;
@@ -89,7 +79,7 @@ impl<StateType, InputType, ServerInputType, StateUpdateType> Manager<StateType, 
         }
     }
 
-    fn handle_state_message(&mut self, state_message: StateMessage<StateType>) {
+    fn handle_state_message(&mut self, state_message: StateMessage<GameType>) {
         if let Some(step) = self.get_state(state_message.get_sequence()) {
             step.set_final_state(state_message);
         }
@@ -128,11 +118,7 @@ impl<StateType, InputType, ServerInputType, StateUpdateType> Manager<StateType, 
     }
 }
 
-impl<StateType, InputType, ServerInputType, StateUpdateType> ChannelDrivenThread<()> for Manager<StateType, InputType, ServerInputType, StateUpdateType>
-    where StateType: State,
-          InputType: Input,
-          ServerInputType: ServerInput,
-          StateUpdateType: StateUpdate<StateType, InputType, ServerInputType> {
+impl<GameType: Game> ChannelDrivenThread<()> for Manager<GameType> {
 
     fn on_none_pending(&mut self) -> Option<()> {
 
@@ -207,14 +193,10 @@ impl<StateType, InputType, ServerInputType, StateUpdateType> ChannelDrivenThread
     }
 }
 
-impl<StateType, InputType, ServerInputType, StateUpdateType> Sender<Manager<StateType, InputType, ServerInputType, StateUpdateType>>
-    where StateType: State,
-          InputType: Input,
-          ServerInputType: ServerInput,
-          StateUpdateType: StateUpdate<StateType, InputType, ServerInputType> {
+impl<GameType: Game> Sender<Manager<GameType>> {
 
     pub fn add_requested_step_consumer<T>(&self, consumer: T)
-        where T: Consumer<StepMessage<StateType>> {
+        where T: Consumer<StepMessage<GameType>> {
 
         self.send(move |manager|{
             manager.requested_step_consumer_list.add_consumer(consumer);
@@ -222,14 +204,14 @@ impl<StateType, InputType, ServerInputType, StateUpdateType> Sender<Manager<Stat
     }
 
     pub fn add_completed_step_consumer<T>(&self, consumer: T)
-        where T: Consumer<StateMessage<StateType>> {
+        where T: Consumer<StateMessage<GameType>> {
         self.send(move |manager|{
             manager.completed_step_consumer_list.add_consumer(consumer);
         }).unwrap();
     }
 
     pub fn add_server_input_consumer<T>(&self, consumer: T)
-        where T: Consumer<ServerInputMessage<ServerInputType>> {
+        where T: Consumer<ServerInputMessage<GameType>> {
         self.send(move |manager|{
             manager.server_input_consumer_list.add_consumer(consumer);
         }).unwrap();
@@ -248,13 +230,9 @@ impl<StateType, InputType, ServerInputType, StateUpdateType> Sender<Manager<Stat
     }
 }
 
-impl<StateType, InputType, ServerInputType, StateUpdateType> Consumer<InputMessage<InputType>> for Sender<Manager<StateType, InputType, ServerInputType, StateUpdateType>>
-    where StateType: State,
-          InputType: Input,
-          ServerInputType: ServerInput,
-          StateUpdateType: StateUpdate<StateType, InputType, ServerInputType> {
+impl<GameType: Game> Consumer<InputMessage<GameType>> for Sender<Manager<GameType>> {
 
-    fn accept(&self, input_message: InputMessage<InputType>) {
+    fn accept(&self, input_message: InputMessage<GameType>) {
         self.send(move |manager|{
             if let Some(step) = manager.get_state(input_message.get_step()) {
                 step.set_input(input_message);
@@ -264,13 +242,9 @@ impl<StateType, InputType, ServerInputType, StateUpdateType> Consumer<InputMessa
     }
 }
 
-impl<StateType, InputType, ServerInputType, StateUpdateType> Consumer<ServerInputMessage<ServerInputType>> for Sender<Manager<StateType, InputType, ServerInputType, StateUpdateType>>
-    where StateType: State,
-          InputType: Input,
-          ServerInputType: ServerInput,
-          StateUpdateType: StateUpdate<StateType, InputType, ServerInputType> {
+impl<GameType: Game> Consumer<ServerInputMessage<GameType>> for Sender<Manager<GameType>> {
 
-    fn accept(&self, server_input_message: ServerInputMessage<ServerInputType>) {
+    fn accept(&self, server_input_message: ServerInputMessage<GameType>) {
         self.send(move |manager|{
 
             //info!("Server Input received: {:?}", server_input_message.get_step());
@@ -281,13 +255,9 @@ impl<StateType, InputType, ServerInputType, StateUpdateType> Consumer<ServerInpu
     }
 }
 
-impl<StateType, InputType, ServerInputType, StateUpdateType> Consumer<StateMessage<StateType>> for Sender<Manager<StateType, InputType, ServerInputType, StateUpdateType>>
-    where StateType: State,
-          InputType: Input,
-          ServerInputType: ServerInput,
-          StateUpdateType: StateUpdate<StateType, InputType, ServerInputType> {
+impl<GameType: Game> Consumer<StateMessage<GameType>> for Sender<Manager<GameType>> {
 
-    fn accept(&self, mut state_message: StateMessage<StateType>) {
+    fn accept(&self, mut state_message: StateMessage<GameType>) {
         self.send(move |manager|{
             manager.handle_state_message(state_message);
 
@@ -297,13 +267,9 @@ impl<StateType, InputType, ServerInputType, StateUpdateType> Consumer<StateMessa
     }
 }
 
-impl<StateType, InputType, ServerInputType, StateUpdateType> Consumer<InitialInformation<StateType>> for Sender<Manager<StateType, InputType, ServerInputType, StateUpdateType>>
-    where StateType: State,
-          InputType: Input,
-          ServerInputType: ServerInput,
-          StateUpdateType: StateUpdate<StateType, InputType, ServerInputType> {
+impl<GameType: Game> Consumer<InitialInformation<GameType>> for Sender<Manager<GameType>> {
 
-    fn accept(&self, initial_information: InitialInformation<StateType>) {
+    fn accept(&self, initial_information: InitialInformation<GameType>) {
         self.send(move |manager|{
             manager.initial_information = Some(Arc::new(initial_information));
             let state = manager.initial_information.as_ref().unwrap().get_state().clone();

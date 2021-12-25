@@ -1,26 +1,23 @@
 use serde::{Deserialize, Serialize};
 use crate::messaging::StateMessage;
 use crate::gametime::TimeDuration;
+use crate::interface::Game;
 use crate::server::ServerConfig;
 
 #[derive(Serialize, Deserialize, Debug)]
-pub struct InitialInformation<StateType>
-    where StateType: Clone {
-
+pub struct InitialInformation<GameType: Game> {
     server_config: ServerConfig,
     player_count: usize,
     player_index: usize,
-    state: StateType,
-
+    state: GameType::StateType,
 }
 
-impl<StateType> InitialInformation<StateType>
-    where StateType: Clone {
+impl<GameType: Game> InitialInformation<GameType> {
 
     pub fn new(server_config: ServerConfig,
                player_count: usize,
                player_index: usize,
-               state: StateType) -> Self {
+               state: GameType::StateType) -> Self {
 
         return Self{
             server_config,
@@ -30,11 +27,11 @@ impl<StateType> InitialInformation<StateType>
         };
     }
 
-    pub fn get_state(&self) -> &StateType {
+    pub fn get_state(&self) -> &GameType::StateType {
         &self.state
     }
 
-    pub fn move_state(self) -> StateType {
+    pub fn move_state(self) -> GameType::StateType {
         self.state
     }
 
@@ -55,8 +52,7 @@ impl<StateType> InitialInformation<StateType>
     }
 }
 
-impl<StateType> Clone for InitialInformation<StateType>
-    where StateType: Clone {
+impl<GameType: Game> Clone for InitialInformation<GameType> {
 
     fn clone(&self) -> Self {
         Self{

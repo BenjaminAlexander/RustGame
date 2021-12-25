@@ -3,7 +3,7 @@ use std::str::FromStr;
 use crate::gametime::{TimeDuration, GameTimer, TimeMessage};
 use crate::threading::{ChannelThread, Sender, ChannelDrivenThread, Consumer};
 use crate::client::tcpinput::TcpInput;
-use crate::interface::{Input, State, InputEvent, InputEventHandler, StateUpdate, Interpolate, InterpolationResult, ServerInput};
+use crate::interface::{Input, State, InputEvent, InterpolationResult, ServerInput, Game};
 use std::marker::PhantomData;
 use crate::client::tcpoutput::TcpOutput;
 use crate::messaging::{StateMessage, InitialInformation, InputMessage};
@@ -12,16 +12,7 @@ use log::{info, trace};
 use crate::client::udpoutput::UdpOutput;
 use crate::client::udpinput::UdpInput;
 
-pub struct Core<StateType, InputType, ServerInputType, StateUpdateType, InputEventHandlerType, InputEventType, InterpolateType, InterpolatedType>
-    where StateType: State,
-          InputType: Input,
-          ServerInputType: ServerInput,
-          StateUpdateType: StateUpdate<StateType, InputType, ServerInputType>,
-          InputEventHandlerType: InputEventHandler<InputType, InputEventType>,
-          InputEventType: InputEvent,
-          InterpolateType: Interpolate<StateType, InterpolatedType>,
-          InterpolatedType: InterpolationResult {
-
+pub struct Core<GameType: Game> {
     server_ip: String,
     tcp_port: u16,
     udp_port: u16,
@@ -29,24 +20,15 @@ pub struct Core<StateType, InputType, ServerInputType, StateUpdateType, InputEve
     step_duration: TimeDuration,
     grace_period: TimeDuration,
     clock_average_size: usize,
-    input_event_handler: InputEventHandlerType,
-    manager_sender: Option<Sender<Manager<StateType, InputType, ServerInputType, StateUpdateType>>>,
-    udp_output_sender: Option<Sender<UdpOutput<StateType, InputType>>>,
+    input_event_handler: GameType::InputEventHandlerType,
+    manager_sender: Option<Sender<Manager<GameType>>>,
+    udp_output_sender: Option<Sender<UdpOutput<GameType>>>,
     tcp_output_sender: Option<Sender<TcpOutput>>,
-    initial_information: Option<InitialInformation<StateType>>,
-    last_time_message: Option<TimeMessage>,
-    phantom: PhantomData<(InputEventType, InterpolateType, InterpolatedType)>
+    initial_information: Option<InitialInformation<GameType>>,
+    last_time_message: Option<TimeMessage>
 }
 
-impl<StateType, InputType, ServerInputType, StateUpdateType, InputEventHandlerType, InputEventType, InterpolateType, InterpolatedType> Core<StateType, InputType, ServerInputType, StateUpdateType, InputEventHandlerType, InputEventType, InterpolateType, InterpolatedType>
-    where StateType: State,
-          InputType: Input,
-          ServerInputType: ServerInput,
-          StateUpdateType: StateUpdate<StateType, InputType, ServerInputType>,
-          InputEventHandlerType: InputEventHandler<InputType, InputEventType>,
-          InputEventType: InputEvent,
-          InterpolateType: Interpolate<StateType, InterpolatedType>,
-          InterpolatedType: InterpolationResult {
+impl<GameType: Game> Core<GameType> {
 
     pub fn new(server_ip: &str,
                tcp_port: u16,
@@ -61,44 +43,27 @@ impl<StateType, InputType, ServerInputType, StateUpdateType, InputEventHandlerTy
             step_duration,
             grace_period,
             clock_average_size,
-            input_event_handler: InputEventHandlerType::new(),
+            input_event_handler: GameType::new_input_event_handler(),
             manager_sender: None,
             udp_output_sender: None,
             tcp_output_sender: None,
             initial_information: None,
-            last_time_message: None,
-            phantom: PhantomData
+            last_time_message: None
         }
     }
 }
 
-impl<StateType, InputType, ServerInputType, StateUpdateType, InputEventHandlerType, InputEventType, InterpolateType, InterpolatedType> ChannelDrivenThread<()> for Core<StateType, InputType, ServerInputType, StateUpdateType, InputEventHandlerType, InputEventType, InterpolateType, InterpolatedType>
-    where StateType: State,
-          InputType: Input,
-          ServerInputType: ServerInput,
-          StateUpdateType: StateUpdate<StateType, InputType, ServerInputType>,
-          InputEventHandlerType: InputEventHandler<InputType, InputEventType>,
-          InputEventType: InputEvent,
-          InterpolateType: Interpolate<StateType, InterpolatedType>,
-          InterpolatedType: InterpolationResult {
+impl<GameType: Game> ChannelDrivenThread<()> for Core<GameType> {
 
     fn on_channel_disconnect(&mut self) -> () {
         ()
     }
 }
 
-impl<StateType, InputType, ServerInputType, StateUpdateType, InputEventHandlerType, InputEventType, InterpolateType, InterpolatedType> Sender<Core<StateType, InputType, ServerInputType, StateUpdateType, InputEventHandlerType, InputEventType, InterpolateType, InterpolatedType>>
-    where StateType: State,
-          InputType: Input,
-          ServerInputType: ServerInput,
-          StateUpdateType: StateUpdate<StateType, InputType, ServerInputType>,
-          InputEventHandlerType: InputEventHandler<InputType, InputEventType>,
-          InputEventType: InputEvent,
-          InterpolateType: Interpolate<StateType, InterpolatedType>,
-          InterpolatedType: InterpolationResult {
+impl<GameType: Game> Sender<Core<GameType>> {
 
-    pub fn connect(&self) -> RenderReceiver<StateType, InterpolateType, InterpolatedType> {
-        let (render_receiver_sender, render_receiver) = RenderReceiver::<StateType, InterpolateType, InterpolatedType>::new();
+    pub fn connect(&self) -> RenderReceiver<GameType> {
+        let (render_receiver_sender, render_receiver) = RenderReceiver::<GameType>::new();
         let core_sender = self.clone();
 
         self.send(move |core|{
@@ -111,12 +76,12 @@ impl<StateType, InputType, ServerInputType, StateUpdateType, InputEventHandlerTy
 
             let udp_socket = UdpSocket::bind("127.0.0.1:0").unwrap();
 
-            let (manager_sender, manager_builder) = Manager::<StateType, InputType, ServerInputType, StateUpdateType>::new(false, core.grace_period).build();
+            let (manager_sender, manager_builder) = Manager::<GameType>::new(false, core.grace_period).build();
             let (game_timer_sender, game_timer_builder) = GameTimer::new(core.clock_average_size).build();
-            let (tcp_input_sender, tcp_input_builder) = TcpInput::<StateType, InputType>::new(&tcp_stream).unwrap().build();
+            let (tcp_input_sender, tcp_input_builder) = TcpInput::<GameType>::new(&tcp_stream).unwrap().build();
             let (tcp_output_sender, tcp_output_builder) = TcpOutput::new(&tcp_stream).unwrap().build();
-            let (udp_output_sender, udp_output_builder) = UdpOutput::<StateType, InputType>::new(server_udp_socket_addr_v4, &udp_socket).unwrap().build();
-            let (udp_input_sender, udp_input_builder) = UdpInput::<StateType, InputType, ServerInputType>::new(server_udp_socket_addr_v4, &udp_socket).unwrap().build();
+            let (udp_output_sender, udp_output_builder) = UdpOutput::<GameType>::new(server_udp_socket_addr_v4, &udp_socket).unwrap().build();
+            let (udp_input_sender, udp_input_builder) = UdpInput::<GameType>::new(server_udp_socket_addr_v4, &udp_socket).unwrap().build();
 
             tcp_input_sender.add_initial_information_message_consumer(manager_sender.clone());
             tcp_input_sender.add_initial_information_message_consumer(core_sender.clone());
@@ -149,19 +114,22 @@ impl<StateType, InputType, ServerInputType, StateUpdateType, InputEventHandlerTy
 
         return render_receiver;
     }
+
+    pub fn onInputEvent(&self, input_event: GameType::InputEventType) {
+        self.send(move |core|{
+            if core.manager_sender.is_some() &&
+                core.last_time_message.is_some() &&
+                core.initial_information.is_some() {
+
+                GameType::handle_input_event(&mut core.input_event_handler, input_event);
+            }
+        }).unwrap();
+    }
 }
 
-impl<StateType, InputType, ServerInputType, StateUpdateType, InputEventHandlerType, InputEventType, InterpolateType, InterpolatedType> Consumer<InitialInformation<StateType>> for Sender<Core<StateType, InputType, ServerInputType, StateUpdateType, InputEventHandlerType, InputEventType, InterpolateType, InterpolatedType>>
-    where StateType: State,
-          InputType: Input,
-          ServerInputType: ServerInput,
-          StateUpdateType: StateUpdate<StateType, InputType, ServerInputType>,
-          InputEventHandlerType: InputEventHandler<InputType, InputEventType>,
-          InputEventType: InputEvent,
-          InterpolateType: Interpolate<StateType, InterpolatedType>,
-          InterpolatedType: InterpolationResult {
+impl<GameType: Game> Consumer<InitialInformation<GameType>> for Sender<Core<GameType>> {
 
-    fn accept(&self, initial_information: InitialInformation<StateType>) {
+    fn accept(&self, initial_information: InitialInformation<GameType>) {
         self.send(move |core|{
             info!("InitialInformation Received.");
             core.initial_information = Some(initial_information);
@@ -169,15 +137,7 @@ impl<StateType, InputType, ServerInputType, StateUpdateType, InputEventHandlerTy
     }
 }
 
-impl<StateType, InputType, ServerInputType, StateUpdateType, InputEventHandlerType, InputEventType, InterpolateType, InterpolatedType> Consumer<TimeMessage> for Sender<Core<StateType, InputType, ServerInputType, StateUpdateType, InputEventHandlerType, InputEventType, InterpolateType, InterpolatedType>>
-    where StateType: State,
-          InputType: Input,
-          ServerInputType: ServerInput,
-          StateUpdateType: StateUpdate<StateType, InputType, ServerInputType>,
-          InputEventHandlerType: InputEventHandler<InputType, InputEventType>,
-          InputEventType: InputEvent,
-          InterpolateType: Interpolate<StateType, InterpolatedType>,
-          InterpolatedType: InterpolationResult {
+impl<GameType: Game> Consumer<TimeMessage> for Sender<Core<GameType>> {
 
     fn accept(&self, time_message: TimeMessage) {
 
@@ -198,12 +158,12 @@ impl<StateType, InputType, ServerInputType, StateUpdateType, InputEventHandlerTy
                 let initial_information = core.initial_information.as_ref().unwrap();
 
                 if time_message.get_step() > last_time_message.get_step() {
-                    let message = InputMessage::<InputType>::new(
+                    let message = InputMessage::<GameType>::new(
                         //TODO: message or last message?
                         //TODO: define strict and consistent rules for how real time relates to ticks, input deadlines and display states
                         time_message.get_step(),
                         initial_information.get_player_index(),
-                        core.input_event_handler.get_input()
+                        GameType::get_input(& mut core.input_event_handler)
                     );
 
                     manager_sender.accept(message.clone());
@@ -221,29 +181,6 @@ impl<StateType, InputType, ServerInputType, StateUpdateType, InputEventHandlerTy
 
             core.last_time_message = Some(time_message);
 
-        }).unwrap();
-    }
-}
-
-impl<StateType, InputType, ServerInputType, StateUpdateType, InputEventHandlerType, InputEventType, InterpolateType, InterpolatedType> Consumer<InputEventType> for Sender<Core<StateType, InputType, ServerInputType, StateUpdateType, InputEventHandlerType, InputEventType, InterpolateType, InterpolatedType>>
-    where StateType: State,
-          InputType: Input,
-          ServerInputType: ServerInput,
-          StateUpdateType: StateUpdate<StateType, InputType, ServerInputType>,
-          InputEventHandlerType: InputEventHandler<InputType, InputEventType>,
-          InputEventType: InputEvent,
-          InterpolateType: Interpolate<StateType, InterpolatedType>,
-          InterpolatedType: InterpolationResult {
-
-    fn accept(&self, input_event: InputEventType) {
-        self.send(move |core|{
-            if core.manager_sender.is_some() &&
-                core.last_time_message.is_some() &&
-                core.initial_information.is_some() {
-
-                core.input_event_handler.handle_event(input_event);
-
-            }
         }).unwrap();
     }
 }

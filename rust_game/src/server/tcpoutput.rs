@@ -5,23 +5,17 @@ use crate::threading::{ChannelDrivenThread, Consumer, Sender, ChannelThread, Rec
 use std::io;
 use crate::messaging::{ToClientMessageTCP, InputMessage, StateMessage, InitialInformation};
 use std::io::Write;
-use crate::interface::{Input, State, InputEvent};
+use crate::interface::{Input, State, InputEvent, Game};
 use std::marker::PhantomData;
 use crate::server::ServerConfig;
 
-pub struct TcpOutput<StateType, InputType>
-    where InputType: Input,
-          StateType: State {
-
+pub struct TcpOutput<GameType: Game> {
     player_index: usize,
     tcp_stream: TcpStream,
-    state_phantom: PhantomData<StateType>,
-    input_phantom: PhantomData<InputType>
+    phantom: PhantomData<GameType>
 }
 
-impl<StateType, InputType> TcpOutput<StateType, InputType>
-    where InputType: Input,
-          StateType: State {
+impl<GameType: Game> TcpOutput<GameType> {
 
     pub fn new(player_index: usize,
                tcp_stream: &TcpStream) -> io::Result<Self> {
@@ -29,15 +23,12 @@ impl<StateType, InputType> TcpOutput<StateType, InputType>
         Ok(TcpOutput{
             player_index,
             tcp_stream: tcp_stream.try_clone()?,
-            state_phantom: PhantomData,
-            input_phantom: PhantomData
+            phantom: PhantomData
         })
     }
 }
 
-impl<StateType, InputType> ChannelThread<()> for TcpOutput<StateType, InputType>
-    where InputType: Input,
-          StateType: State {
+impl<GameType: Game> ChannelThread<()> for TcpOutput<GameType> {
 
     fn run(mut self, receiver: Receiver<Self>) -> () {
 
@@ -56,21 +47,19 @@ impl<StateType, InputType> ChannelThread<()> for TcpOutput<StateType, InputType>
     }
 }
 
-impl<StateType, InputType> Sender<TcpOutput<StateType, InputType>>
-    where InputType: Input,
-          StateType: State {
+impl<GameType: Game> Sender<TcpOutput<GameType>> {
 
-    pub fn send_initial_information(&self, server_config: ServerConfig, player_count: usize, initial_state: StateType) {
+    pub fn send_initial_information(&self, server_config: ServerConfig, player_count: usize, initial_state: GameType::StateType) {
         self.send(move |tcp_output|{
 
-            let initial_information = InitialInformation::<StateType>::new(
+            let initial_information = InitialInformation::<GameType>::new(
                 server_config,
                 player_count,
                 tcp_output.player_index,
                 initial_state
             );
 
-            let message = ToClientMessageTCP::<StateType>::InitialInformation(initial_information);
+            let message = ToClientMessageTCP::<GameType>::InitialInformation(initial_information);
             rmp_serde::encode::write(&mut tcp_output.tcp_stream, &message).unwrap();
             tcp_output.tcp_stream.flush().unwrap();
 

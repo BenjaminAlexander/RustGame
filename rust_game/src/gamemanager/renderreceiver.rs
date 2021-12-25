@@ -1,32 +1,25 @@
 use log::{warn, info, trace};
-use crate::interface::{State, Input, InputEvent, InterpolationArg, Interpolate, InterpolationResult};
+use crate::interface::{State, Input, InputEvent, InterpolationArg, InterpolationResult, Game};
 use crate::gamemanager::stepmessage::StepMessage;
 use crate::threading::{Consumer, Sender, Receiver, channel};
 use crate::gametime::{TimeMessage, TimeValue, TimeDuration};
 use std::marker::PhantomData;
 use crate::messaging::InitialInformation;
 
-pub struct RenderReceiver<StateType, InterpolateType, InterpolatedType>
-    where StateType: State,
-          InterpolateType: Interpolate<StateType, InterpolatedType>,
-          InterpolatedType: InterpolationResult {
-
-    receiver: Receiver<Data<StateType>>,
-    data: Data<StateType>,
-    phantom: PhantomData<(InterpolateType, InterpolatedType)>
+pub struct RenderReceiver<GameType: Game> {
+    receiver: Receiver<Data<GameType>>,
+    data: Data<GameType>
 }
 
-pub struct Data<StateType>
-    where StateType: State {
+pub struct Data<GameType: Game> {
 
     //TODO: use vec deque so that this is more efficient
-    step_queue: Vec<StepMessage<StateType>>,
+    step_queue: Vec<StepMessage<GameType>>,
     latest_time_message: Option<TimeMessage>,
-    initial_information: Option<InitialInformation<StateType>>,
+    initial_information: Option<InitialInformation<GameType>>,
 }
 
-impl<StateType> Data<StateType>
-    where StateType: State {
+impl<GameType: Game> Data<GameType> {
 
     fn drop_steps_before(&mut self, drop_before: usize) {
         while self.step_queue.len() > 2 &&
@@ -38,17 +31,13 @@ impl<StateType> Data<StateType>
     }
 }
 
-impl<StateType, InterpolateType, InterpolatedType> RenderReceiver<StateType, InterpolateType, InterpolatedType>
-    where StateType: State,
-          InterpolateType: Interpolate<StateType, InterpolatedType>,
-          InterpolatedType: InterpolationResult {
+impl<GameType: Game> RenderReceiver<GameType> {
 
-    pub fn new() -> (Sender<Data<StateType>>, Self) {
-        let (sender, receiver) = channel::<Data<StateType>>();
+    pub fn new() -> (Sender<Data<GameType>>, Self) {
+        let (sender, receiver) = channel::<Data<GameType>>();
 
         let render_receiver = Self{
             receiver,
-            phantom: PhantomData,
             data: Data {
                 step_queue: Vec::new(),
                 latest_time_message: None,
@@ -60,7 +49,7 @@ impl<StateType, InterpolateType, InterpolatedType> RenderReceiver<StateType, Int
     }
 
     //TODO: remove timeduration
-    pub fn get_step_message(&mut self) -> Option<(TimeDuration, InterpolatedType)> {
+    pub fn get_step_message(&mut self) -> Option<(TimeDuration, GameType::InterpolationResultType)> {
 
         self.receiver.try_iter(&mut self.data);
 
@@ -109,7 +98,7 @@ impl<StateType, InterpolateType, InterpolatedType> RenderReceiver<StateType, Int
             }
 
             let arg = InterpolationArg::new(weight, duration_since_start);
-            let interpolation_result = InterpolateType::interpolate(
+            let interpolation_result = GameType::interpolate(
                 self.data.initial_information.as_ref().unwrap(),
                 first_step.get_state(),
                 second_step.get_state(),
@@ -124,10 +113,9 @@ impl<StateType, InterpolateType, InterpolatedType> RenderReceiver<StateType, Int
 
 }
 
-impl<StateType> Consumer<StepMessage<StateType>> for Sender<Data<StateType>>
-    where StateType: State {
+impl<GameType: Game> Consumer<StepMessage<GameType>> for Sender<Data<GameType>> {
 
-    fn accept(&self, step_message: StepMessage<StateType>) {
+    fn accept(&self, step_message: StepMessage<GameType>) {
 
         //info!("StepMessage: {:?}", step_message.get_step_index());
         self.send(|data|{
@@ -159,8 +147,7 @@ impl<StateType> Consumer<StepMessage<StateType>> for Sender<Data<StateType>>
 
 }
 
-impl<StateType> Consumer<TimeMessage> for Sender<Data<StateType>>
-    where StateType: State {
+impl<GameType: Game> Consumer<TimeMessage> for Sender<Data<GameType>> {
 
     fn accept(&self, time_message: TimeMessage) {
         self.send(move |data|{
@@ -177,10 +164,9 @@ impl<StateType> Consumer<TimeMessage> for Sender<Data<StateType>>
     }
 }
 
-impl<StateType> Consumer<InitialInformation<StateType>> for Sender<Data<StateType>>
-    where StateType: State {
+impl<GameType: Game> Consumer<InitialInformation<GameType>> for Sender<Data<GameType>> {
 
-    fn accept(&self, initial_information: InitialInformation<StateType>) {
+    fn accept(&self, initial_information: InitialInformation<GameType>) {
         self.send(|data|{
             data.initial_information = Some(initial_information);
         }).unwrap();

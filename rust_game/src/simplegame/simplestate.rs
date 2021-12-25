@@ -1,5 +1,5 @@
 use crate::simplegame::{Vector2, SimpleInputEvent, SimpleInput, SimplServerInputEvent};
-use crate::interface::{State, UpdateArg, StateUpdate, Interpolate, InterpolationArg, InterpolationResult, ServerUpdateArg};
+use crate::interface::{State, ClientUpdateArg, InterpolationArg, InterpolationResult, ServerUpdateArg};
 use serde::{Deserialize, Serialize};
 use crate::simplegame::character::Character;
 use opengl_graphics::GlGraphics;
@@ -11,6 +11,7 @@ use std::collections::HashMap;
 use crate::messaging::InitialInformation;
 use crate::simplegame::simpleserverinput::SimpleServerInput;
 use log::{warn, trace, info};
+use crate::simplegame::simplegameimpl::SimpleGameImpl;
 
 pub const STEP_DURATION: TimeDuration = TimeDuration::from_millis(100);
 
@@ -42,9 +43,9 @@ impl State for SimpleState {
     }
 }
 
-impl StateUpdate<SimpleState, SimpleInput, SimpleServerInput> for SimpleState {
+impl SimpleState {
 
-    fn get_server_input(state: &SimpleState, arg: &ServerUpdateArg<SimpleState, SimpleInput>) -> SimpleServerInput {
+    pub fn get_server_input(state: &SimpleState, arg: &ServerUpdateArg<SimpleGameImpl>) -> SimpleServerInput {
         let mut server_input = SimpleServerInput::new();
 
         for character in &state.player_characters {
@@ -60,17 +61,13 @@ impl StateUpdate<SimpleState, SimpleInput, SimpleServerInput> for SimpleState {
         return server_input;
     }
 
-    fn get_next_state(state: &SimpleState, arg: &UpdateArg<SimpleState, SimpleInput, SimpleServerInput>) -> SimpleState {
+    pub fn get_next_state(state: &SimpleState, arg: &ClientUpdateArg<SimpleGameImpl>) -> SimpleState {
         let mut new = state.clone();
         new.update(arg);
         return new;
     }
 
-}
-
-impl SimpleState {
-
-    fn update(&mut self, arg: &UpdateArg<SimpleState, SimpleInput, SimpleServerInput>) {
+    fn update(&mut self, arg: &ClientUpdateArg<SimpleGameImpl>) {
 
         if let Some(server_input) = arg.get_server_input() {
             server_input.apply_to_state(self);
@@ -96,6 +93,20 @@ impl SimpleState {
         }
     }
 
+    pub fn interpolate(initial_information: &InitialInformation<SimpleGameImpl>, first: &Self, second: &Self, arg: &InterpolationArg) -> Self {
+
+        let mut second_clone = second.clone();
+
+        for i in 0..second_clone.player_characters.len() {
+            if let Some(first_character) = first.player_characters.get(i) {
+                let new_position = first_character.get_position().lerp(second_clone.player_characters[i].get_position(), arg.get_weight());
+                second_clone.player_characters[i].set_position(new_position);
+            }
+        }
+
+        return second_clone;
+    }
+
     pub fn draw(&self, duration_since_game_start: TimeDuration, args: &RenderArgs, context: Context, gl: &mut GlGraphics) {
         for character in &self.player_characters {
             character.draw(args, context, gl);
@@ -108,23 +119,6 @@ impl SimpleState {
 
     pub fn hit_character(&mut self, index: usize) {
         self.player_characters[index].reduce_health();
-    }
-}
-
-impl Interpolate<SimpleState, SimpleState> for SimpleState {
-
-    fn interpolate(initial_information: &InitialInformation<SimpleState>, first: &Self, second: &Self, arg: &InterpolationArg) -> Self {
-
-        let mut second_clone = second.clone();
-
-        for i in 0..second_clone.player_characters.len() {
-            if let Some(first_character) = first.player_characters.get(i) {
-                let new_position = first_character.get_position().lerp(second_clone.player_characters[i].get_position(), arg.get_weight());
-                second_clone.player_characters[i].set_position(new_position);
-            }
-        }
-
-        return second_clone;
     }
 }
 

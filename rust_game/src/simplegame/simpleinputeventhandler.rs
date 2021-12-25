@@ -1,9 +1,9 @@
 use piston::{ButtonState, ButtonArgs, Button, Key, Motion, MouseButton};
 use piston::input::Input as PistonInput;
-use crate::interface::InputEventHandler;
 use crate::simplegame::{SimpleInput, SimpleInputEvent, Vector2};
 use log::info;
 use num::integer::Roots;
+use crate::simplegame::simplegameimpl::SimpleGameImpl;
 
 pub struct SimpleInputEventHandler {
     aim_point: Vector2,
@@ -17,48 +17,7 @@ pub struct SimpleInputEventHandler {
 
 impl SimpleInputEventHandler {
 
-    fn accumulate_move(&mut self, move_event: &Motion) {
-        match move_event {
-            Motion::MouseCursor(position) => {
-                self.aim_point = Vector2::new(position[0], position[1]);
-            }
-            _ => {}
-        }
-    }
-
-    fn accumulate_button(&mut self, button: &ButtonArgs) {
-        match button.button {
-            Button::Keyboard(key) => {
-                match key {
-                    Key::D => self.d_state = button.state,
-                    Key::A => self.a_state = button.state,
-                    Key::S => self.s_state = button.state,
-                    Key::W => self.w_state = button.state,
-                    _ => {}
-                }
-            }
-            Button::Mouse(mouse_button) => {
-                match mouse_button {
-                    MouseButton::Left => {
-                        if self.left_mouse_state == ButtonState::Release &&
-                            button.state == ButtonState::Press {
-
-                            self.should_fire = true;
-                        }
-
-                        self.left_mouse_state = button.state;
-
-                    }
-                    _ => {}
-                }
-            }
-            _ => {}
-        }
-    }
-}
-
-impl InputEventHandler<SimpleInput, SimpleInputEvent> for SimpleInputEventHandler {
-    fn new() -> Self {
+    pub fn new() -> Self {
         Self{
             aim_point: Vector2::new(0 as f64, 0 as f64),
             d_state: ButtonState::Release,
@@ -70,7 +29,7 @@ impl InputEventHandler<SimpleInput, SimpleInputEvent> for SimpleInputEventHandle
         }
     }
 
-    fn handle_event(&mut self, input_event: SimpleInputEvent) {
+    pub fn handle_event(&mut self, input_event: SimpleInputEvent) {
         match input_event.get_piston_input() {
             PistonInput::Button(arg) => {
                 self.accumulate_button(arg);
@@ -87,7 +46,7 @@ impl InputEventHandler<SimpleInput, SimpleInputEvent> for SimpleInputEventHandle
         }
     }
 
-    fn get_input(&mut self) -> SimpleInput {
+    pub fn get_input(&mut self) -> SimpleInput {
 
         let mut x = match (self.d_state, self.a_state) {
             (ButtonState::Press, ButtonState::Press) => 0,
@@ -114,5 +73,42 @@ impl InputEventHandler<SimpleInput, SimpleInputEvent> for SimpleInputEventHandle
         self.should_fire = false;
 
         return input;
+    }
+
+    fn accumulate_move(&mut self, move_event: &Motion) {
+        match move_event {
+            Motion::MouseCursor(position) => {
+                self.aim_point = Vector2::new(position[0], position[1]);
+            }
+            _ => {}
+        }
+    }
+
+    fn accumulate_button(&mut self, button: &ButtonArgs) {
+        match button.button {
+            Button::Keyboard(key) => {
+                match key {
+                    Key::D => self.d_state = button.state,
+                    Key::A => self.a_state = button.state,
+                    Key::S => self.s_state = button.state,
+                    Key::W => self.w_state = button.state,
+                    _ => {}
+                }
+            }
+            Button::Mouse(mouse_button) => {
+                match mouse_button {
+                    MouseButton::Left => {
+                        if self.left_mouse_state == ButtonState::Release &&
+                            button.state == ButtonState::Press {
+                            self.should_fire = true;
+                        }
+
+                        self.left_mouse_state = button.state;
+                    }
+                    _ => {}
+                }
+            }
+            _ => {}
+        }
     }
 }

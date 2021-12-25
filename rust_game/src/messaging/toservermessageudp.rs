@@ -1,19 +1,19 @@
 use serde::{Deserialize, Serialize};
+use crate::interface::Game;
 
 use super::InputMessage;
 
 #[derive(Serialize, Deserialize, Debug)]
-pub enum ToServerMessageUDP<InputType>
-    where InputType: Clone {
+#[serde(bound = "")]
+pub enum ToServerMessageUDP<GameType: Game> {
 
     //TODO: see if these can be borrowed
     //TODO: remove hello
     Hello{player_index: usize},
-    Input(InputMessage<InputType>)
+    Input(InputMessage<GameType>)
 }
 
-impl<InputType> ToServerMessageUDP<InputType>
-    where InputType: Clone {
+impl<GameType: Game> ToServerMessageUDP<GameType> {
 
     pub fn get_player_index(&self) -> usize {
         return match self {

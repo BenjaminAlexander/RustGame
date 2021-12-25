@@ -1,4 +1,4 @@
-use crate::interface::{Input, UpdateArg};
+use crate::interface::{Input, ClientUpdateArg};
 use serde::Serialize;
 use serde::de::DeserializeOwned;
 use std::fmt::Debug;

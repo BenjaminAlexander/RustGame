@@ -1,26 +1,22 @@
-use std::net::{UdpSocket, Ipv4Addr, SocketAddrV4, SocketAddr};
+use std::net::{UdpSocket, SocketAddrV4, SocketAddr};
 use crate::gametime::{TimeMessage, TimeReceived, TimeValue, TimeDuration};
 use crate::messaging::{InputMessage, StateMessage, ToClientMessageUDP, MAX_UDP_DATAGRAM_SIZE, MessageFragment, FragmentAssembler, ServerInputMessage};
 use crate::threading::{ConsumerList, Consumer, Sender, Receiver, ChannelThread};
-use crate::interface::{State, Input, ServerInput};
+use crate::interface::{State, Game};
 use crate::threading::sender::SendError;
 use rmp_serde::decode::Error;
 use std::io;
 use log::{error, info, warn};
 use std::time::Duration;
 
-pub struct UdpInput<StateType, InputType, ServerInputType>
-    where StateType: State,
-          InputType: Input,
-          ServerInputType: ServerInput {
-
+pub struct UdpInput<GameType: Game> {
     server_socket_addr: SocketAddr,
     socket: UdpSocket,
     fragment_assembler: FragmentAssembler,
     time_message_consumers: ConsumerList<TimeReceived<TimeMessage>>,
-    input_message_consumers: ConsumerList<InputMessage<InputType>>,
-    server_input_message_consumers: ConsumerList<ServerInputMessage<ServerInputType>>,
-    state_message_consumers: ConsumerList<StateMessage<StateType>>,
+    input_message_consumers: ConsumerList<InputMessage<GameType>>,
+    server_input_message_consumers: ConsumerList<ServerInputMessage<GameType>>,
+    state_message_consumers: ConsumerList<StateMessage<GameType>>,
 
     //metrics
     time_of_last_state_receive: TimeValue,
@@ -28,10 +24,7 @@ pub struct UdpInput<StateType, InputType, ServerInputType>
     time_of_last_server_input_receive: TimeValue,
 }
 
-impl<StateType, InputType, ServerInputType> UdpInput<StateType, InputType, ServerInputType>
-    where StateType: State,
-          InputType: Input,
-          ServerInputType: ServerInput {
+impl<GameType: Game> UdpInput<GameType> {
 
     pub fn new(server_socket_addr_v4: SocketAddrV4, socket: &UdpSocket) -> io::Result<Self> {
 
@@ -55,10 +48,7 @@ impl<StateType, InputType, ServerInputType> UdpInput<StateType, InputType, Serve
     }
 }
 
-impl<StateType, InputType, ServerInputType> ChannelThread<()> for UdpInput<StateType, InputType, ServerInputType>
-    where StateType: State,
-          InputType: Input,
-          ServerInputType: ServerInput {
+impl<GameType: Game> ChannelThread<()> for UdpInput<GameType> {
 
     fn run(mut self, receiver: Receiver<Self>) {
         info!("Starting");
@@ -96,7 +86,7 @@ impl<StateType, InputType, ServerInputType> ChannelThread<()> for UdpInput<State
 
             if let Some(message_buf) = self.fragment_assembler.add_fragment(fragment) {
 
-                let result: Result<ToClientMessageUDP::<StateType, InputType, ServerInputType>, Error> = rmp_serde::from_read_ref(&message_buf);
+                let result: Result<ToClientMessageUDP<GameType>, Error> = rmp_serde::from_read_ref(&message_buf);
 
                 match result {
                     Ok(message) => {
@@ -144,12 +134,9 @@ impl<StateType, InputType, ServerInputType> ChannelThread<()> for UdpInput<State
         }
     }
 }
-impl<StateType, InputType, ServerInputType> Sender<UdpInput<StateType, InputType, ServerInputType>>
-    where StateType: State,
-          InputType: Input,
-          ServerInputType: ServerInput {
+impl<GameType: Game> Sender<UdpInput<GameType>> {
 
-    pub fn add_time_message_consumer<T>(&self, consumer: T) -> Result<(), SendError<UdpInput<StateType, InputType, ServerInputType>>>
+    pub fn add_time_message_consumer<T>(&self, consumer: T) -> Result<(), SendError<UdpInput<GameType>>>
         where T: Consumer<TimeReceived<TimeMessage>> {
 
         self.send(|tcp_input|{
@@ -157,24 +144,24 @@ impl<StateType, InputType, ServerInputType> Sender<UdpInput<StateType, InputType
         })
     }
 
-    pub fn add_input_message_consumer<T>(&self, consumer: T) -> Result<(), SendError<UdpInput<StateType, InputType, ServerInputType>>>
-        where T: Consumer<InputMessage<InputType>> {
+    pub fn add_input_message_consumer<T>(&self, consumer: T) -> Result<(), SendError<UdpInput<GameType>>>
+        where T: Consumer<InputMessage<GameType>> {
 
         self.send(|tcp_input|{
             tcp_input.input_message_consumers.add_consumer(consumer);
         })
     }
 
-    pub fn add_server_input_message_consumer<T>(&self, consumer: T) -> Result<(), SendError<UdpInput<StateType, InputType, ServerInputType>>>
-        where T: Consumer<ServerInputMessage<ServerInputType>> {
+    pub fn add_server_input_message_consumer<T>(&self, consumer: T) -> Result<(), SendError<UdpInput<GameType>>>
+        where T: Consumer<ServerInputMessage<GameType>> {
 
         self.send(|tcp_input|{
             tcp_input.server_input_message_consumers.add_consumer(consumer);
         })
     }
 
-    pub fn add_state_message_consumer<T>(&self, consumer: T) -> Result<(), SendError<UdpInput<StateType, InputType, ServerInputType>>>
-        where T: Consumer<StateMessage<StateType>> {
+    pub fn add_state_message_consumer<T>(&self, consumer: T) -> Result<(), SendError<UdpInput<GameType>>>
+        where T: Consumer<StateMessage<GameType>> {
 
         self.send(|tcp_input|{
             tcp_input.state_message_consumers.add_consumer(consumer);

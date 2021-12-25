@@ -1,4 +1,4 @@
-use crate::interface::{Input, State, InputEvent, UpdateArg, StateUpdate, ServerInput, ServerUpdateArg};
+use crate::interface::{Input, State, InputEvent, ClientUpdateArg, ServerInput, ServerUpdateArg, Game};
 use crate::messaging::{InputMessage, StateMessage, ServerInputMessage, InitialInformation};
 use crate::gamemanager::stepmessage::StepMessage;
 use std::marker::PhantomData;
@@ -6,56 +6,47 @@ use log::{trace, info, warn};
 use crate::gametime::TimeDuration;
 use std::sync::Arc;
 
-pub struct Step<StateType, InputType, ServerInputType, StateUpdateType>
-    where StateType: State,
-          InputType: Input,
-          ServerInputType: ServerInput,
-          StateUpdateType: StateUpdate<StateType, InputType, ServerInputType> {
+pub struct Step<GameType: Game> {
 
-    initial_information: Arc<InitialInformation<StateType>>,
+    initial_information: Arc<InitialInformation<GameType>>,
     step: usize,
-    state: StateHolder<StateType>,
-    server_input: ServerInputHolder<ServerInputType>,
-    inputs: Vec<Option<InputType>>,
+    state: StateHolder<GameType>,
+    server_input: ServerInputHolder<GameType>,
+    inputs: Vec<Option<GameType::InputType>>,
     input_count: usize,
-    need_to_compute_next_state: bool,
-    phantom: PhantomData<StateUpdateType>
+    need_to_compute_next_state: bool
 }
 
-pub enum StateHolder<StateType: State> {
+pub enum StateHolder<GameType: Game> {
     None,
     Deserialized{
-        state: StateType,
+        state: GameType::StateType,
         need_to_send_as_changed: bool
     },
     ComputedIncomplete{
-        state: StateType,
+        state: GameType::StateType,
         need_to_send_as_changed: bool
     },
     ComputedComplete{
-        state: StateType,
+        state: GameType::StateType,
         need_to_send_as_changed: bool,
         need_to_send_as_complete: bool
     }
 }
 
-pub enum ServerInputHolder<ServerInputType: ServerInput> {
+pub enum ServerInputHolder<GameType: Game> {
     None,
-    Deserialized(ServerInputType),
-    ComputedIncomplete(ServerInputType),
+    Deserialized(GameType::ServerInputType),
+    ComputedIncomplete(GameType::ServerInputType),
     ComputedComplete{
-        server_input: ServerInputType,
+        server_input: GameType::ServerInputType,
         need_to_send_as_complete: bool
     }
 }
 
-impl<StateType, InputType, ServerInputType, StateUpdateType> Step<StateType, InputType, ServerInputType, StateUpdateType>
-    where StateType: State,
-          InputType: Input,
-          ServerInputType: ServerInput,
-          StateUpdateType: StateUpdate<StateType, InputType, ServerInputType> {
+impl<GameType: Game> Step<GameType> {
 
-    pub fn blank(step_index: usize, initial_information: Arc<InitialInformation<StateType>>) -> Self {
+    pub fn blank(step_index: usize, initial_information: Arc<InitialInformation<GameType>>) -> Self {
 
         return Self{
             initial_information,
@@ -64,12 +55,11 @@ impl<StateType, InputType, ServerInputType, StateUpdateType> Step<StateType, Inp
             server_input: ServerInputHolder::None,
             inputs: Vec::new(),
             input_count: 0,
-            need_to_compute_next_state: false,
-            phantom: PhantomData
+            need_to_compute_next_state: false
         };
     }
 
-    pub fn set_input(&mut self, input_message: InputMessage<InputType>) {
+    pub fn set_input(&mut self, input_message: InputMessage<GameType>) {
         let index = input_message.get_player_index();
         while self.inputs.len() <= index {
             self.inputs.push(None);
@@ -89,7 +79,7 @@ impl<StateType, InputType, ServerInputType, StateUpdateType> Step<StateType, Inp
         }
     }
 
-    pub fn set_server_input(&mut self, server_input: ServerInputType) {
+    pub fn set_server_input(&mut self, server_input: GameType::ServerInputType) {
         self.server_input = ServerInputHolder::Deserialized(server_input);
         self.need_to_compute_next_state = true;
     }
@@ -109,7 +99,7 @@ impl<StateType, InputType, ServerInputType, StateUpdateType> Step<StateType, Inp
             self.input_count == self.initial_information.get_player_count();
     }
 
-    pub fn set_final_state(&mut self, state_message: StateMessage<StateType>) {
+    pub fn set_final_state(&mut self, state_message: StateMessage<GameType>) {
 
         let new_state = state_message.get_state();
         let mut has_changed = false;
@@ -162,7 +152,7 @@ impl<StateType, InputType, ServerInputType, StateUpdateType> Step<StateType, Inp
                 StateHolder::ComputedComplete{state, .. } => Some(state),
             } {
 
-                let server_input = StateUpdateType::get_server_input(
+                let server_input = GameType::get_server_input(
                     state,
                     &self.get_server_update_arg()
                 );
@@ -181,7 +171,7 @@ impl<StateType, InputType, ServerInputType, StateUpdateType> Step<StateType, Inp
         }
     }
 
-    pub fn calculate_next_state(&self) -> StateHolder<StateType> {
+    pub fn calculate_next_state(&self) -> StateHolder<GameType> {
 
         if let Some(state) = match &self.state {
             StateHolder::None => None,
@@ -197,12 +187,12 @@ impl<StateType, InputType, ServerInputType, StateUpdateType> Step<StateType, Inp
                 ServerInputHolder::ComputedComplete { server_input, .. } => Some(server_input)
             };
 
-            let arg = UpdateArg::new(
+            let arg = ClientUpdateArg::new(
                 self.get_server_update_arg(),
                 server_input
             );
 
-            let next_state = StateUpdateType::get_next_state(
+            let next_state = GameType::get_next_state(
                 state,
                 &arg
             );
@@ -233,7 +223,7 @@ impl<StateType, InputType, ServerInputType, StateUpdateType> Step<StateType, Inp
         self.need_to_compute_next_state = false;
     }
 
-    pub fn set_calculated_state(&mut self,  state_holder: StateHolder<StateType>) {
+    pub fn set_calculated_state(&mut self,  state_holder: StateHolder<GameType>) {
         self.need_to_compute_next_state = true;
         self.state = state_holder;
     }
@@ -282,11 +272,11 @@ impl<StateType, InputType, ServerInputType, StateUpdateType> Step<StateType, Inp
         }
     }
 
-    pub fn get_server_update_arg(&self) -> ServerUpdateArg<StateType, InputType> {
+    pub fn get_server_update_arg(&self) -> ServerUpdateArg<GameType> {
         return ServerUpdateArg::new(&*self.initial_information, self.step, &self.inputs);
     }
 
-    pub fn get_changed_message(&mut self) -> Option<StepMessage<StateType>> {
+    pub fn get_changed_message(&mut self) -> Option<StepMessage<GameType>> {
 
         if let Some((state, need_to_send_as_changed)) = match &mut self.state {
             StateHolder::None => None,
@@ -308,7 +298,7 @@ impl<StateType, InputType, ServerInputType, StateUpdateType> Step<StateType, Inp
         return None;
     }
 
-    pub fn get_complete_message(&mut self) -> Option<StateMessage<StateType>> {
+    pub fn get_complete_message(&mut self) -> Option<StateMessage<GameType>> {
         if let StateHolder::ComputedComplete{state, need_to_send_as_complete, .. } = &mut self.state {
             if *need_to_send_as_complete {
                 *need_to_send_as_complete = false;
@@ -322,7 +312,7 @@ impl<StateType, InputType, ServerInputType, StateUpdateType> Step<StateType, Inp
         return None;
     }
 
-    pub fn get_server_input_message(&mut self) -> Option<ServerInputMessage<ServerInputType>> {
+    pub fn get_server_input_message(&mut self) -> Option<ServerInputMessage<GameType>> {
 
         if let ServerInputHolder::ComputedComplete {server_input, need_to_send_as_complete} = &mut self.server_input {
             if *need_to_send_as_complete {

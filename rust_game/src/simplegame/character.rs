@@ -6,8 +6,9 @@ use graphics::{Context, rectangle};
 use graphics::*;
 use crate::simplegame::bullet::Bullet;
 use log::{warn, trace, info};
-use crate::interface::UpdateArg;
+use crate::interface::ClientUpdateArg;
 use crate::gametime::TimeDuration;
+use crate::simplegame::simplegameimpl::SimpleGameImpl;
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Character {
@@ -54,7 +55,7 @@ impl Character {
         }
     }
 
-    pub fn move_character(&mut self, arg: &UpdateArg<SimpleState, SimpleInput, SimpleServerInput>) {
+    pub fn move_character(&mut self, arg: &ClientUpdateArg<SimpleGameImpl>) {
 
         if let Some(input) = arg.get_input(self.player_index) {
             self.velocity = input.get_velocity();
@@ -63,7 +64,7 @@ impl Character {
         self.position = self.position + self.velocity * STEP_DURATION.get_millis() as f64 * 0.5;
     }
 
-    pub fn get_fired_bullet(&self, arg: &UpdateArg<SimpleState, SimpleInput, SimpleServerInput>) -> Option<Bullet> {
+    pub fn get_fired_bullet(&self, arg: &ClientUpdateArg<SimpleGameImpl>) -> Option<Bullet> {
         if let Some(input) = arg.get_input(self.player_index) {
             if input.should_fire() {
                 return Some(Bullet::new(

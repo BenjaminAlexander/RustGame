@@ -6,6 +6,7 @@ pub use self::simplewindow::SimpleWindow;
 pub use self::simplestate::*;
 pub use self::simpleserverinput::SimpleServerInput;
 pub use self::simpleserverinput::SimplServerInputEvent;
+pub use self::simplegameimpl::SimpleGameImpl;
 
 mod vector2;
 mod simpleinputevent;
@@ -18,6 +19,7 @@ mod bullet;
 mod simpleserverinput;
 mod linesegment2;
 mod line2;
+mod simplegameimpl;
 
 
 

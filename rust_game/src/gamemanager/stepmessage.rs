@@ -1,36 +1,30 @@
-use crate::interface::{Input, State, InputEvent, UpdateArg};
+use crate::interface::{Input, State, InputEvent, ClientUpdateArg, Game};
 use crate::messaging::{InputMessage, StateMessage};
 use std::marker::PhantomData;
 use std::cmp::Ordering;
 
 #[derive(Debug)]
-pub struct StepMessage<StateType>
-    where StateType: State {
-
+pub struct StepMessage<GameType: Game> {
     step_index: usize,
-    state: StateType
+    state: GameType::StateType
 }
 
-impl<StateType> StepMessage<StateType>
-    where StateType: State {
+impl<GameType: Game> StepMessage<GameType> {
 
-    pub fn new(step_index: usize,
-               state: StateType) -> Self {
-
+    pub fn new(step_index: usize, state: GameType::StateType) -> Self {
         Self{step_index, state}
     }
 
     pub fn get_step_index(&self) -> usize {
-        return self.step_index;
+        self.step_index
     }
 
-    pub fn get_state(&self) -> &StateType {
-        return &self.state;
+    pub fn get_state(&self) -> &GameType::StateType {
+        &self.state
     }
 }
 
-impl<StateType> Clone for StepMessage<StateType>
-    where StateType: State {
+impl<GameType: Game> Clone for StepMessage<GameType> {
 
     fn clone(&self) -> Self {
         Self{
@@ -40,29 +34,25 @@ impl<StateType> Clone for StepMessage<StateType>
     }
 }
 
-impl<StateType> PartialEq for StepMessage<StateType>
-    where StateType: State {
+impl<GameType: Game> PartialEq for StepMessage<GameType> {
 
     fn eq(&self, other: &Self) -> bool {
         return self.step_index.eq(&other.step_index);
     }
 }
 
-impl<StateType> Eq for StepMessage<StateType>
-    where StateType: State {
+impl<GameType: Game> Eq for StepMessage<GameType> {
 
 }
 
-impl<StateType> PartialOrd for StepMessage<StateType>
-    where StateType: State {
+impl<GameType: Game> PartialOrd for StepMessage<GameType> {
 
     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
         return Some(self.cmp(&other));
     }
 }
 
-impl<StateType> Ord for StepMessage<StateType>
-    where StateType: State {
+impl<GameType: Game> Ord for StepMessage<GameType> {
 
     fn cmp(&self, other: &Self) -> Ordering {
         return self.step_index.cmp(&other.step_index);

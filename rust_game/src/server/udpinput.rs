@@ -1,7 +1,7 @@
 use log::{error, info, trace, warn};
 use crate::messaging::{InputMessage, MAX_UDP_DATAGRAM_SIZE, ToServerMessageUDP, FragmentAssembler, MessageFragment};
 use crate::threading::{ConsumerList, ChannelThread, Receiver, Sender, Consumer};
-use crate::interface::Input;
+use crate::interface::{Game, Input};
 use crate::server::tcpinput::TcpInput;
 use std::net::{UdpSocket, SocketAddr, IpAddr};
 use std::io;
@@ -11,17 +11,17 @@ use crate::server::remoteudppeer::RemoteUdpPeer;
 use std::collections::{HashMap, HashSet};
 use crate::server::clientaddress::ClientAddress;
 
-pub struct UdpInput<InputType: Input> {
+pub struct UdpInput<GameType: Game> {
     socket: UdpSocket,
     remote_peers: Vec<Option<RemoteUdpPeer>>,
     client_addresses: Vec<Option<ClientAddress>>,
     client_ip_set: HashSet<IpAddr>,
     fragment_assemblers: HashMap<SocketAddr, FragmentAssembler>,
-    input_consumers: ConsumerList<InputMessage<InputType>>,
+    input_consumers: ConsumerList<InputMessage<GameType>>,
     remote_peer_consumers: ConsumerList<RemoteUdpPeer>
 }
 
-impl<InputType: Input> UdpInput<InputType> {
+impl<GameType: Game> UdpInput<GameType> {
 
     pub fn new(socket: &UdpSocket) -> io::Result<Self> {
         return Ok(Self{
@@ -43,7 +43,7 @@ impl<InputType: Input> UdpInput<InputType> {
         }
 
         if let Some(assembled) = self.handle_fragment(source, buf) {
-            let result: Result<ToServerMessageUDP::<InputType>, Error> = rmp_serde::from_read_ref(assembled.as_slice());
+            let result: Result<ToServerMessageUDP::<GameType>, Error> = rmp_serde::from_read_ref(assembled.as_slice());
 
             match result {
                 Ok(message) => {
@@ -71,7 +71,7 @@ impl<InputType: Input> UdpInput<InputType> {
         return assembler.add_fragment(MessageFragment::from_vec(fragment.to_vec()));
     }
 
-    fn handle_message(&mut self, message: ToServerMessageUDP::<InputType>, source: SocketAddr) {
+    fn handle_message(&mut self, message: ToServerMessageUDP<GameType>, source: SocketAddr) {
 
         let player_index = message.get_player_index();
 
@@ -122,7 +122,7 @@ impl<InputType: Input> UdpInput<InputType> {
     }
 }
 
-impl<InputType: Input> ChannelThread<()> for UdpInput<InputType> {
+impl<GameType: Game> ChannelThread<()> for UdpInput<GameType> {
 
     fn run(mut self, mut receiver: Receiver<Self>) -> () {
 
@@ -133,7 +133,6 @@ impl<InputType: Input> ChannelThread<()> for UdpInput<InputType> {
             let mut buf = [0; MAX_UDP_DATAGRAM_SIZE];
 
             let recv_result = self.socket.recv_from(&mut buf);
-            self.socket.
             match recv_result {
                 Ok((number_of_bytes, source)) => {
                     //TODO: check source against valid sources
@@ -141,25 +140,25 @@ impl<InputType: Input> ChannelThread<()> for UdpInput<InputType> {
                     receiver.try_iter(&mut self);
                     self.handle_receive(filled_buf, source);
                 }
-                Err(error) => {
-                    warn!("{:?}", error);
+                Err(_) => {
+                    //no-op
                 }
             }
         }
     }
 }
 
-impl<InputType: Input> Sender<UdpInput<InputType>> {
+impl<GameType: Game> Sender<UdpInput<GameType>> {
 
-    pub fn add_input_consumer<T>(&self, consumer: T) -> Result<(), SendError<UdpInput<InputType>>>
-        where T: Consumer<InputMessage<InputType>> {
+    pub fn add_input_consumer<T>(&self, consumer: T) -> Result<(), SendError<UdpInput<GameType>>>
+        where T: Consumer<InputMessage<GameType>> {
 
         self.send(|udp_input|{
             udp_input.input_consumers.add_consumer(consumer);
         })
     }
 
-    pub fn add_remote_peer_consumers<T>(&self, consumer: T) -> Result<(), SendError<UdpInput<InputType>>>
+    pub fn add_remote_peer_consumers<T>(&self, consumer: T) -> Result<(), SendError<UdpInput<GameType>>>
         where T: Consumer<RemoteUdpPeer> {
 
         self.send(|udp_input|{
@@ -175,7 +174,7 @@ impl<InputType: Input> Sender<UdpInput<InputType>> {
     }
 }
 
-impl<InputType: Input> Consumer<ClientAddress> for Sender<UdpInput<InputType>> {
+impl<GameType: Game> Consumer<ClientAddress> for Sender<UdpInput<GameType>> {
     fn accept(&self, client_address: ClientAddress) {
         self.send(move |udp_input|{
             udp_input.client_ip_set.insert(client_address.get_ip_address());
