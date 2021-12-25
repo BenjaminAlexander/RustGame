@@ -1,15 +1,14 @@
 use opengl_graphics::{GlGraphics, OpenGL};
 use crate::gamemanager::RenderReceiver;
-use crate::simplegame::{SimpleState, SimpleInput, SimpleInputEventHandler, SimpleInputEvent, STEP_DURATION};
+use crate::simplegame::SimpleInputEvent;
 use crate::client::Core;
-use crate::threading::{Sender, Thread, Consumer};
+use crate::threading::Sender;
 use piston::{RenderArgs, WindowSettings, Events, EventSettings, RenderEvent, Event};
 use piston::input::Input as PistonInput;
 use graphics::*;
 use glutin_window::GlutinWindow as Window;
 use log::info;
 use crate::simplegame::simplegameimpl::SimpleGameImpl;
-use crate::simplegame::simpleserverinput::SimpleServerInput;
 
 pub struct SimpleWindow {
     window_name: String,
@@ -30,7 +29,7 @@ impl SimpleWindow {
         }
     }
 
-    pub fn run(mut self) -> () {
+    pub fn run(self) -> () {
 
         // Change this to OpenGL::V2_1 if not working.
         let opengl = OpenGL::V3_2;

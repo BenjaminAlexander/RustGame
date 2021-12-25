@@ -80,7 +80,7 @@ impl PartiallyAssembledFragment {
     pub fn new(fragment: MessageFragment) -> Self {
         let mut vec = Vec::with_capacity(fragment.get_count() as usize);
 
-        for i in 0..fragment.get_count() {
+        for _i in 0..fragment.get_count() {
             vec.push(None);
         }
 

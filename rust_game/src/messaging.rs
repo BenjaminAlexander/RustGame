@@ -1,5 +1,3 @@
-use serde::{Deserialize, Serialize};
-
 pub use self::inputmessage::InputMessage;
 pub use self::toservermessagetcp::ToServerMessageTCP;
 pub use self::toservermessageudp::ToServerMessageUDP;

@@ -1,4 +1,4 @@
-use crate::simplegame::{Vector2, SimpleInputEvent, SimpleInput, SimplServerInputEvent};
+use crate::simplegame::{Vector2, SimplServerInputEvent};
 use crate::interface::{State, ClientUpdateArg, InterpolationArg, InterpolationResult, ServerUpdateArg};
 use serde::{Deserialize, Serialize};
 use crate::simplegame::character::Character;
@@ -7,11 +7,9 @@ use graphics::Context;
 use piston::RenderArgs;
 use crate::gametime::TimeDuration;
 use crate::simplegame::bullet::Bullet;
-use std::collections::HashMap;
 use crate::messaging::InitialInformation;
 use crate::simplegame::simpleserverinput::SimpleServerInput;
-use log::{warn, trace, info};
-use crate::simplegame::simplegameimpl::SimpleGameImpl;
+use crate::SimpleGameImpl;
 
 pub const STEP_DURATION: TimeDuration = TimeDuration::from_millis(100);
 

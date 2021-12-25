@@ -1,11 +1,10 @@
-use crate::simplegame::{Vector2, STEP_DURATION, SimpleInput};
+use crate::simplegame::{Vector2, STEP_DURATION};
 use serde::{Deserialize, Serialize};
-use piston::{RenderArgs, ButtonState};
-use opengl_graphics::{GlGraphics, OpenGL};
+use piston::RenderArgs;
+use opengl_graphics::GlGraphics;
 use graphics::{Context, rectangle};
 use graphics::*;
-use crate::gametime::{TimeDuration, EPOCH};
-use log::{info, warn, trace};
+use crate::gametime::TimeDuration;
 
 const MAX_RANGE: f64 = 5000 as f64;
 

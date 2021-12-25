@@ -1,11 +1,10 @@
-use crate::simplegame::{Vector2, STEP_DURATION, SimpleInput, SimpleState, SimpleServerInput};
+use crate::simplegame::{Vector2, STEP_DURATION};
 use serde::{Deserialize, Serialize};
-use piston::{RenderArgs, ButtonState};
-use opengl_graphics::{GlGraphics, OpenGL};
+use piston::RenderArgs;
+use opengl_graphics::GlGraphics;
 use graphics::{Context, rectangle};
 use graphics::*;
 use crate::simplegame::bullet::Bullet;
-use log::{warn, trace, info};
 use crate::interface::ClientUpdateArg;
 use crate::gametime::TimeDuration;
 use crate::simplegame::simplegameimpl::SimpleGameImpl;

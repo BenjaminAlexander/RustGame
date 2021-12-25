@@ -1,9 +1,6 @@
 use piston::{ButtonState, ButtonArgs, Button, Key, Motion, MouseButton};
 use piston::input::Input as PistonInput;
 use crate::simplegame::{SimpleInput, SimpleInputEvent, Vector2};
-use log::info;
-use num::integer::Roots;
-use crate::simplegame::simplegameimpl::SimpleGameImpl;
 
 pub struct SimpleInputEventHandler {
     aim_point: Vector2,

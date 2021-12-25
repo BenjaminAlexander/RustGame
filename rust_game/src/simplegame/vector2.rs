@@ -1,9 +1,8 @@
 use serde::{Deserialize, Serialize};
 
-use crate::interface::{Input, State, InputEvent};
+use crate::interface::InputEvent;
 use std::ops::{Sub, Add, Mul};
 use num::traits::Pow;
-use num::traits::real::Real;
 use std::hash::{Hash, Hasher};
 
 #[derive(Serialize, Deserialize, Debug, Clone, Copy)]

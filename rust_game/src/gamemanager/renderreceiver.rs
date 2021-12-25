@@ -1,9 +1,8 @@
-use log::{warn, info, trace};
-use crate::interface::{State, Input, InputEvent, InterpolationArg, InterpolationResult, Game};
+use log::warn;
+use crate::interface::{InterpolationArg, Game};
 use crate::gamemanager::stepmessage::StepMessage;
 use crate::threading::{Consumer, Sender, Receiver, channel};
 use crate::gametime::{TimeMessage, TimeValue, TimeDuration};
-use std::marker::PhantomData;
 use crate::messaging::InitialInformation;
 
 pub struct RenderReceiver<GameType: Game> {
@@ -25,7 +24,7 @@ impl<GameType: Game> Data<GameType> {
         while self.step_queue.len() > 2 &&
             self.step_queue[self.step_queue.len() - 1].get_step_index() < drop_before {
 
-            let dropped = self.step_queue.pop().unwrap();
+            let _dropped = self.step_queue.pop().unwrap();
             //info!("Dropped step: {:?}", dropped.get_step_index());
         }
     }

@@ -1,7 +1,6 @@
 use crate::interface::ServerInput;
 use serde::{Deserialize, Serialize};
 use crate::simplegame::SimpleState;
-use log::{warn, trace, info};
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct SimpleServerInput {

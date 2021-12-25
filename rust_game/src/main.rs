@@ -1,7 +1,7 @@
 use std::{thread, time, io};
 use log::info;
 use crate::simplegame::{SimpleInput, SimpleState, SimpleInputEvent, STEP_DURATION, SimpleInputEventHandler, SimpleWindow, SimpleServerInput, SimpleGameImpl};
-use crate::threading::{ChannelThread, Thread};
+use crate::threading::ChannelThread;
 use crate::gametime::TimeDuration;
 
 mod simplegame;

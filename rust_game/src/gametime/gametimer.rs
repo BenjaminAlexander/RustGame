@@ -7,7 +7,7 @@ use crate::threading::sender::SendError;
 use log::{trace, info, warn};
 use crate::server::ServerConfig;
 use crate::messaging::InitialInformation;
-use crate::interface::{Game, State};
+use crate::interface::Game;
 
 const TICK_LATENESS_WARN_DURATION: TimeDuration = TimeDuration(20);
 const CLIENT_ERROR_WARN_DURATION: TimeDuration = TimeDuration(20);

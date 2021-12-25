@@ -2,7 +2,7 @@ use std::net::{UdpSocket, SocketAddrV4, SocketAddr};
 use crate::gametime::{TimeMessage, TimeReceived, TimeValue, TimeDuration};
 use crate::messaging::{InputMessage, StateMessage, ToClientMessageUDP, MAX_UDP_DATAGRAM_SIZE, MessageFragment, FragmentAssembler, ServerInputMessage};
 use crate::threading::{ConsumerList, Consumer, Sender, Receiver, ChannelThread};
-use crate::interface::{State, Game};
+use crate::interface::Game;
 use crate::threading::sender::SendError;
 use rmp_serde::decode::Error;
 use std::io;

@@ -1,9 +1,6 @@
-use crate::simplegame::{Vector2, SimpleInputEvent};
+use crate::simplegame::Vector2;
 use crate::interface::Input;
-use piston::{Motion, ButtonArgs, Button, Key, ButtonState};
-use piston::input::Input as PistonInput;
 use serde::{Deserialize, Serialize};
-use log::info;
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct SimpleInput {
