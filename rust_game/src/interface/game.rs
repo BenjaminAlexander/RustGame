@@ -1,10 +1,8 @@
-use serde::{Deserialize, Serialize};
+use serde::Serialize;
 use serde::de::DeserializeOwned;
 use crate::interface::{State, Input, ClientUpdateArg, ServerInput, InputEvent, InterpolationResult, InterpolationArg};
 use crate::interface::serverupdatearg::ServerUpdateArg;
 use crate::messaging::InitialInformation;
-use crate::server::Core;
-use crate::threading::Sender;
 
 pub trait Game: 'static + Send + Sized + Serialize + DeserializeOwned {
     type StateType: State;

@@ -1,8 +1,7 @@
-use log::{error, info, trace, warn};
+use log::{info, warn};
 use crate::messaging::{InputMessage, MAX_UDP_DATAGRAM_SIZE, ToServerMessageUDP, FragmentAssembler, MessageFragment};
 use crate::threading::{ConsumerList, ChannelThread, Receiver, Sender, Consumer};
-use crate::interface::{Game, Input};
-use crate::server::tcpinput::TcpInput;
+use crate::interface::Game;
 use std::net::{UdpSocket, SocketAddr, IpAddr};
 use std::io;
 use rmp_serde::decode::Error;

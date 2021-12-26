@@ -1,15 +1,12 @@
 use std::net::TcpStream;
 
-use log::{error, info, trace};
+use log::{error, info};
 use rmp_serde::decode::Error;
 
-use crate::interface::{Input, InputEvent};
-use crate::messaging::{ToServerMessageTCP, InputMessage};
-use crate::threading::{ChannelThread, Consumer, ConsumerList, Receiver, Sender};
-use crate::gametime::{TimeReceived, TimeValue};
+use crate::messaging::{ToServerMessageTCP};
+use crate::threading::{ChannelThread,  Receiver};
+use crate::gametime::TimeValue;
 use std::io;
-use crate::threading::sender::SendError;
-use serde::export::PhantomData;
 
 pub struct TcpInput {
     tcp_stream: TcpStream

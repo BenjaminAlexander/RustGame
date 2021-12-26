@@ -1,7 +1,7 @@
 use std::net::{TcpStream, Ipv4Addr, SocketAddrV4, UdpSocket};
 
-use log::{warn, trace, info};
-use crate::interface::{Input, State, InputEvent, InterpolationResult, ServerInput, Game};
+use log::info;
+use crate::interface::{State, Game};
 use crate::server::tcpinput::TcpInput;
 use crate::threading::{ChannelDrivenThread, ChannelThread, Consumer, Sender};
 use crate::server::{TcpListenerThread, ServerConfig};
@@ -11,10 +11,8 @@ use crate::gamemanager::{Manager, RenderReceiver};
 use crate::messaging::{InputMessage, InitialInformation};
 use std::str::FromStr;
 use crate::server::udpinput::UdpInput;
-use crate::server::remoteudppeer::RemoteUdpPeer;
 use crate::server::udpoutput::UdpOutput;
 use crate::server::clientaddress::ClientAddress;
-use std::marker::PhantomData;
 
 //TODO: route game timer and player inputs through the core to
 // get synchronous enforcement of the grace period
@@ -140,7 +138,7 @@ impl<GameType: Game> Sender<Core<GameType>> {
                     );
                 }
 
-                core.udp_input_sender.as_ref().unwrap().add_input_consumer(core_sender.clone());
+                core.udp_input_sender.as_ref().unwrap().add_input_consumer(core_sender.clone()).unwrap();
 
                 timer_builder.name("ServerTimer").start().unwrap();
                 manager_builder.name("ServerManager").start().unwrap();
@@ -177,7 +175,7 @@ impl<GameType: Game> Consumer<TcpStream> for Sender<Core<GameType>> {
                 ).unwrap().build();
 
                 let input_sender = core.udp_input_sender.as_ref().unwrap();
-                input_sender.add_remote_peer_consumers(udp_out_sender.clone());
+                input_sender.add_remote_peer_consumers(udp_out_sender.clone()).unwrap();
                 input_sender.accept(client_address);
 
                 tcp_out_builder.name("ServerTcpOutput").start().unwrap();

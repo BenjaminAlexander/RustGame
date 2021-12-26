@@ -1,13 +1,12 @@
-use log::{error, info, warn};
+use log::{error, info};
 use std::net::TcpStream;
-use crate::gametime::{TimeMessage, TimeReceived, TimeValue, TimeDuration};
+use crate::gametime::TimeValue;
 use crate::threading::{ConsumerList, ChannelThread, Receiver, Sender, Consumer};
-use crate::messaging::{ToClientMessageTCP, InputMessage, StateMessage, InitialInformation};
+use crate::messaging::{ToClientMessageTCP, InitialInformation};
 use rmp_serde::decode::Error;
 use crate::threading::sender::SendError;
 use std::io;
-use crate::interface::{Input, State, InputEvent, Game};
-use std::marker::PhantomData;
+use crate::interface::Game;
 
 pub struct TcpInput <GameType: Game> {
     player_index: Option<usize>,
@@ -42,7 +41,7 @@ impl<GameType: Game> ChannelThread<()> for TcpInput<GameType> {
                     //Why does this crash the client?
                     //info!("{:?}", message);
 
-                    let time_received = TimeValue::now();
+                    let _time_received = TimeValue::now();
 
                     receiver.try_iter(&mut self);
 

@@ -1,11 +1,7 @@
 use log::{trace, info};
 use std::net::TcpStream;
-use crate::threading::{ChannelDrivenThread, Consumer, Sender, ChannelThread, Receiver};
-use crate::interface::{Input, InputEvent};
-use crate::messaging::{InputMessage, ToServerMessageTCP};
+use crate::threading::{ChannelThread, Receiver};
 use std::io;
-use std::marker::PhantomData;
-use std::io::Write;
 
 //TODO: Send response to time messages to calculate ping
 

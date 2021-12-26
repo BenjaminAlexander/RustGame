@@ -226,7 +226,7 @@ impl<GameType: Game> Sender<Manager<GameType>> {
     pub fn set_requested_step(&self, step: usize) {
         self.send(move |manager|{
             manager.set_requested_step(step);
-        });
+        }).unwrap();
     }
 }
 

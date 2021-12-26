@@ -1,7 +1,4 @@
 use std::marker::PhantomData;
-use std::sync::mpsc;
-use std::sync::mpsc::{Receiver as MpscReceiver, Sender as MpscSender};
-
 use crate::threading::{Receiver, Sender, channel};
 use crate::threading::thread::{Thread, ThreadBuilder};
 
