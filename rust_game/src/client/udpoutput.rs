@@ -1,10 +1,9 @@
 use log::{trace, info, error};
-use crate::interface::{Game, Input, State};
-use std::net::{UdpSocket, Ipv4Addr, SocketAddrV4};
+use crate::interface::Game;
+use std::net::{UdpSocket, SocketAddrV4};
 use crate::messaging::{InputMessage, ToServerMessageUDP, InitialInformation, MAX_UDP_DATAGRAM_SIZE, Fragmenter};
 use std::io;
 use crate::threading::{ChannelThread, Receiver, Consumer, Sender};
-use std::str::FromStr;
 
 pub struct UdpOutput<GameType: Game> {
     server_address: SocketAddrV4,

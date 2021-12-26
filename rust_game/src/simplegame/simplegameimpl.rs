@@ -1,4 +1,4 @@
-use crate::{SimpleInput, SimpleInputEvent, SimpleInputEventHandler, SimpleServerInput, SimpleState};
+use crate::{SimpleInput, SimpleInputEvent, SimpleInputEventHandler, SimpleServerInput, SimpleState, TimeDuration};
 use crate::interface::{ClientUpdateArg, Game, InterpolationArg, ServerUpdateArg};
 use crate::messaging::InitialInformation;
 use serde::{Deserialize, Serialize};
@@ -15,7 +15,14 @@ impl Game for SimpleGameImpl {
     type InterpolationResultType = SimpleState;
     type InputEventType = SimpleInputEvent;
     type InputEventHandlerType = SimpleInputEventHandler;
-    
+
+    const TCP_PORT: u16 = 3456;
+    const UDP_PORT: u16 = 3457;
+    const STEP_PERIOD: TimeDuration = TimeDuration::from_millis(100);
+    const GRACE_PERIOD: TimeDuration = TimeDuration::from_millis(1000);
+    const TIME_SYNC_MESSAGE_PERIOD: TimeDuration = TimeDuration::from_millis(1000);
+    const CLOCK_AVERAGE_SIZE: usize = 100;
+
     fn get_server_input(state: &Self::StateType, arg: &ServerUpdateArg<Self>) -> Self::ServerInputType {
         return SimpleState::get_server_input(state, arg);
     }

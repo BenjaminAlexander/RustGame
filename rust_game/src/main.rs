@@ -1,6 +1,6 @@
 use std::{thread, time, io};
 use log::info;
-use crate::simplegame::{SimpleInput, SimpleState, SimpleInputEvent, STEP_DURATION, SimpleInputEventHandler, SimpleWindow, SimpleServerInput, SimpleGameImpl};
+use crate::simplegame::{SimpleInput, SimpleState, SimpleInputEvent, SimpleInputEventHandler, SimpleWindow, SimpleServerInput, SimpleGameImpl};
 use crate::threading::ChannelThread;
 use crate::gametime::TimeDuration;
 
@@ -39,17 +39,13 @@ pub fn main() {
 
     let mut server_core_sender_option = None;
     let mut render_receiver_option = None;
+
+    //This unused value keeps the render receiver alive
     let mut unused_render_receiver_option = None;
     let mut client_core_sender_option = None;
 
     if run_server {
-        let server_core  = server::Core::<SimpleGameImpl>::new(
-            3456,
-            3457,
-            STEP_DURATION,
-            TimeDuration::from_millis(1000),
-            TimeDuration::from_millis(1000)
-        );
+        let server_core  = server::Core::<SimpleGameImpl>::new();
 
         let (server_core_sender, server_core_builder) = server_core.build();
 
@@ -61,13 +57,7 @@ pub fn main() {
 
     if run_client {
 
-        let client_core = client::Core::<SimpleGameImpl>::new(
-            "127.0.0.1",
-            3456,
-            3457,
-            STEP_DURATION,
-            TimeDuration::from_millis(1000),
-            100);
+        let client_core = client::Core::<SimpleGameImpl>::new("127.0.0.1");
 
         let (client_core_sender, client_core_builder) = client_core.build();
 
@@ -85,7 +75,7 @@ pub fn main() {
             info!("Hit enter to start the game.");
             let stdin = io::stdin();
             let mut line = String::new();
-            stdin.read_line(&mut line);
+            stdin.read_line(&mut line).unwrap();
 
             info!("line: {:?}", line);
         }

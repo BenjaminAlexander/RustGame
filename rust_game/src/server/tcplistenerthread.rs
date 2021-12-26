@@ -1,25 +1,27 @@
+use std::marker::PhantomData;
 use std::net::{Ipv4Addr, SocketAddr, SocketAddrV4, TcpListener, TcpStream};
 
 use log::{error, info};
+use crate::interface::Game;
 
 use crate::threading::{Consumer, Sender, ChannelThread, Receiver};
 use crate::threading::sender::SendError;
 
-pub struct TcpListenerThread {
-    port: u16,
-    consumer: Option<Box<dyn Consumer<TcpStream>>>
+pub struct TcpListenerThread<GameType: Game> {
+    consumer: Option<Box<dyn Consumer<TcpStream>>>,
+    phantom: PhantomData<GameType>
 }
 
-impl TcpListenerThread {
-    pub fn new(port:u16) -> TcpListenerThread {
-        TcpListenerThread{port, consumer: None}
+impl<GameType: Game> TcpListenerThread<GameType> {
+    pub fn new() -> Self {
+        Self{consumer: None, phantom: PhantomData}
     }
 }
 
-impl ChannelThread<()> for TcpListenerThread {
+impl<GameType: Game> ChannelThread<()> for TcpListenerThread<GameType> {
 
     fn run(mut self, receiver: Receiver<Self>) {
-        let socket_addr_v4:SocketAddrV4 = SocketAddrV4::new(Ipv4Addr::new(127, 0, 0, 1), self.port);
+        let socket_addr_v4:SocketAddrV4 = SocketAddrV4::new(Ipv4Addr::new(127, 0, 0, 1), GameType::TCP_PORT);
         let socket_addr:SocketAddr = SocketAddr::from(socket_addr_v4);
         let listener:TcpListener = TcpListener::bind(socket_addr).unwrap();
 
@@ -45,8 +47,8 @@ impl ChannelThread<()> for TcpListenerThread {
     }
 }
 
-impl Sender<TcpListenerThread> {
-    pub fn set_consumer<T>(&self, t: T) -> Result<(), SendError<TcpListenerThread>>
+impl<GameType: Game> Sender<TcpListenerThread<GameType>> {
+    pub fn set_consumer<T>(&self, t: T) -> Result<(), SendError<TcpListenerThread<GameType>>>
         where T: Consumer<TcpStream> {
 
         self.send(|tcp_listener_thread|{

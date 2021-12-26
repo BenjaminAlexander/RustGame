@@ -1,10 +1,12 @@
-use crate::simplegame::{Vector2, STEP_DURATION};
+use crate::simplegame::Vector2;
 use serde::{Deserialize, Serialize};
 use piston::RenderArgs;
 use opengl_graphics::GlGraphics;
 use graphics::{Context, rectangle};
 use graphics::*;
 use crate::gametime::TimeDuration;
+use crate::interface::Game;
+use crate::SimpleGameImpl;
 
 const MAX_RANGE: f64 = 5000 as f64;
 
@@ -28,7 +30,7 @@ impl Bullet {
     }
 
     pub fn get_position(&self, duration_since_game_start: TimeDuration) -> Option<Vector2> {
-        let duration_since_bullet_start = duration_since_game_start - (STEP_DURATION * self.start_step as i64);
+        let duration_since_bullet_start = duration_since_game_start - (SimpleGameImpl::STEP_PERIOD * self.start_step as i64);
         if duration_since_bullet_start.get_millis() >= 0 {
             return Some(self.start_position + self.velocity * duration_since_bullet_start.get_millis() as f64);
         } else {

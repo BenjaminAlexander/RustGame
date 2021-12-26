@@ -1,5 +1,5 @@
 use crate::simplegame::{Vector2, SimplServerInputEvent};
-use crate::interface::{State, ClientUpdateArg, InterpolationArg, InterpolationResult, ServerUpdateArg};
+use crate::interface::{State, ClientUpdateArg, InterpolationArg, InterpolationResult, ServerUpdateArg, Game};
 use serde::{Deserialize, Serialize};
 use crate::simplegame::character::Character;
 use opengl_graphics::GlGraphics;
@@ -10,8 +10,6 @@ use crate::simplegame::bullet::Bullet;
 use crate::messaging::InitialInformation;
 use crate::simplegame::simpleserverinput::SimpleServerInput;
 use crate::SimpleGameImpl;
-
-pub const STEP_DURATION: TimeDuration = TimeDuration::from_millis(100);
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct SimpleState {
@@ -71,7 +69,7 @@ impl SimpleState {
             server_input.apply_to_state(self);
         }
 
-        let duration_of_start_to_current = STEP_DURATION * arg.get_current_step() as i64;
+        let duration_of_start_to_current = SimpleGameImpl::STEP_PERIOD * arg.get_current_step() as i64;
 
         let mut i = 0;
         while i < self.bullets.len() {
@@ -91,7 +89,7 @@ impl SimpleState {
         }
     }
 
-    pub fn interpolate(initial_information: &InitialInformation<SimpleGameImpl>, first: &Self, second: &Self, arg: &InterpolationArg) -> Self {
+    pub fn interpolate(_initial_information: &InitialInformation<SimpleGameImpl>, first: &Self, second: &Self, arg: &InterpolationArg) -> Self {
 
         let mut second_clone = second.clone();
 

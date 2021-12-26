@@ -1,12 +1,11 @@
-use log::{warn, trace, info};
+use log::{warn, trace};
 use crate::messaging::{StateMessage, InputMessage, InitialInformation, ServerInputMessage};
 use std::collections::VecDeque;
-use crate::interface::{Input, State, InputEvent, ClientUpdateArg, Game};
+use crate::interface::Game;
 use crate::threading::{ConsumerList, ChannelDrivenThread, Sender, Consumer};
 use crate::gamemanager::step::Step;
 use crate::gamemanager::stepmessage::StepMessage;
-use crate::gametime::{TimeMessage, TimeReceived, TimeDuration, TimeValue};
-use std::marker::PhantomData;
+use crate::gametime::{TimeDuration, TimeValue};
 use std::sync::Arc;
 
 pub struct Manager<GameType: Game> {
@@ -21,7 +20,6 @@ pub struct Manager<GameType: Game> {
     requested_step_consumer_list: ConsumerList<StepMessage<GameType>>,
     completed_step_consumer_list: ConsumerList<StateMessage<GameType>>,
     server_input_consumer_list: ConsumerList<ServerInputMessage<GameType>>,
-    grace_period: TimeDuration,
 
     //metrics
     time_of_last_state_receive: TimeValue,
@@ -30,7 +28,7 @@ pub struct Manager<GameType: Game> {
 
 impl<GameType: Game> Manager<GameType> {
 
-    pub fn new(is_server: bool, grace_period: TimeDuration) -> Self {
+    pub fn new(is_server: bool) -> Self {
         Self{
             is_server,
             initial_information: None,
@@ -40,7 +38,6 @@ impl<GameType: Game> Manager<GameType> {
             requested_step_consumer_list: ConsumerList::new(),
             completed_step_consumer_list: ConsumerList::new(),
             server_input_consumer_list: ConsumerList::new(),
-            grace_period,
 
             //metrics
             time_of_last_state_receive: TimeValue::now(),
@@ -257,7 +254,7 @@ impl<GameType: Game> Consumer<ServerInputMessage<GameType>> for Sender<Manager<G
 
 impl<GameType: Game> Consumer<StateMessage<GameType>> for Sender<Manager<GameType>> {
 
-    fn accept(&self, mut state_message: StateMessage<GameType>) {
+    fn accept(&self, state_message: StateMessage<GameType>) {
         self.send(move |manager|{
             manager.handle_state_message(state_message);
 

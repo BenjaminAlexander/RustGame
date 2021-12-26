@@ -1,11 +1,11 @@
-use crate::simplegame::{Vector2, STEP_DURATION};
+use crate::simplegame::Vector2;
 use serde::{Deserialize, Serialize};
 use piston::RenderArgs;
 use opengl_graphics::GlGraphics;
 use graphics::{Context, rectangle};
 use graphics::*;
 use crate::simplegame::bullet::Bullet;
-use crate::interface::ClientUpdateArg;
+use crate::interface::{ClientUpdateArg, Game};
 use crate::gametime::TimeDuration;
 use crate::simplegame::simplegameimpl::SimpleGameImpl;
 
@@ -60,7 +60,7 @@ impl Character {
             self.velocity = input.get_velocity();
         }
 
-        self.position = self.position + self.velocity * STEP_DURATION.get_millis() as f64 * 0.5;
+        self.position = self.position + self.velocity * SimpleGameImpl::STEP_PERIOD.get_millis() as f64 * 0.5;
     }
 
     pub fn get_fired_bullet(&self, arg: &ClientUpdateArg<SimpleGameImpl>) -> Option<Bullet> {

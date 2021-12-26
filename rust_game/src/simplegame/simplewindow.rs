@@ -93,7 +93,7 @@ impl SimpleWindow {
 
     fn input(&mut self, input: PistonInput) {
         if let Some(core_sender) = self.client_core_sender_option.as_ref() {
-            core_sender.onInputEvent(SimpleInputEvent::new(input));
+            core_sender.on_input_event(SimpleInputEvent::new(input));
         }
     }
 }

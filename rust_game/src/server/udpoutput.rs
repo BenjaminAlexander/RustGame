@@ -16,7 +16,6 @@ pub struct UdpOutput<GameType: Game> {
     socket: UdpSocket,
     remote_peer: Option<RemoteUdpPeer>,
     fragmenter: Fragmenter,
-    time_message_period: TimeDuration,
     last_time_message: Option<TimeMessage>,
     last_state_sequence: Option<usize>,
     phantom: PhantomData<GameType>,
@@ -30,9 +29,7 @@ pub struct UdpOutput<GameType: Game> {
 
 impl<GameType: Game> UdpOutput<GameType> {
 
-    pub fn new(time_message_period: TimeDuration,
-               player_index: usize,
-               socket: &UdpSocket) -> io::Result<Self> {
+    pub fn new(player_index: usize, socket: &UdpSocket) -> io::Result<Self> {
 
         Ok(UdpOutput{
             player_index,
@@ -40,7 +37,6 @@ impl<GameType: Game> UdpOutput<GameType> {
             socket: socket.try_clone()?,
             //TODO: make max datagram size more configurable
             fragmenter: Fragmenter::new(MAX_UDP_DATAGRAM_SIZE),
-            time_message_period,
             last_time_message: None,
             last_state_sequence: None,
             phantom: PhantomData,
@@ -131,7 +127,7 @@ impl<GameType: Game> Consumer<TimeMessage> for Sender<UdpOutput<GameType>> {
             let mut send_it = false;
 
             if let Some(last_time_message) = &udp_output.last_time_message {
-                if time_message.get_scheduled_time().is_after(&last_time_message.get_scheduled_time().add(udp_output.time_message_period)) {
+                if time_message.get_scheduled_time().is_after(&last_time_message.get_scheduled_time().add(GameType::TIME_SYNC_MESSAGE_PERIOD)) {
                     send_it = true;
                 }
             } else {

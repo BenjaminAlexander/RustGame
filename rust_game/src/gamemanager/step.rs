@@ -1,9 +1,6 @@
-use crate::interface::{Input, State, InputEvent, ClientUpdateArg, ServerInput, ServerUpdateArg, Game};
+use crate::interface::{ClientUpdateArg, ServerUpdateArg, Game};
 use crate::messaging::{InputMessage, StateMessage, ServerInputMessage, InitialInformation};
 use crate::gamemanager::stepmessage::StepMessage;
-use std::marker::PhantomData;
-use log::{trace, info, warn};
-use crate::gametime::TimeDuration;
 use std::sync::Arc;
 
 pub struct Step<GameType: Game> {

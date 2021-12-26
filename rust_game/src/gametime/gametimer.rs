@@ -1,3 +1,4 @@
+use std::marker::PhantomData;
 use crate::gametime::{TimeValue, TimeDuration, TimeMessage, TimeReceived};
 use chrono::Local;
 use timer::{Guard, Timer};
@@ -12,16 +13,17 @@ use crate::interface::Game;
 const TICK_LATENESS_WARN_DURATION: TimeDuration = TimeDuration(20);
 const CLIENT_ERROR_WARN_DURATION: TimeDuration = TimeDuration(20);
 
-pub struct GameTimer {
+pub struct GameTimer<GameType: Game> {
     timer: Timer,
     server_config: Option<ServerConfig>,
     start: Option<TimeValue>,
     guard: Option<Guard>,
     consumer_list: ConsumerList<TimeMessage>,
-    rolling_average: RollingAverage<u64>
+    rolling_average: RollingAverage<u64>,
+    phantom: PhantomData<GameType>
 }
 
-impl GameTimer {
+impl<GameType: Game> GameTimer<GameType> {
     pub fn new(rolling_average_size: usize) -> Self {
 
         GameTimer{
@@ -30,7 +32,8 @@ impl GameTimer {
             start: None,
             guard: None,
             consumer_list: ConsumerList::new(),
-            rolling_average: RollingAverage::new(rolling_average_size)
+            rolling_average: RollingAverage::new(rolling_average_size),
+            phantom: PhantomData
         }
     }
 
@@ -43,14 +46,14 @@ impl GameTimer {
     }
 }
 
-impl ChannelDrivenThread<()> for GameTimer {
+impl<GameType: Game> ChannelDrivenThread<()> for GameTimer<GameType> {
     fn on_channel_disconnect(&mut self) -> () {
         ()
     }
 }
 
-impl Sender<GameTimer> {
-    pub fn start(&self) -> Result<(), SendError<GameTimer>> {
+impl<GameType: Game> Sender<GameTimer<GameType>> {
+    pub fn start(&self) -> Result<(), SendError<GameTimer<GameType>>> {
         let clone = self.clone();
 
         self.send(|game_timer| {
@@ -100,7 +103,7 @@ impl Sender<GameTimer> {
     }
 }
 
-impl Consumer<TimeReceived<TimeMessage>> for Sender<GameTimer> {
+impl<GameType: Game> Consumer<TimeReceived<TimeMessage>> for Sender<GameTimer<GameType>> {
     fn accept(&self, time_message: TimeReceived<TimeMessage>) {
         let clone = self.clone();
         self.send(move |game_timer|{
@@ -150,7 +153,7 @@ impl Consumer<TimeReceived<TimeMessage>> for Sender<GameTimer> {
     }
 }
 
-impl<GameType: Game> Consumer<InitialInformation<GameType>> for Sender<GameTimer> {
+impl<GameType: Game> Consumer<InitialInformation<GameType>> for Sender<GameTimer<GameType>> {
     fn accept(&self, initial_information: InitialInformation<GameType>) {
         self.send(|game_timer|{
             game_timer.server_config = Some(initial_information.move_server_config());

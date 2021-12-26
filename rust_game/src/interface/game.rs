@@ -3,7 +3,9 @@ use serde::de::DeserializeOwned;
 use crate::interface::{State, Input, ClientUpdateArg, ServerInput, InputEvent, InterpolationResult, InterpolationArg};
 use crate::interface::serverupdatearg::ServerUpdateArg;
 use crate::messaging::InitialInformation;
+use crate::TimeDuration;
 
+//TODO: can Serialize + DeserializeOwned be removed
 pub trait Game: 'static + Send + Sized + Serialize + DeserializeOwned {
     type StateType: State;
     type InputType: Input;
@@ -11,6 +13,13 @@ pub trait Game: 'static + Send + Sized + Serialize + DeserializeOwned {
     type InterpolationResultType: InterpolationResult;
     type InputEventType: InputEvent;
     type InputEventHandlerType: Send + 'static;
+
+    const TCP_PORT: u16;
+    const UDP_PORT: u16;
+    const STEP_PERIOD: TimeDuration;
+    const GRACE_PERIOD: TimeDuration;
+    const TIME_SYNC_MESSAGE_PERIOD: TimeDuration;
+    const CLOCK_AVERAGE_SIZE: usize;
 
     fn get_server_input(state: &Self::StateType, arg: &ServerUpdateArg<Self>) -> Self::ServerInputType;
 

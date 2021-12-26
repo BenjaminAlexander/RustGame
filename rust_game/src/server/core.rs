@@ -6,7 +6,7 @@ use crate::server::tcpinput::TcpInput;
 use crate::threading::{ChannelDrivenThread, ChannelThread, Consumer, Sender};
 use crate::server::{TcpListenerThread, ServerConfig};
 use crate::server::tcpoutput::TcpOutput;
-use crate::gametime::{GameTimer, TimeDuration, TimeMessage};
+use crate::gametime::{GameTimer, TimeMessage};
 use crate::gamemanager::{Manager, RenderReceiver};
 use crate::messaging::{InputMessage, InitialInformation};
 use std::str::FromStr;
@@ -20,11 +20,7 @@ use crate::server::clientaddress::ClientAddress;
 pub struct Core<GameType: Game> {
 
     game_is_started: bool,
-    tcp_port: u16,
-    udp_port: u16,
     server_config: ServerConfig,
-    grace_period: TimeDuration,
-    timer_message_period: TimeDuration,
     tcp_inputs: Vec<Sender<TcpInput>>,
     tcp_outputs: Vec<Sender<TcpOutput<GameType>>>,
     udp_socket: Option<UdpSocket>,
@@ -42,23 +38,15 @@ impl<GameType: Game> ChannelDrivenThread<()> for Core<GameType> {
 
 impl<GameType: Game> Core<GameType> {
 
-    pub fn new(tcp_port: u16,
-               udp_port: u16,
-               step_duration: TimeDuration,
-               grace_period: TimeDuration,
-               timer_message_period: TimeDuration) -> Self {
+    pub fn new() -> Self {
 
         let server_config = ServerConfig::new(
-            step_duration
+            GameType::STEP_PERIOD
         );
 
         Self {
             game_is_started: false,
-            tcp_port,
-            udp_port,
             server_config,
-            grace_period,
-            timer_message_period,
             tcp_inputs: Vec::new(),
             tcp_outputs: Vec::new(),
             udp_outputs: Vec::new(),
@@ -77,7 +65,7 @@ impl<GameType: Game> Sender<Core<GameType>> {
 
         self.send(|core| {
             let ip_addr_v4 = Ipv4Addr::from_str("127.0.0.1").unwrap();
-            let socket_addr_v4 = SocketAddrV4::new(ip_addr_v4, core.udp_port);
+            let socket_addr_v4 = SocketAddrV4::new(ip_addr_v4, GameType::UDP_PORT);
             core.udp_socket = Some(UdpSocket::bind(socket_addr_v4).unwrap());
 
             let udp_input = UdpInput::<GameType>::new(core.udp_socket.as_ref().unwrap()).unwrap();
@@ -85,7 +73,7 @@ impl<GameType: Game> Sender<Core<GameType>> {
             udp_input_builder.name("ServerUdpInput").start().unwrap();
             core.udp_input_sender = Some(udp_input_sender);
 
-            let (listener_sender, listener_builder) = TcpListenerThread::new(core.tcp_port).build();
+            let (listener_sender, listener_builder) = TcpListenerThread::<GameType>::new().build();
             listener_sender.set_consumer(clone).unwrap();
             listener_builder.name("ServerTcpListener").start().unwrap();
         }).unwrap();
@@ -100,7 +88,7 @@ impl<GameType: Game> Sender<Core<GameType>> {
 
                 let initial_state = GameType::StateType::new(core.tcp_outputs.len());
 
-                let (manager_sender, manager_builder) = Manager::<GameType>::new(true, core.grace_period).build();
+                let (manager_sender, manager_builder) = Manager::<GameType>::new(true).build();
                 let (timer_sender, timer_builder) = GameTimer::new(0).build();
 
                 timer_sender.add_timer_message_consumer(core_sender.clone());
@@ -169,7 +157,6 @@ impl<GameType: Game> Consumer<TcpStream> for Sender<Core<GameType>> {
                 ).unwrap().build();
 
                 let (udp_out_sender, udp_out_builder) = UdpOutput::new(
-                    core.timer_message_period.clone(),
                     player_index,
                     core.udp_socket.as_ref().unwrap()
                 ).unwrap().build();
@@ -197,7 +184,7 @@ impl<GameType: Game> Consumer<TimeMessage> for Sender<Core<GameType>> {
 
     fn accept(&self, time_message: TimeMessage) {
         self.send(move |core|{
-            core.drop_steps_before = time_message.get_step_from_actual_time(time_message.get_scheduled_time().subtract(core.grace_period)).ceil() as usize;
+            core.drop_steps_before = time_message.get_step_from_actual_time(time_message.get_scheduled_time().subtract(GameType::GRACE_PERIOD)).ceil() as usize;
 
             if core.manager_sender.is_some() {
                 let manager_sender = core.manager_sender.as_ref().unwrap();
