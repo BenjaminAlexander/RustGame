@@ -1,15 +1,15 @@
 use crate::messaging::InitialInformation;
 use crate::gametime::TimeDuration;
-use crate::interface::game::Game;
+use crate::interface::game::GameTrait;
 
 #[derive(Debug)]
-pub struct ServerUpdateArg<'a, 'b, GameType: Game> {
+pub struct ServerUpdateArg<'a, 'b, GameType: GameTrait> {
     initial_information: &'a InitialInformation<GameType>,
     step: usize,
     inputs: &'b Vec<Option<GameType::InputType>>,
 }
 
-impl<'a, 'b, GameType: Game> ServerUpdateArg<'a, 'b, GameType> {
+impl<'a, 'b, GameType: GameTrait> ServerUpdateArg<'a, 'b, GameType> {
 
     pub fn new(initial_information: &'a InitialInformation<GameType>, step: usize, inputs: &'b Vec<Option<GameType::InputType>>) -> Self {
         return Self{

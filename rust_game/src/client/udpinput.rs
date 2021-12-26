@@ -2,14 +2,14 @@ use std::net::{UdpSocket, SocketAddrV4, SocketAddr};
 use crate::gametime::{TimeMessage, TimeReceived, TimeValue, TimeDuration};
 use crate::messaging::{InputMessage, StateMessage, ToClientMessageUDP, MAX_UDP_DATAGRAM_SIZE, MessageFragment, FragmentAssembler, ServerInputMessage};
 use crate::threading::{ConsumerList, Consumer, Sender, Receiver, ChannelThread};
-use crate::interface::Game;
+use crate::interface::GameTrait;
 use crate::threading::sender::SendError;
 use rmp_serde::decode::Error;
 use std::io;
 use log::{error, info, warn};
 use std::time::Duration;
 
-pub struct UdpInput<GameType: Game> {
+pub struct UdpInput<GameType: GameTrait> {
     server_socket_addr: SocketAddr,
     socket: UdpSocket,
     fragment_assembler: FragmentAssembler,
@@ -24,7 +24,7 @@ pub struct UdpInput<GameType: Game> {
     time_of_last_server_input_receive: TimeValue,
 }
 
-impl<GameType: Game> UdpInput<GameType> {
+impl<GameType: GameTrait> UdpInput<GameType> {
 
     pub fn new(server_socket_addr_v4: SocketAddrV4, socket: &UdpSocket) -> io::Result<Self> {
 
@@ -48,7 +48,7 @@ impl<GameType: Game> UdpInput<GameType> {
     }
 }
 
-impl<GameType: Game> ChannelThread<()> for UdpInput<GameType> {
+impl<GameType: GameTrait> ChannelThread<()> for UdpInput<GameType> {
 
     fn run(mut self, receiver: Receiver<Self>) {
         info!("Starting");
@@ -134,7 +134,7 @@ impl<GameType: Game> ChannelThread<()> for UdpInput<GameType> {
         }
     }
 }
-impl<GameType: Game> Sender<UdpInput<GameType>> {
+impl<GameType: GameTrait> Sender<UdpInput<GameType>> {
 
     pub fn add_time_message_consumer<T>(&self, consumer: T) -> Result<(), SendError<UdpInput<GameType>>>
         where T: Consumer<TimeReceived<TimeMessage>> {

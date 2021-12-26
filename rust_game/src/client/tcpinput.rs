@@ -6,15 +6,15 @@ use crate::messaging::{ToClientMessageTCP, InitialInformation};
 use rmp_serde::decode::Error;
 use crate::threading::sender::SendError;
 use std::io;
-use crate::interface::Game;
+use crate::interface::GameTrait;
 
-pub struct TcpInput <GameType: Game> {
+pub struct TcpInput <GameType: GameTrait> {
     player_index: Option<usize>,
     tcp_stream: TcpStream,
     initial_information_message_consumers: ConsumerList<InitialInformation<GameType>>
 }
 
-impl<GameType: Game> TcpInput<GameType> {
+impl<GameType: GameTrait> TcpInput<GameType> {
 
     pub fn new(tcp_stream: &TcpStream) -> io::Result<Self> {
         Ok(Self {
@@ -25,7 +25,7 @@ impl<GameType: Game> TcpInput<GameType> {
     }
 }
 
-impl<GameType: Game> ChannelThread<()> for TcpInput<GameType> {
+impl<GameType: GameTrait> ChannelThread<()> for TcpInput<GameType> {
 
     fn run(mut self, receiver: Receiver<Self>) {
         info!("Starting");
@@ -61,7 +61,7 @@ impl<GameType: Game> ChannelThread<()> for TcpInput<GameType> {
     }
 }
 
-impl<GameType: Game> Sender<TcpInput<GameType>> {
+impl<GameType: GameTrait> Sender<TcpInput<GameType>> {
 
     pub fn add_initial_information_message_consumer<T>(&self, consumer: T) -> Result<(), SendError<TcpInput<GameType>>>
         where T: Consumer<InitialInformation<GameType>> {

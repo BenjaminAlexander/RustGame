@@ -1,13 +1,13 @@
 use crate::interface::ServerUpdateArg;
-use crate::interface::game::Game;
+use crate::interface::game::GameTrait;
 
 #[derive(Debug)]
-pub struct ClientUpdateArg<'a, 'b, 'c, GameType: Game> {
+pub struct ClientUpdateArg<'a, 'b, 'c, GameType: GameTrait> {
     server_update_arg: ServerUpdateArg<'a, 'b, GameType>,
     server_input: Option<&'c GameType::ServerInputType>
 }
 
-impl<'a, 'b, 'c, GameType: Game> ClientUpdateArg<'a, 'b, 'c, GameType> {
+impl<'a, 'b, 'c, GameType: GameTrait> ClientUpdateArg<'a, 'b, 'c, GameType> {
 
     pub fn new(server_update_arg: ServerUpdateArg<'a, 'b, GameType>,
                server_input: Option<&'c GameType::ServerInputType>) -> Self {

@@ -1,7 +1,7 @@
 use std::net::{TcpStream, Ipv4Addr, SocketAddrV4, UdpSocket};
 
 use log::info;
-use crate::interface::{State, Game};
+use crate::interface::{State, GameTrait};
 use crate::server::tcpinput::TcpInput;
 use crate::threading::{ChannelDrivenThread, ChannelThread, Consumer, Sender};
 use crate::server::{TcpListenerThread, ServerConfig};
@@ -17,7 +17,7 @@ use crate::server::clientaddress::ClientAddress;
 //TODO: route game timer and player inputs through the core to
 // get synchronous enforcement of the grace period
 
-pub struct ServerCore<GameType: Game> {
+pub struct ServerCore<GameType: GameTrait> {
 
     game_is_started: bool,
     server_config: ServerConfig,
@@ -30,13 +30,13 @@ pub struct ServerCore<GameType: Game> {
     drop_steps_before: usize
 }
 
-impl<GameType: Game> ChannelDrivenThread<()> for ServerCore<GameType> {
+impl<GameType: GameTrait> ChannelDrivenThread<()> for ServerCore<GameType> {
     fn on_channel_disconnect(&mut self) -> () {
         ()
     }
 }
 
-impl<GameType: Game> ServerCore<GameType> {
+impl<GameType: GameTrait> ServerCore<GameType> {
 
     pub fn new() -> Self {
 
@@ -58,7 +58,7 @@ impl<GameType: Game> ServerCore<GameType> {
     }
 }
 
-impl<GameType: Game> Sender<ServerCore<GameType>> {
+impl<GameType: GameTrait> Sender<ServerCore<GameType>> {
 
     pub fn start_listener(&self) {
         let clone = self.clone();
@@ -175,7 +175,7 @@ impl<GameType: Game> Sender<ServerCore<GameType>> {
     }
 }
 
-impl<GameType: Game> Consumer<TimeMessage> for Sender<ServerCore<GameType>> {
+impl<GameType: GameTrait> Consumer<TimeMessage> for Sender<ServerCore<GameType>> {
 
     fn accept(&self, time_message: TimeMessage) {
         self.send(move |core|{
@@ -195,7 +195,7 @@ impl<GameType: Game> Consumer<TimeMessage> for Sender<ServerCore<GameType>> {
     }
 }
 
-impl<GameType: Game> Consumer<InputMessage<GameType>> for Sender<ServerCore<GameType>> {
+impl<GameType: GameTrait> Consumer<InputMessage<GameType>> for Sender<ServerCore<GameType>> {
 
     fn accept(&self, input_message: InputMessage<GameType>) {
         self.send(move |core|{

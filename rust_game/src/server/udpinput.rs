@@ -1,7 +1,7 @@
 use log::{info, warn};
 use crate::messaging::{InputMessage, MAX_UDP_DATAGRAM_SIZE, ToServerMessageUDP, FragmentAssembler, MessageFragment};
 use crate::threading::{ConsumerList, ChannelThread, Receiver, Sender, Consumer};
-use crate::interface::Game;
+use crate::interface::GameTrait;
 use std::net::{UdpSocket, SocketAddr, IpAddr};
 use std::io;
 use rmp_serde::decode::Error;
@@ -10,7 +10,7 @@ use crate::server::remoteudppeer::RemoteUdpPeer;
 use std::collections::{HashMap, HashSet};
 use crate::server::clientaddress::ClientAddress;
 
-pub struct UdpInput<GameType: Game> {
+pub struct UdpInput<GameType: GameTrait> {
     socket: UdpSocket,
     remote_peers: Vec<Option<RemoteUdpPeer>>,
     client_addresses: Vec<Option<ClientAddress>>,
@@ -20,7 +20,7 @@ pub struct UdpInput<GameType: Game> {
     remote_peer_consumers: ConsumerList<RemoteUdpPeer>
 }
 
-impl<GameType: Game> UdpInput<GameType> {
+impl<GameType: GameTrait> UdpInput<GameType> {
 
     pub fn new(socket: &UdpSocket) -> io::Result<Self> {
         return Ok(Self{
@@ -121,9 +121,9 @@ impl<GameType: Game> UdpInput<GameType> {
     }
 }
 
-impl<GameType: Game> ChannelThread<()> for UdpInput<GameType> {
+impl<GameType: GameTrait> ChannelThread<()> for UdpInput<GameType> {
 
-    fn run(mut self, mut receiver: Receiver<Self>) -> () {
+    fn run(mut self, receiver: Receiver<Self>) -> () {
 
         info!("Starting.");
 
@@ -147,7 +147,7 @@ impl<GameType: Game> ChannelThread<()> for UdpInput<GameType> {
     }
 }
 
-impl<GameType: Game> Sender<UdpInput<GameType>> {
+impl<GameType: GameTrait> Sender<UdpInput<GameType>> {
 
     pub fn add_input_consumer<T>(&self, consumer: T) -> Result<(), SendError<UdpInput<GameType>>>
         where T: Consumer<InputMessage<GameType>> {
@@ -173,7 +173,7 @@ impl<GameType: Game> Sender<UdpInput<GameType>> {
     }
 }
 
-impl<GameType: Game> Consumer<ClientAddress> for Sender<UdpInput<GameType>> {
+impl<GameType: GameTrait> Consumer<ClientAddress> for Sender<UdpInput<GameType>> {
     fn accept(&self, client_address: ClientAddress) {
         self.send(move |udp_input|{
             udp_input.client_ip_set.insert(client_address.get_ip_address());

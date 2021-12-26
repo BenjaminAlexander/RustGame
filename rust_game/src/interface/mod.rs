@@ -16,7 +16,7 @@ pub use self::interpolationarg::InterpolationArg;
 pub use self::interpolationresult::InterpolationResult;
 pub use self::serverinput::ServerInput;
 pub use self::serverupdatearg::ServerUpdateArg;
-pub use self::game::Game;
+pub use self::game::GameTrait;
 
 
 

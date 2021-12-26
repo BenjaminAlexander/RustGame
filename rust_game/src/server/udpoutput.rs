@@ -1,5 +1,5 @@
 use log::{trace, info, warn, error};
-use crate::interface::Game;
+use crate::interface::GameTrait;
 use std::net::UdpSocket;
 use crate::gametime::{TimeDuration, TimeMessage, TimeValue};
 use crate::messaging::{InputMessage, StateMessage, ToClientMessageUDP, Fragmenter, MAX_UDP_DATAGRAM_SIZE, ServerInputMessage};
@@ -11,7 +11,7 @@ use std::sync::mpsc::RecvTimeoutError;
 use std::marker::PhantomData;
 use crate::util::RollingAverage;
 
-pub struct UdpOutput<GameType: Game> {
+pub struct UdpOutput<GameType: GameTrait> {
     player_index: usize,
     socket: UdpSocket,
     remote_peer: Option<RemoteUdpPeer>,
@@ -27,7 +27,7 @@ pub struct UdpOutput<GameType: Game> {
     time_of_last_server_input_send: TimeValue,
 }
 
-impl<GameType: Game> UdpOutput<GameType> {
+impl<GameType: GameTrait> UdpOutput<GameType> {
 
     pub fn new(player_index: usize, socket: &UdpSocket) -> io::Result<Self> {
 
@@ -79,7 +79,7 @@ impl<GameType: Game> UdpOutput<GameType> {
     }
 }
 
-impl<GameType: Game> ChannelThread<()> for UdpOutput<GameType> {
+impl<GameType: GameTrait> ChannelThread<()> for UdpOutput<GameType> {
 
     fn run(mut self, receiver: Receiver<Self>) -> () {
 
@@ -116,7 +116,7 @@ impl<GameType: Game> ChannelThread<()> for UdpOutput<GameType> {
     }
 }
 
-impl<GameType: Game> Consumer<TimeMessage> for Sender<UdpOutput<GameType>> {
+impl<GameType: GameTrait> Consumer<TimeMessage> for Sender<UdpOutput<GameType>> {
 
     fn accept(&self, time_message: TimeMessage) {
 
@@ -150,7 +150,7 @@ impl<GameType: Game> Consumer<TimeMessage> for Sender<UdpOutput<GameType>> {
     }
 }
 
-impl<GameType: Game> Consumer<InputMessage<GameType>> for Sender<UdpOutput<GameType>> {
+impl<GameType: GameTrait> Consumer<InputMessage<GameType>> for Sender<UdpOutput<GameType>> {
 
     fn accept(&self, input_message: InputMessage<GameType>) {
 
@@ -176,7 +176,7 @@ impl<GameType: Game> Consumer<InputMessage<GameType>> for Sender<UdpOutput<GameT
     }
 }
 
-impl<GameType: Game> Consumer<ServerInputMessage<GameType>> for Sender<UdpOutput<GameType>> {
+impl<GameType: GameTrait> Consumer<ServerInputMessage<GameType>> for Sender<UdpOutput<GameType>> {
 
     fn accept(&self, server_input_message: ServerInputMessage<GameType>) {
 
@@ -201,7 +201,7 @@ impl<GameType: Game> Consumer<ServerInputMessage<GameType>> for Sender<UdpOutput
     }
 }
 
-impl<GameType: Game> Consumer<StateMessage<GameType>> for Sender<UdpOutput<GameType>> {
+impl<GameType: GameTrait> Consumer<StateMessage<GameType>> for Sender<UdpOutput<GameType>> {
 
     fn accept(&self, state_message: StateMessage<GameType>) {
 
@@ -228,7 +228,7 @@ impl<GameType: Game> Consumer<StateMessage<GameType>> for Sender<UdpOutput<GameT
     }
 }
 
-impl<GameType: Game> Consumer<RemoteUdpPeer> for Sender<UdpOutput<GameType>> {
+impl<GameType: GameTrait> Consumer<RemoteUdpPeer> for Sender<UdpOutput<GameType>> {
 
     fn accept(&self, remote_peer: RemoteUdpPeer) {
         self.send(|udp_output|{

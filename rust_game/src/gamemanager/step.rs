@@ -1,9 +1,9 @@
-use crate::interface::{ClientUpdateArg, ServerUpdateArg, Game};
+use crate::interface::{ClientUpdateArg, ServerUpdateArg, GameTrait};
 use crate::messaging::{InputMessage, StateMessage, ServerInputMessage, InitialInformation};
 use crate::gamemanager::stepmessage::StepMessage;
 use std::sync::Arc;
 
-pub struct Step<GameType: Game> {
+pub struct Step<GameType: GameTrait> {
 
     initial_information: Arc<InitialInformation<GameType>>,
     step: usize,
@@ -14,7 +14,7 @@ pub struct Step<GameType: Game> {
     need_to_compute_next_state: bool
 }
 
-pub enum StateHolder<GameType: Game> {
+pub enum StateHolder<GameType: GameTrait> {
     None,
     Deserialized{
         state: GameType::StateType,
@@ -31,7 +31,7 @@ pub enum StateHolder<GameType: Game> {
     }
 }
 
-pub enum ServerInputHolder<GameType: Game> {
+pub enum ServerInputHolder<GameType: GameTrait> {
     None,
     Deserialized(GameType::ServerInputType),
     ComputedIncomplete(GameType::ServerInputType),
@@ -41,7 +41,7 @@ pub enum ServerInputHolder<GameType: Game> {
     }
 }
 
-impl<GameType: Game> Step<GameType> {
+impl<GameType: GameTrait> Step<GameType> {
 
     pub fn blank(step_index: usize, initial_information: Arc<InitialInformation<GameType>>) -> Self {
 

@@ -1,13 +1,13 @@
 use serde::{Deserialize, Serialize};
-use crate::interface::Game;
+use crate::interface::GameTrait;
 
 #[derive(Serialize, Deserialize, Debug)]
-pub struct StateMessage<GameType: Game> {
+pub struct StateMessage<GameType: GameTrait> {
     sequence: usize,
     state: GameType::StateType,
 }
 
-impl<GameType: Game> StateMessage<GameType> {
+impl<GameType: GameTrait> StateMessage<GameType> {
 
     pub fn new(sequence: usize, state: GameType::StateType) -> Self {
         Self{ sequence, state }
@@ -22,7 +22,7 @@ impl<GameType: Game> StateMessage<GameType> {
     }
 }
 
-impl<GameType: Game> Clone for StateMessage<GameType> {
+impl<GameType: GameTrait> Clone for StateMessage<GameType> {
 
     fn clone(&self) -> Self {
         Self{

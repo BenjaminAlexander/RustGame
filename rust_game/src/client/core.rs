@@ -3,7 +3,7 @@ use std::str::FromStr;
 use crate::gametime::{GameTimer, TimeMessage};
 use crate::threading::{ChannelThread, Sender, ChannelDrivenThread, Consumer};
 use crate::client::tcpinput::TcpInput;
-use crate::interface::Game;
+use crate::interface::GameTrait;
 use crate::client::tcpoutput::TcpOutput;
 use crate::messaging::{InitialInformation, InputMessage};
 use crate::gamemanager::{Manager, RenderReceiver};
@@ -11,7 +11,7 @@ use log::{info, trace};
 use crate::client::udpoutput::UdpOutput;
 use crate::client::udpinput::UdpInput;
 
-pub struct ClientCore<GameType: Game> {
+pub struct ClientCore<GameType: GameTrait> {
     server_ip: String,
     input_event_handler: GameType::InputEventHandlerType,
     manager_sender: Option<Sender<Manager<GameType>>>,
@@ -21,7 +21,7 @@ pub struct ClientCore<GameType: Game> {
     last_time_message: Option<TimeMessage>
 }
 
-impl<GameType: Game> ClientCore<GameType> {
+impl<GameType: GameTrait> ClientCore<GameType> {
 
     pub fn new(server_ip: &str) -> Self {
 
@@ -36,14 +36,14 @@ impl<GameType: Game> ClientCore<GameType> {
     }
 }
 
-impl<GameType: Game> ChannelDrivenThread<()> for ClientCore<GameType> {
+impl<GameType: GameTrait> ChannelDrivenThread<()> for ClientCore<GameType> {
 
     fn on_channel_disconnect(&mut self) -> () {
         ()
     }
 }
 
-impl<GameType: Game> Sender<ClientCore<GameType>> {
+impl<GameType: GameTrait> Sender<ClientCore<GameType>> {
 
     pub fn connect(&self) -> RenderReceiver<GameType> {
         let (render_receiver_sender, render_receiver) = RenderReceiver::<GameType>::new();
@@ -110,7 +110,7 @@ impl<GameType: Game> Sender<ClientCore<GameType>> {
     }
 }
 
-impl<GameType: Game> Consumer<InitialInformation<GameType>> for Sender<ClientCore<GameType>> {
+impl<GameType: GameTrait> Consumer<InitialInformation<GameType>> for Sender<ClientCore<GameType>> {
 
     fn accept(&self, initial_information: InitialInformation<GameType>) {
         self.send(move |core|{
@@ -120,7 +120,7 @@ impl<GameType: Game> Consumer<InitialInformation<GameType>> for Sender<ClientCor
     }
 }
 
-impl<GameType: Game> Consumer<TimeMessage> for Sender<ClientCore<GameType>> {
+impl<GameType: GameTrait> Consumer<TimeMessage> for Sender<ClientCore<GameType>> {
 
     fn accept(&self, time_message: TimeMessage) {
 

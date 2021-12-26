@@ -45,14 +45,14 @@ impl SimpleInputEventHandler {
 
     pub fn get_input(&mut self) -> SimpleInput {
 
-        let mut x = match (self.d_state, self.a_state) {
+        let x = match (self.d_state, self.a_state) {
             (ButtonState::Press, ButtonState::Press) => 0,
             (ButtonState::Release, ButtonState::Press) => -1,
             (ButtonState::Press, ButtonState::Release) => 1,
             (ButtonState::Release, ButtonState::Release) => 0,
         } as f64;
 
-        let mut y = match (self.s_state, self.w_state) {
+        let y = match (self.s_state, self.w_state) {
             (ButtonState::Press, ButtonState::Press) => 0,
             (ButtonState::Release, ButtonState::Press) => -1,
             (ButtonState::Press, ButtonState::Release) => 1,

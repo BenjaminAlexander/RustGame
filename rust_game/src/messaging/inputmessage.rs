@@ -1,15 +1,15 @@
 use serde::{Deserialize, Serialize};
 use std::cmp::Ordering;
-use crate::interface::Game;
+use crate::interface::GameTrait;
 
 #[derive(Serialize, Deserialize, Debug)]
-pub struct InputMessage<GameType: Game> {
+pub struct InputMessage<GameType: GameTrait> {
     sequence: usize,
     player_index: usize,
     input: GameType::InputType
 }
 
-impl<GameType: Game> InputMessage<GameType> {
+impl<GameType: GameTrait> InputMessage<GameType> {
 
     pub fn new(sequence: usize, player_index: usize, input: GameType::InputType) -> InputMessage<GameType> {
         InputMessage{ sequence, player_index, input }
@@ -28,7 +28,7 @@ impl<GameType: Game> InputMessage<GameType> {
     }
 }
 
-impl<GameType: Game> Clone for InputMessage<GameType> {
+impl<GameType: GameTrait> Clone for InputMessage<GameType> {
 
     fn clone(&self) -> Self {
         Self{
@@ -39,24 +39,24 @@ impl<GameType: Game> Clone for InputMessage<GameType> {
     }
 }
 
-impl<GameType: Game> PartialEq for InputMessage<GameType> {
+impl<GameType: GameTrait> PartialEq for InputMessage<GameType> {
     fn eq(&self, other: &Self) -> bool {
         self.sequence.eq(&other.sequence) &&
             self.player_index.eq(&other.player_index)
     }
 }
 
-impl<GameType: Game> Eq for InputMessage<GameType> {
+impl<GameType: GameTrait> Eq for InputMessage<GameType> {
 
 }
 
-impl<GameType: Game> PartialOrd for InputMessage<GameType> {
+impl<GameType: GameTrait> PartialOrd for InputMessage<GameType> {
     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
         Some(self.cmp(&other))
     }
 }
 
-impl<GameType: Game> Ord for InputMessage<GameType> {
+impl<GameType: GameTrait> Ord for InputMessage<GameType> {
 
     fn cmp(&self, other: &Self) -> Ordering {
         match self.sequence.cmp(&other.sequence) {

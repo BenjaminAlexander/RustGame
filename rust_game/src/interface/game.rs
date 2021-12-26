@@ -6,7 +6,7 @@ use crate::messaging::InitialInformation;
 use crate::TimeDuration;
 
 //TODO: can Serialize + DeserializeOwned be removed
-pub trait Game: 'static + Send + Sized + Serialize + DeserializeOwned {
+pub trait GameTrait: 'static + Send + Sized + Serialize + DeserializeOwned {
     type StateType: State;
     type InputType: Input;
     type ServerInputType: ServerInput;

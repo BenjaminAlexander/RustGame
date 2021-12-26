@@ -1,16 +1,16 @@
 use log::warn;
-use crate::interface::{InterpolationArg, Game};
+use crate::interface::{InterpolationArg, GameTrait};
 use crate::gamemanager::stepmessage::StepMessage;
 use crate::threading::{Consumer, Sender, Receiver, channel};
 use crate::gametime::{TimeMessage, TimeValue, TimeDuration};
 use crate::messaging::InitialInformation;
 
-pub struct RenderReceiver<GameType: Game> {
+pub struct RenderReceiver<GameType: GameTrait> {
     receiver: Receiver<Data<GameType>>,
     data: Data<GameType>
 }
 
-pub struct Data<GameType: Game> {
+pub struct Data<GameType: GameTrait> {
 
     //TODO: use vec deque so that this is more efficient
     step_queue: Vec<StepMessage<GameType>>,
@@ -18,7 +18,7 @@ pub struct Data<GameType: Game> {
     initial_information: Option<InitialInformation<GameType>>,
 }
 
-impl<GameType: Game> Data<GameType> {
+impl<GameType: GameTrait> Data<GameType> {
 
     fn drop_steps_before(&mut self, drop_before: usize) {
         while self.step_queue.len() > 2 &&
@@ -30,7 +30,7 @@ impl<GameType: Game> Data<GameType> {
     }
 }
 
-impl<GameType: Game> RenderReceiver<GameType> {
+impl<GameType: GameTrait> RenderReceiver<GameType> {
 
     pub fn new() -> (Sender<Data<GameType>>, Self) {
         let (sender, receiver) = channel::<Data<GameType>>();
@@ -112,7 +112,7 @@ impl<GameType: Game> RenderReceiver<GameType> {
 
 }
 
-impl<GameType: Game> Consumer<StepMessage<GameType>> for Sender<Data<GameType>> {
+impl<GameType: GameTrait> Consumer<StepMessage<GameType>> for Sender<Data<GameType>> {
 
     fn accept(&self, step_message: StepMessage<GameType>) {
 
@@ -146,7 +146,7 @@ impl<GameType: Game> Consumer<StepMessage<GameType>> for Sender<Data<GameType>> 
 
 }
 
-impl<GameType: Game> Consumer<TimeMessage> for Sender<Data<GameType>> {
+impl<GameType: GameTrait> Consumer<TimeMessage> for Sender<Data<GameType>> {
 
     fn accept(&self, time_message: TimeMessage) {
         self.send(move |data|{
@@ -163,7 +163,7 @@ impl<GameType: Game> Consumer<TimeMessage> for Sender<Data<GameType>> {
     }
 }
 
-impl<GameType: Game> Consumer<InitialInformation<GameType>> for Sender<Data<GameType>> {
+impl<GameType: GameTrait> Consumer<InitialInformation<GameType>> for Sender<Data<GameType>> {
 
     fn accept(&self, initial_information: InitialInformation<GameType>) {
         self.send(|data|{

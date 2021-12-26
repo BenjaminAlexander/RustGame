@@ -1,25 +1,24 @@
 use std::marker::PhantomData;
-use std::net::{Ipv4Addr, SocketAddr, SocketAddrV4, TcpListener, TcpStream};
+use std::net::{Ipv4Addr, SocketAddr, SocketAddrV4, TcpListener};
 
 use log::{error, info};
-use crate::interface::Game;
+use crate::interface::GameTrait;
 use crate::server::ServerCore;
 
-use crate::threading::{Consumer, Sender, ChannelThread, Receiver};
-use crate::threading::sender::SendError;
+use crate::threading::{Sender, ChannelThread, Receiver};
 
-pub struct TcpListenerThread<GameType: Game> {
+pub struct TcpListenerThread<GameType: GameTrait> {
     server_core_sender: Sender<ServerCore<GameType>>,
     phantom: PhantomData<GameType>
 }
 
-impl<GameType: Game> TcpListenerThread<GameType> {
+impl<GameType: GameTrait> TcpListenerThread<GameType> {
     pub fn new(server_core_sender: Sender<ServerCore<GameType>>) -> Self {
         Self{server_core_sender, phantom: PhantomData}
     }
 }
 
-impl<GameType: Game> ChannelThread<()> for TcpListenerThread<GameType> {
+impl<GameType: GameTrait> ChannelThread<()> for TcpListenerThread<GameType> {
 
     fn run(mut self, receiver: Receiver<Self>) {
         let socket_addr_v4:SocketAddrV4 = SocketAddrV4::new(Ipv4Addr::new(127, 0, 0, 1), GameType::TCP_PORT);

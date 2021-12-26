@@ -1,5 +1,5 @@
 use crate::simplegame::{Vector2, SimplServerInputEvent};
-use crate::interface::{State, ClientUpdateArg, InterpolationArg, InterpolationResult, ServerUpdateArg, Game};
+use crate::interface::{State, ClientUpdateArg, InterpolationArg, InterpolationResult, ServerUpdateArg, GameTrait};
 use serde::{Deserialize, Serialize};
 use crate::simplegame::character::Character;
 use opengl_graphics::GlGraphics;

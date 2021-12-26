@@ -8,12 +8,12 @@ use crate::threading::sender::SendError;
 use log::{trace, info, warn};
 use crate::server::ServerConfig;
 use crate::messaging::InitialInformation;
-use crate::interface::Game;
+use crate::interface::GameTrait;
 
 const TICK_LATENESS_WARN_DURATION: TimeDuration = TimeDuration(20);
 const CLIENT_ERROR_WARN_DURATION: TimeDuration = TimeDuration(20);
 
-pub struct GameTimer<GameType: Game> {
+pub struct GameTimer<GameType: GameTrait> {
     timer: Timer,
     server_config: Option<ServerConfig>,
     start: Option<TimeValue>,
@@ -23,7 +23,7 @@ pub struct GameTimer<GameType: Game> {
     phantom: PhantomData<GameType>
 }
 
-impl<GameType: Game> GameTimer<GameType> {
+impl<GameType: GameTrait> GameTimer<GameType> {
     pub fn new(rolling_average_size: usize) -> Self {
 
         GameTimer{
@@ -46,13 +46,13 @@ impl<GameType: Game> GameTimer<GameType> {
     }
 }
 
-impl<GameType: Game> ChannelDrivenThread<()> for GameTimer<GameType> {
+impl<GameType: GameTrait> ChannelDrivenThread<()> for GameTimer<GameType> {
     fn on_channel_disconnect(&mut self) -> () {
         ()
     }
 }
 
-impl<GameType: Game> Sender<GameTimer<GameType>> {
+impl<GameType: GameTrait> Sender<GameTimer<GameType>> {
     pub fn start(&self) -> Result<(), SendError<GameTimer<GameType>>> {
         let clone = self.clone();
 
@@ -103,7 +103,7 @@ impl<GameType: Game> Sender<GameTimer<GameType>> {
     }
 }
 
-impl<GameType: Game> Consumer<TimeReceived<TimeMessage>> for Sender<GameTimer<GameType>> {
+impl<GameType: GameTrait> Consumer<TimeReceived<TimeMessage>> for Sender<GameTimer<GameType>> {
     fn accept(&self, time_message: TimeReceived<TimeMessage>) {
         let clone = self.clone();
         self.send(move |game_timer|{
@@ -153,7 +153,7 @@ impl<GameType: Game> Consumer<TimeReceived<TimeMessage>> for Sender<GameTimer<Ga
     }
 }
 
-impl<GameType: Game> Consumer<InitialInformation<GameType>> for Sender<GameTimer<GameType>> {
+impl<GameType: GameTrait> Consumer<InitialInformation<GameType>> for Sender<GameTimer<GameType>> {
     fn accept(&self, initial_information: InitialInformation<GameType>) {
         self.send(|game_timer|{
             game_timer.server_config = Some(initial_information.move_server_config());

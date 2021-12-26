@@ -4,17 +4,17 @@ use crate::threading::{Sender, ChannelThread, Receiver};
 use std::io;
 use crate::messaging::{ToClientMessageTCP, InitialInformation};
 use std::io::Write;
-use crate::interface::Game;
+use crate::interface::GameTrait;
 use std::marker::PhantomData;
 use crate::server::ServerConfig;
 
-pub struct TcpOutput<GameType: Game> {
+pub struct TcpOutput<GameType: GameTrait> {
     player_index: usize,
     tcp_stream: TcpStream,
     phantom: PhantomData<GameType>
 }
 
-impl<GameType: Game> TcpOutput<GameType> {
+impl<GameType: GameTrait> TcpOutput<GameType> {
 
     pub fn new(player_index: usize,
                tcp_stream: &TcpStream) -> io::Result<Self> {
@@ -27,7 +27,7 @@ impl<GameType: Game> TcpOutput<GameType> {
     }
 }
 
-impl<GameType: Game> ChannelThread<()> for TcpOutput<GameType> {
+impl<GameType: GameTrait> ChannelThread<()> for TcpOutput<GameType> {
 
     fn run(mut self, receiver: Receiver<Self>) -> () {
 
@@ -46,7 +46,7 @@ impl<GameType: Game> ChannelThread<()> for TcpOutput<GameType> {
     }
 }
 
-impl<GameType: Game> Sender<TcpOutput<GameType>> {
+impl<GameType: GameTrait> Sender<TcpOutput<GameType>> {
 
     pub fn send_initial_information(&self, server_config: ServerConfig, player_count: usize, initial_state: GameType::StateType) {
         self.send(move |tcp_output|{

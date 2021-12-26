@@ -1,5 +1,5 @@
 use crate::{SimpleInput, SimpleInputEvent, SimpleInputEventHandler, SimpleServerInput, SimpleState, TimeDuration};
-use crate::interface::{ClientUpdateArg, Game, InterpolationArg, ServerUpdateArg};
+use crate::interface::{ClientUpdateArg, GameTrait, InterpolationArg, ServerUpdateArg};
 use crate::messaging::InitialInformation;
 use serde::{Deserialize, Serialize};
 
@@ -8,7 +8,7 @@ pub struct SimpleGameImpl {
 
 }
 
-impl Game for SimpleGameImpl {
+impl GameTrait for SimpleGameImpl {
     type StateType = SimpleState;
     type InputType = SimpleInput;
     type ServerInputType = SimpleServerInput;

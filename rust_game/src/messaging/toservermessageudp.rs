@@ -1,11 +1,11 @@
 use serde::{Deserialize, Serialize};
-use crate::interface::Game;
+use crate::interface::GameTrait;
 
 use super::InputMessage;
 
 #[derive(Serialize, Deserialize, Debug)]
 #[serde(bound = "")]
-pub enum ToServerMessageUDP<GameType: Game> {
+pub enum ToServerMessageUDP<GameType: GameTrait> {
 
     //TODO: see if these can be borrowed
     //TODO: remove hello
@@ -13,7 +13,7 @@ pub enum ToServerMessageUDP<GameType: Game> {
     Input(InputMessage<GameType>)
 }
 
-impl<GameType: Game> ToServerMessageUDP<GameType> {
+impl<GameType: GameTrait> ToServerMessageUDP<GameType> {
 
     pub fn get_player_index(&self) -> usize {
         return match self {

@@ -1,11 +1,11 @@
 use log::{trace, info, error};
-use crate::interface::Game;
+use crate::interface::GameTrait;
 use std::net::{UdpSocket, SocketAddrV4};
 use crate::messaging::{InputMessage, ToServerMessageUDP, InitialInformation, MAX_UDP_DATAGRAM_SIZE, Fragmenter};
 use std::io;
 use crate::threading::{ChannelThread, Receiver, Consumer, Sender};
 
-pub struct UdpOutput<GameType: Game> {
+pub struct UdpOutput<GameType: GameTrait> {
     server_address: SocketAddrV4,
     socket: UdpSocket,
     fragmenter: Fragmenter,
@@ -14,7 +14,7 @@ pub struct UdpOutput<GameType: Game> {
     initial_information: Option<InitialInformation<GameType>>
 }
 
-impl<GameType: Game> UdpOutput<GameType> {
+impl<GameType: GameTrait> UdpOutput<GameType> {
 
     pub fn new(server_socket_addr_v4: SocketAddrV4,
                socket: &UdpSocket) -> io::Result<Self> {
@@ -46,7 +46,7 @@ impl<GameType: Game> UdpOutput<GameType> {
     }
 }
 
-impl<GameType: Game> ChannelThread<()> for UdpOutput<GameType> {
+impl<GameType: GameTrait> ChannelThread<()> for UdpOutput<GameType> {
 
     fn run(mut self, receiver: Receiver<Self>) -> () {
 
@@ -81,7 +81,7 @@ impl<GameType: Game> ChannelThread<()> for UdpOutput<GameType> {
     }
 }
 
-impl<GameType: Game> Consumer<InitialInformation<GameType>> for Sender<UdpOutput<GameType>> {
+impl<GameType: GameTrait> Consumer<InitialInformation<GameType>> for Sender<UdpOutput<GameType>> {
 
     fn accept(&self, initial_information: InitialInformation<GameType>) {
         self.send(move |udp_output|{
@@ -95,7 +95,7 @@ impl<GameType: Game> Consumer<InitialInformation<GameType>> for Sender<UdpOutput
     }
 }
 
-impl<GameType: Game> Consumer<InputMessage<GameType>> for Sender<UdpOutput<GameType>> {
+impl<GameType: GameTrait> Consumer<InputMessage<GameType>> for Sender<UdpOutput<GameType>> {
 
     fn accept(&self, input_message: InputMessage<GameType>) {
         self.send(move |udp_output|{
