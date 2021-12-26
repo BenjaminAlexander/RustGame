@@ -17,7 +17,7 @@ use crate::server::clientaddress::ClientAddress;
 //TODO: route game timer and player inputs through the core to
 // get synchronous enforcement of the grace period
 
-pub struct Core<GameType: Game> {
+pub struct ServerCore<GameType: Game> {
 
     game_is_started: bool,
     server_config: ServerConfig,
@@ -30,13 +30,13 @@ pub struct Core<GameType: Game> {
     drop_steps_before: usize
 }
 
-impl<GameType: Game> ChannelDrivenThread<()> for Core<GameType> {
+impl<GameType: Game> ChannelDrivenThread<()> for ServerCore<GameType> {
     fn on_channel_disconnect(&mut self) -> () {
         ()
     }
 }
 
-impl<GameType: Game> Core<GameType> {
+impl<GameType: Game> ServerCore<GameType> {
 
     pub fn new() -> Self {
 
@@ -58,7 +58,7 @@ impl<GameType: Game> Core<GameType> {
     }
 }
 
-impl<GameType: Game> Sender<Core<GameType>> {
+impl<GameType: Game> Sender<ServerCore<GameType>> {
 
     pub fn start_listener(&self) {
         let clone = self.clone();
@@ -73,8 +73,7 @@ impl<GameType: Game> Sender<Core<GameType>> {
             udp_input_builder.name("ServerUdpInput").start().unwrap();
             core.udp_input_sender = Some(udp_input_sender);
 
-            let (listener_sender, listener_builder) = TcpListenerThread::<GameType>::new().build();
-            listener_sender.set_consumer(clone).unwrap();
+            let (listener_sender, listener_builder) = TcpListenerThread::<GameType>::new(clone).build();
             listener_builder.name("ServerTcpListener").start().unwrap();
         }).unwrap();
     }
@@ -136,11 +135,7 @@ impl<GameType: Game> Sender<Core<GameType>> {
         return render_receiver;
     }
 
-}
-
-impl<GameType: Game> Consumer<TcpStream> for Sender<Core<GameType>> {
-
-    fn accept(&self, tcp_stream: TcpStream) {
+    pub fn on_tcp_connection(&self, tcp_stream: TcpStream) {
         self.send(move |core|{
             if !core.game_is_started {
                 let player_index = core.tcp_inputs.len();
@@ -180,7 +175,7 @@ impl<GameType: Game> Consumer<TcpStream> for Sender<Core<GameType>> {
     }
 }
 
-impl<GameType: Game> Consumer<TimeMessage> for Sender<Core<GameType>> {
+impl<GameType: Game> Consumer<TimeMessage> for Sender<ServerCore<GameType>> {
 
     fn accept(&self, time_message: TimeMessage) {
         self.send(move |core|{
@@ -200,7 +195,7 @@ impl<GameType: Game> Consumer<TimeMessage> for Sender<Core<GameType>> {
     }
 }
 
-impl<GameType: Game> Consumer<InputMessage<GameType>> for Sender<Core<GameType>> {
+impl<GameType: Game> Consumer<InputMessage<GameType>> for Sender<ServerCore<GameType>> {
 
     fn accept(&self, input_message: InputMessage<GameType>) {
         self.send(move |core|{

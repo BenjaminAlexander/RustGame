@@ -1,4 +1,4 @@
-pub use self::core::Core;
+pub use self::core::ClientCore;
 
 mod core;
 mod tcpinput;

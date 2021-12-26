@@ -45,7 +45,7 @@ pub fn main() {
     let mut client_core_sender_option = None;
 
     if run_server {
-        let server_core  = server::Core::<SimpleGameImpl>::new();
+        let server_core  = server::ServerCore::<SimpleGameImpl>::new();
 
         let (server_core_sender, server_core_builder) = server_core.build();
 
@@ -57,7 +57,7 @@ pub fn main() {
 
     if run_client {
 
-        let client_core = client::Core::<SimpleGameImpl>::new("127.0.0.1");
+        let client_core = client::ClientCore::<SimpleGameImpl>::new("127.0.0.1");
 
         let (client_core_sender, client_core_builder) = client_core.build();
 

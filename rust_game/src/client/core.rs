@@ -11,7 +11,7 @@ use log::{info, trace};
 use crate::client::udpoutput::UdpOutput;
 use crate::client::udpinput::UdpInput;
 
-pub struct Core<GameType: Game> {
+pub struct ClientCore<GameType: Game> {
     server_ip: String,
     input_event_handler: GameType::InputEventHandlerType,
     manager_sender: Option<Sender<Manager<GameType>>>,
@@ -21,11 +21,11 @@ pub struct Core<GameType: Game> {
     last_time_message: Option<TimeMessage>
 }
 
-impl<GameType: Game> Core<GameType> {
+impl<GameType: Game> ClientCore<GameType> {
 
     pub fn new(server_ip: &str) -> Self {
 
-        Core{server_ip: server_ip.to_string(),
+        ClientCore {server_ip: server_ip.to_string(),
             input_event_handler: GameType::new_input_event_handler(),
             manager_sender: None,
             udp_output_sender: None,
@@ -36,14 +36,14 @@ impl<GameType: Game> Core<GameType> {
     }
 }
 
-impl<GameType: Game> ChannelDrivenThread<()> for Core<GameType> {
+impl<GameType: Game> ChannelDrivenThread<()> for ClientCore<GameType> {
 
     fn on_channel_disconnect(&mut self) -> () {
         ()
     }
 }
 
-impl<GameType: Game> Sender<Core<GameType>> {
+impl<GameType: Game> Sender<ClientCore<GameType>> {
 
     pub fn connect(&self) -> RenderReceiver<GameType> {
         let (render_receiver_sender, render_receiver) = RenderReceiver::<GameType>::new();
@@ -110,7 +110,7 @@ impl<GameType: Game> Sender<Core<GameType>> {
     }
 }
 
-impl<GameType: Game> Consumer<InitialInformation<GameType>> for Sender<Core<GameType>> {
+impl<GameType: Game> Consumer<InitialInformation<GameType>> for Sender<ClientCore<GameType>> {
 
     fn accept(&self, initial_information: InitialInformation<GameType>) {
         self.send(move |core|{
@@ -120,7 +120,7 @@ impl<GameType: Game> Consumer<InitialInformation<GameType>> for Sender<Core<Game
     }
 }
 
-impl<GameType: Game> Consumer<TimeMessage> for Sender<Core<GameType>> {
+impl<GameType: Game> Consumer<TimeMessage> for Sender<ClientCore<GameType>> {
 
     fn accept(&self, time_message: TimeMessage) {
 

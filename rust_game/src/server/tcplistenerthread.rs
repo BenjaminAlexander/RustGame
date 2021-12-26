@@ -3,18 +3,19 @@ use std::net::{Ipv4Addr, SocketAddr, SocketAddrV4, TcpListener, TcpStream};
 
 use log::{error, info};
 use crate::interface::Game;
+use crate::server::ServerCore;
 
 use crate::threading::{Consumer, Sender, ChannelThread, Receiver};
 use crate::threading::sender::SendError;
 
 pub struct TcpListenerThread<GameType: Game> {
-    consumer: Option<Box<dyn Consumer<TcpStream>>>,
+    server_core_sender: Sender<ServerCore<GameType>>,
     phantom: PhantomData<GameType>
 }
 
 impl<GameType: Game> TcpListenerThread<GameType> {
-    pub fn new() -> Self {
-        Self{consumer: None, phantom: PhantomData}
+    pub fn new(server_core_sender: Sender<ServerCore<GameType>>) -> Self {
+        Self{server_core_sender, phantom: PhantomData}
     }
 }
 
@@ -32,11 +33,10 @@ impl<GameType: Game> ChannelThread<()> for TcpListenerThread<GameType> {
                     info!("New TCP connection from {:?}", tcp_stream.peer_addr().unwrap().ip().to_string());
                     //core.addTcpStream(tcpStream);
 
+                    //TODO: this doesn't really do anything, should probably check if listening should stop
                     receiver.try_iter(&mut self);
 
-                    if self.consumer.is_some() {
-                        self.consumer.as_ref().unwrap().accept(tcp_stream);
-                    }
+                    self.server_core_sender.on_tcp_connection(tcp_stream);
                 }
                 Err(error) => {
                     error!("{:?}", error);
@@ -44,15 +44,5 @@ impl<GameType: Game> ChannelThread<()> for TcpListenerThread<GameType> {
                 }
             }
         };
-    }
-}
-
-impl<GameType: Game> Sender<TcpListenerThread<GameType>> {
-    pub fn set_consumer<T>(&self, t: T) -> Result<(), SendError<TcpListenerThread<GameType>>>
-        where T: Consumer<TcpStream> {
-
-        self.send(|tcp_listener_thread|{
-            tcp_listener_thread.consumer = Some(Box::new(t));
-        })
     }
 }
