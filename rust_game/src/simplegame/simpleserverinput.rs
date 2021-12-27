@@ -1,4 +1,3 @@
-use crate::interface::ServerInput;
 use serde::{Deserialize, Serialize};
 use crate::simplegame::SimpleState;
 
@@ -23,10 +22,6 @@ impl SimpleServerInput {
             event.apply_to_state(state);
         }
     }
-}
-
-impl ServerInput for SimpleServerInput {
-
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]

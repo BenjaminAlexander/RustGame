@@ -1,6 +1,5 @@
 use serde::{Deserialize, Serialize};
 
-use crate::interface::InputEvent;
 use std::ops::{Sub, Add, Mul};
 use num::traits::Pow;
 use std::hash::{Hash, Hasher};
@@ -100,10 +99,6 @@ impl<T> Mul<T> for Vector2
             y: self.y * rhs,
         };
     }
-}
-
-impl InputEvent for Vector2 {
-
 }
 
 impl Hash for Vector2 {

@@ -5,15 +5,15 @@ use super::InputMessage;
 
 #[derive(Serialize, Deserialize, Debug)]
 #[serde(bound = "")]
-pub enum ToServerMessageUDP<GameType: GameTrait> {
+pub enum ToServerMessageUDP<Game: GameTrait> {
 
     //TODO: see if these can be borrowed
     //TODO: remove hello
     Hello{player_index: usize},
-    Input(InputMessage<GameType>)
+    Input(InputMessage<Game>)
 }
 
-impl<GameType: GameTrait> ToServerMessageUDP<GameType> {
+impl<Game: GameTrait> ToServerMessageUDP<Game> {
 
     pub fn get_player_index(&self) -> usize {
         return match self {

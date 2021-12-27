@@ -1,5 +1,4 @@
 use piston::input::Input as PistonInput;
-use crate::interface::InputEvent;
 
 pub struct SimpleInputEvent(PistonInput);
 
@@ -12,8 +11,4 @@ impl SimpleInputEvent {
     pub fn get_piston_input(&self) -> &PistonInput {
         return &self.0
     }
-}
-
-impl InputEvent for SimpleInputEvent {
-
 }

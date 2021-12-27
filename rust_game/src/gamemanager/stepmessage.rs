@@ -2,14 +2,14 @@ use crate::interface::GameTrait;
 use std::cmp::Ordering;
 
 #[derive(Debug)]
-pub struct StepMessage<GameType: GameTrait> {
+pub struct StepMessage<Game: GameTrait> {
     step_index: usize,
-    state: GameType::StateType
+    state: Game::StateType
 }
 
-impl<GameType: GameTrait> StepMessage<GameType> {
+impl<Game: GameTrait> StepMessage<Game> {
 
-    pub fn new(step_index: usize, state: GameType::StateType) -> Self {
+    pub fn new(step_index: usize, state: Game::StateType) -> Self {
         Self{step_index, state}
     }
 
@@ -17,12 +17,12 @@ impl<GameType: GameTrait> StepMessage<GameType> {
         self.step_index
     }
 
-    pub fn get_state(&self) -> &GameType::StateType {
+    pub fn get_state(&self) -> &Game::StateType {
         &self.state
     }
 }
 
-impl<GameType: GameTrait> Clone for StepMessage<GameType> {
+impl<Game: GameTrait> Clone for StepMessage<Game> {
 
     fn clone(&self) -> Self {
         Self{
@@ -32,25 +32,25 @@ impl<GameType: GameTrait> Clone for StepMessage<GameType> {
     }
 }
 
-impl<GameType: GameTrait> PartialEq for StepMessage<GameType> {
+impl<Game: GameTrait> PartialEq for StepMessage<Game> {
 
     fn eq(&self, other: &Self) -> bool {
         return self.step_index.eq(&other.step_index);
     }
 }
 
-impl<GameType: GameTrait> Eq for StepMessage<GameType> {
+impl<Game: GameTrait> Eq for StepMessage<Game> {
 
 }
 
-impl<GameType: GameTrait> PartialOrd for StepMessage<GameType> {
+impl<Game: GameTrait> PartialOrd for StepMessage<Game> {
 
     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
         return Some(self.cmp(&other));
     }
 }
 
-impl<GameType: GameTrait> Ord for StepMessage<GameType> {
+impl<Game: GameTrait> Ord for StepMessage<Game> {
 
     fn cmp(&self, other: &Self) -> Ordering {
         return self.step_index.cmp(&other.step_index);

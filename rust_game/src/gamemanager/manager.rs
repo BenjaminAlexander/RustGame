@@ -8,25 +8,25 @@ use crate::gamemanager::stepmessage::StepMessage;
 use crate::gametime::{TimeDuration, TimeValue};
 use std::sync::Arc;
 
-pub struct Manager<GameType: GameTrait> {
+pub struct Manager<Game: GameTrait> {
 
     is_server: bool,
     drop_steps_before: usize,
     //TODO: send requested state immediately if available
     requested_step: usize,
-    initial_information: Option<Arc<InitialInformation<GameType>>>,
+    initial_information: Option<Arc<InitialInformation<Game>>>,
     //New states at the back, old at the front (index 0)
-    steps: VecDeque<Step<GameType>>,
-    requested_step_consumer_list: ConsumerList<StepMessage<GameType>>,
-    completed_step_consumer_list: ConsumerList<StateMessage<GameType>>,
-    server_input_consumer_list: ConsumerList<ServerInputMessage<GameType>>,
+    steps: VecDeque<Step<Game>>,
+    requested_step_consumer_list: ConsumerList<StepMessage<Game>>,
+    completed_step_consumer_list: ConsumerList<StateMessage<Game>>,
+    server_input_consumer_list: ConsumerList<ServerInputMessage<Game>>,
 
     //metrics
     time_of_last_state_receive: TimeValue,
     time_of_last_input_receive: TimeValue,
 }
 
-impl<GameType: GameTrait> Manager<GameType> {
+impl<Game: GameTrait> Manager<Game> {
 
     pub fn new(is_server: bool) -> Self {
         Self{
@@ -45,7 +45,7 @@ impl<GameType: GameTrait> Manager<GameType> {
         }
     }
 
-    fn get_state(&mut self, step_index: usize) -> Option<&mut Step<GameType>> {
+    fn get_state(&mut self, step_index: usize) -> Option<&mut Step<Game>> {
 
         if self.initial_information.is_none() {
             return None;
@@ -76,7 +76,7 @@ impl<GameType: GameTrait> Manager<GameType> {
         }
     }
 
-    fn handle_state_message(&mut self, state_message: StateMessage<GameType>) {
+    fn handle_state_message(&mut self, state_message: StateMessage<Game>) {
         if let Some(step) = self.get_state(state_message.get_sequence()) {
             step.set_final_state(state_message);
         }
@@ -115,7 +115,7 @@ impl<GameType: GameTrait> Manager<GameType> {
     }
 }
 
-impl<GameType: GameTrait> ChannelDrivenThread<()> for Manager<GameType> {
+impl<Game: GameTrait> ChannelDrivenThread<()> for Manager<Game> {
 
     fn on_none_pending(&mut self) -> Option<()> {
 
@@ -190,10 +190,10 @@ impl<GameType: GameTrait> ChannelDrivenThread<()> for Manager<GameType> {
     }
 }
 
-impl<GameType: GameTrait> Sender<Manager<GameType>> {
+impl<Game: GameTrait> Sender<Manager<Game>> {
 
     pub fn add_requested_step_consumer<T>(&self, consumer: T)
-        where T: Consumer<StepMessage<GameType>> {
+        where T: Consumer<StepMessage<Game>> {
 
         self.send(move |manager|{
             manager.requested_step_consumer_list.add_consumer(consumer);
@@ -201,14 +201,14 @@ impl<GameType: GameTrait> Sender<Manager<GameType>> {
     }
 
     pub fn add_completed_step_consumer<T>(&self, consumer: T)
-        where T: Consumer<StateMessage<GameType>> {
+        where T: Consumer<StateMessage<Game>> {
         self.send(move |manager|{
             manager.completed_step_consumer_list.add_consumer(consumer);
         }).unwrap();
     }
 
     pub fn add_server_input_consumer<T>(&self, consumer: T)
-        where T: Consumer<ServerInputMessage<GameType>> {
+        where T: Consumer<ServerInputMessage<Game>> {
         self.send(move |manager|{
             manager.server_input_consumer_list.add_consumer(consumer);
         }).unwrap();
@@ -227,9 +227,9 @@ impl<GameType: GameTrait> Sender<Manager<GameType>> {
     }
 }
 
-impl<GameType: GameTrait> Consumer<InputMessage<GameType>> for Sender<Manager<GameType>> {
+impl<Game: GameTrait> Consumer<InputMessage<Game>> for Sender<Manager<Game>> {
 
-    fn accept(&self, input_message: InputMessage<GameType>) {
+    fn accept(&self, input_message: InputMessage<Game>) {
         self.send(move |manager|{
             if let Some(step) = manager.get_state(input_message.get_step()) {
                 step.set_input(input_message);
@@ -239,9 +239,9 @@ impl<GameType: GameTrait> Consumer<InputMessage<GameType>> for Sender<Manager<Ga
     }
 }
 
-impl<GameType: GameTrait> Consumer<ServerInputMessage<GameType>> for Sender<Manager<GameType>> {
+impl<Game: GameTrait> Consumer<ServerInputMessage<Game>> for Sender<Manager<Game>> {
 
-    fn accept(&self, server_input_message: ServerInputMessage<GameType>) {
+    fn accept(&self, server_input_message: ServerInputMessage<Game>) {
         self.send(move |manager|{
 
             //info!("Server Input received: {:?}", server_input_message.get_step());
@@ -252,9 +252,9 @@ impl<GameType: GameTrait> Consumer<ServerInputMessage<GameType>> for Sender<Mana
     }
 }
 
-impl<GameType: GameTrait> Consumer<StateMessage<GameType>> for Sender<Manager<GameType>> {
+impl<Game: GameTrait> Consumer<StateMessage<Game>> for Sender<Manager<Game>> {
 
-    fn accept(&self, state_message: StateMessage<GameType>) {
+    fn accept(&self, state_message: StateMessage<Game>) {
         self.send(move |manager|{
             manager.handle_state_message(state_message);
 
@@ -264,9 +264,9 @@ impl<GameType: GameTrait> Consumer<StateMessage<GameType>> for Sender<Manager<Ga
     }
 }
 
-impl<GameType: GameTrait> Consumer<InitialInformation<GameType>> for Sender<Manager<GameType>> {
+impl<Game: GameTrait> Consumer<InitialInformation<Game>> for Sender<Manager<Game>> {
 
-    fn accept(&self, initial_information: InitialInformation<GameType>) {
+    fn accept(&self, initial_information: InitialInformation<Game>) {
         self.send(move |manager|{
             //TODO: move Arc outside lambda
             manager.initial_information = Some(Arc::new(initial_information));

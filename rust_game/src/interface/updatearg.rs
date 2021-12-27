@@ -2,22 +2,22 @@ use crate::interface::ServerUpdateArg;
 use crate::interface::game::GameTrait;
 
 #[derive(Debug)]
-pub struct ClientUpdateArg<'a, 'b, 'c, GameType: GameTrait> {
-    server_update_arg: ServerUpdateArg<'a, 'b, GameType>,
-    server_input: Option<&'c GameType::ServerInputType>
+pub struct ClientUpdateArg<'a, 'b, 'c, Game: GameTrait> {
+    server_update_arg: ServerUpdateArg<'a, 'b, Game>,
+    server_input: Option<&'c Game::ServerInputType>
 }
 
-impl<'a, 'b, 'c, GameType: GameTrait> ClientUpdateArg<'a, 'b, 'c, GameType> {
+impl<'a, 'b, 'c, Game: GameTrait> ClientUpdateArg<'a, 'b, 'c, Game> {
 
-    pub fn new(server_update_arg: ServerUpdateArg<'a, 'b, GameType>,
-               server_input: Option<&'c GameType::ServerInputType>) -> Self {
+    pub fn new(server_update_arg: ServerUpdateArg<'a, 'b, Game>,
+               server_input: Option<&'c Game::ServerInputType>) -> Self {
         return Self{
             server_update_arg,
             server_input
         }
     }
 
-    pub fn get_input(&self, player_index: usize) -> Option<&GameType::InputType> {
+    pub fn get_input(&self, player_index: usize) -> Option<&Game::InputType> {
         return self.server_update_arg.get_input(player_index);
     }
 
@@ -25,7 +25,7 @@ impl<'a, 'b, 'c, GameType: GameTrait> ClientUpdateArg<'a, 'b, 'c, GameType> {
         return self.server_update_arg.get_current_step();
     }
 
-    pub fn get_server_input(&self) -> Option<&GameType::ServerInputType> {
+    pub fn get_server_input(&self) -> Option<&Game::ServerInputType> {
         return self.server_input;
     }
 }

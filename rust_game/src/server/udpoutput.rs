@@ -11,14 +11,14 @@ use std::sync::mpsc::RecvTimeoutError;
 use std::marker::PhantomData;
 use crate::util::RollingAverage;
 
-pub struct UdpOutput<GameType: GameTrait> {
+pub struct UdpOutput<Game: GameTrait> {
     player_index: usize,
     socket: UdpSocket,
     remote_peer: Option<RemoteUdpPeer>,
     fragmenter: Fragmenter,
     last_time_message: Option<TimeMessage>,
     last_state_sequence: Option<usize>,
-    phantom: PhantomData<GameType>,
+    phantom: PhantomData<Game>,
 
     //metrics
     time_in_queue_rolling_average: RollingAverage<u64>,
@@ -27,7 +27,7 @@ pub struct UdpOutput<GameType: GameTrait> {
     time_of_last_server_input_send: TimeValue,
 }
 
-impl<GameType: GameTrait> UdpOutput<GameType> {
+impl<Game: GameTrait> UdpOutput<Game> {
 
     pub fn new(player_index: usize, socket: &UdpSocket) -> io::Result<Self> {
 
@@ -61,7 +61,7 @@ impl<GameType: GameTrait> UdpOutput<GameType> {
         }
     }
 
-    fn send_message(&mut self, message: ToClientMessageUDP<GameType>) {
+    fn send_message(&mut self, message: ToClientMessageUDP<Game>) {
 
         if let Some(remote_peer) = &self.remote_peer {
             let buf = rmp_serde::to_vec(&message).unwrap();
@@ -79,7 +79,7 @@ impl<GameType: GameTrait> UdpOutput<GameType> {
     }
 }
 
-impl<GameType: GameTrait> ChannelThread<()> for UdpOutput<GameType> {
+impl<Game: GameTrait> ChannelThread<()> for UdpOutput<Game> {
 
     fn run(mut self, receiver: Receiver<Self>) -> () {
 
@@ -116,7 +116,7 @@ impl<GameType: GameTrait> ChannelThread<()> for UdpOutput<GameType> {
     }
 }
 
-impl<GameType: GameTrait> Consumer<TimeMessage> for Sender<UdpOutput<GameType>> {
+impl<Game: GameTrait> Consumer<TimeMessage> for Sender<UdpOutput<Game>> {
 
     fn accept(&self, time_message: TimeMessage) {
 
@@ -127,7 +127,7 @@ impl<GameType: GameTrait> Consumer<TimeMessage> for Sender<UdpOutput<GameType>> 
             let mut send_it = false;
 
             if let Some(last_time_message) = &udp_output.last_time_message {
-                if time_message.get_scheduled_time().is_after(&last_time_message.get_scheduled_time().add(GameType::TIME_SYNC_MESSAGE_PERIOD)) {
+                if time_message.get_scheduled_time().is_after(&last_time_message.get_scheduled_time().add(Game::TIME_SYNC_MESSAGE_PERIOD)) {
                     send_it = true;
                 }
             } else {
@@ -139,7 +139,7 @@ impl<GameType: GameTrait> Consumer<TimeMessage> for Sender<UdpOutput<GameType>> 
                 udp_output.last_time_message = Some(time_message.clone());
 
                 //TODO: timestamp when the time message is set, then use that info in client side time calc
-                let message = ToClientMessageUDP::<GameType>::TimeMessage(time_message);
+                let message = ToClientMessageUDP::<Game>::TimeMessage(time_message);
                 udp_output.send_message(message);
 
                 //info!("time_message");
@@ -150,9 +150,9 @@ impl<GameType: GameTrait> Consumer<TimeMessage> for Sender<UdpOutput<GameType>> 
     }
 }
 
-impl<GameType: GameTrait> Consumer<InputMessage<GameType>> for Sender<UdpOutput<GameType>> {
+impl<Game: GameTrait> Consumer<InputMessage<Game>> for Sender<UdpOutput<Game>> {
 
-    fn accept(&self, input_message: InputMessage<GameType>) {
+    fn accept(&self, input_message: InputMessage<Game>) {
 
         let time_in_queue = TimeValue::now();
 
@@ -164,7 +164,7 @@ impl<GameType: GameTrait> Consumer<InputMessage<GameType>> for Sender<UdpOutput<
 
                 udp_output.time_of_last_input_send = TimeValue::now();
 
-                let message = ToClientMessageUDP::<GameType>::InputMessage(input_message);
+                let message = ToClientMessageUDP::<Game>::InputMessage(input_message);
                 udp_output.send_message(message);
 
                 //info!("input_message");
@@ -176,9 +176,9 @@ impl<GameType: GameTrait> Consumer<InputMessage<GameType>> for Sender<UdpOutput<
     }
 }
 
-impl<GameType: GameTrait> Consumer<ServerInputMessage<GameType>> for Sender<UdpOutput<GameType>> {
+impl<Game: GameTrait> Consumer<ServerInputMessage<Game>> for Sender<UdpOutput<Game>> {
 
-    fn accept(&self, server_input_message: ServerInputMessage<GameType>) {
+    fn accept(&self, server_input_message: ServerInputMessage<Game>) {
 
         let time_in_queue = TimeValue::now();
 
@@ -189,7 +189,7 @@ impl<GameType: GameTrait> Consumer<ServerInputMessage<GameType>> for Sender<UdpO
 
                 udp_output.time_of_last_server_input_send = TimeValue::now();
 
-                let message = ToClientMessageUDP::<GameType>::ServerInputMessage(server_input_message);
+                let message = ToClientMessageUDP::<Game>::ServerInputMessage(server_input_message);
                 udp_output.send_message(message);
 
                 //info!("server_input_message");
@@ -201,9 +201,9 @@ impl<GameType: GameTrait> Consumer<ServerInputMessage<GameType>> for Sender<UdpO
     }
 }
 
-impl<GameType: GameTrait> Consumer<StateMessage<GameType>> for Sender<UdpOutput<GameType>> {
+impl<Game: GameTrait> Consumer<StateMessage<Game>> for Sender<UdpOutput<Game>> {
 
-    fn accept(&self, state_message: StateMessage<GameType>) {
+    fn accept(&self, state_message: StateMessage<Game>) {
 
         let time_in_queue = TimeValue::now();
 
@@ -217,7 +217,7 @@ impl<GameType: GameTrait> Consumer<StateMessage<GameType>> for Sender<UdpOutput<
                 udp_output.last_state_sequence = Some(state_message.get_sequence());
                 udp_output.time_of_last_state_send = TimeValue::now();
 
-                let message = ToClientMessageUDP::<GameType>::StateMessage(state_message);
+                let message = ToClientMessageUDP::<Game>::StateMessage(state_message);
                 udp_output.send_message(message);
 
                 //info!("state_message");
@@ -228,7 +228,7 @@ impl<GameType: GameTrait> Consumer<StateMessage<GameType>> for Sender<UdpOutput<
     }
 }
 
-impl<GameType: GameTrait> Consumer<RemoteUdpPeer> for Sender<UdpOutput<GameType>> {
+impl<Game: GameTrait> Consumer<RemoteUdpPeer> for Sender<UdpOutput<Game>> {
 
     fn accept(&self, remote_peer: RemoteUdpPeer) {
         self.send(|udp_output|{

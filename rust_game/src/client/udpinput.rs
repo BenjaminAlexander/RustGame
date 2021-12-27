@@ -9,14 +9,14 @@ use std::io;
 use log::{error, info, warn};
 use std::time::Duration;
 
-pub struct UdpInput<GameType: GameTrait> {
+pub struct UdpInput<Game: GameTrait> {
     server_socket_addr: SocketAddr,
     socket: UdpSocket,
     fragment_assembler: FragmentAssembler,
     time_message_consumers: ConsumerList<TimeReceived<TimeMessage>>,
-    input_message_consumers: ConsumerList<InputMessage<GameType>>,
-    server_input_message_consumers: ConsumerList<ServerInputMessage<GameType>>,
-    state_message_consumers: ConsumerList<StateMessage<GameType>>,
+    input_message_consumers: ConsumerList<InputMessage<Game>>,
+    server_input_message_consumers: ConsumerList<ServerInputMessage<Game>>,
+    state_message_consumers: ConsumerList<StateMessage<Game>>,
 
     //metrics
     time_of_last_state_receive: TimeValue,
@@ -24,7 +24,7 @@ pub struct UdpInput<GameType: GameTrait> {
     time_of_last_server_input_receive: TimeValue,
 }
 
-impl<GameType: GameTrait> UdpInput<GameType> {
+impl<Game: GameTrait> UdpInput<Game> {
 
     pub fn new(server_socket_addr_v4: SocketAddrV4, socket: &UdpSocket) -> io::Result<Self> {
 
@@ -48,7 +48,7 @@ impl<GameType: GameTrait> UdpInput<GameType> {
     }
 }
 
-impl<GameType: GameTrait> ChannelThread<()> for UdpInput<GameType> {
+impl<Game: GameTrait> ChannelThread<()> for UdpInput<Game> {
 
     fn run(mut self, receiver: Receiver<Self>) {
         info!("Starting");
@@ -86,7 +86,7 @@ impl<GameType: GameTrait> ChannelThread<()> for UdpInput<GameType> {
 
             if let Some(message_buf) = self.fragment_assembler.add_fragment(fragment) {
 
-                let result: Result<ToClientMessageUDP<GameType>, Error> = rmp_serde::from_read_ref(&message_buf);
+                let result: Result<ToClientMessageUDP<Game>, Error> = rmp_serde::from_read_ref(&message_buf);
 
                 match result {
                     Ok(message) => {
@@ -134,9 +134,9 @@ impl<GameType: GameTrait> ChannelThread<()> for UdpInput<GameType> {
         }
     }
 }
-impl<GameType: GameTrait> Sender<UdpInput<GameType>> {
+impl<Game: GameTrait> Sender<UdpInput<Game>> {
 
-    pub fn add_time_message_consumer<T>(&self, consumer: T) -> Result<(), SendError<UdpInput<GameType>>>
+    pub fn add_time_message_consumer<T>(&self, consumer: T) -> Result<(), SendError<UdpInput<Game>>>
         where T: Consumer<TimeReceived<TimeMessage>> {
 
         self.send(|tcp_input|{
@@ -144,24 +144,24 @@ impl<GameType: GameTrait> Sender<UdpInput<GameType>> {
         })
     }
 
-    pub fn add_input_message_consumer<T>(&self, consumer: T) -> Result<(), SendError<UdpInput<GameType>>>
-        where T: Consumer<InputMessage<GameType>> {
+    pub fn add_input_message_consumer<T>(&self, consumer: T) -> Result<(), SendError<UdpInput<Game>>>
+        where T: Consumer<InputMessage<Game>> {
 
         self.send(|tcp_input|{
             tcp_input.input_message_consumers.add_consumer(consumer);
         })
     }
 
-    pub fn add_server_input_message_consumer<T>(&self, consumer: T) -> Result<(), SendError<UdpInput<GameType>>>
-        where T: Consumer<ServerInputMessage<GameType>> {
+    pub fn add_server_input_message_consumer<T>(&self, consumer: T) -> Result<(), SendError<UdpInput<Game>>>
+        where T: Consumer<ServerInputMessage<Game>> {
 
         self.send(|tcp_input|{
             tcp_input.server_input_message_consumers.add_consumer(consumer);
         })
     }
 
-    pub fn add_state_message_consumer<T>(&self, consumer: T) -> Result<(), SendError<UdpInput<GameType>>>
-        where T: Consumer<StateMessage<GameType>> {
+    pub fn add_state_message_consumer<T>(&self, consumer: T) -> Result<(), SendError<UdpInput<Game>>>
+        where T: Consumer<StateMessage<Game>> {
 
         self.send(|tcp_input|{
             tcp_input.state_message_consumers.add_consumer(consumer);

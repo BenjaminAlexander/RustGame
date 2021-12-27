@@ -8,13 +8,13 @@ use crate::interface::GameTrait;
 use std::marker::PhantomData;
 use crate::server::ServerConfig;
 
-pub struct TcpOutput<GameType: GameTrait> {
+pub struct TcpOutput<Game: GameTrait> {
     player_index: usize,
     tcp_stream: TcpStream,
-    phantom: PhantomData<GameType>
+    phantom: PhantomData<Game>
 }
 
-impl<GameType: GameTrait> TcpOutput<GameType> {
+impl<Game: GameTrait> TcpOutput<Game> {
 
     pub fn new(player_index: usize,
                tcp_stream: &TcpStream) -> io::Result<Self> {
@@ -27,7 +27,7 @@ impl<GameType: GameTrait> TcpOutput<GameType> {
     }
 }
 
-impl<GameType: GameTrait> ChannelThread<()> for TcpOutput<GameType> {
+impl<Game: GameTrait> ChannelThread<()> for TcpOutput<Game> {
 
     fn run(mut self, receiver: Receiver<Self>) -> () {
 
@@ -46,19 +46,19 @@ impl<GameType: GameTrait> ChannelThread<()> for TcpOutput<GameType> {
     }
 }
 
-impl<GameType: GameTrait> Sender<TcpOutput<GameType>> {
+impl<Game: GameTrait> Sender<TcpOutput<Game>> {
 
-    pub fn send_initial_information(&self, server_config: ServerConfig, player_count: usize, initial_state: GameType::StateType) {
+    pub fn send_initial_information(&self, server_config: ServerConfig, player_count: usize, initial_state: Game::StateType) {
         self.send(move |tcp_output|{
 
-            let initial_information = InitialInformation::<GameType>::new(
+            let initial_information = InitialInformation::<Game>::new(
                 server_config,
                 player_count,
                 tcp_output.player_index,
                 initial_state
             );
 
-            let message = ToClientMessageTCP::<GameType>::InitialInformation(initial_information);
+            let message = ToClientMessageTCP::<Game>::InitialInformation(initial_information);
             rmp_serde::encode::write(&mut tcp_output.tcp_stream, &message).unwrap();
             tcp_output.tcp_stream.flush().unwrap();
 

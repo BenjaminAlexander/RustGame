@@ -1,5 +1,4 @@
 use crate::simplegame::Vector2;
-use crate::interface::Input;
 use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -30,8 +29,4 @@ impl SimpleInput {
     pub fn should_fire(&self) -> bool {
         return self.should_fire;
     }
-}
-
-impl Input for SimpleInput {
-
 }

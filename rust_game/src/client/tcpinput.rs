@@ -8,13 +8,13 @@ use crate::threading::sender::SendError;
 use std::io;
 use crate::interface::GameTrait;
 
-pub struct TcpInput <GameType: GameTrait> {
+pub struct TcpInput <Game: GameTrait> {
     player_index: Option<usize>,
     tcp_stream: TcpStream,
-    initial_information_message_consumers: ConsumerList<InitialInformation<GameType>>
+    initial_information_message_consumers: ConsumerList<InitialInformation<Game>>
 }
 
-impl<GameType: GameTrait> TcpInput<GameType> {
+impl<Game: GameTrait> TcpInput<Game> {
 
     pub fn new(tcp_stream: &TcpStream) -> io::Result<Self> {
         Ok(Self {
@@ -25,7 +25,7 @@ impl<GameType: GameTrait> TcpInput<GameType> {
     }
 }
 
-impl<GameType: GameTrait> ChannelThread<()> for TcpInput<GameType> {
+impl<Game: GameTrait> ChannelThread<()> for TcpInput<Game> {
 
     fn run(mut self, receiver: Receiver<Self>) {
         info!("Starting");
@@ -33,7 +33,7 @@ impl<GameType: GameTrait> ChannelThread<()> for TcpInput<GameType> {
         let receiver = receiver;
 
         loop {
-            let result: Result<ToClientMessageTCP::<GameType>, Error> = rmp_serde::from_read(&self.tcp_stream);
+            let result: Result<ToClientMessageTCP::<Game>, Error> = rmp_serde::from_read(&self.tcp_stream);
 
             match result {
                 Ok(message) => {
@@ -61,10 +61,10 @@ impl<GameType: GameTrait> ChannelThread<()> for TcpInput<GameType> {
     }
 }
 
-impl<GameType: GameTrait> Sender<TcpInput<GameType>> {
+impl<Game: GameTrait> Sender<TcpInput<Game>> {
 
-    pub fn add_initial_information_message_consumer<T>(&self, consumer: T) -> Result<(), SendError<TcpInput<GameType>>>
-        where T: Consumer<InitialInformation<GameType>> {
+    pub fn add_initial_information_message_consumer<T>(&self, consumer: T) -> Result<(), SendError<TcpInput<Game>>>
+        where T: Consumer<InitialInformation<Game>> {
 
         self.send(|tcp_input|{
             tcp_input.initial_information_message_consumers.add_consumer(consumer);

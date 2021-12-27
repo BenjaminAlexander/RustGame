@@ -1,18 +1,31 @@
+use std::fmt::Debug;
 use serde::Serialize;
 use serde::de::DeserializeOwned;
-use crate::interface::{State, Input, ClientUpdateArg, ServerInput, InputEvent, InterpolationResult, InterpolationArg};
+use crate::interface::{ClientUpdateArg, InterpolationArg};
 use crate::interface::serverupdatearg::ServerUpdateArg;
 use crate::messaging::InitialInformation;
 use crate::TimeDuration;
 
 //TODO: can Serialize + DeserializeOwned be removed
 pub trait GameTrait: 'static + Send + Sized + Serialize + DeserializeOwned {
-    type StateType: State;
-    type InputType: Input;
-    type ServerInputType: ServerInput;
-    type InterpolationResultType: InterpolationResult;
-    type InputEventType: InputEvent;
-    type InputEventHandlerType: Send + 'static;
+
+    type StateType:
+        Serialize + DeserializeOwned + Clone + Debug + Send + Sync + 'static;
+
+    type InputType:
+        Serialize + DeserializeOwned + Clone + Debug + Send + 'static;
+
+    type ServerInputType:
+        Serialize + DeserializeOwned + Clone + Debug + Send + 'static;
+
+    type InterpolationResultType:
+        Send + 'static;
+
+    type InputEventType:
+        Send + 'static;
+
+    type InputEventHandlerType:
+        Send + 'static;
 
     const TCP_PORT: u16;
     const UDP_PORT: u16;
@@ -20,6 +33,8 @@ pub trait GameTrait: 'static + Send + Sized + Serialize + DeserializeOwned {
     const GRACE_PERIOD: TimeDuration;
     const TIME_SYNC_MESSAGE_PERIOD: TimeDuration;
     const CLOCK_AVERAGE_SIZE: usize;
+
+    fn get_initial_state(player_count: usize) -> Self::StateType;
 
     fn get_server_input(state: &Self::StateType, arg: &ServerUpdateArg<Self>) -> Self::ServerInputType;
 

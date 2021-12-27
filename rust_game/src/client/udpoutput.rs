@@ -5,16 +5,16 @@ use crate::messaging::{InputMessage, ToServerMessageUDP, InitialInformation, MAX
 use std::io;
 use crate::threading::{ChannelThread, Receiver, Consumer, Sender};
 
-pub struct UdpOutput<GameType: GameTrait> {
+pub struct UdpOutput<Game: GameTrait> {
     server_address: SocketAddrV4,
     socket: UdpSocket,
     fragmenter: Fragmenter,
-    input_queue: Vec<InputMessage<GameType>>,
+    input_queue: Vec<InputMessage<Game>>,
     max_observed_input_queue: usize,
-    initial_information: Option<InitialInformation<GameType>>
+    initial_information: Option<InitialInformation<Game>>
 }
 
-impl<GameType: GameTrait> UdpOutput<GameType> {
+impl<Game: GameTrait> UdpOutput<Game> {
 
     pub fn new(server_socket_addr_v4: SocketAddrV4,
                socket: &UdpSocket) -> io::Result<Self> {
@@ -30,7 +30,7 @@ impl<GameType: GameTrait> UdpOutput<GameType> {
         });
     }
 
-    fn send_message(&mut self, message: ToServerMessageUDP<GameType>) {
+    fn send_message(&mut self, message: ToServerMessageUDP<Game>) {
 
         let buf = rmp_serde::to_vec(&message).unwrap();
         let fragments = self.fragmenter.make_fragments(buf);
@@ -46,7 +46,7 @@ impl<GameType: GameTrait> UdpOutput<GameType> {
     }
 }
 
-impl<GameType: GameTrait> ChannelThread<()> for UdpOutput<GameType> {
+impl<Game: GameTrait> ChannelThread<()> for UdpOutput<Game> {
 
     fn run(mut self, receiver: Receiver<Self>) -> () {
 
@@ -72,7 +72,7 @@ impl<GameType: GameTrait> ChannelThread<()> for UdpOutput<GameType> {
                 match self.input_queue.pop() {
                     None => send_another_message = false,
                     Some(input_to_send) => {
-                        let message = ToServerMessageUDP::<GameType>::Input(input_to_send);
+                        let message = ToServerMessageUDP::<Game>::Input(input_to_send);
                         self.send_message(message);
                     }
                 }
@@ -81,23 +81,23 @@ impl<GameType: GameTrait> ChannelThread<()> for UdpOutput<GameType> {
     }
 }
 
-impl<GameType: GameTrait> Consumer<InitialInformation<GameType>> for Sender<UdpOutput<GameType>> {
+impl<Game: GameTrait> Consumer<InitialInformation<Game>> for Sender<UdpOutput<Game>> {
 
-    fn accept(&self, initial_information: InitialInformation<GameType>) {
+    fn accept(&self, initial_information: InitialInformation<Game>) {
         self.send(move |udp_output|{
             info!("InitialInformation Received.");
             udp_output.initial_information = Some(initial_information);
 
-            let message = ToServerMessageUDP::<GameType>::Hello{player_index: udp_output.initial_information.as_ref().unwrap().get_player_index()};
+            let message = ToServerMessageUDP::<Game>::Hello{player_index: udp_output.initial_information.as_ref().unwrap().get_player_index()};
             udp_output.send_message(message);
 
         }).unwrap();
     }
 }
 
-impl<GameType: GameTrait> Consumer<InputMessage<GameType>> for Sender<UdpOutput<GameType>> {
+impl<Game: GameTrait> Consumer<InputMessage<Game>> for Sender<UdpOutput<Game>> {
 
-    fn accept(&self, input_message: InputMessage<GameType>) {
+    fn accept(&self, input_message: InputMessage<Game>) {
         self.send(move |udp_output|{
 
             //insert in reverse sorted order

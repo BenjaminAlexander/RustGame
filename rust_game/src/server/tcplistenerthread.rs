@@ -7,21 +7,21 @@ use crate::server::ServerCore;
 
 use crate::threading::{Sender, ChannelThread, Receiver};
 
-pub struct TcpListenerThread<GameType: GameTrait> {
-    server_core_sender: Sender<ServerCore<GameType>>,
-    phantom: PhantomData<GameType>
+pub struct TcpListenerThread<Game: GameTrait> {
+    server_core_sender: Sender<ServerCore<Game>>,
+    phantom: PhantomData<Game>
 }
 
-impl<GameType: GameTrait> TcpListenerThread<GameType> {
-    pub fn new(server_core_sender: Sender<ServerCore<GameType>>) -> Self {
+impl<Game: GameTrait> TcpListenerThread<Game> {
+    pub fn new(server_core_sender: Sender<ServerCore<Game>>) -> Self {
         Self{server_core_sender, phantom: PhantomData}
     }
 }
 
-impl<GameType: GameTrait> ChannelThread<()> for TcpListenerThread<GameType> {
+impl<Game: GameTrait> ChannelThread<()> for TcpListenerThread<Game> {
 
     fn run(mut self, receiver: Receiver<Self>) {
-        let socket_addr_v4:SocketAddrV4 = SocketAddrV4::new(Ipv4Addr::new(127, 0, 0, 1), GameType::TCP_PORT);
+        let socket_addr_v4:SocketAddrV4 = SocketAddrV4::new(Ipv4Addr::new(127, 0, 0, 1), Game::TCP_PORT);
         let socket_addr:SocketAddr = SocketAddr::from(socket_addr_v4);
         let listener:TcpListener = TcpListener::bind(socket_addr).unwrap();
 

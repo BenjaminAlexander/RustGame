@@ -1,5 +1,5 @@
 use crate::simplegame::{Vector2, SimplServerInputEvent};
-use crate::interface::{State, ClientUpdateArg, InterpolationArg, InterpolationResult, ServerUpdateArg, GameTrait};
+use crate::interface::{ClientUpdateArg, InterpolationArg, ServerUpdateArg, GameTrait};
 use serde::{Deserialize, Serialize};
 use crate::simplegame::character::Character;
 use opengl_graphics::GlGraphics;
@@ -17,9 +17,9 @@ pub struct SimpleState {
     bullets: Vec<Bullet>
 }
 
-impl State for SimpleState {
+impl SimpleState {
 
-    fn new(player_count: usize) -> Self {
+    pub fn new(player_count: usize) -> Self {
 
         let mut new = Self{
             player_characters: Vec::new(),
@@ -37,9 +37,6 @@ impl State for SimpleState {
 
         return new;
     }
-}
-
-impl SimpleState {
 
     pub fn get_server_input(state: &SimpleState, arg: &ServerUpdateArg<SimpleGameImpl>) -> SimpleServerInput {
         let mut server_input = SimpleServerInput::new();
@@ -116,8 +113,4 @@ impl SimpleState {
     pub fn hit_character(&mut self, index: usize) {
         self.player_characters[index].reduce_health();
     }
-}
-
-impl InterpolationResult for SimpleState {
-
 }

@@ -3,15 +3,15 @@ use crate::gametime::TimeDuration;
 use crate::interface::game::GameTrait;
 
 #[derive(Debug)]
-pub struct ServerUpdateArg<'a, 'b, GameType: GameTrait> {
-    initial_information: &'a InitialInformation<GameType>,
+pub struct ServerUpdateArg<'a, 'b, Game: GameTrait> {
+    initial_information: &'a InitialInformation<Game>,
     step: usize,
-    inputs: &'b Vec<Option<GameType::InputType>>,
+    inputs: &'b Vec<Option<Game::InputType>>,
 }
 
-impl<'a, 'b, GameType: GameTrait> ServerUpdateArg<'a, 'b, GameType> {
+impl<'a, 'b, Game: GameTrait> ServerUpdateArg<'a, 'b, Game> {
 
-    pub fn new(initial_information: &'a InitialInformation<GameType>, step: usize, inputs: &'b Vec<Option<GameType::InputType>>) -> Self {
+    pub fn new(initial_information: &'a InitialInformation<Game>, step: usize, inputs: &'b Vec<Option<Game::InputType>>) -> Self {
         return Self{
             initial_information,
             step,
@@ -19,7 +19,7 @@ impl<'a, 'b, GameType: GameTrait> ServerUpdateArg<'a, 'b, GameType> {
         }
     }
 
-    pub fn get_input(&self, player_index: usize) -> Option<&GameType::InputType> {
+    pub fn get_input(&self, player_index: usize) -> Option<&Game::InputType> {
         if let Some(option) = self.inputs.get(player_index) {
             return option.as_ref();
         } else {

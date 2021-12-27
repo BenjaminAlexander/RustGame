@@ -6,11 +6,11 @@ use crate::messaging::{InputMessage, StateMessage, ServerInputMessage};
 
 #[derive(Serialize, Deserialize, Debug)]
 #[serde(bound = "")]
-pub enum ToClientMessageUDP<GameType: GameTrait> {
+pub enum ToClientMessageUDP<Game: GameTrait> {
 
     //TODO: see if these can be borrowed
     TimeMessage(TimeMessage),
-    InputMessage(InputMessage<GameType>),
-    ServerInputMessage(ServerInputMessage<GameType>),
-    StateMessage(StateMessage<GameType>)
+    InputMessage(InputMessage<Game>),
+    ServerInputMessage(ServerInputMessage<Game>),
+    StateMessage(StateMessage<Game>)
 }

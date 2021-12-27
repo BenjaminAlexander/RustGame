@@ -5,20 +5,20 @@ use crate::threading::{Consumer, Sender, Receiver, channel};
 use crate::gametime::{TimeMessage, TimeValue, TimeDuration};
 use crate::messaging::InitialInformation;
 
-pub struct RenderReceiver<GameType: GameTrait> {
-    receiver: Receiver<Data<GameType>>,
-    data: Data<GameType>
+pub struct RenderReceiver<Game: GameTrait> {
+    receiver: Receiver<Data<Game>>,
+    data: Data<Game>
 }
 
-pub struct Data<GameType: GameTrait> {
+pub struct Data<Game: GameTrait> {
 
     //TODO: use vec deque so that this is more efficient
-    step_queue: Vec<StepMessage<GameType>>,
+    step_queue: Vec<StepMessage<Game>>,
     latest_time_message: Option<TimeMessage>,
-    initial_information: Option<InitialInformation<GameType>>,
+    initial_information: Option<InitialInformation<Game>>,
 }
 
-impl<GameType: GameTrait> Data<GameType> {
+impl<Game: GameTrait> Data<Game> {
 
     fn drop_steps_before(&mut self, drop_before: usize) {
         while self.step_queue.len() > 2 &&
@@ -30,10 +30,10 @@ impl<GameType: GameTrait> Data<GameType> {
     }
 }
 
-impl<GameType: GameTrait> RenderReceiver<GameType> {
+impl<Game: GameTrait> RenderReceiver<Game> {
 
-    pub fn new() -> (Sender<Data<GameType>>, Self) {
-        let (sender, receiver) = channel::<Data<GameType>>();
+    pub fn new() -> (Sender<Data<Game>>, Self) {
+        let (sender, receiver) = channel::<Data<Game>>();
 
         let render_receiver = Self{
             receiver,
@@ -48,7 +48,7 @@ impl<GameType: GameTrait> RenderReceiver<GameType> {
     }
 
     //TODO: remove timeduration
-    pub fn get_step_message(&mut self) -> Option<(TimeDuration, GameType::InterpolationResultType)> {
+    pub fn get_step_message(&mut self) -> Option<(TimeDuration, Game::InterpolationResultType)> {
 
         self.receiver.try_iter(&mut self.data);
 
@@ -97,7 +97,7 @@ impl<GameType: GameTrait> RenderReceiver<GameType> {
             }
 
             let arg = InterpolationArg::new(weight, duration_since_start);
-            let interpolation_result = GameType::interpolate(
+            let interpolation_result = Game::interpolate(
                 self.data.initial_information.as_ref().unwrap(),
                 first_step.get_state(),
                 second_step.get_state(),
@@ -112,9 +112,9 @@ impl<GameType: GameTrait> RenderReceiver<GameType> {
 
 }
 
-impl<GameType: GameTrait> Consumer<StepMessage<GameType>> for Sender<Data<GameType>> {
+impl<Game: GameTrait> Consumer<StepMessage<Game>> for Sender<Data<Game>> {
 
-    fn accept(&self, step_message: StepMessage<GameType>) {
+    fn accept(&self, step_message: StepMessage<Game>) {
 
         //info!("StepMessage: {:?}", step_message.get_step_index());
         self.send(|data|{
@@ -146,7 +146,7 @@ impl<GameType: GameTrait> Consumer<StepMessage<GameType>> for Sender<Data<GameTy
 
 }
 
-impl<GameType: GameTrait> Consumer<TimeMessage> for Sender<Data<GameType>> {
+impl<Game: GameTrait> Consumer<TimeMessage> for Sender<Data<Game>> {
 
     fn accept(&self, time_message: TimeMessage) {
         self.send(move |data|{
@@ -163,9 +163,9 @@ impl<GameType: GameTrait> Consumer<TimeMessage> for Sender<Data<GameType>> {
     }
 }
 
-impl<GameType: GameTrait> Consumer<InitialInformation<GameType>> for Sender<Data<GameType>> {
+impl<Game: GameTrait> Consumer<InitialInformation<Game>> for Sender<Data<Game>> {
 
-    fn accept(&self, initial_information: InitialInformation<GameType>) {
+    fn accept(&self, initial_information: InitialInformation<Game>) {
         self.send(|data|{
             data.initial_information = Some(initial_information);
         }).unwrap();

@@ -1,7 +1,7 @@
 use std::net::{TcpStream, Ipv4Addr, SocketAddrV4, UdpSocket};
 
 use log::info;
-use crate::interface::{State, GameTrait};
+use crate::interface::GameTrait;
 use crate::server::tcpinput::TcpInput;
 use crate::threading::{ChannelDrivenThread, ChannelThread, Consumer, Sender};
 use crate::server::{TcpListenerThread, ServerConfig};
@@ -17,31 +17,31 @@ use crate::server::clientaddress::ClientAddress;
 //TODO: route game timer and player inputs through the core to
 // get synchronous enforcement of the grace period
 
-pub struct ServerCore<GameType: GameTrait> {
+pub struct ServerCore<Game: GameTrait> {
 
     game_is_started: bool,
     server_config: ServerConfig,
     tcp_inputs: Vec<Sender<TcpInput>>,
-    tcp_outputs: Vec<Sender<TcpOutput<GameType>>>,
+    tcp_outputs: Vec<Sender<TcpOutput<Game>>>,
     udp_socket: Option<UdpSocket>,
-    udp_outputs: Vec<Sender<UdpOutput<GameType>>>,
-    udp_input_sender: Option<Sender<UdpInput<GameType>>>,
-    manager_sender: Option<Sender<Manager<GameType>>>,
+    udp_outputs: Vec<Sender<UdpOutput<Game>>>,
+    udp_input_sender: Option<Sender<UdpInput<Game>>>,
+    manager_sender: Option<Sender<Manager<Game>>>,
     drop_steps_before: usize
 }
 
-impl<GameType: GameTrait> ChannelDrivenThread<()> for ServerCore<GameType> {
+impl<Game: GameTrait> ChannelDrivenThread<()> for ServerCore<Game> {
     fn on_channel_disconnect(&mut self) -> () {
         ()
     }
 }
 
-impl<GameType: GameTrait> ServerCore<GameType> {
+impl<Game: GameTrait> ServerCore<Game> {
 
     pub fn new() -> Self {
 
         let server_config = ServerConfig::new(
-            GameType::STEP_PERIOD
+            Game::STEP_PERIOD
         );
 
         Self {
@@ -58,36 +58,36 @@ impl<GameType: GameTrait> ServerCore<GameType> {
     }
 }
 
-impl<GameType: GameTrait> Sender<ServerCore<GameType>> {
+impl<Game: GameTrait> Sender<ServerCore<Game>> {
 
     pub fn start_listener(&self) {
         let clone = self.clone();
 
         self.send(|core| {
             let ip_addr_v4 = Ipv4Addr::from_str("127.0.0.1").unwrap();
-            let socket_addr_v4 = SocketAddrV4::new(ip_addr_v4, GameType::UDP_PORT);
+            let socket_addr_v4 = SocketAddrV4::new(ip_addr_v4, Game::UDP_PORT);
             core.udp_socket = Some(UdpSocket::bind(socket_addr_v4).unwrap());
 
-            let udp_input = UdpInput::<GameType>::new(core.udp_socket.as_ref().unwrap()).unwrap();
+            let udp_input = UdpInput::<Game>::new(core.udp_socket.as_ref().unwrap()).unwrap();
             let (udp_input_sender, udp_input_builder) = udp_input.build();
             udp_input_builder.name("ServerUdpInput").start().unwrap();
             core.udp_input_sender = Some(udp_input_sender);
 
-            let (listener_sender, listener_builder) = TcpListenerThread::<GameType>::new(clone).build();
+            let (listener_sender, listener_builder) = TcpListenerThread::<Game>::new(clone).build();
             listener_builder.name("ServerTcpListener").start().unwrap();
         }).unwrap();
     }
 
-    pub fn start_game(&self) -> RenderReceiver<GameType> {
-        let (render_receiver_sender, render_receiver) = RenderReceiver::<GameType>::new();
+    pub fn start_game(&self) -> RenderReceiver<Game> {
+        let (render_receiver_sender, render_receiver) = RenderReceiver::<Game>::new();
         let core_sender = self.clone();
         self.send(move |core| {
             if !core.game_is_started {
                 core.game_is_started = true;
 
-                let initial_state = GameType::StateType::new(core.tcp_outputs.len());
+                let initial_state = Game::get_initial_state(core.tcp_outputs.len());
 
-                let (manager_sender, manager_builder) = Manager::<GameType>::new(true).build();
+                let (manager_sender, manager_builder) = Manager::<Game>::new(true).build();
                 let (timer_sender, timer_builder) = GameTimer::new(0).build();
 
                 timer_sender.add_timer_message_consumer(core_sender.clone());
@@ -98,7 +98,7 @@ impl<GameType: GameTrait> Sender<ServerCore<GameType>> {
                 core.manager_sender = Some(manager_sender.clone());
                 manager_sender.drop_steps_before(core.drop_steps_before);
 
-                let server_initial_information = InitialInformation::<GameType>::new(
+                let server_initial_information = InitialInformation::<Game>::new(
                     core.server_config.clone(),
                     core.tcp_outputs.len(),
                     usize::MAX,
@@ -175,11 +175,11 @@ impl<GameType: GameTrait> Sender<ServerCore<GameType>> {
     }
 }
 
-impl<GameType: GameTrait> Consumer<TimeMessage> for Sender<ServerCore<GameType>> {
+impl<Game: GameTrait> Consumer<TimeMessage> for Sender<ServerCore<Game>> {
 
     fn accept(&self, time_message: TimeMessage) {
         self.send(move |core|{
-            core.drop_steps_before = time_message.get_step_from_actual_time(time_message.get_scheduled_time().subtract(GameType::GRACE_PERIOD)).ceil() as usize;
+            core.drop_steps_before = time_message.get_step_from_actual_time(time_message.get_scheduled_time().subtract(Game::GRACE_PERIOD)).ceil() as usize;
 
             if core.manager_sender.is_some() {
                 let manager_sender = core.manager_sender.as_ref().unwrap();
@@ -195,9 +195,9 @@ impl<GameType: GameTrait> Consumer<TimeMessage> for Sender<ServerCore<GameType>>
     }
 }
 
-impl<GameType: GameTrait> Consumer<InputMessage<GameType>> for Sender<ServerCore<GameType>> {
+impl<Game: GameTrait> Consumer<InputMessage<Game>> for Sender<ServerCore<Game>> {
 
-    fn accept(&self, input_message: InputMessage<GameType>) {
+    fn accept(&self, input_message: InputMessage<Game>) {
         self.send(move |core|{
 
             if core.drop_steps_before <= input_message.get_step() &&

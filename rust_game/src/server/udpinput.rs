@@ -10,17 +10,17 @@ use crate::server::remoteudppeer::RemoteUdpPeer;
 use std::collections::{HashMap, HashSet};
 use crate::server::clientaddress::ClientAddress;
 
-pub struct UdpInput<GameType: GameTrait> {
+pub struct UdpInput<Game: GameTrait> {
     socket: UdpSocket,
     remote_peers: Vec<Option<RemoteUdpPeer>>,
     client_addresses: Vec<Option<ClientAddress>>,
     client_ip_set: HashSet<IpAddr>,
     fragment_assemblers: HashMap<SocketAddr, FragmentAssembler>,
-    input_consumers: ConsumerList<InputMessage<GameType>>,
+    input_consumers: ConsumerList<InputMessage<Game>>,
     remote_peer_consumers: ConsumerList<RemoteUdpPeer>
 }
 
-impl<GameType: GameTrait> UdpInput<GameType> {
+impl<Game: GameTrait> UdpInput<Game> {
 
     pub fn new(socket: &UdpSocket) -> io::Result<Self> {
         return Ok(Self{
@@ -42,7 +42,7 @@ impl<GameType: GameTrait> UdpInput<GameType> {
         }
 
         if let Some(assembled) = self.handle_fragment(source, buf) {
-            let result: Result<ToServerMessageUDP::<GameType>, Error> = rmp_serde::from_read_ref(assembled.as_slice());
+            let result: Result<ToServerMessageUDP::<Game>, Error> = rmp_serde::from_read_ref(assembled.as_slice());
 
             match result {
                 Ok(message) => {
@@ -70,7 +70,7 @@ impl<GameType: GameTrait> UdpInput<GameType> {
         return assembler.add_fragment(MessageFragment::from_vec(fragment.to_vec()));
     }
 
-    fn handle_message(&mut self, message: ToServerMessageUDP<GameType>, source: SocketAddr) {
+    fn handle_message(&mut self, message: ToServerMessageUDP<Game>, source: SocketAddr) {
 
         let player_index = message.get_player_index();
 
@@ -121,7 +121,7 @@ impl<GameType: GameTrait> UdpInput<GameType> {
     }
 }
 
-impl<GameType: GameTrait> ChannelThread<()> for UdpInput<GameType> {
+impl<Game: GameTrait> ChannelThread<()> for UdpInput<Game> {
 
     fn run(mut self, receiver: Receiver<Self>) -> () {
 
@@ -147,17 +147,17 @@ impl<GameType: GameTrait> ChannelThread<()> for UdpInput<GameType> {
     }
 }
 
-impl<GameType: GameTrait> Sender<UdpInput<GameType>> {
+impl<Game: GameTrait> Sender<UdpInput<Game>> {
 
-    pub fn add_input_consumer<T>(&self, consumer: T) -> Result<(), SendError<UdpInput<GameType>>>
-        where T: Consumer<InputMessage<GameType>> {
+    pub fn add_input_consumer<T>(&self, consumer: T) -> Result<(), SendError<UdpInput<Game>>>
+        where T: Consumer<InputMessage<Game>> {
 
         self.send(|udp_input|{
             udp_input.input_consumers.add_consumer(consumer);
         })
     }
 
-    pub fn add_remote_peer_consumers<T>(&self, consumer: T) -> Result<(), SendError<UdpInput<GameType>>>
+    pub fn add_remote_peer_consumers<T>(&self, consumer: T) -> Result<(), SendError<UdpInput<Game>>>
         where T: Consumer<RemoteUdpPeer> {
 
         self.send(|udp_input|{
@@ -173,7 +173,7 @@ impl<GameType: GameTrait> Sender<UdpInput<GameType>> {
     }
 }
 
-impl<GameType: GameTrait> Consumer<ClientAddress> for Sender<UdpInput<GameType>> {
+impl<Game: GameTrait> Consumer<ClientAddress> for Sender<UdpInput<Game>> {
     fn accept(&self, client_address: ClientAddress) {
         self.send(move |udp_input|{
             udp_input.client_ip_set.insert(client_address.get_ip_address());

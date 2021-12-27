@@ -3,19 +3,19 @@ use crate::interface::GameTrait;
 use crate::server::ServerConfig;
 
 #[derive(Serialize, Deserialize, Debug)]
-pub struct InitialInformation<GameType: GameTrait> {
+pub struct InitialInformation<Game: GameTrait> {
     server_config: ServerConfig,
     player_count: usize,
     player_index: usize,
-    state: GameType::StateType,
+    state: Game::StateType,
 }
 
-impl<GameType: GameTrait> InitialInformation<GameType> {
+impl<Game: GameTrait> InitialInformation<Game> {
 
     pub fn new(server_config: ServerConfig,
                player_count: usize,
                player_index: usize,
-               state: GameType::StateType) -> Self {
+               state: Game::StateType) -> Self {
 
         return Self{
             server_config,
@@ -25,11 +25,11 @@ impl<GameType: GameTrait> InitialInformation<GameType> {
         };
     }
 
-    pub fn get_state(&self) -> &GameType::StateType {
+    pub fn get_state(&self) -> &Game::StateType {
         &self.state
     }
 
-    pub fn move_state(self) -> GameType::StateType {
+    pub fn move_state(self) -> Game::StateType {
         self.state
     }
 
@@ -50,7 +50,7 @@ impl<GameType: GameTrait> InitialInformation<GameType> {
     }
 }
 
-impl<GameType: GameTrait> Clone for InitialInformation<GameType> {
+impl<Game: GameTrait> Clone for InitialInformation<Game> {
 
     fn clone(&self) -> Self {
         Self{

@@ -23,6 +23,10 @@ impl GameTrait for SimpleGameImpl {
     const TIME_SYNC_MESSAGE_PERIOD: TimeDuration = TimeDuration::from_millis(1000);
     const CLOCK_AVERAGE_SIZE: usize = 100;
 
+    fn get_initial_state(player_count: usize) -> Self::StateType {
+        Self::StateType::new(player_count)
+    }
+
     fn get_server_input(state: &Self::StateType, arg: &ServerUpdateArg<Self>) -> Self::ServerInputType {
         return SimpleState::get_server_input(state, arg);
     }

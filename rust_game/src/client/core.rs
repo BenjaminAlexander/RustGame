@@ -11,22 +11,22 @@ use log::{info, trace};
 use crate::client::udpoutput::UdpOutput;
 use crate::client::udpinput::UdpInput;
 
-pub struct ClientCore<GameType: GameTrait> {
+pub struct ClientCore<Game: GameTrait> {
     server_ip: String,
-    input_event_handler: GameType::InputEventHandlerType,
-    manager_sender: Option<Sender<Manager<GameType>>>,
-    udp_output_sender: Option<Sender<UdpOutput<GameType>>>,
+    input_event_handler: Game::InputEventHandlerType,
+    manager_sender: Option<Sender<Manager<Game>>>,
+    udp_output_sender: Option<Sender<UdpOutput<Game>>>,
     tcp_output_sender: Option<Sender<TcpOutput>>,
-    initial_information: Option<InitialInformation<GameType>>,
+    initial_information: Option<InitialInformation<Game>>,
     last_time_message: Option<TimeMessage>
 }
 
-impl<GameType: GameTrait> ClientCore<GameType> {
+impl<Game: GameTrait> ClientCore<Game> {
 
     pub fn new(server_ip: &str) -> Self {
 
         ClientCore {server_ip: server_ip.to_string(),
-            input_event_handler: GameType::new_input_event_handler(),
+            input_event_handler: Game::new_input_event_handler(),
             manager_sender: None,
             udp_output_sender: None,
             tcp_output_sender: None,
@@ -36,35 +36,35 @@ impl<GameType: GameTrait> ClientCore<GameType> {
     }
 }
 
-impl<GameType: GameTrait> ChannelDrivenThread<()> for ClientCore<GameType> {
+impl<Game: GameTrait> ChannelDrivenThread<()> for ClientCore<Game> {
 
     fn on_channel_disconnect(&mut self) -> () {
         ()
     }
 }
 
-impl<GameType: GameTrait> Sender<ClientCore<GameType>> {
+impl<Game: GameTrait> Sender<ClientCore<Game>> {
 
-    pub fn connect(&self) -> RenderReceiver<GameType> {
-        let (render_receiver_sender, render_receiver) = RenderReceiver::<GameType>::new();
+    pub fn connect(&self) -> RenderReceiver<Game> {
+        let (render_receiver_sender, render_receiver) = RenderReceiver::<Game>::new();
         let core_sender = self.clone();
 
         self.send(move |core|{
             let ip_addr_v4 = Ipv4Addr::from_str(core.server_ip.as_str()).unwrap();
-            let socket_addr_v4 = SocketAddrV4::new(ip_addr_v4, GameType::TCP_PORT);
+            let socket_addr_v4 = SocketAddrV4::new(ip_addr_v4, Game::TCP_PORT);
             let socket_addr:SocketAddr = SocketAddr::from(socket_addr_v4);
             let tcp_stream = TcpStream::connect(socket_addr).unwrap();
 
-            let server_udp_socket_addr_v4 = SocketAddrV4::new(ip_addr_v4, GameType::UDP_PORT);
+            let server_udp_socket_addr_v4 = SocketAddrV4::new(ip_addr_v4, Game::UDP_PORT);
 
             let udp_socket = UdpSocket::bind("127.0.0.1:0").unwrap();
 
-            let (manager_sender, manager_builder) = Manager::<GameType>::new(false).build();
-            let (game_timer_sender, game_timer_builder) = GameTimer::<GameType>::new(GameType::CLOCK_AVERAGE_SIZE).build();
-            let (tcp_input_sender, tcp_input_builder) = TcpInput::<GameType>::new(&tcp_stream).unwrap().build();
+            let (manager_sender, manager_builder) = Manager::<Game>::new(false).build();
+            let (game_timer_sender, game_timer_builder) = GameTimer::<Game>::new(Game::CLOCK_AVERAGE_SIZE).build();
+            let (tcp_input_sender, tcp_input_builder) = TcpInput::<Game>::new(&tcp_stream).unwrap().build();
             let (tcp_output_sender, tcp_output_builder) = TcpOutput::new(&tcp_stream).unwrap().build();
-            let (udp_output_sender, udp_output_builder) = UdpOutput::<GameType>::new(server_udp_socket_addr_v4, &udp_socket).unwrap().build();
-            let (udp_input_sender, udp_input_builder) = UdpInput::<GameType>::new(server_udp_socket_addr_v4, &udp_socket).unwrap().build();
+            let (udp_output_sender, udp_output_builder) = UdpOutput::<Game>::new(server_udp_socket_addr_v4, &udp_socket).unwrap().build();
+            let (udp_input_sender, udp_input_builder) = UdpInput::<Game>::new(server_udp_socket_addr_v4, &udp_socket).unwrap().build();
 
             tcp_input_sender.add_initial_information_message_consumer(manager_sender.clone()).unwrap();
             tcp_input_sender.add_initial_information_message_consumer(core_sender.clone()).unwrap();
@@ -98,21 +98,21 @@ impl<GameType: GameTrait> Sender<ClientCore<GameType>> {
         return render_receiver;
     }
 
-    pub fn on_input_event(&self, input_event: GameType::InputEventType) {
+    pub fn on_input_event(&self, input_event: Game::InputEventType) {
         self.send(move |core|{
             if core.manager_sender.is_some() &&
                 core.last_time_message.is_some() &&
                 core.initial_information.is_some() {
 
-                GameType::handle_input_event(&mut core.input_event_handler, input_event);
+                Game::handle_input_event(&mut core.input_event_handler, input_event);
             }
         }).unwrap();
     }
 }
 
-impl<GameType: GameTrait> Consumer<InitialInformation<GameType>> for Sender<ClientCore<GameType>> {
+impl<Game: GameTrait> Consumer<InitialInformation<Game>> for Sender<ClientCore<Game>> {
 
-    fn accept(&self, initial_information: InitialInformation<GameType>) {
+    fn accept(&self, initial_information: InitialInformation<Game>) {
         self.send(move |core|{
             info!("InitialInformation Received.");
             core.initial_information = Some(initial_information);
@@ -120,7 +120,7 @@ impl<GameType: GameTrait> Consumer<InitialInformation<GameType>> for Sender<Clie
     }
 }
 
-impl<GameType: GameTrait> Consumer<TimeMessage> for Sender<ClientCore<GameType>> {
+impl<Game: GameTrait> Consumer<TimeMessage> for Sender<ClientCore<Game>> {
 
     fn accept(&self, time_message: TimeMessage) {
 
@@ -141,18 +141,18 @@ impl<GameType: GameTrait> Consumer<TimeMessage> for Sender<ClientCore<GameType>>
                 let initial_information = core.initial_information.as_ref().unwrap();
 
                 if time_message.get_step() > last_time_message.get_step() {
-                    let message = InputMessage::<GameType>::new(
+                    let message = InputMessage::<Game>::new(
                         //TODO: message or last message?
                         //TODO: define strict and consistent rules for how real time relates to ticks, input deadlines and display states
                         time_message.get_step(),
                         initial_information.get_player_index(),
-                        GameType::get_input(& mut core.input_event_handler)
+                        Game::get_input(& mut core.input_event_handler)
                     );
 
                     manager_sender.accept(message.clone());
                     udp_output_sender.accept(message);
 
-                    let client_drop_time = time_message.get_scheduled_time().subtract(GameType::GRACE_PERIOD * 2);
+                    let client_drop_time = time_message.get_scheduled_time().subtract(Game::GRACE_PERIOD * 2);
                     let drop_step = time_message.get_step_from_actual_time(client_drop_time).ceil() as usize;
 
                     manager_sender.drop_steps_before(drop_step);
