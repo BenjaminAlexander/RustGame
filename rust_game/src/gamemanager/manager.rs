@@ -7,6 +7,7 @@ use crate::gamemanager::step::Step;
 use crate::gamemanager::stepmessage::StepMessage;
 use crate::gametime::{TimeDuration, TimeValue};
 use std::sync::Arc;
+use crate::gamemanager::Data;
 
 pub struct Manager<Game: GameTrait> {
 
@@ -17,7 +18,7 @@ pub struct Manager<Game: GameTrait> {
     initial_information: Option<Arc<InitialInformation<Game>>>,
     //New states at the back, old at the front (index 0)
     steps: VecDeque<Step<Game>>,
-    requested_step_consumer_list: ConsumerList<StepMessage<Game>>,
+    render_receiver_sender: Sender<Data<Game>>,
     completed_step_consumer_list: ConsumerList<StateMessage<Game>>,
     server_input_consumer_list: ConsumerList<ServerInputMessage<Game>>,
 
@@ -28,14 +29,14 @@ pub struct Manager<Game: GameTrait> {
 
 impl<Game: GameTrait> Manager<Game> {
 
-    pub fn new(is_server: bool) -> Self {
+    pub fn new(is_server: bool, render_receiver_sender: Sender<Data<Game>>) -> Self {
         Self{
             is_server,
             initial_information: None,
             steps: VecDeque::new(),
             requested_step: 0,
             drop_steps_before: 0,
-            requested_step_consumer_list: ConsumerList::new(),
+            render_receiver_sender,
             completed_step_consumer_list: ConsumerList::new(),
             server_input_consumer_list: ConsumerList::new(),
 
@@ -99,7 +100,7 @@ impl<Game: GameTrait> Manager<Game> {
     fn send_messages(&mut self, step_index: usize) {
         let changed_message_option = self.steps[step_index].get_changed_message();
         if changed_message_option.is_some() {
-            self.requested_step_consumer_list.accept(&changed_message_option.unwrap());
+            self.render_receiver_sender.on_step_message(changed_message_option.unwrap().clone());
         }
 
         let complete_message_option = self.steps[step_index].get_complete_message();
@@ -191,14 +192,6 @@ impl<Game: GameTrait> ChannelDrivenThread<()> for Manager<Game> {
 }
 
 impl<Game: GameTrait> Sender<Manager<Game>> {
-
-    pub fn add_requested_step_consumer<T>(&self, consumer: T)
-        where T: Consumer<StepMessage<Game>> {
-
-        self.send(move |manager|{
-            manager.requested_step_consumer_list.add_consumer(consumer);
-        }).unwrap();
-    }
 
     pub fn add_completed_step_consumer<T>(&self, consumer: T)
         where T: Consumer<StateMessage<Game>> {

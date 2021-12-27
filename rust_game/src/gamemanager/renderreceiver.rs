@@ -5,6 +5,7 @@ use crate::threading::{Consumer, Sender, Receiver, channel};
 use crate::gametime::{TimeMessage, TimeValue, TimeDuration};
 use crate::messaging::InitialInformation;
 
+//TODO: made the difference between the render receiver and the Data more clear
 pub struct RenderReceiver<Game: GameTrait> {
     receiver: Receiver<Data<Game>>,
     data: Data<Game>
@@ -112,9 +113,9 @@ impl<Game: GameTrait> RenderReceiver<Game> {
 
 }
 
-impl<Game: GameTrait> Consumer<StepMessage<Game>> for Sender<Data<Game>> {
+impl<Game: GameTrait> Sender<Data<Game>> {
 
-    fn accept(&self, step_message: StepMessage<Game>) {
+    pub fn on_step_message(&self, step_message: StepMessage<Game>) {
 
         //info!("StepMessage: {:?}", step_message.get_step_index());
         self.send(|data|{
@@ -143,7 +144,6 @@ impl<Game: GameTrait> Consumer<StepMessage<Game>> for Sender<Data<Game>> {
 
         }).unwrap();
     }
-
 }
 
 impl<Game: GameTrait> Consumer<TimeMessage> for Sender<Data<Game>> {

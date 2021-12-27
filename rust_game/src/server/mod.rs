@@ -1,8 +1,8 @@
-pub use crate::server::core::*;
+pub use crate::server::servercore::*;
 pub use crate::server::tcplistenerthread::TcpListenerThread;
 pub use self::serverconfig::ServerConfig;
 
-mod core;
+mod servercore;
 mod tcpinput;
 mod tcplistenerthread;
 mod tcpoutput;

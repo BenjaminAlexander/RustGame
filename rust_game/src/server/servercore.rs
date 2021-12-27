@@ -87,13 +87,11 @@ impl<Game: GameTrait> Sender<ServerCore<Game>> {
 
                 let initial_state = Game::get_initial_state(core.tcp_outputs.len());
 
-                let (manager_sender, manager_builder) = Manager::<Game>::new(true).build();
+                let (manager_sender, manager_builder) = Manager::<Game>::new(true, render_receiver_sender.clone()).build();
                 let (timer_sender, timer_builder) = GameTimer::new(0).build();
 
                 timer_sender.add_timer_message_consumer(core_sender.clone());
                 timer_sender.add_timer_message_consumer(render_receiver_sender.clone());
-
-                manager_sender.add_requested_step_consumer(render_receiver_sender.clone());
 
                 core.manager_sender = Some(manager_sender.clone());
                 manager_sender.drop_steps_before(core.drop_steps_before);

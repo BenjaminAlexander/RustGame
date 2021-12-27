@@ -1,6 +1,6 @@
-pub use self::core::ClientCore;
+pub use self::clientcore::ClientCore;
 
-mod core;
+mod clientcore;
 mod tcpinput;
 mod tcpoutput;
 mod udpoutput;

@@ -40,6 +40,7 @@ pub trait GameTrait: 'static + Send + Sized {
 
     fn get_next_state(state: &Self::State, arg: &ClientUpdateArg<Self>) -> Self::State;
 
+    //TODO: this method needs to include the last interpolation result
     fn interpolate(initial_information: &InitialInformation<Self>,
                    first: &Self::State,
                    second: &Self::State,

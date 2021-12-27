@@ -59,7 +59,7 @@ impl<Game: GameTrait> Sender<ClientCore<Game>> {
 
             let udp_socket = UdpSocket::bind("127.0.0.1:0").unwrap();
 
-            let (manager_sender, manager_builder) = Manager::<Game>::new(false).build();
+            let (manager_sender, manager_builder) = Manager::<Game>::new(false, render_receiver_sender.clone()).build();
             let (game_timer_sender, game_timer_builder) = GameTimer::<Game>::new(Game::CLOCK_AVERAGE_SIZE).build();
             let (tcp_input_sender, tcp_input_builder) = TcpInput::<Game>::new(&tcp_stream).unwrap().build();
             let (tcp_output_sender, tcp_output_builder) = TcpOutput::new(&tcp_stream).unwrap().build();
@@ -79,8 +79,6 @@ impl<Game: GameTrait> Sender<ClientCore<Game>> {
 
             game_timer_sender.add_timer_message_consumer(core_sender.clone());
             game_timer_sender.add_timer_message_consumer(render_receiver_sender.clone());
-
-            manager_sender.add_requested_step_consumer(render_receiver_sender.clone());
 
             let _manager_join_handle = manager_builder.name("ClientManager").start().unwrap();
             let _tcp_input_join_handle = tcp_input_builder.name("ClientTcpInput").start().unwrap();
