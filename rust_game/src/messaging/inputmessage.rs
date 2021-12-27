@@ -6,12 +6,12 @@ use crate::interface::GameTrait;
 pub struct InputMessage<Game: GameTrait> {
     sequence: usize,
     player_index: usize,
-    input: Game::InputType
+    input: Game::ClientInput
 }
 
 impl<Game: GameTrait> InputMessage<Game> {
 
-    pub fn new(sequence: usize, player_index: usize, input: Game::InputType) -> InputMessage<Game> {
+    pub fn new(sequence: usize, player_index: usize, input: Game::ClientInput) -> InputMessage<Game> {
         InputMessage{ sequence, player_index, input }
     }
 
@@ -23,7 +23,7 @@ impl<Game: GameTrait> InputMessage<Game> {
         self.player_index
     }
 
-    pub fn get_input(self) -> Game::InputType {
+    pub fn get_input(self) -> Game::ClientInput {
         self.input
     }
 }

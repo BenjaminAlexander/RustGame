@@ -13,7 +13,7 @@ use crate::client::udpinput::UdpInput;
 
 pub struct ClientCore<Game: GameTrait> {
     server_ip: String,
-    input_event_handler: Game::InputEventHandlerType,
+    input_event_handler: Game::ClientInputEventHandler,
     manager_sender: Option<Sender<Manager<Game>>>,
     udp_output_sender: Option<Sender<UdpOutput<Game>>>,
     tcp_output_sender: Option<Sender<TcpOutput>>,
@@ -98,7 +98,7 @@ impl<Game: GameTrait> Sender<ClientCore<Game>> {
         return render_receiver;
     }
 
-    pub fn on_input_event(&self, input_event: Game::InputEventType) {
+    pub fn on_input_event(&self, input_event: Game::ClientInputEvent) {
         self.send(move |core|{
             if core.manager_sender.is_some() &&
                 core.last_time_message.is_some() &&

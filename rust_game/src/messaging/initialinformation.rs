@@ -7,7 +7,7 @@ pub struct InitialInformation<Game: GameTrait> {
     server_config: ServerConfig,
     player_count: usize,
     player_index: usize,
-    state: Game::StateType,
+    state: Game::State,
 }
 
 impl<Game: GameTrait> InitialInformation<Game> {
@@ -15,7 +15,7 @@ impl<Game: GameTrait> InitialInformation<Game> {
     pub fn new(server_config: ServerConfig,
                player_count: usize,
                player_index: usize,
-               state: Game::StateType) -> Self {
+               state: Game::State) -> Self {
 
         return Self{
             server_config,
@@ -25,11 +25,11 @@ impl<Game: GameTrait> InitialInformation<Game> {
         };
     }
 
-    pub fn get_state(&self) -> &Game::StateType {
+    pub fn get_state(&self) -> &Game::State {
         &self.state
     }
 
-    pub fn move_state(self) -> Game::StateType {
+    pub fn move_state(self) -> Game::State {
         self.state
     }
 

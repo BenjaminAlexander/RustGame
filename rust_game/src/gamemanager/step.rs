@@ -9,7 +9,7 @@ pub struct Step<Game: GameTrait> {
     step: usize,
     state: StateHolder<Game>,
     server_input: ServerInputHolder<Game>,
-    inputs: Vec<Option<Game::InputType>>,
+    inputs: Vec<Option<Game::ClientInput>>,
     input_count: usize,
     need_to_compute_next_state: bool
 }
@@ -17,15 +17,15 @@ pub struct Step<Game: GameTrait> {
 pub enum StateHolder<Game: GameTrait> {
     None,
     Deserialized{
-        state: Game::StateType,
+        state: Game::State,
         need_to_send_as_changed: bool
     },
     ComputedIncomplete{
-        state: Game::StateType,
+        state: Game::State,
         need_to_send_as_changed: bool
     },
     ComputedComplete{
-        state: Game::StateType,
+        state: Game::State,
         need_to_send_as_changed: bool,
         need_to_send_as_complete: bool
     }
@@ -33,10 +33,10 @@ pub enum StateHolder<Game: GameTrait> {
 
 pub enum ServerInputHolder<Game: GameTrait> {
     None,
-    Deserialized(Game::ServerInputType),
-    ComputedIncomplete(Game::ServerInputType),
+    Deserialized(Game::ServerInput),
+    ComputedIncomplete(Game::ServerInput),
     ComputedComplete{
-        server_input: Game::ServerInputType,
+        server_input: Game::ServerInput,
         need_to_send_as_complete: bool
     }
 }
@@ -76,7 +76,7 @@ impl<Game: GameTrait> Step<Game> {
         }
     }
 
-    pub fn set_server_input(&mut self, server_input: Game::ServerInputType) {
+    pub fn set_server_input(&mut self, server_input: Game::ServerInput) {
         self.server_input = ServerInputHolder::Deserialized(server_input);
         self.need_to_compute_next_state = true;
     }

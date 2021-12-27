@@ -6,12 +6,12 @@ use crate::interface::game::GameTrait;
 pub struct ServerUpdateArg<'a, 'b, Game: GameTrait> {
     initial_information: &'a InitialInformation<Game>,
     step: usize,
-    inputs: &'b Vec<Option<Game::InputType>>,
+    inputs: &'b Vec<Option<Game::ClientInput>>,
 }
 
 impl<'a, 'b, Game: GameTrait> ServerUpdateArg<'a, 'b, Game> {
 
-    pub fn new(initial_information: &'a InitialInformation<Game>, step: usize, inputs: &'b Vec<Option<Game::InputType>>) -> Self {
+    pub fn new(initial_information: &'a InitialInformation<Game>, step: usize, inputs: &'b Vec<Option<Game::ClientInput>>) -> Self {
         return Self{
             initial_information,
             step,
@@ -19,7 +19,7 @@ impl<'a, 'b, Game: GameTrait> ServerUpdateArg<'a, 'b, Game> {
         }
     }
 
-    pub fn get_input(&self, player_index: usize) -> Option<&Game::InputType> {
+    pub fn get_input(&self, player_index: usize) -> Option<&Game::ClientInput> {
         if let Some(option) = self.inputs.get(player_index) {
             return option.as_ref();
         } else {

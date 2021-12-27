@@ -4,16 +4,16 @@ use crate::interface::GameTrait;
 #[derive(Serialize, Deserialize, Debug)]
 pub struct StateMessage<Game: GameTrait> {
     sequence: usize,
-    state: Game::StateType,
+    state: Game::State,
 }
 
 impl<Game: GameTrait> StateMessage<Game> {
 
-    pub fn new(sequence: usize, state: Game::StateType) -> Self {
+    pub fn new(sequence: usize, state: Game::State) -> Self {
         Self{ sequence, state }
     }
 
-    pub fn get_state(self) -> Game::StateType {
+    pub fn get_state(self) -> Game::State {
         self.state
     }
 

@@ -48,7 +48,7 @@ impl<Game: GameTrait> RenderReceiver<Game> {
     }
 
     //TODO: remove timeduration
-    pub fn get_step_message(&mut self) -> Option<(TimeDuration, Game::InterpolationResultType)> {
+    pub fn get_step_message(&mut self) -> Option<(TimeDuration, Game::InterpolationResult)> {
 
         self.receiver.try_iter(&mut self.data);
 

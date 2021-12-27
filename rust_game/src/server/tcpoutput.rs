@@ -48,7 +48,7 @@ impl<Game: GameTrait> ChannelThread<()> for TcpOutput<Game> {
 
 impl<Game: GameTrait> Sender<TcpOutput<Game>> {
 
-    pub fn send_initial_information(&self, server_config: ServerConfig, player_count: usize, initial_state: Game::StateType) {
+    pub fn send_initial_information(&self, server_config: ServerConfig, player_count: usize, initial_state: Game::State) {
         self.send(move |tcp_output|{
 
             let initial_information = InitialInformation::<Game>::new(

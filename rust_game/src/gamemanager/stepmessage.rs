@@ -4,12 +4,12 @@ use std::cmp::Ordering;
 #[derive(Debug)]
 pub struct StepMessage<Game: GameTrait> {
     step_index: usize,
-    state: Game::StateType
+    state: Game::State
 }
 
 impl<Game: GameTrait> StepMessage<Game> {
 
-    pub fn new(step_index: usize, state: Game::StateType) -> Self {
+    pub fn new(step_index: usize, state: Game::State) -> Self {
         Self{step_index, state}
     }
 
@@ -17,7 +17,7 @@ impl<Game: GameTrait> StepMessage<Game> {
         self.step_index
     }
 
-    pub fn get_state(&self) -> &Game::StateType {
+    pub fn get_state(&self) -> &Game::State {
         &self.state
     }
 }

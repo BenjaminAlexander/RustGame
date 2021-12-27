@@ -4,16 +4,16 @@ use crate::interface::GameTrait;
 #[derive(Serialize, Deserialize, Debug)]
 pub struct ServerInputMessage<Game: GameTrait> {
     step: usize,
-    server_input: Game::ServerInputType,
+    server_input: Game::ServerInput,
 }
 
 impl<Game: GameTrait> ServerInputMessage<Game> {
 
-    pub fn new(step: usize, server_input: Game::ServerInputType) -> Self {
+    pub fn new(step: usize, server_input: Game::ServerInput) -> Self {
         Self{ step, server_input }
     }
 
-    pub fn get_server_input(self) -> Game::ServerInputType {
+    pub fn get_server_input(self) -> Game::ServerInput {
         self.server_input
     }
 
