@@ -6,20 +6,23 @@ use crate::messaging::{ToClientMessageTCP, InitialInformation};
 use rmp_serde::decode::Error;
 use crate::threading::sender::SendError;
 use std::io;
+use crate::client::ClientCore;
 use crate::interface::GameTrait;
 
 pub struct TcpInput <Game: GameTrait> {
     player_index: Option<usize>,
     tcp_stream: TcpStream,
+    client_core_sender: Sender<ClientCore<Game>>,
     initial_information_message_consumers: ConsumerList<InitialInformation<Game>>
 }
 
 impl<Game: GameTrait> TcpInput<Game> {
 
-    pub fn new(tcp_stream: &TcpStream) -> io::Result<Self> {
+    pub fn new(client_core_sender: Sender<ClientCore<Game>>, tcp_stream: &TcpStream) -> io::Result<Self> {
         Ok(Self {
             player_index: None,
             tcp_stream: tcp_stream.try_clone()?,
+            client_core_sender,
             initial_information_message_consumers: ConsumerList::new(),
         })
     }
@@ -48,6 +51,7 @@ impl<Game: GameTrait> ChannelThread<()> for TcpInput<Game> {
                     match message {
                         ToClientMessageTCP::InitialInformation(initial_information_message) => {
                             self.player_index = Some(initial_information_message.get_player_index());
+                            self.client_core_sender.on_initial_information(initial_information_message.clone());
                             self.initial_information_message_consumers.accept(&initial_information_message);
                         }
                     }

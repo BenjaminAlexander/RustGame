@@ -43,7 +43,7 @@ impl<Game: GameTrait> RenderReceiver<Game> {
 
         unsafe {
             let self_ptr = self as *mut Self;
-            (*selfPtr).receiver.try_iter(&mut self);
+            (*self_ptr).receiver.try_iter(&mut self);
         }
 
         if self.initial_information.is_none() {

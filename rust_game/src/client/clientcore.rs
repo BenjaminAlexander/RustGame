@@ -61,13 +61,12 @@ impl<Game: GameTrait> Sender<ClientCore<Game>> {
 
             let (manager_sender, manager_builder) = Manager::<Game>::new(false, render_receiver_sender.clone()).build();
             let (game_timer_sender, game_timer_builder) = GameTimer::<Game>::new(Game::CLOCK_AVERAGE_SIZE).build();
-            let (tcp_input_sender, tcp_input_builder) = TcpInput::<Game>::new(&tcp_stream).unwrap().build();
+            let (tcp_input_sender, tcp_input_builder) = TcpInput::<Game>::new(core_sender.clone(), &tcp_stream).unwrap().build();
             let (tcp_output_sender, tcp_output_builder) = TcpOutput::new(&tcp_stream).unwrap().build();
             let (udp_output_sender, udp_output_builder) = UdpOutput::<Game>::new(server_udp_socket_addr_v4, &udp_socket).unwrap().build();
             let (udp_input_sender, udp_input_builder) = UdpInput::<Game>::new(server_udp_socket_addr_v4, &udp_socket).unwrap().build();
 
             tcp_input_sender.add_initial_information_message_consumer(manager_sender.clone()).unwrap();
-            tcp_input_sender.add_initial_information_message_consumer(core_sender.clone()).unwrap();
             tcp_input_sender.add_initial_information_message_consumer(udp_output_sender.clone()).unwrap();
             tcp_input_sender.add_initial_information_message_consumer(render_receiver_sender.clone()).unwrap();
             tcp_input_sender.add_initial_information_message_consumer(game_timer_sender.clone()).unwrap();
@@ -106,11 +105,8 @@ impl<Game: GameTrait> Sender<ClientCore<Game>> {
             }
         }).unwrap();
     }
-}
 
-impl<Game: GameTrait> Consumer<InitialInformation<Game>> for Sender<ClientCore<Game>> {
-
-    fn accept(&self, initial_information: InitialInformation<Game>) {
+    pub fn on_initial_information(&self, initial_information: InitialInformation<Game>) {
         self.send(move |core|{
             info!("InitialInformation Received.");
             core.initial_information = Some(initial_information);
