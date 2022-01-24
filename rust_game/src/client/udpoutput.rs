@@ -81,9 +81,9 @@ impl<Game: GameTrait> ChannelThread<()> for UdpOutput<Game> {
     }
 }
 
-impl<Game: GameTrait> Consumer<InitialInformation<Game>> for Sender<UdpOutput<Game>> {
+impl<Game: GameTrait> Sender<UdpOutput<Game>> {
 
-    fn accept(&self, initial_information: InitialInformation<Game>) {
+    pub fn on_initial_information(&self, initial_information: InitialInformation<Game>) {
         self.send(move |udp_output|{
             info!("InitialInformation Received.");
             udp_output.initial_information = Some(initial_information);

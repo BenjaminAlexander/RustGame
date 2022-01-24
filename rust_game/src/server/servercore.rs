@@ -103,7 +103,7 @@ impl<Game: GameTrait> Sender<ServerCore<Game>> {
                     initial_state.clone());
 
                 manager_sender.on_initial_information(server_initial_information.clone());
-                render_receiver_sender.accept(server_initial_information.clone());
+                render_receiver_sender.on_initial_information(server_initial_information.clone());
                 timer_sender.accept(server_initial_information.clone());
 
                 timer_sender.start().unwrap();

@@ -8,6 +8,7 @@ use crate::gamemanager::stepmessage::StepMessage;
 use crate::gametime::{TimeDuration, TimeValue};
 use std::sync::Arc;
 use crate::gamemanager::RenderReceiver;
+use crate::gamemanager::renderreceiver::Data;
 
 pub struct Manager<Game: GameTrait> {
 
@@ -18,7 +19,7 @@ pub struct Manager<Game: GameTrait> {
     initial_information: Option<Arc<InitialInformation<Game>>>,
     //New states at the back, old at the front (index 0)
     steps: VecDeque<Step<Game>>,
-    render_receiver_sender: Sender<RenderReceiver<Game>>,
+    render_receiver_sender: Sender<Data<Game>>,
     completed_step_consumer_list: ConsumerList<StateMessage<Game>>,
     server_input_consumer_list: ConsumerList<ServerInputMessage<Game>>,
 
@@ -29,7 +30,7 @@ pub struct Manager<Game: GameTrait> {
 
 impl<Game: GameTrait> Manager<Game> {
 
-    pub fn new(is_server: bool, render_receiver_sender: Sender<RenderReceiver<Game>>) -> Self {
+    pub fn new(is_server: bool, render_receiver_sender: Sender<Data<Game>>) -> Self {
         Self{
             is_server,
             initial_information: None,

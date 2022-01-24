@@ -7,7 +7,8 @@ use rmp_serde::decode::Error;
 use crate::threading::sender::SendError;
 use std::io;
 use crate::client::ClientCore;
-use crate::gamemanager::Manager;
+use crate::client::udpoutput::UdpOutput;
+use crate::gamemanager::{Data, Manager};
 use crate::interface::GameTrait;
 
 pub struct TcpInput <Game: GameTrait> {
@@ -15,6 +16,8 @@ pub struct TcpInput <Game: GameTrait> {
     tcp_stream: TcpStream,
     manager_sender: Sender<Manager<Game>>,
     client_core_sender: Sender<ClientCore<Game>>,
+    udp_output_sender: Sender<UdpOutput<Game>>,
+    render_data_sender: Sender<Data<Game>>,
     initial_information_message_consumers: ConsumerList<InitialInformation<Game>>
 }
 
@@ -23,6 +26,8 @@ impl<Game: GameTrait> TcpInput<Game> {
     pub fn new(
         manager_sender: Sender<Manager<Game>>,
         client_core_sender: Sender<ClientCore<Game>>,
+        udp_output_sender: Sender<UdpOutput<Game>>,
+        render_data_sender: Sender<Data<Game>>,
         tcp_stream: &TcpStream) -> io::Result<Self> {
 
         Ok(Self {
@@ -30,6 +35,8 @@ impl<Game: GameTrait> TcpInput<Game> {
             tcp_stream: tcp_stream.try_clone()?,
             manager_sender,
             client_core_sender,
+            udp_output_sender,
+            render_data_sender,
             initial_information_message_consumers: ConsumerList::new(),
         })
     }
@@ -60,6 +67,8 @@ impl<Game: GameTrait> ChannelThread<()> for TcpInput<Game> {
                             self.player_index = Some(initial_information_message.get_player_index());
                             self.manager_sender.on_initial_information(initial_information_message.clone());
                             self.client_core_sender.on_initial_information(initial_information_message.clone());
+                            self.udp_output_sender.on_initial_information(initial_information_message.clone());
+                            self.render_data_sender.on_initial_information(initial_information_message.clone());
                             self.initial_information_message_consumers.accept(&initial_information_message);
                         }
                     }
