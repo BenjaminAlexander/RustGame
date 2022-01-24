@@ -218,6 +218,18 @@ impl<Game: GameTrait> Sender<Manager<Game>> {
             manager.set_requested_step(step);
         }).unwrap();
     }
+
+    pub fn on_initial_information(&self, initial_information: InitialInformation<Game>) {
+        self.send(move |manager|{
+            //TODO: move Arc outside lambda
+            manager.initial_information = Some(Arc::new(initial_information));
+            let state = manager.initial_information.as_ref().unwrap().get_state().clone();
+            manager.handle_state_message(StateMessage::new(
+                0,
+                state
+            ));
+        }).unwrap();
+    }
 }
 
 impl<Game: GameTrait> Consumer<InputMessage<Game>> for Sender<Manager<Game>> {
@@ -253,21 +265,6 @@ impl<Game: GameTrait> Consumer<StateMessage<Game>> for Sender<Manager<Game>> {
 
             manager.time_of_last_state_receive = TimeValue::now();
 
-        }).unwrap();
-    }
-}
-
-impl<Game: GameTrait> Consumer<InitialInformation<Game>> for Sender<Manager<Game>> {
-
-    fn accept(&self, initial_information: InitialInformation<Game>) {
-        self.send(move |manager|{
-            //TODO: move Arc outside lambda
-            manager.initial_information = Some(Arc::new(initial_information));
-            let state = manager.initial_information.as_ref().unwrap().get_state().clone();
-            manager.handle_state_message(StateMessage::new(
-                0,
-                state
-            ));
         }).unwrap();
     }
 }
