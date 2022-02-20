@@ -53,6 +53,7 @@ impl<Game: GameTrait> ChannelDrivenThread<()> for GameTimer<Game> {
 }
 
 impl<Game: GameTrait> Sender<GameTimer<Game>> {
+
     pub fn start(&self) -> Result<(), SendError<GameTimer<Game>>> {
         let clone = self.clone();
 
@@ -72,39 +73,13 @@ impl<Game: GameTrait> Sender<GameTimer<Game>> {
         })
     }
 
-    pub fn add_timer_message_consumer<T>(&self, consumer: T)
-        where T: Consumer<TimeMessage> {
-
+    pub fn on_initial_information(&self, initial_information: InitialInformation<Game>) {
         self.send(|game_timer|{
-            game_timer.consumer_list.add_consumer(consumer);
-        }).unwrap();
-
-    }
-
-    //Called from timer thread
-    fn tick(&self) {
-        let now = TimeValue::now();
-
-        self.send(move |game_timer|{
-            trace!("Handling Tick from {:?}", now);
-
-            let time_message = TimeMessage::new(
-                game_timer.start.clone().unwrap(),
-                game_timer.get_step_duration().unwrap(),
-                now);
-
-            if time_message.get_lateness() > TICK_LATENESS_WARN_DURATION {
-                warn!("High tick Lateness: {:?}", time_message.get_lateness());
-            }
-
-            game_timer.consumer_list.accept(&time_message);
-
+            game_timer.server_config = Some(initial_information.move_server_config());
         }).unwrap();
     }
-}
 
-impl<Game: GameTrait> Consumer<TimeReceived<TimeMessage>> for Sender<GameTimer<Game>> {
-    fn accept(&self, time_message: TimeReceived<TimeMessage>) {
+    pub fn on_time_message(&self, time_message: TimeReceived<TimeMessage>) {
         let clone = self.clone();
         self.send(move |game_timer|{
             trace!("Handling TimeMessage: {:?}", time_message);
@@ -151,12 +126,34 @@ impl<Game: GameTrait> Consumer<TimeReceived<TimeMessage>> for Sender<GameTimer<G
             }
         }).unwrap();
     }
-}
 
-impl<Game: GameTrait> Consumer<InitialInformation<Game>> for Sender<GameTimer<Game>> {
-    fn accept(&self, initial_information: InitialInformation<Game>) {
+    pub fn add_timer_message_consumer<T>(&self, consumer: T)
+        where T: Consumer<TimeMessage> {
+
         self.send(|game_timer|{
-            game_timer.server_config = Some(initial_information.move_server_config());
+            game_timer.consumer_list.add_consumer(consumer);
+        }).unwrap();
+
+    }
+
+    //Called from timer thread
+    fn tick(&self) {
+        let now = TimeValue::now();
+
+        self.send(move |game_timer|{
+            trace!("Handling Tick from {:?}", now);
+
+            let time_message = TimeMessage::new(
+                game_timer.start.clone().unwrap(),
+                game_timer.get_step_duration().unwrap(),
+                now);
+
+            if time_message.get_lateness() > TICK_LATENESS_WARN_DURATION {
+                warn!("High tick Lateness: {:?}", time_message.get_lateness());
+            }
+
+            game_timer.consumer_list.accept(&time_message);
+
         }).unwrap();
     }
 }

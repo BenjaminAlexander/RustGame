@@ -63,17 +63,18 @@ impl<Game: GameTrait> Sender<ClientCore<Game>> {
             let (game_timer_sender, game_timer_builder) = GameTimer::<Game>::new(Game::CLOCK_AVERAGE_SIZE).build();
             let (udp_output_sender, udp_output_builder) = UdpOutput::<Game>::new(server_udp_socket_addr_v4, &udp_socket).unwrap().build();
             let (tcp_input_sender, tcp_input_builder) = TcpInput::<Game>::new(
+                game_timer_sender.clone(),
                 manager_sender.clone(),
                 core_sender.clone(),
                 udp_output_sender.clone(),
                 render_receiver_sender.clone(),
                 &tcp_stream).unwrap().build();
             let (tcp_output_sender, tcp_output_builder) = TcpOutput::new(&tcp_stream).unwrap().build();
-            let (udp_input_sender, udp_input_builder) = UdpInput::<Game>::new(server_udp_socket_addr_v4, &udp_socket).unwrap().build();
+            let (udp_input_sender, udp_input_builder) = UdpInput::<Game>::new(
+                server_udp_socket_addr_v4,
+                &udp_socket,
+                game_timer_sender.clone()).unwrap().build();
 
-            tcp_input_sender.add_initial_information_message_consumer(game_timer_sender.clone()).unwrap();
-
-            udp_input_sender.add_time_message_consumer(game_timer_sender.clone()).unwrap();
             udp_input_sender.add_input_message_consumer(manager_sender.clone()).unwrap();
             udp_input_sender.add_server_input_message_consumer(manager_sender.clone()).unwrap();
             udp_input_sender.add_state_message_consumer(manager_sender.clone()).unwrap();

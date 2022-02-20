@@ -1,5 +1,5 @@
 use std::net::{UdpSocket, SocketAddrV4, SocketAddr};
-use crate::gametime::{TimeMessage, TimeReceived, TimeValue, TimeDuration};
+use crate::gametime::{TimeMessage, TimeReceived, TimeValue, TimeDuration, GameTimer};
 use crate::messaging::{InputMessage, StateMessage, ToClientMessageUDP, MAX_UDP_DATAGRAM_SIZE, MessageFragment, FragmentAssembler, ServerInputMessage};
 use crate::threading::{ConsumerList, Consumer, Sender, Receiver, ChannelThread};
 use crate::interface::GameTrait;
@@ -13,6 +13,7 @@ pub struct UdpInput<Game: GameTrait> {
     server_socket_addr: SocketAddr,
     socket: UdpSocket,
     fragment_assembler: FragmentAssembler,
+    game_timer_sender: Sender<GameTimer<Game>>,
     time_message_consumers: ConsumerList<TimeReceived<TimeMessage>>,
     input_message_consumers: ConsumerList<InputMessage<Game>>,
     server_input_message_consumers: ConsumerList<ServerInputMessage<Game>>,
@@ -26,7 +27,10 @@ pub struct UdpInput<Game: GameTrait> {
 
 impl<Game: GameTrait> UdpInput<Game> {
 
-    pub fn new(server_socket_addr_v4: SocketAddrV4, socket: &UdpSocket) -> io::Result<Self> {
+    pub fn new(
+        server_socket_addr_v4: SocketAddrV4,
+        socket: &UdpSocket,
+        game_timer_sender: Sender<GameTimer<Game>>) -> io::Result<Self> {
 
         let server_socket_addr = SocketAddr::from(server_socket_addr_v4);
 
@@ -35,6 +39,7 @@ impl<Game: GameTrait> UdpInput<Game> {
             socket: socket.try_clone()?,
             //TODO: make this more configurable
             fragment_assembler: FragmentAssembler::new(5),
+            game_timer_sender,
             time_message_consumers: ConsumerList::new(),
             input_message_consumers: ConsumerList::new(),
             server_input_message_consumers: ConsumerList::new(),
@@ -101,6 +106,7 @@ impl<Game: GameTrait> ChannelThread<()> for UdpInput<Game> {
                         match message {
                             ToClientMessageUDP::TimeMessage(time_message) => {
                                 //info!("Time message: {:?}", time_message.get_step());
+                                self.game_timer_sender.on_time_message(TimeReceived::new(time_received, time_message));
                                 self.time_message_consumers.accept(&TimeReceived::new(time_received, time_message));
 
                             }
