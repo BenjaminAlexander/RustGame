@@ -60,7 +60,11 @@ impl<Game: GameTrait> Sender<ClientCore<Game>> {
             let udp_socket = UdpSocket::bind("127.0.0.1:0").unwrap();
 
             let (manager_sender, manager_builder) = Manager::<Game>::new(false, render_receiver_sender.clone()).build();
-            let (game_timer_sender, game_timer_builder) = GameTimer::<Game>::new(Game::CLOCK_AVERAGE_SIZE).build();
+            let (game_timer_sender, game_timer_builder) = GameTimer::<Game>::new_client_timer(
+                Game::CLOCK_AVERAGE_SIZE,
+                core_sender.clone(),
+                render_receiver_sender.clone()).build();
+
             let (udp_output_sender, udp_output_builder) = UdpOutput::<Game>::new(server_udp_socket_addr_v4, &udp_socket).unwrap().build();
             let (tcp_input_sender, tcp_input_builder) = TcpInput::<Game>::new(
                 game_timer_sender.clone(),
@@ -76,12 +80,6 @@ impl<Game: GameTrait> Sender<ClientCore<Game>> {
                 &udp_socket,
                 game_timer_sender.clone(),
                 manager_sender.clone()).unwrap().build();
-
-            udp_input_sender.add_server_input_message_consumer(manager_sender.clone()).unwrap();
-            udp_input_sender.add_state_message_consumer(manager_sender.clone()).unwrap();
-
-            game_timer_sender.add_timer_message_consumer(core_sender.clone());
-            game_timer_sender.add_timer_message_consumer(render_receiver_sender.clone());
 
             let _manager_join_handle = manager_builder.name("ClientManager").start().unwrap();
             let _tcp_input_join_handle = tcp_input_builder.name("ClientTcpInput").start().unwrap();
@@ -116,11 +114,8 @@ impl<Game: GameTrait> Sender<ClientCore<Game>> {
             core.initial_information = Some(initial_information);
         }).unwrap();
     }
-}
 
-impl<Game: GameTrait> Consumer<TimeMessage> for Sender<ClientCore<Game>> {
-
-    fn accept(&self, time_message: TimeMessage) {
+    pub fn on_time_message(&self, time_message: TimeMessage) {
 
         self.send(move |core|{
 

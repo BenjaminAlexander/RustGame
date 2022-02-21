@@ -16,8 +16,6 @@ pub struct UdpInput<Game: GameTrait> {
     fragment_assembler: FragmentAssembler,
     game_timer_sender: Sender<GameTimer<Game>>,
     manager_sender: Sender<Manager<Game>>,
-    server_input_message_consumers: ConsumerList<ServerInputMessage<Game>>,
-    state_message_consumers: ConsumerList<StateMessage<Game>>,
 
     //metrics
     time_of_last_state_receive: TimeValue,
@@ -42,8 +40,6 @@ impl<Game: GameTrait> UdpInput<Game> {
             fragment_assembler: FragmentAssembler::new(5),
             game_timer_sender,
             manager_sender,
-            server_input_message_consumers: ConsumerList::new(),
-            state_message_consumers: ConsumerList::new(),
 
             //metrics
             time_of_last_state_receive: TimeValue::now(),
@@ -119,13 +115,13 @@ impl<Game: GameTrait> ChannelThread<()> for UdpInput<Game> {
                             ToClientMessageUDP::ServerInputMessage(server_input_message) => {
                                 //info!("Server Input message: {:?}", server_input_message.get_step());
                                 self.time_of_last_server_input_receive = TimeValue::now();
-                                self.server_input_message_consumers.accept(&server_input_message);
+                                self.manager_sender.on_server_input_message(server_input_message);
 
                             }
                             ToClientMessageUDP::StateMessage(state_message) => {
                                 //info!("State message: {:?}", state_message.get_sequence());
                                 self.time_of_last_state_receive = TimeValue::now();
-                                self.state_message_consumers.accept(&state_message);
+                                self.manager_sender.on_state_message(state_message);
 
                             }
                         }
@@ -137,23 +133,5 @@ impl<Game: GameTrait> ChannelThread<()> for UdpInput<Game> {
                 }
             }
         }
-    }
-}
-impl<Game: GameTrait> Sender<UdpInput<Game>> {
-
-    pub fn add_server_input_message_consumer<T>(&self, consumer: T) -> Result<(), SendError<UdpInput<Game>>>
-        where T: Consumer<ServerInputMessage<Game>> {
-
-        self.send(|tcp_input|{
-            tcp_input.server_input_message_consumers.add_consumer(consumer);
-        })
-    }
-
-    pub fn add_state_message_consumer<T>(&self, consumer: T) -> Result<(), SendError<UdpInput<Game>>>
-        where T: Consumer<StateMessage<Game>> {
-
-        self.send(|tcp_input|{
-            tcp_input.state_message_consumers.add_consumer(consumer);
-        })
     }
 }

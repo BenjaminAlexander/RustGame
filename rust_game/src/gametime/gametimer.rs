@@ -6,7 +6,9 @@ use crate::threading::{ConsumerList, ChannelDrivenThread, Sender, Consumer};
 use crate::util::RollingAverage;
 use crate::threading::sender::SendError;
 use log::{trace, info, warn};
-use crate::server::ServerConfig;
+use crate::client::ClientCore;
+use crate::gamemanager::Data;
+use crate::server::{ServerConfig, ServerCore};
 use crate::messaging::InitialInformation;
 use crate::interface::GameTrait;
 
@@ -18,22 +20,42 @@ pub struct GameTimer<Game: GameTrait> {
     server_config: Option<ServerConfig>,
     start: Option<TimeValue>,
     guard: Option<Guard>,
-    consumer_list: ConsumerList<TimeMessage>,
     rolling_average: RollingAverage<u64>,
-    phantom: PhantomData<Game>
+    render_receiver_sender: Sender<Data<Game>>,
+    client_core_sender_option: Option<Sender<ClientCore<Game>>>,
+    server_core_sender_option: Option<Sender<ServerCore<Game>>>
 }
 
 impl<Game: GameTrait> GameTimer<Game> {
-    pub fn new(rolling_average_size: usize) -> Self {
+    pub fn new_client_timer(rolling_average_size: usize,
+            client_core_sender: Sender<ClientCore<Game>>,
+            render_receiver_sender: Sender<Data<Game>>) -> Self {
 
         GameTimer{
             timer: Timer::new(),
             server_config: None,
             start: None,
             guard: None,
-            consumer_list: ConsumerList::new(),
             rolling_average: RollingAverage::new(rolling_average_size),
-            phantom: PhantomData
+            render_receiver_sender,
+            client_core_sender_option: Some(client_core_sender),
+            server_core_sender_option: None
+        }
+    }
+
+    pub fn new_server_timer(rolling_average_size: usize,
+            server_core_sender: Sender<ServerCore<Game>>,
+            render_receiver_sender: Sender<Data<Game>>) -> Self {
+
+        GameTimer{
+            timer: Timer::new(),
+            server_config: None,
+            start: None,
+            guard: None,
+            rolling_average: RollingAverage::new(rolling_average_size),
+            render_receiver_sender,
+            client_core_sender_option: None,
+            server_core_sender_option: Some(server_core_sender)
         }
     }
 
@@ -127,15 +149,6 @@ impl<Game: GameTrait> Sender<GameTimer<Game>> {
         }).unwrap();
     }
 
-    pub fn add_timer_message_consumer<T>(&self, consumer: T)
-        where T: Consumer<TimeMessage> {
-
-        self.send(|game_timer|{
-            game_timer.consumer_list.add_consumer(consumer);
-        }).unwrap();
-
-    }
-
     //Called from timer thread
     fn tick(&self) {
         let now = TimeValue::now();
@@ -152,7 +165,15 @@ impl<Game: GameTrait> Sender<GameTimer<Game>> {
                 warn!("High tick Lateness: {:?}", time_message.get_lateness());
             }
 
-            game_timer.consumer_list.accept(&time_message);
+            if let Some(client_core_sender) = game_timer.client_core_sender_option.as_ref() {
+                client_core_sender.on_time_message(time_message.clone());
+            }
+
+            if let Some(server_core_sender) = game_timer.server_core_sender_option.as_ref() {
+                server_core_sender.on_time_message(time_message.clone());
+            }
+
+            game_timer.render_receiver_sender.accept(time_message.clone())
 
         }).unwrap();
     }

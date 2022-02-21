@@ -240,11 +240,8 @@ impl<Game: GameTrait> Sender<Manager<Game>> {
             }
         }).unwrap();
     }
-}
 
-impl<Game: GameTrait> Consumer<ServerInputMessage<Game>> for Sender<Manager<Game>> {
-
-    fn accept(&self, server_input_message: ServerInputMessage<Game>) {
+    pub fn on_server_input_message(&self, server_input_message: ServerInputMessage<Game>) {
         self.send(move |manager|{
 
             //info!("Server Input received: {:?}", server_input_message.get_step());
@@ -253,11 +250,8 @@ impl<Game: GameTrait> Consumer<ServerInputMessage<Game>> for Sender<Manager<Game
             }
         }).unwrap();
     }
-}
 
-impl<Game: GameTrait> Consumer<StateMessage<Game>> for Sender<Manager<Game>> {
-
-    fn accept(&self, state_message: StateMessage<Game>) {
+    pub fn on_state_message(&self, state_message: StateMessage<Game>) {
         self.send(move |manager|{
             manager.handle_state_message(state_message);
 
