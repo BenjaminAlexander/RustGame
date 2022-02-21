@@ -201,7 +201,7 @@ impl<Game: GameTrait> Consumer<InputMessage<Game>> for Sender<ServerCore<Game>> 
             if core.drop_steps_before <= input_message.get_step() &&
                 core.manager_sender.is_some() {
 
-                core.manager_sender.as_ref().unwrap().accept(input_message.clone());
+                core.manager_sender.as_ref().unwrap().on_input_message(input_message.clone());
                 for udp_output in core.udp_outputs.iter() {
                     udp_output.accept(input_message.clone());
                 }

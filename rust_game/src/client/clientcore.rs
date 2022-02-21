@@ -69,13 +69,14 @@ impl<Game: GameTrait> Sender<ClientCore<Game>> {
                 udp_output_sender.clone(),
                 render_receiver_sender.clone(),
                 &tcp_stream).unwrap().build();
+
             let (tcp_output_sender, tcp_output_builder) = TcpOutput::new(&tcp_stream).unwrap().build();
             let (udp_input_sender, udp_input_builder) = UdpInput::<Game>::new(
                 server_udp_socket_addr_v4,
                 &udp_socket,
-                game_timer_sender.clone()).unwrap().build();
+                game_timer_sender.clone(),
+                manager_sender.clone()).unwrap().build();
 
-            udp_input_sender.add_input_message_consumer(manager_sender.clone()).unwrap();
             udp_input_sender.add_server_input_message_consumer(manager_sender.clone()).unwrap();
             udp_input_sender.add_state_message_consumer(manager_sender.clone()).unwrap();
 
@@ -146,7 +147,7 @@ impl<Game: GameTrait> Consumer<TimeMessage> for Sender<ClientCore<Game>> {
                         Game::get_input(& mut core.input_event_handler)
                     );
 
-                    manager_sender.accept(message.clone());
+                    manager_sender.on_input_message(message.clone());
                     udp_output_sender.accept(message);
 
                     let client_drop_time = time_message.get_scheduled_time().subtract(Game::GRACE_PERIOD * 2);

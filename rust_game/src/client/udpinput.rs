@@ -8,14 +8,14 @@ use rmp_serde::decode::Error;
 use std::io;
 use log::{error, info, warn};
 use std::time::Duration;
+use crate::gamemanager::Manager;
 
 pub struct UdpInput<Game: GameTrait> {
     server_socket_addr: SocketAddr,
     socket: UdpSocket,
     fragment_assembler: FragmentAssembler,
     game_timer_sender: Sender<GameTimer<Game>>,
-    time_message_consumers: ConsumerList<TimeReceived<TimeMessage>>,
-    input_message_consumers: ConsumerList<InputMessage<Game>>,
+    manager_sender: Sender<Manager<Game>>,
     server_input_message_consumers: ConsumerList<ServerInputMessage<Game>>,
     state_message_consumers: ConsumerList<StateMessage<Game>>,
 
@@ -30,7 +30,8 @@ impl<Game: GameTrait> UdpInput<Game> {
     pub fn new(
         server_socket_addr_v4: SocketAddrV4,
         socket: &UdpSocket,
-        game_timer_sender: Sender<GameTimer<Game>>) -> io::Result<Self> {
+        game_timer_sender: Sender<GameTimer<Game>>,
+        manager_sender: Sender<Manager<Game>>) -> io::Result<Self> {
 
         let server_socket_addr = SocketAddr::from(server_socket_addr_v4);
 
@@ -40,8 +41,7 @@ impl<Game: GameTrait> UdpInput<Game> {
             //TODO: make this more configurable
             fragment_assembler: FragmentAssembler::new(5),
             game_timer_sender,
-            time_message_consumers: ConsumerList::new(),
-            input_message_consumers: ConsumerList::new(),
+            manager_sender,
             server_input_message_consumers: ConsumerList::new(),
             state_message_consumers: ConsumerList::new(),
 
@@ -107,14 +107,13 @@ impl<Game: GameTrait> ChannelThread<()> for UdpInput<Game> {
                             ToClientMessageUDP::TimeMessage(time_message) => {
                                 //info!("Time message: {:?}", time_message.get_step());
                                 self.game_timer_sender.on_time_message(TimeReceived::new(time_received, time_message));
-                                self.time_message_consumers.accept(&TimeReceived::new(time_received, time_message));
 
                             }
                             ToClientMessageUDP::InputMessage(input_message) => {
                                 //TODO: ignore input messages from this player
                                 //info!("Input message: {:?}", input_message.get_step());
                                 self.time_of_last_input_receive = TimeValue::now();
-                                self.input_message_consumers.accept(&input_message);
+                                self.manager_sender.on_input_message(input_message.clone());
 
                             }
                             ToClientMessageUDP::ServerInputMessage(server_input_message) => {
@@ -141,22 +140,6 @@ impl<Game: GameTrait> ChannelThread<()> for UdpInput<Game> {
     }
 }
 impl<Game: GameTrait> Sender<UdpInput<Game>> {
-
-    pub fn add_time_message_consumer<T>(&self, consumer: T) -> Result<(), SendError<UdpInput<Game>>>
-        where T: Consumer<TimeReceived<TimeMessage>> {
-
-        self.send(|tcp_input|{
-            tcp_input.time_message_consumers.add_consumer(consumer);
-        })
-    }
-
-    pub fn add_input_message_consumer<T>(&self, consumer: T) -> Result<(), SendError<UdpInput<Game>>>
-        where T: Consumer<InputMessage<Game>> {
-
-        self.send(|tcp_input|{
-            tcp_input.input_message_consumers.add_consumer(consumer);
-        })
-    }
 
     pub fn add_server_input_message_consumer<T>(&self, consumer: T) -> Result<(), SendError<UdpInput<Game>>>
         where T: Consumer<ServerInputMessage<Game>> {

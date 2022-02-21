@@ -231,11 +231,8 @@ impl<Game: GameTrait> Sender<Manager<Game>> {
             ));
         }).unwrap();
     }
-}
 
-impl<Game: GameTrait> Consumer<InputMessage<Game>> for Sender<Manager<Game>> {
-
-    fn accept(&self, input_message: InputMessage<Game>) {
+    pub fn on_input_message(&self, input_message: InputMessage<Game>) {
         self.send(move |manager|{
             if let Some(step) = manager.get_state(input_message.get_step()) {
                 step.set_input(input_message);
