@@ -14,7 +14,7 @@ use crate::interface::GameTrait;
 pub struct TcpInput <Game: GameTrait> {
     player_index: Option<usize>,
     tcp_stream: TcpStream,
-    game_timer_sender: Sender<GameTimer<Game>>,
+    game_timer_sender: Sender<GameTimer<Game, Sender<ClientCore<Game>>>>,
     manager_sender: Sender<Manager<Game>>,
     client_core_sender: Sender<ClientCore<Game>>,
     udp_output_sender: Sender<UdpOutput<Game>>,
@@ -24,7 +24,7 @@ pub struct TcpInput <Game: GameTrait> {
 impl<Game: GameTrait> TcpInput<Game> {
 
     pub fn new(
-        game_timer_sender: Sender<GameTimer<Game>>,
+        game_timer_sender: Sender<GameTimer<Game, Sender<ClientCore<Game>>>>,
         manager_sender: Sender<Manager<Game>>,
         client_core_sender: Sender<ClientCore<Game>>,
         udp_output_sender: Sender<UdpOutput<Game>>,

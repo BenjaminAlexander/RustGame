@@ -7,7 +7,7 @@ use crate::threading::{ChannelDrivenThread, ChannelThread, Consumer, Sender};
 use crate::server::{TcpListenerThread, ServerConfig};
 use crate::server::tcpoutput::TcpOutput;
 use crate::gametime::{GameTimer, TimeMessage};
-use crate::gamemanager::{Manager, RenderReceiver};
+use crate::gamemanager::{CoreSenderTrait, Manager, RenderReceiver};
 use crate::messaging::{InputMessage, InitialInformation};
 use std::str::FromStr;
 use crate::server::udpinput::UdpInput;
@@ -87,8 +87,8 @@ impl<Game: GameTrait> Sender<ServerCore<Game>> {
 
                 let initial_state = Game::get_initial_state(core.tcp_outputs.len());
 
-                let (manager_sender, manager_builder) = Manager::<Game>::new(true, render_receiver_sender.clone()).build();
-                let (timer_sender, timer_builder) = GameTimer::new_server_timer(
+                let (manager_sender, manager_builder) = Manager::new(true, render_receiver_sender.clone()).build();
+                let (timer_sender, timer_builder) = GameTimer::new(
                     0,
                     core_sender.clone(),
                     render_receiver_sender.clone()).build();
@@ -169,8 +169,11 @@ impl<Game: GameTrait> Sender<ServerCore<Game>> {
             }
         }).unwrap();
     }
+}
 
-    pub fn on_time_message(&self, time_message: TimeMessage) {
+impl<Game: GameTrait> CoreSenderTrait<Game> for Sender<ServerCore<Game>> {
+
+    fn on_time_message(&self, time_message: TimeMessage) {
         self.send(move |core|{
 
             for udp_output in core.udp_outputs.iter() {

@@ -6,7 +6,7 @@ use crate::client::tcpinput::TcpInput;
 use crate::interface::GameTrait;
 use crate::client::tcpoutput::TcpOutput;
 use crate::messaging::{InitialInformation, InputMessage};
-use crate::gamemanager::{Manager, RenderReceiver};
+use crate::gamemanager::{CoreSenderTrait, Manager, RenderReceiver};
 use log::{info, trace};
 use crate::client::udpoutput::UdpOutput;
 use crate::client::udpinput::UdpInput;
@@ -59,14 +59,14 @@ impl<Game: GameTrait> Sender<ClientCore<Game>> {
 
             let udp_socket = UdpSocket::bind("127.0.0.1:0").unwrap();
 
-            let (manager_sender, manager_builder) = Manager::<Game>::new(false, render_receiver_sender.clone()).build();
-            let (game_timer_sender, game_timer_builder) = GameTimer::<Game>::new_client_timer(
+            let (manager_sender, manager_builder) = Manager::new(false, render_receiver_sender.clone()).build();
+            let (game_timer_sender, game_timer_builder) = GameTimer::new(
                 Game::CLOCK_AVERAGE_SIZE,
                 core_sender.clone(),
                 render_receiver_sender.clone()).build();
 
             let (udp_output_sender, udp_output_builder) = UdpOutput::<Game>::new(server_udp_socket_addr_v4, &udp_socket).unwrap().build();
-            let (tcp_input_sender, tcp_input_builder) = TcpInput::<Game>::new(
+            let (tcp_input_sender, tcp_input_builder) = TcpInput::new(
                 game_timer_sender.clone(),
                 manager_sender.clone(),
                 core_sender.clone(),
@@ -75,7 +75,7 @@ impl<Game: GameTrait> Sender<ClientCore<Game>> {
                 &tcp_stream).unwrap().build();
 
             let (tcp_output_sender, tcp_output_builder) = TcpOutput::new(&tcp_stream).unwrap().build();
-            let (udp_input_sender, udp_input_builder) = UdpInput::<Game>::new(
+            let (udp_input_sender, udp_input_builder) = UdpInput::new(
                 server_udp_socket_addr_v4,
                 &udp_socket,
                 game_timer_sender.clone(),
@@ -114,9 +114,11 @@ impl<Game: GameTrait> Sender<ClientCore<Game>> {
             core.initial_information = Some(initial_information);
         }).unwrap();
     }
+}
 
-    pub fn on_time_message(&self, time_message: TimeMessage) {
+impl<Game: GameTrait> CoreSenderTrait<Game> for Sender<ClientCore<Game>> {
 
+    fn on_time_message(&self, time_message: TimeMessage) {
         self.send(move |core|{
 
             trace!("TimeMessage step_index: {:?}", time_message.get_step());
@@ -159,5 +161,6 @@ impl<Game: GameTrait> Sender<ClientCore<Game>> {
 
         }).unwrap();
     }
+
 }
 

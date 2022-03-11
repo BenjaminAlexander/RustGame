@@ -8,13 +8,14 @@ use rmp_serde::decode::Error;
 use std::io;
 use log::{error, info, warn};
 use std::time::Duration;
+use crate::client::ClientCore;
 use crate::gamemanager::Manager;
 
 pub struct UdpInput<Game: GameTrait> {
     server_socket_addr: SocketAddr,
     socket: UdpSocket,
     fragment_assembler: FragmentAssembler,
-    game_timer_sender: Sender<GameTimer<Game>>,
+    game_timer_sender: Sender<GameTimer<Game, Sender<ClientCore<Game>>>>,
     manager_sender: Sender<Manager<Game>>,
 
     //metrics
@@ -28,7 +29,7 @@ impl<Game: GameTrait> UdpInput<Game> {
     pub fn new(
         server_socket_addr_v4: SocketAddrV4,
         socket: &UdpSocket,
-        game_timer_sender: Sender<GameTimer<Game>>,
+        game_timer_sender: Sender<GameTimer<Game, Sender<ClientCore<Game>>>>,
         manager_sender: Sender<Manager<Game>>) -> io::Result<Self> {
 
         let server_socket_addr = SocketAddr::from(server_socket_addr_v4);
