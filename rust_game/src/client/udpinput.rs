@@ -15,8 +15,8 @@ pub struct UdpInput<Game: GameTrait> {
     server_socket_addr: SocketAddr,
     socket: UdpSocket,
     fragment_assembler: FragmentAssembler,
-    game_timer_sender: Sender<GameTimer<Game, Sender<ClientCore<Game>>>>,
-    manager_sender: Sender<Manager<Game>>,
+    game_timer_sender: Sender<GameTimer<Sender<ClientCore<Game>>>>,
+    manager_sender: Sender<Manager<Sender<ClientCore<Game>>>>,
 
     //metrics
     time_of_last_state_receive: TimeValue,
@@ -29,8 +29,8 @@ impl<Game: GameTrait> UdpInput<Game> {
     pub fn new(
         server_socket_addr_v4: SocketAddrV4,
         socket: &UdpSocket,
-        game_timer_sender: Sender<GameTimer<Game, Sender<ClientCore<Game>>>>,
-        manager_sender: Sender<Manager<Game>>) -> io::Result<Self> {
+        game_timer_sender: Sender<GameTimer<Sender<ClientCore<Game>>>>,
+        manager_sender: Sender<Manager<Sender<ClientCore<Game>>>>) -> io::Result<Self> {
 
         let server_socket_addr = SocketAddr::from(server_socket_addr_v4);
 

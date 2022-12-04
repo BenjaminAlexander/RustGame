@@ -1,36 +1,38 @@
+use std::collections::vec_deque::VecDeque;
 use log::{warn, trace};
 use crate::messaging::{StateMessage, InputMessage, InitialInformation, ServerInputMessage};
-use std::collections::VecDeque;
 use crate::interface::GameTrait;
 use crate::threading::{ConsumerList, ChannelDrivenThread, Sender, Consumer};
 use crate::gamemanager::step::Step;
 use crate::gamemanager::stepmessage::StepMessage;
 use crate::gametime::{TimeDuration, TimeValue};
 use std::sync::Arc;
-use crate::gamemanager::RenderReceiver;
+use crate::gamemanager::{CoreSenderTrait, RenderReceiver};
 use crate::gamemanager::renderreceiver::Data;
 
-pub struct Manager<Game: GameTrait> {
+pub struct Manager<CoreSender: CoreSenderTrait> {
 
     is_server: bool,
     drop_steps_before: usize,
     //TODO: send requested state immediately if available
     requested_step: usize,
-    initial_information: Option<Arc<InitialInformation<Game>>>,
+    initial_information: Option<Arc<InitialInformation<CoreSender::Game>>>,
     //New states at the back, old at the front (index 0)
-    steps: VecDeque<Step<Game>>,
-    render_receiver_sender: Sender<Data<Game>>,
-    completed_step_consumer_list: ConsumerList<StateMessage<Game>>,
-    server_input_consumer_list: ConsumerList<ServerInputMessage<Game>>,
+    steps: VecDeque<Step<CoreSender::Game>>,
+    render_receiver_sender: Sender<Data<CoreSender::Game>>,
+    core_sender: CoreSender,
+    server_input_consumer_list: ConsumerList<ServerInputMessage<CoreSender::Game>>,
 
     //metrics
     time_of_last_state_receive: TimeValue,
     time_of_last_input_receive: TimeValue,
 }
 
-impl<Game: GameTrait> Manager<Game> {
+impl<CoreSender: CoreSenderTrait> Manager<CoreSender> {
 
-    pub fn new(is_server: bool, render_receiver_sender: Sender<Data<Game>>) -> Self {
+    pub fn new(is_server: bool,
+               core_sender: CoreSender,
+               render_receiver_sender: Sender<Data<CoreSender::Game>>) -> Self {
         Self{
             is_server,
             initial_information: None,
@@ -38,7 +40,7 @@ impl<Game: GameTrait> Manager<Game> {
             requested_step: 0,
             drop_steps_before: 0,
             render_receiver_sender,
-            completed_step_consumer_list: ConsumerList::new(),
+            core_sender,
             server_input_consumer_list: ConsumerList::new(),
 
             //metrics
@@ -47,7 +49,7 @@ impl<Game: GameTrait> Manager<Game> {
         }
     }
 
-    fn get_state(&mut self, step_index: usize) -> Option<&mut Step<Game>> {
+    fn get_state(&mut self, step_index: usize) -> Option<&mut Step<CoreSender::Game>> {
 
         if self.initial_information.is_none() {
             return None;
@@ -78,7 +80,7 @@ impl<Game: GameTrait> Manager<Game> {
         }
     }
 
-    fn handle_state_message(&mut self, state_message: StateMessage<Game>) {
+    fn handle_state_message(&mut self, state_message: StateMessage<CoreSender::Game>) {
         if let Some(step) = self.get_state(state_message.get_sequence()) {
             step.set_final_state(state_message);
         }
@@ -106,7 +108,7 @@ impl<Game: GameTrait> Manager<Game> {
 
         let complete_message_option = self.steps[step_index].get_complete_message();
         if complete_message_option.is_some() {
-            self.completed_step_consumer_list.accept(&complete_message_option.unwrap());
+            self.core_sender.on_completed_step(complete_message_option.as_ref().unwrap().clone());
         }
 
         if self.is_server {
@@ -117,7 +119,7 @@ impl<Game: GameTrait> Manager<Game> {
     }
 }
 
-impl<Game: GameTrait> ChannelDrivenThread<()> for Manager<Game> {
+impl<CoreSender: CoreSenderTrait> ChannelDrivenThread<()> for Manager<CoreSender> {
 
     fn on_none_pending(&mut self) -> Option<()> {
 
@@ -192,17 +194,10 @@ impl<Game: GameTrait> ChannelDrivenThread<()> for Manager<Game> {
     }
 }
 
-impl<Game: GameTrait> Sender<Manager<Game>> {
-
-    pub fn add_completed_step_consumer<T>(&self, consumer: T)
-        where T: Consumer<StateMessage<Game>> {
-        self.send(move |manager|{
-            manager.completed_step_consumer_list.add_consumer(consumer);
-        }).unwrap();
-    }
+impl<CoreSender: CoreSenderTrait> Sender<Manager<CoreSender>> {
 
     pub fn add_server_input_consumer<T>(&self, consumer: T)
-        where T: Consumer<ServerInputMessage<Game>> {
+        where T: Consumer<ServerInputMessage<CoreSender::Game>> {
         self.send(move |manager|{
             manager.server_input_consumer_list.add_consumer(consumer);
         }).unwrap();
@@ -220,7 +215,7 @@ impl<Game: GameTrait> Sender<Manager<Game>> {
         }).unwrap();
     }
 
-    pub fn on_initial_information(&self, initial_information: InitialInformation<Game>) {
+    pub fn on_initial_information(&self, initial_information: InitialInformation<CoreSender::Game>) {
         self.send(move |manager|{
             //TODO: move Arc outside lambda
             manager.initial_information = Some(Arc::new(initial_information));
@@ -232,7 +227,7 @@ impl<Game: GameTrait> Sender<Manager<Game>> {
         }).unwrap();
     }
 
-    pub fn on_input_message(&self, input_message: InputMessage<Game>) {
+    pub fn on_input_message(&self, input_message: InputMessage<CoreSender::Game>) {
         self.send(move |manager|{
             if let Some(step) = manager.get_state(input_message.get_step()) {
                 step.set_input(input_message);
@@ -241,7 +236,7 @@ impl<Game: GameTrait> Sender<Manager<Game>> {
         }).unwrap();
     }
 
-    pub fn on_server_input_message(&self, server_input_message: ServerInputMessage<Game>) {
+    pub fn on_server_input_message(&self, server_input_message: ServerInputMessage<CoreSender::Game>) {
         self.send(move |manager|{
 
             //info!("Server Input received: {:?}", server_input_message.get_step());
@@ -251,7 +246,7 @@ impl<Game: GameTrait> Sender<Manager<Game>> {
         }).unwrap();
     }
 
-    pub fn on_state_message(&self, state_message: StateMessage<Game>) {
+    pub fn on_state_message(&self, state_message: StateMessage<CoreSender::Game>) {
         self.send(move |manager|{
             manager.handle_state_message(state_message);
 

@@ -15,20 +15,20 @@ use crate::interface::GameTrait;
 const TICK_LATENESS_WARN_DURATION: TimeDuration = TimeDuration(20);
 const CLIENT_ERROR_WARN_DURATION: TimeDuration = TimeDuration(20);
 
-pub struct GameTimer<Game: GameTrait,  CoreSender: CoreSenderTrait<Game>> {
+pub struct GameTimer<CoreSender: CoreSenderTrait> {
     timer: Timer,
     server_config: Option<ServerConfig>,
     start: Option<TimeValue>,
     guard: Option<Guard>,
     rolling_average: RollingAverage<u64>,
-    render_receiver_sender: Sender<Data<Game>>,
+    render_receiver_sender: Sender<Data<CoreSender::Game>>,
     core_sender: CoreSender
 }
 
-impl<Game: GameTrait,  CoreSender: CoreSenderTrait<Game>> GameTimer<Game, CoreSender> {
+impl<CoreSender: CoreSenderTrait> GameTimer<CoreSender> {
     pub fn new(rolling_average_size: usize,
             core_sender: CoreSender,
-            render_receiver_sender: Sender<Data<Game>>) -> Self {
+            render_receiver_sender: Sender<Data<CoreSender::Game>>) -> Self {
 
         GameTimer{
             timer: Timer::new(),
@@ -50,15 +50,15 @@ impl<Game: GameTrait,  CoreSender: CoreSenderTrait<Game>> GameTimer<Game, CoreSe
     }
 }
 
-impl<Game: GameTrait,  CoreSender: CoreSenderTrait<Game>> ChannelDrivenThread<()> for GameTimer<Game, CoreSender> {
+impl<CoreSender: CoreSenderTrait> ChannelDrivenThread<()> for GameTimer<CoreSender> {
     fn on_channel_disconnect(&mut self) -> () {
         ()
     }
 }
 
-impl<Game: GameTrait,  CoreSender: CoreSenderTrait<Game>> Sender<GameTimer<Game, CoreSender>> {
+impl<CoreSender: CoreSenderTrait> Sender<GameTimer<CoreSender>> {
 
-    pub fn start(&self) -> Result<(), SendError<GameTimer<Game, CoreSender>>> {
+    pub fn start(&self) -> Result<(), SendError<GameTimer<CoreSender>>> {
         let clone = self.clone();
 
         self.send(|game_timer| {
@@ -77,7 +77,7 @@ impl<Game: GameTrait,  CoreSender: CoreSenderTrait<Game>> Sender<GameTimer<Game,
         })
     }
 
-    pub fn on_initial_information(&self, initial_information: InitialInformation<Game>) {
+    pub fn on_initial_information(&self, initial_information: InitialInformation<CoreSender::Game>) {
         self.send(|game_timer|{
             game_timer.server_config = Some(initial_information.move_server_config());
         }).unwrap();

@@ -116,6 +116,33 @@ impl<Game: GameTrait> ChannelThread<()> for UdpOutput<Game> {
     }
 }
 
+impl<Game: GameTrait> Sender<UdpOutput<Game>> {
+
+    pub fn on_completed_step(&self, state_message: StateMessage<Game>) {
+
+        let time_in_queue = TimeValue::now();
+
+        //info!("state_message: {:?}", state_message.get_sequence());
+
+        self.send(move |udp_output|{
+
+            if udp_output.last_state_sequence.is_none() ||
+                udp_output.last_state_sequence.as_ref().unwrap() <= &state_message.get_sequence() {
+
+                udp_output.last_state_sequence = Some(state_message.get_sequence());
+                udp_output.time_of_last_state_send = TimeValue::now();
+
+                let message = ToClientMessageUDP::<Game>::StateMessage(state_message);
+                udp_output.send_message(message);
+
+                //info!("state_message");
+                udp_output.log_time_in_queue(time_in_queue);
+
+            }
+        }).unwrap();
+    }
+}
+
 impl<Game: GameTrait> Consumer<TimeMessage> for Sender<UdpOutput<Game>> {
 
     fn accept(&self, time_message: TimeMessage) {
@@ -196,33 +223,6 @@ impl<Game: GameTrait> Consumer<ServerInputMessage<Game>> for Sender<UdpOutput<Ga
                 udp_output.log_time_in_queue(time_in_queue);
             } else {
                 //info!("ServerInputMessage dropped. Last state: {:?}", tcp_output.last_state_sequence);
-            }
-        }).unwrap();
-    }
-}
-
-impl<Game: GameTrait> Consumer<StateMessage<Game>> for Sender<UdpOutput<Game>> {
-
-    fn accept(&self, state_message: StateMessage<Game>) {
-
-        let time_in_queue = TimeValue::now();
-
-        //info!("state_message: {:?}", state_message.get_sequence());
-
-        self.send(move |udp_output|{
-
-            if udp_output.last_state_sequence.is_none() ||
-                udp_output.last_state_sequence.as_ref().unwrap() <= &state_message.get_sequence() {
-
-                udp_output.last_state_sequence = Some(state_message.get_sequence());
-                udp_output.time_of_last_state_send = TimeValue::now();
-
-                let message = ToClientMessageUDP::<Game>::StateMessage(state_message);
-                udp_output.send_message(message);
-
-                //info!("state_message");
-                udp_output.log_time_in_queue(time_in_queue);
-
             }
         }).unwrap();
     }

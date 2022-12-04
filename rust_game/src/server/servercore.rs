@@ -8,7 +8,7 @@ use crate::server::{TcpListenerThread, ServerConfig};
 use crate::server::tcpoutput::TcpOutput;
 use crate::gametime::{GameTimer, TimeMessage};
 use crate::gamemanager::{CoreSenderTrait, Manager, RenderReceiver};
-use crate::messaging::{InputMessage, InitialInformation};
+use crate::messaging::{InputMessage, InitialInformation, StateMessage};
 use std::str::FromStr;
 use crate::server::udpinput::UdpInput;
 use crate::server::udpoutput::UdpOutput;
@@ -26,7 +26,7 @@ pub struct ServerCore<Game: GameTrait> {
     udp_socket: Option<UdpSocket>,
     udp_outputs: Vec<Sender<UdpOutput<Game>>>,
     udp_input_sender: Option<Sender<UdpInput<Game>>>,
-    manager_sender: Option<Sender<Manager<Game>>>,
+    manager_sender: Option<Sender<Manager<Sender<Self>>>>,
     drop_steps_before: usize
 }
 
@@ -87,7 +87,10 @@ impl<Game: GameTrait> Sender<ServerCore<Game>> {
 
                 let initial_state = Game::get_initial_state(core.tcp_outputs.len());
 
-                let (manager_sender, manager_builder) = Manager::new(true, render_receiver_sender.clone()).build();
+                let (manager_sender, manager_builder) = Manager::new(
+                    true,
+                    core_sender.clone(),
+                    render_receiver_sender.clone()).build();
                 let (timer_sender, timer_builder) = GameTimer::new(
                     0,
                     core_sender.clone(),
@@ -109,7 +112,6 @@ impl<Game: GameTrait> Sender<ServerCore<Game>> {
                 timer_sender.start().unwrap();
 
                 for udp_output in core.udp_outputs.iter() {
-                    manager_sender.add_completed_step_consumer(udp_output.clone());
                     manager_sender.add_server_input_consumer(udp_output.clone());
                 }
 
@@ -171,7 +173,8 @@ impl<Game: GameTrait> Sender<ServerCore<Game>> {
     }
 }
 
-impl<Game: GameTrait> CoreSenderTrait<Game> for Sender<ServerCore<Game>> {
+impl<Game: GameTrait> CoreSenderTrait for Sender<ServerCore<Game>> {
+    type Game = Game;
 
     fn on_time_message(&self, time_message: TimeMessage) {
         self.send(move |core|{
@@ -190,6 +193,16 @@ impl<Game: GameTrait> CoreSenderTrait<Game> for Sender<ServerCore<Game>> {
                     manager_sender.drop_steps_before(core.drop_steps_before - 1);
                 }
                 manager_sender.set_requested_step(time_message.get_step() + 1);
+            }
+
+        }).unwrap();
+    }
+
+    fn on_completed_step(&self, state_message: StateMessage<Game>) {
+        self.send(move |core|{
+
+            for udp_output in core.udp_outputs.iter() {
+                udp_output.on_completed_step(state_message.clone());
             }
 
         }).unwrap();
