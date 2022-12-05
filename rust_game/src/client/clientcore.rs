@@ -150,7 +150,7 @@ impl<Game: GameTrait> CoreSenderTrait for Sender<ClientCore<Game>> {
                     );
 
                     manager_sender.on_input_message(message.clone());
-                    udp_output_sender.accept(message);
+                    udp_output_sender.on_input_message(message);
 
                     let client_drop_time = time_message.get_scheduled_time().subtract(Game::GRACE_PERIOD * 2);
                     let drop_step = time_message.get_step_from_actual_time(client_drop_time).ceil() as usize;

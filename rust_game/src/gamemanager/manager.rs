@@ -33,6 +33,7 @@ impl<CoreSender: CoreSenderTrait> Manager<CoreSender> {
     pub fn new(is_server: bool,
                core_sender: CoreSender,
                render_receiver_sender: Sender<Data<CoreSender::Game>>) -> Self {
+
         Self{
             is_server,
             initial_information: None,
