@@ -93,11 +93,8 @@ impl<Game: GameTrait> Sender<UdpOutput<Game>> {
 
         }).unwrap();
     }
-}
 
-impl<Game: GameTrait> Consumer<InputMessage<Game>> for Sender<UdpOutput<Game>> {
-
-    fn accept(&self, input_message: InputMessage<Game>) {
+    pub fn on_input_message(&self, input_message: InputMessage<Game>) {
         self.send(move |udp_output|{
 
             //insert in reverse sorted order

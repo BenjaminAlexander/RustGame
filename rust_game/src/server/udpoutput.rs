@@ -141,11 +141,8 @@ impl<Game: GameTrait> Sender<UdpOutput<Game>> {
             }
         }).unwrap();
     }
-}
 
-impl<Game: GameTrait> Consumer<TimeMessage> for Sender<UdpOutput<Game>> {
-
-    fn accept(&self, time_message: TimeMessage) {
+    pub fn on_time_message(&self, time_message: TimeMessage) {
 
         let time_in_queue = TimeValue::now();
 
@@ -175,11 +172,8 @@ impl<Game: GameTrait> Consumer<TimeMessage> for Sender<UdpOutput<Game>> {
 
         }).unwrap();
     }
-}
 
-impl<Game: GameTrait> Consumer<InputMessage<Game>> for Sender<UdpOutput<Game>> {
-
-    fn accept(&self, input_message: InputMessage<Game>) {
+    pub fn on_input_message(&self, input_message: InputMessage<Game>) {
 
         let time_in_queue = TimeValue::now();
 

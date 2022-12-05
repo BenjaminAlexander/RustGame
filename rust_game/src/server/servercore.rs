@@ -180,7 +180,7 @@ impl<Game: GameTrait> CoreSenderTrait for Sender<ServerCore<Game>> {
         self.send(move |core|{
 
             for udp_output in core.udp_outputs.iter() {
-                udp_output.accept(time_message.clone());
+                udp_output.on_time_message(time_message.clone());
             }
 
             core.drop_steps_before = time_message.get_step_from_actual_time(time_message.get_scheduled_time().subtract(Game::GRACE_PERIOD)).ceil() as usize;
@@ -219,7 +219,7 @@ impl<Game: GameTrait> Consumer<InputMessage<Game>> for Sender<ServerCore<Game>> 
 
                 core.manager_sender.as_ref().unwrap().on_input_message(input_message.clone());
                 for udp_output in core.udp_outputs.iter() {
-                    udp_output.accept(input_message.clone());
+                    udp_output.on_input_message(input_message.clone());
                 }
             }
         }).unwrap();
