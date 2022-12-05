@@ -1,21 +1,21 @@
 use std::net::{UdpSocket, SocketAddrV4, SocketAddr};
-use crate::gametime::{TimeMessage, TimeReceived, TimeValue, TimeDuration, GameTimer};
-use crate::messaging::{InputMessage, StateMessage, ToClientMessageUDP, MAX_UDP_DATAGRAM_SIZE, MessageFragment, FragmentAssembler, ServerInputMessage};
-use crate::threading::{ConsumerList, Consumer, Sender, Receiver, ChannelThread};
+use crate::gametime::{TimeReceived, TimeValue, TimeDuration, GameTimer};
+use crate::messaging::{ToClientMessageUDP, MAX_UDP_DATAGRAM_SIZE, MessageFragment, FragmentAssembler};
+use crate::threading::{Sender, Receiver, ChannelThread};
 use crate::interface::GameTrait;
-use crate::threading::sender::SendError;
 use rmp_serde::decode::Error;
 use std::io;
 use log::{error, info, warn};
 use std::time::Duration;
 use crate::client::ClientCore;
+use crate::client::clientgametimeobserver::ClientGameTimerObserver;
 use crate::gamemanager::Manager;
 
 pub struct UdpInput<Game: GameTrait> {
     server_socket_addr: SocketAddr,
     socket: UdpSocket,
     fragment_assembler: FragmentAssembler,
-    game_timer_sender: Sender<GameTimer<Sender<ClientCore<Game>>>>,
+    game_timer_sender: Sender<GameTimer<ClientGameTimerObserver<Game>>>,
     manager_sender: Sender<Manager<Sender<ClientCore<Game>>>>,
 
     //metrics
@@ -29,7 +29,7 @@ impl<Game: GameTrait> UdpInput<Game> {
     pub fn new(
         server_socket_addr_v4: SocketAddrV4,
         socket: &UdpSocket,
-        game_timer_sender: Sender<GameTimer<Sender<ClientCore<Game>>>>,
+        game_timer_sender: Sender<GameTimer<ClientGameTimerObserver<Game>>>,
         manager_sender: Sender<Manager<Sender<ClientCore<Game>>>>) -> io::Result<Self> {
 
         let server_socket_addr = SocketAddr::from(server_socket_addr_v4);

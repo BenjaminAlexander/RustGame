@@ -1,5 +1,4 @@
 use crate::gamemanager::CoreSenderTrait;
-use crate::gametime::TimeMessage;
 use crate::interface::GameTrait;
 use crate::messaging::StateMessage;
 use crate::server::ServerCore;
@@ -14,9 +13,10 @@ pub struct ServerManagerObserver<Game: GameTrait> {
 impl<Game: GameTrait> CoreSenderTrait for ServerManagerObserver<Game> {
     type Game = Game;
 
+    /*
     fn on_time_message(&self, time_message: TimeMessage) {
         self.server_core_sender.on_time_message(time_message);
-    }
+    }*/
 
     fn on_completed_step(&self, state_message: StateMessage<Game>) {
         self.server_core_sender.on_completed_step(state_message);
