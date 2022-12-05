@@ -13,6 +13,7 @@ use std::str::FromStr;
 use crate::server::udpinput::UdpInput;
 use crate::server::udpoutput::UdpOutput;
 use crate::server::clientaddress::ClientAddress;
+use crate::server::servergametimerobserver::ServerGameTimerObserver;
 
 //TODO: route game timer and player inputs through the core to
 // get synchronous enforcement of the grace period
@@ -75,6 +76,7 @@ impl<Game: GameTrait> Sender<ServerCore<Game>> {
 
             let (listener_sender, listener_builder) = TcpListenerThread::<Game>::new(clone).build();
             listener_builder.name("ServerTcpListener").start().unwrap();
+
         }).unwrap();
     }
 
@@ -90,11 +92,18 @@ impl<Game: GameTrait> Sender<ServerCore<Game>> {
                 let (manager_sender, manager_builder) = Manager::new(
                     true,
                     core_sender.clone(),
-                    render_receiver_sender.clone()).build();
+                    render_receiver_sender.clone()
+                ).build();
+
+                let server_game_timer_observer = ServerGameTimerObserver::new(
+                    core_sender.clone(),
+                    render_receiver_sender.clone()
+                );
+
                 let (timer_sender, timer_builder) = GameTimer::new(
                     0,
-                    core_sender.clone(),
-                    render_receiver_sender.clone()).build();
+                    server_game_timer_observer
+                ).build();
 
                 core.manager_sender = Some(manager_sender.clone());
                 manager_sender.drop_steps_before(core.drop_steps_before);
@@ -103,7 +112,8 @@ impl<Game: GameTrait> Sender<ServerCore<Game>> {
                     core.server_config.clone(),
                     core.tcp_outputs.len(),
                     usize::MAX,
-                    initial_state.clone());
+                    initial_state.clone()
+                );
 
                 manager_sender.on_initial_information(server_initial_information.clone());
                 render_receiver_sender.on_initial_information(server_initial_information.clone());
@@ -171,12 +181,8 @@ impl<Game: GameTrait> Sender<ServerCore<Game>> {
             }
         }).unwrap();
     }
-}
 
-impl<Game: GameTrait> CoreSenderTrait for Sender<ServerCore<Game>> {
-    type Game = Game;
-
-    fn on_time_message(&self, time_message: TimeMessage) {
+    pub fn on_time_message(&self, time_message: TimeMessage) {
         self.send(move |core|{
 
             for udp_output in core.udp_outputs.iter() {
@@ -197,6 +203,10 @@ impl<Game: GameTrait> CoreSenderTrait for Sender<ServerCore<Game>> {
 
         }).unwrap();
     }
+}
+
+impl<Game: GameTrait> CoreSenderTrait for Sender<ServerCore<Game>> {
+    type Game = Game;
 
     fn on_completed_step(&self, state_message: StateMessage<Game>) {
         self.send(move |core|{

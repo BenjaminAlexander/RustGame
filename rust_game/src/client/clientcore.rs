@@ -1,13 +1,14 @@
 use std::net::{Ipv4Addr, SocketAddrV4, SocketAddr, TcpStream, UdpSocket};
 use std::str::FromStr;
 use crate::gametime::{GameTimer, TimeMessage};
-use crate::threading::{ChannelThread, Sender, ChannelDrivenThread, Consumer};
+use crate::threading::{ChannelThread, Sender, ChannelDrivenThread};
 use crate::client::tcpinput::TcpInput;
 use crate::interface::GameTrait;
 use crate::client::tcpoutput::TcpOutput;
 use crate::messaging::{InitialInformation, InputMessage, StateMessage};
 use crate::gamemanager::{CoreSenderTrait, Manager, RenderReceiver};
 use log::{info, trace};
+use crate::client::clientgametimeobserver::ClientGameTimerObserver;
 use crate::client::udpoutput::UdpOutput;
 use crate::client::udpinput::UdpInput;
 
@@ -64,10 +65,13 @@ impl<Game: GameTrait> Sender<ClientCore<Game>> {
                 core_sender.clone(),
                 render_receiver_sender.clone()).build();
 
+            let client_game_time_observer = ClientGameTimerObserver::new(
+                core_sender.clone(),
+                render_receiver_sender.clone());
+
             let (game_timer_sender, game_timer_builder) = GameTimer::new(
                 Game::CLOCK_AVERAGE_SIZE,
-                core_sender.clone(),
-                render_receiver_sender.clone()).build();
+                client_game_time_observer).build();
 
             let (udp_output_sender, udp_output_builder) = UdpOutput::<Game>::new(server_udp_socket_addr_v4, &udp_socket).unwrap().build();
             let (tcp_input_sender, tcp_input_builder) = TcpInput::new(
@@ -118,12 +122,8 @@ impl<Game: GameTrait> Sender<ClientCore<Game>> {
             core.initial_information = Some(initial_information);
         }).unwrap();
     }
-}
 
-impl<Game: GameTrait> CoreSenderTrait for Sender<ClientCore<Game>> {
-    type Game = Game;
-
-    fn on_time_message(&self, time_message: TimeMessage) {
+    pub fn on_time_message(&self, time_message: TimeMessage) {
         self.send(move |core|{
 
             trace!("TimeMessage step_index: {:?}", time_message.get_step());
@@ -166,6 +166,10 @@ impl<Game: GameTrait> CoreSenderTrait for Sender<ClientCore<Game>> {
 
         }).unwrap();
     }
+}
+
+impl<Game: GameTrait> CoreSenderTrait for Sender<ClientCore<Game>> {
+    type Game = Game;
 
     fn on_completed_step(&self, state_message: StateMessage<Self::Game>) {
         //no-op for the client
