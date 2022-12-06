@@ -9,6 +9,7 @@ use crate::threading::sender::SendError;
 use crate::server::remoteudppeer::RemoteUdpPeer;
 use std::collections::{HashMap, HashSet};
 use crate::server::clientaddress::ClientAddress;
+use crate::server::ServerCore;
 
 pub struct UdpInput<Game: GameTrait> {
     socket: UdpSocket,
@@ -16,13 +17,13 @@ pub struct UdpInput<Game: GameTrait> {
     client_addresses: Vec<Option<ClientAddress>>,
     client_ip_set: HashSet<IpAddr>,
     fragment_assemblers: HashMap<SocketAddr, FragmentAssembler>,
-    input_consumers: ConsumerList<InputMessage<Game>>,
+    core_sender: Sender<ServerCore<Game>>,
     remote_peer_consumers: ConsumerList<RemoteUdpPeer>
 }
 
 impl<Game: GameTrait> UdpInput<Game> {
 
-    pub fn new(socket: &UdpSocket) -> io::Result<Self> {
+    pub fn new(socket: &UdpSocket, core_sender: Sender<ServerCore<Game>>) -> io::Result<Self> {
         return Ok(Self{
             socket: socket.try_clone()?,
             remote_peers: Vec::new(),
@@ -30,7 +31,7 @@ impl<Game: GameTrait> UdpInput<Game> {
             client_ip_set: HashSet::new(),
             //TODO: make this more configurable
             fragment_assemblers: HashMap::new(),
-            input_consumers: ConsumerList::new(),
+            core_sender,
             remote_peer_consumers: ConsumerList::new(),
         });
     }
@@ -90,7 +91,7 @@ impl<Game: GameTrait> UdpInput<Game> {
 
             }
             ToServerMessageUDP::Input(input_message) => {
-                self.input_consumers.accept(&input_message);
+                self.core_sender.on_input_message(input_message);
             }
         }
     }
@@ -148,14 +149,6 @@ impl<Game: GameTrait> ChannelThread<()> for UdpInput<Game> {
 }
 
 impl<Game: GameTrait> Sender<UdpInput<Game>> {
-
-    pub fn add_input_consumer<T>(&self, consumer: T) -> Result<(), SendError<UdpInput<Game>>>
-        where T: Consumer<InputMessage<Game>> {
-
-        self.send(|udp_input|{
-            udp_input.input_consumers.add_consumer(consumer);
-        })
-    }
 
     pub fn add_remote_peer_consumers<T>(&self, consumer: T) -> Result<(), SendError<UdpInput<Game>>>
         where T: Consumer<RemoteUdpPeer> {

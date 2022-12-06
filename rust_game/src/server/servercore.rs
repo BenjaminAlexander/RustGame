@@ -60,19 +60,23 @@ impl<Game: GameTrait> ServerCore<Game> {
 impl<Game: GameTrait> Sender<ServerCore<Game>> {
 
     pub fn start_listener(&self) {
-        let clone = self.clone();
+        let core_sender = self.clone();
 
         self.send(|core| {
             let ip_addr_v4 = Ipv4Addr::from_str("127.0.0.1").unwrap();
             let socket_addr_v4 = SocketAddrV4::new(ip_addr_v4, Game::UDP_PORT);
             core.udp_socket = Some(UdpSocket::bind(socket_addr_v4).unwrap());
 
-            let udp_input = UdpInput::<Game>::new(core.udp_socket.as_ref().unwrap()).unwrap();
+            let udp_input = UdpInput::<Game>::new(
+                core.udp_socket.as_ref().unwrap(),
+                core_sender.clone()
+            ).unwrap();
+
             let (udp_input_sender, udp_input_builder) = udp_input.build();
             udp_input_builder.name("ServerUdpInput").start().unwrap();
             core.udp_input_sender = Some(udp_input_sender);
 
-            let (listener_sender, listener_builder) = TcpListenerThread::<Game>::new(clone).build();
+            let (listener_sender, listener_builder) = TcpListenerThread::<Game>::new(core_sender).build();
             listener_builder.name("ServerTcpListener").start().unwrap();
 
         }).unwrap();
@@ -130,8 +134,6 @@ impl<Game: GameTrait> Sender<ServerCore<Game>> {
                         initial_state.clone()
                     );
                 }
-
-                core.udp_input_sender.as_ref().unwrap().add_input_consumer(core_sender.clone()).unwrap();
 
                 timer_builder.name("ServerTimer").start().unwrap();
                 manager_builder.name("ServerManager").start().unwrap();
@@ -201,14 +203,11 @@ impl<Game: GameTrait> Sender<ServerCore<Game>> {
 
         }).unwrap();
     }
-}
 
-
-
-impl<Game: GameTrait> Consumer<InputMessage<Game>> for Sender<ServerCore<Game>> {
-
-    fn accept(&self, input_message: InputMessage<Game>) {
+    pub fn on_input_message(&self, input_message: InputMessage<Game>) {
         self.send(move |core|{
+
+            //TODO: is game started?
 
             if core.drop_steps_before <= input_message.get_step() &&
                 core.manager_sender.is_some() {
