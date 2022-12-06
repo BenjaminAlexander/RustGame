@@ -18,6 +18,8 @@ impl<Game: GameTrait> ClientManagerObserver<Game> {
 impl<Game: GameTrait> ManagerObserverTrait for ClientManagerObserver<Game> {
     type Game = Game;
 
+    const IS_SERVER: bool = false;
+
     fn on_step_message(&self, step_message: StepMessage<Game>) {
         self.render_receiver_sender.on_step_message(step_message);
     }

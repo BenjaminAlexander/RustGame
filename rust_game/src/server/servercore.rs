@@ -93,10 +93,8 @@ impl<Game: GameTrait> Sender<ServerCore<Game>> {
                     render_receiver_sender.clone()
                 );
 
-                let (manager_sender, manager_builder) = Manager::new(
-                    true,
-                    server_manager_observer
-                ).build();
+                let (manager_sender, manager_builder) =
+                    Manager::new(server_manager_observer).build();
 
                 let server_game_timer_observer = ServerGameTimerObserver::new(
                     core_sender.clone(),
@@ -208,7 +206,7 @@ impl<Game: GameTrait> Sender<ServerCore<Game>> {
 
 
 impl<Game: GameTrait> Consumer<InputMessage<Game>> for Sender<ServerCore<Game>> {
-    
+
     fn accept(&self, input_message: InputMessage<Game>) {
         self.send(move |core|{
 

@@ -11,8 +11,6 @@ use crate::gamemanager::{ManagerObserverTrait, RenderReceiver};
 use crate::gamemanager::renderreceiver::Data;
 
 pub struct Manager<ManagerObserver: ManagerObserverTrait> {
-
-    is_server: bool,
     drop_steps_before: usize,
     //TODO: send requested state immediately if available
     requested_step: usize,
@@ -28,11 +26,9 @@ pub struct Manager<ManagerObserver: ManagerObserverTrait> {
 
 impl<ManagerObserver: ManagerObserverTrait> Manager<ManagerObserver> {
 
-    pub fn new(is_server: bool,
-               manager_observer: ManagerObserver) -> Self {
+    pub fn new(manager_observer: ManagerObserver) -> Self {
 
         Self{
-            is_server,
             initial_information: None,
             steps: VecDeque::new(),
             requested_step: 0,
@@ -107,7 +103,7 @@ impl<ManagerObserver: ManagerObserverTrait> Manager<ManagerObserver> {
             self.manager_observer.on_completed_step(complete_message_option.as_ref().unwrap().clone());
         }
 
-        if self.is_server {
+        if ManagerObserver::IS_SERVER {
             if let Some(message) = self.steps[step_index].get_server_input_message() {
                 self.manager_observer.on_server_input_message(message);
             }
@@ -149,11 +145,11 @@ impl<ManagerObserver: ManagerObserverTrait> ChannelDrivenThread<()> for Manager<
 
             trace!("Trying update current: {:?}, next: {:?}", self.steps[current].get_step_index(), self.steps[next].get_step_index());
 
-            if (self.is_server || !self.steps[next].is_state_deserialized()) &&
+            if (ManagerObserver::IS_SERVER || !self.steps[next].is_state_deserialized()) &&
                 (self.steps[current].need_to_compute_next_state() ||
                 (should_drop_current && self.steps[next].is_state_none())) {
 
-                if self.is_server {
+                if ManagerObserver::IS_SERVER {
                     self.steps[current].calculate_server_input();
                 }
 

@@ -61,10 +61,8 @@ impl<Game: GameTrait> Sender<ClientCore<Game>> {
 
             let udp_socket = UdpSocket::bind("127.0.0.1:0").unwrap();
 
-            let (manager_sender, manager_builder) = Manager::new(
-                false,
-                ClientManagerObserver::new(render_receiver_sender.clone())
-            ).build();
+            let (manager_sender, manager_builder) =
+                Manager::new(ClientManagerObserver::new(render_receiver_sender.clone())).build();
 
             let client_game_time_observer = ClientGameTimerObserver::new(
                 core_sender.clone(),
