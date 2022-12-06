@@ -1,4 +1,4 @@
-pub use self::channeldriventhread::ChannelDrivenThread;
+pub use self::channeldriventhread::{ChannelDrivenThread, ThreadAction};
 pub use self::channelthread::ChannelThread;
 pub use self::consumer::{Consumer, ConsumerList};
 pub use self::receiver::Receiver;
