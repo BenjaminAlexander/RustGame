@@ -1,6 +1,6 @@
 use crate::gamemanager::{Data, ManagerObserverTrait, StepMessage};
 use crate::interface::GameTrait;
-use crate::messaging::StateMessage;
+use crate::messaging::{ServerInputMessage, StateMessage};
 use crate::threading::Sender;
 
 pub struct ClientManagerObserver<Game: GameTrait> {
@@ -23,6 +23,10 @@ impl<Game: GameTrait> ManagerObserverTrait for ClientManagerObserver<Game> {
     }
 
     fn on_completed_step(&self, state_message: StateMessage<Game>) {
+
+    }
+
+    fn on_server_input_message(&self, server_input_message: ServerInputMessage<Self::Game>) {
 
     }
 }

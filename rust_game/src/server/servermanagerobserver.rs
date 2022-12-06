@@ -1,9 +1,9 @@
 use crate::gamemanager::{Data, ManagerObserverTrait, StepMessage};
 use crate::interface::GameTrait;
-use crate::messaging::StateMessage;
+use crate::messaging::{ServerInputMessage, StateMessage};
 use crate::server::ServerCore;
 use crate::server::udpoutput::UdpOutput;
-use crate::threading::Sender;
+use crate::threading::{Consumer, Sender};
 
 pub struct ServerManagerObserver<Game: GameTrait> {
     server_core_sender: Sender<ServerCore<Game>>,
@@ -39,6 +39,12 @@ impl<Game: GameTrait> ManagerObserverTrait for ServerManagerObserver<Game> {
         for udp_output in self.udp_outputs.iter() {
             udp_output.on_completed_step(state_message.clone());
         }
+    }
 
+    fn on_server_input_message(&self, server_input_message: ServerInputMessage<Game>) {
+
+        for udp_output in self.udp_outputs.iter() {
+            udp_output.accept(server_input_message.clone());
+        }
     }
 }

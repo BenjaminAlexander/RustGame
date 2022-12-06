@@ -20,7 +20,6 @@ pub struct Manager<ManagerObserver: ManagerObserverTrait> {
     //New states at the back, old at the front (index 0)
     steps: VecDeque<Step<ManagerObserver::Game>>,
     manager_observer: ManagerObserver,
-    server_input_consumer_list: ConsumerList<ServerInputMessage<ManagerObserver::Game>>,
 
     //metrics
     time_of_last_state_receive: TimeValue,
@@ -39,7 +38,6 @@ impl<ManagerObserver: ManagerObserverTrait> Manager<ManagerObserver> {
             requested_step: 0,
             drop_steps_before: 0,
             manager_observer,
-            server_input_consumer_list: ConsumerList::new(),
 
             //metrics
             time_of_last_state_receive: TimeValue::now(),
@@ -111,7 +109,7 @@ impl<ManagerObserver: ManagerObserverTrait> Manager<ManagerObserver> {
 
         if self.is_server {
             if let Some(message) = self.steps[step_index].get_server_input_message() {
-                self.server_input_consumer_list.accept(&message);
+                self.manager_observer.on_server_input_message(message);
             }
         }
     }
@@ -193,13 +191,6 @@ impl<ManagerObserver: ManagerObserverTrait> ChannelDrivenThread<()> for Manager<
 }
 
 impl<ManagerObserver: ManagerObserverTrait> Sender<Manager<ManagerObserver>> {
-
-    pub fn add_server_input_consumer<T>(&self, consumer: T)
-        where T: Consumer<ServerInputMessage<ManagerObserver::Game>> {
-        self.send(move |manager|{
-            manager.server_input_consumer_list.add_consumer(consumer);
-        }).unwrap();
-    }
 
     pub fn drop_steps_before(&self, step :usize) {
         self.send(move |manager|{

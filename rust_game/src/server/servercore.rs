@@ -16,9 +16,6 @@ use crate::server::clientaddress::ClientAddress;
 use crate::server::servergametimerobserver::ServerGameTimerObserver;
 use crate::server::servermanagerobserver::ServerManagerObserver;
 
-//TODO: route game timer and player inputs through the core to
-// get synchronous enforcement of the grace period
-
 pub struct ServerCore<Game: GameTrait> {
 
     game_is_started: bool,
@@ -103,7 +100,8 @@ impl<Game: GameTrait> Sender<ServerCore<Game>> {
 
                 let server_game_timer_observer = ServerGameTimerObserver::new(
                     core_sender.clone(),
-                    render_receiver_sender.clone()
+                    render_receiver_sender.clone(),
+                    core.udp_outputs.clone()
                 );
 
                 let (timer_sender, timer_builder) = GameTimer::new(
@@ -126,10 +124,6 @@ impl<Game: GameTrait> Sender<ServerCore<Game>> {
                 timer_sender.on_initial_information(server_initial_information.clone());
 
                 timer_sender.start().unwrap();
-
-                for udp_output in core.udp_outputs.iter() {
-                    manager_sender.add_server_input_consumer(udp_output.clone());
-                }
 
                 for tcp_output in core.tcp_outputs.iter() {
                     tcp_output.send_initial_information(
@@ -211,8 +205,10 @@ impl<Game: GameTrait> Sender<ServerCore<Game>> {
     }
 }
 
-impl<Game: GameTrait> Consumer<InputMessage<Game>> for Sender<ServerCore<Game>> {
 
+
+impl<Game: GameTrait> Consumer<InputMessage<Game>> for Sender<ServerCore<Game>> {
+    
     fn accept(&self, input_message: InputMessage<Game>) {
         self.send(move |core|{
 
