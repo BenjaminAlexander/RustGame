@@ -28,8 +28,6 @@ impl<Game: GameTrait> ChannelThread<()> for TcpListenerThread<Game> {
 
         // accept connections and process them serially
         for result in listener.incoming() {
-
-            //TODO: try to refactor with is_ok and or_else
             match result {
                 Ok(tcp_stream) => {
                     info!("New TCP connection from {:?}", tcp_stream.peer_addr().unwrap().ip().to_string());
@@ -37,8 +35,6 @@ impl<Game: GameTrait> ChannelThread<()> for TcpListenerThread<Game> {
 
                     //TODO: this doesn't really do anything, should probably check if listening should stop
                     receiver.try_iter(&mut self);
-
-                    self.server_core_sender.on_tcp_connection(tcp_stream).
 
                     match self.server_core_sender.on_tcp_connection(tcp_stream) {
                         Ok(_) => {/*contiue*/}
