@@ -7,32 +7,30 @@ use crate::gamemanager::step::Step;
 use crate::gamemanager::stepmessage::StepMessage;
 use crate::gametime::{TimeDuration, TimeValue};
 use std::sync::Arc;
-use crate::gamemanager::{CoreSenderTrait, RenderReceiver};
+use crate::gamemanager::{ManagerObserverTrait, RenderReceiver};
 use crate::gamemanager::renderreceiver::Data;
 
-pub struct Manager<CoreSender: CoreSenderTrait> {
+pub struct Manager<ManagerObserver: ManagerObserverTrait> {
 
     is_server: bool,
     drop_steps_before: usize,
     //TODO: send requested state immediately if available
     requested_step: usize,
-    initial_information: Option<Arc<InitialInformation<CoreSender::Game>>>,
+    initial_information: Option<Arc<InitialInformation<ManagerObserver::Game>>>,
     //New states at the back, old at the front (index 0)
-    steps: VecDeque<Step<CoreSender::Game>>,
-    render_receiver_sender: Sender<Data<CoreSender::Game>>,
-    core_sender: CoreSender,
-    server_input_consumer_list: ConsumerList<ServerInputMessage<CoreSender::Game>>,
+    steps: VecDeque<Step<ManagerObserver::Game>>,
+    manager_observer: ManagerObserver,
+    server_input_consumer_list: ConsumerList<ServerInputMessage<ManagerObserver::Game>>,
 
     //metrics
     time_of_last_state_receive: TimeValue,
     time_of_last_input_receive: TimeValue,
 }
 
-impl<CoreSender: CoreSenderTrait> Manager<CoreSender> {
+impl<ManagerObserver: ManagerObserverTrait> Manager<ManagerObserver> {
 
     pub fn new(is_server: bool,
-               core_sender: CoreSender,
-               render_receiver_sender: Sender<Data<CoreSender::Game>>) -> Self {
+               manager_observer: ManagerObserver) -> Self {
 
         Self{
             is_server,
@@ -40,8 +38,7 @@ impl<CoreSender: CoreSenderTrait> Manager<CoreSender> {
             steps: VecDeque::new(),
             requested_step: 0,
             drop_steps_before: 0,
-            render_receiver_sender,
-            core_sender,
+            manager_observer,
             server_input_consumer_list: ConsumerList::new(),
 
             //metrics
@@ -50,7 +47,7 @@ impl<CoreSender: CoreSenderTrait> Manager<CoreSender> {
         }
     }
 
-    fn get_state(&mut self, step_index: usize) -> Option<&mut Step<CoreSender::Game>> {
+    fn get_state(&mut self, step_index: usize) -> Option<&mut Step<ManagerObserver::Game>> {
 
         if self.initial_information.is_none() {
             return None;
@@ -81,7 +78,7 @@ impl<CoreSender: CoreSenderTrait> Manager<CoreSender> {
         }
     }
 
-    fn handle_state_message(&mut self, state_message: StateMessage<CoreSender::Game>) {
+    fn handle_state_message(&mut self, state_message: StateMessage<ManagerObserver::Game>) {
         if let Some(step) = self.get_state(state_message.get_sequence()) {
             step.set_final_state(state_message);
         }
@@ -104,12 +101,12 @@ impl<CoreSender: CoreSenderTrait> Manager<CoreSender> {
     fn send_messages(&mut self, step_index: usize) {
         let changed_message_option = self.steps[step_index].get_changed_message();
         if changed_message_option.is_some() {
-            self.render_receiver_sender.on_step_message(changed_message_option.unwrap().clone());
+            self.manager_observer.on_step_message(changed_message_option.unwrap().clone());
         }
 
         let complete_message_option = self.steps[step_index].get_complete_message();
         if complete_message_option.is_some() {
-            self.core_sender.on_completed_step(complete_message_option.as_ref().unwrap().clone());
+            self.manager_observer.on_completed_step(complete_message_option.as_ref().unwrap().clone());
         }
 
         if self.is_server {
@@ -120,7 +117,7 @@ impl<CoreSender: CoreSenderTrait> Manager<CoreSender> {
     }
 }
 
-impl<CoreSender: CoreSenderTrait> ChannelDrivenThread<()> for Manager<CoreSender> {
+impl<ManagerObserver: ManagerObserverTrait> ChannelDrivenThread<()> for Manager<ManagerObserver> {
 
     fn on_none_pending(&mut self) -> Option<()> {
 
@@ -195,10 +192,10 @@ impl<CoreSender: CoreSenderTrait> ChannelDrivenThread<()> for Manager<CoreSender
     }
 }
 
-impl<CoreSender: CoreSenderTrait> Sender<Manager<CoreSender>> {
+impl<ManagerObserver: ManagerObserverTrait> Sender<Manager<ManagerObserver>> {
 
     pub fn add_server_input_consumer<T>(&self, consumer: T)
-        where T: Consumer<ServerInputMessage<CoreSender::Game>> {
+        where T: Consumer<ServerInputMessage<ManagerObserver::Game>> {
         self.send(move |manager|{
             manager.server_input_consumer_list.add_consumer(consumer);
         }).unwrap();
@@ -216,7 +213,7 @@ impl<CoreSender: CoreSenderTrait> Sender<Manager<CoreSender>> {
         }).unwrap();
     }
 
-    pub fn on_initial_information(&self, initial_information: InitialInformation<CoreSender::Game>) {
+    pub fn on_initial_information(&self, initial_information: InitialInformation<ManagerObserver::Game>) {
         self.send(move |manager|{
             //TODO: move Arc outside lambda
             manager.initial_information = Some(Arc::new(initial_information));
@@ -228,7 +225,7 @@ impl<CoreSender: CoreSenderTrait> Sender<Manager<CoreSender>> {
         }).unwrap();
     }
 
-    pub fn on_input_message(&self, input_message: InputMessage<CoreSender::Game>) {
+    pub fn on_input_message(&self, input_message: InputMessage<ManagerObserver::Game>) {
         self.send(move |manager|{
             if let Some(step) = manager.get_state(input_message.get_step()) {
                 step.set_input(input_message);
@@ -237,7 +234,7 @@ impl<CoreSender: CoreSenderTrait> Sender<Manager<CoreSender>> {
         }).unwrap();
     }
 
-    pub fn on_server_input_message(&self, server_input_message: ServerInputMessage<CoreSender::Game>) {
+    pub fn on_server_input_message(&self, server_input_message: ServerInputMessage<ManagerObserver::Game>) {
         self.send(move |manager|{
 
             //info!("Server Input received: {:?}", server_input_message.get_step());
@@ -247,7 +244,7 @@ impl<CoreSender: CoreSenderTrait> Sender<Manager<CoreSender>> {
         }).unwrap();
     }
 
-    pub fn on_state_message(&self, state_message: StateMessage<CoreSender::Game>) {
+    pub fn on_state_message(&self, state_message: StateMessage<ManagerObserver::Game>) {
         self.send(move |manager|{
             manager.handle_state_message(state_message);
 
