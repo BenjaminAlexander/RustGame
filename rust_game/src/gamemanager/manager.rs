@@ -2,13 +2,14 @@ use std::collections::vec_deque::VecDeque;
 use log::{warn, trace};
 use crate::messaging::{StateMessage, InputMessage, InitialInformation, ServerInputMessage};
 use crate::interface::GameTrait;
-use crate::threading::{ConsumerList, ChannelDrivenThread, Sender, Consumer};
+use crate::threading::{ConsumerList, ChannelDrivenThread, Sender, Consumer, ThreadAction};
 use crate::gamemanager::step::Step;
 use crate::gamemanager::stepmessage::StepMessage;
 use crate::gametime::{TimeDuration, TimeValue};
 use std::sync::Arc;
 use crate::gamemanager::{ManagerObserverTrait, RenderReceiver};
 use crate::gamemanager::renderreceiver::Data;
+use crate::threading::ThreadAction::Continue;
 
 pub struct Manager<ManagerObserver: ManagerObserverTrait> {
     drop_steps_before: usize,
@@ -113,7 +114,7 @@ impl<ManagerObserver: ManagerObserverTrait> Manager<ManagerObserver> {
 
 impl<ManagerObserver: ManagerObserverTrait> ChannelDrivenThread<()> for Manager<ManagerObserver> {
 
-    fn on_none_pending(&mut self) -> Option<()> {
+    fn on_none_pending(&mut self) -> ThreadAction<()> {
 
         let now = TimeValue::now();
         let duration_since_last_state = now.duration_since(self.time_of_last_state_receive);
@@ -124,11 +125,11 @@ impl<ManagerObserver: ManagerObserverTrait> ChannelDrivenThread<()> for Manager<
 
         if self.steps.is_empty() {
             trace!("Steps is empty");
-            return None;
+            return Continue;
         }
 
         if self.initial_information.is_none() {
-            return None;
+            return Continue;
         }
 
         let mut current: usize = 0;
@@ -178,7 +179,7 @@ impl<ManagerObserver: ManagerObserverTrait> ChannelDrivenThread<()> for Manager<
 
         self.send_messages(current);
 
-        None
+        Continue
     }
 
     fn on_channel_disconnect(&mut self) -> () {
