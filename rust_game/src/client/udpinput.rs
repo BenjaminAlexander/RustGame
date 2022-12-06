@@ -9,6 +9,7 @@ use log::{error, info, warn};
 use std::time::Duration;
 use crate::client::ClientCore;
 use crate::client::clientgametimeobserver::ClientGameTimerObserver;
+use crate::client::clientmanagerobserver::ClientManagerObserver;
 use crate::gamemanager::Manager;
 
 pub struct UdpInput<Game: GameTrait> {
@@ -16,7 +17,7 @@ pub struct UdpInput<Game: GameTrait> {
     socket: UdpSocket,
     fragment_assembler: FragmentAssembler,
     game_timer_sender: Sender<GameTimer<ClientGameTimerObserver<Game>>>,
-    manager_sender: Sender<Manager<Sender<ClientCore<Game>>>>,
+    manager_sender: Sender<Manager<ClientManagerObserver<Game>>>,
 
     //metrics
     time_of_last_state_receive: TimeValue,
@@ -30,7 +31,7 @@ impl<Game: GameTrait> UdpInput<Game> {
         server_socket_addr_v4: SocketAddrV4,
         socket: &UdpSocket,
         game_timer_sender: Sender<GameTimer<ClientGameTimerObserver<Game>>>,
-        manager_sender: Sender<Manager<Sender<ClientCore<Game>>>>) -> io::Result<Self> {
+        manager_sender: Sender<Manager<ClientManagerObserver<Game>>>) -> io::Result<Self> {
 
         let server_socket_addr = SocketAddr::from(server_socket_addr_v4);
 

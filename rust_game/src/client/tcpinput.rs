@@ -7,6 +7,7 @@ use rmp_serde::decode::Error;
 use std::io;
 use crate::client::ClientCore;
 use crate::client::clientgametimeobserver::ClientGameTimerObserver;
+use crate::client::clientmanagerobserver::ClientManagerObserver;
 use crate::client::udpoutput::UdpOutput;
 use crate::gamemanager::{Data, Manager};
 use crate::interface::GameTrait;
@@ -15,7 +16,7 @@ pub struct TcpInput <Game: GameTrait> {
     player_index: Option<usize>,
     tcp_stream: TcpStream,
     game_timer_sender: Sender<GameTimer<ClientGameTimerObserver<Game>>>,
-    manager_sender: Sender<Manager<Sender<ClientCore<Game>>>>,
+    manager_sender: Sender<Manager<ClientManagerObserver<Game>>>,
     client_core_sender: Sender<ClientCore<Game>>,
     udp_output_sender: Sender<UdpOutput<Game>>,
     render_data_sender: Sender<Data<Game>>
@@ -25,7 +26,7 @@ impl<Game: GameTrait> TcpInput<Game> {
 
     pub fn new(
         game_timer_sender: Sender<GameTimer<ClientGameTimerObserver<Game>>>,
-        manager_sender: Sender<Manager<Sender<ClientCore<Game>>>>,
+        manager_sender: Sender<Manager<ClientManagerObserver<Game>>>,
         client_core_sender: Sender<ClientCore<Game>>,
         udp_output_sender: Sender<UdpOutput<Game>>,
         render_data_sender: Sender<Data<Game>>,

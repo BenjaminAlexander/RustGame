@@ -6,4 +6,5 @@ mod tcpoutput;
 mod udpoutput;
 mod udpinput;
 mod clientgametimeobserver;
+mod clientmanagerobserver;
 

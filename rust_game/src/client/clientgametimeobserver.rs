@@ -1,5 +1,5 @@
 use crate::client::ClientCore;
-use crate::gamemanager::{CoreSenderTrait, Data};
+use crate::gamemanager::Data;
 use crate::gametime::{GameTimerObserverTrait, TimeMessage};
 use crate::interface::GameTrait;
 use crate::threading::{Consumer, Sender};

@@ -7,16 +7,14 @@ use crate::threading::{ChannelDrivenThread, ChannelThread, Consumer, Sender};
 use crate::server::{TcpListenerThread, ServerConfig};
 use crate::server::tcpoutput::TcpOutput;
 use crate::gametime::{GameTimer, TimeMessage};
-use crate::gamemanager::{CoreSenderTrait, Manager, RenderReceiver};
+use crate::gamemanager::{Manager, RenderReceiver};
 use crate::messaging::{InputMessage, InitialInformation, StateMessage};
 use std::str::FromStr;
 use crate::server::udpinput::UdpInput;
 use crate::server::udpoutput::UdpOutput;
 use crate::server::clientaddress::ClientAddress;
 use crate::server::servergametimerobserver::ServerGameTimerObserver;
-
-//TODO: route game timer and player inputs through the core to
-// get synchronous enforcement of the grace period
+use crate::server::servermanagerobserver::ServerManagerObserver;
 
 pub struct ServerCore<Game: GameTrait> {
 
@@ -27,7 +25,7 @@ pub struct ServerCore<Game: GameTrait> {
     udp_socket: Option<UdpSocket>,
     udp_outputs: Vec<Sender<UdpOutput<Game>>>,
     udp_input_sender: Option<Sender<UdpInput<Game>>>,
-    manager_sender: Option<Sender<Manager<Sender<Self>>>>,
+    manager_sender: Option<Sender<Manager<ServerManagerObserver<Game>>>>,
     drop_steps_before: usize
 }
 
@@ -89,15 +87,19 @@ impl<Game: GameTrait> Sender<ServerCore<Game>> {
 
                 let initial_state = Game::get_initial_state(core.tcp_outputs.len());
 
-                let (manager_sender, manager_builder) = Manager::new(
-                    true,
+                let server_manager_observer = ServerManagerObserver::new(
                     core_sender.clone(),
+                    core.udp_outputs.clone(),
                     render_receiver_sender.clone()
-                ).build();
+                );
+
+                let (manager_sender, manager_builder) =
+                    Manager::new(server_manager_observer).build();
 
                 let server_game_timer_observer = ServerGameTimerObserver::new(
                     core_sender.clone(),
-                    render_receiver_sender.clone()
+                    render_receiver_sender.clone(),
+                    core.udp_outputs.clone()
                 );
 
                 let (timer_sender, timer_builder) = GameTimer::new(
@@ -120,10 +122,6 @@ impl<Game: GameTrait> Sender<ServerCore<Game>> {
                 timer_sender.on_initial_information(server_initial_information.clone());
 
                 timer_sender.start().unwrap();
-
-                for udp_output in core.udp_outputs.iter() {
-                    manager_sender.add_server_input_consumer(udp_output.clone());
-                }
 
                 for tcp_output in core.tcp_outputs.iter() {
                     tcp_output.send_initial_information(
@@ -205,19 +203,7 @@ impl<Game: GameTrait> Sender<ServerCore<Game>> {
     }
 }
 
-impl<Game: GameTrait> CoreSenderTrait for Sender<ServerCore<Game>> {
-    type Game = Game;
 
-    fn on_completed_step(&self, state_message: StateMessage<Game>) {
-        self.send(move |core|{
-
-            for udp_output in core.udp_outputs.iter() {
-                udp_output.on_completed_step(state_message.clone());
-            }
-
-        }).unwrap();
-    }
-}
 
 impl<Game: GameTrait> Consumer<InputMessage<Game>> for Sender<ServerCore<Game>> {
 

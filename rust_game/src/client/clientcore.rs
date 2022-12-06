@@ -6,16 +6,17 @@ use crate::client::tcpinput::TcpInput;
 use crate::interface::GameTrait;
 use crate::client::tcpoutput::TcpOutput;
 use crate::messaging::{InitialInformation, InputMessage, StateMessage};
-use crate::gamemanager::{CoreSenderTrait, Manager, RenderReceiver};
+use crate::gamemanager::{Manager, RenderReceiver};
 use log::{info, trace};
 use crate::client::clientgametimeobserver::ClientGameTimerObserver;
+use crate::client::clientmanagerobserver::ClientManagerObserver;
 use crate::client::udpoutput::UdpOutput;
 use crate::client::udpinput::UdpInput;
 
 pub struct ClientCore<Game: GameTrait> {
     server_ip: String,
     input_event_handler: Game::ClientInputEventHandler,
-    manager_sender: Option<Sender<Manager<Sender<Self>>>>,
+    manager_sender: Option<Sender<Manager<ClientManagerObserver<Game>>>>,
     udp_output_sender: Option<Sender<UdpOutput<Game>>>,
     tcp_output_sender: Option<Sender<TcpOutput>>,
     initial_information: Option<InitialInformation<Game>>,
@@ -60,10 +61,8 @@ impl<Game: GameTrait> Sender<ClientCore<Game>> {
 
             let udp_socket = UdpSocket::bind("127.0.0.1:0").unwrap();
 
-            let (manager_sender, manager_builder) = Manager::new(
-                false,
-                core_sender.clone(),
-                render_receiver_sender.clone()).build();
+            let (manager_sender, manager_builder) =
+                Manager::new(ClientManagerObserver::new(render_receiver_sender.clone())).build();
 
             let client_game_time_observer = ClientGameTimerObserver::new(
                 core_sender.clone(),
@@ -165,14 +164,6 @@ impl<Game: GameTrait> Sender<ClientCore<Game>> {
             core.last_time_message = Some(time_message);
 
         }).unwrap();
-    }
-}
-
-impl<Game: GameTrait> CoreSenderTrait for Sender<ClientCore<Game>> {
-    type Game = Game;
-
-    fn on_completed_step(&self, state_message: StateMessage<Self::Game>) {
-        //no-op for the client
     }
 }
 

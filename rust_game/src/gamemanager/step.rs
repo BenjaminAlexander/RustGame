@@ -140,6 +140,8 @@ impl<Game: GameTrait> Step<Game> {
 
     pub fn calculate_server_input(&mut self) {
 
+        //TODO: won't this stop the next state from being computed multiple times?
+        //what if we need to recompute it?
         if let ServerInputHolder::None = self.server_input {
 
             if let Some(state) = match &self.state {
@@ -309,6 +311,7 @@ impl<Game: GameTrait> Step<Game> {
         return None;
     }
 
+    //TODO: return a borrowed value?
     pub fn get_server_input_message(&mut self) -> Option<ServerInputMessage<Game>> {
 
         if let ServerInputHolder::ComputedComplete {server_input, need_to_send_as_complete} = &mut self.server_input {
