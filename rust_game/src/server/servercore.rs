@@ -15,6 +15,7 @@ use crate::server::udpoutput::UdpOutput;
 use crate::server::clientaddress::ClientAddress;
 use crate::server::servergametimerobserver::ServerGameTimerObserver;
 use crate::server::servermanagerobserver::ServerManagerObserver;
+use crate::threading::sender::SendError;
 
 pub struct ServerCore<Game: GameTrait> {
 
@@ -141,7 +142,7 @@ impl<Game: GameTrait> Sender<ServerCore<Game>> {
         return render_receiver;
     }
 
-    pub fn on_tcp_connection(&self, tcp_stream: TcpStream) {
+    pub fn on_tcp_connection(&self, tcp_stream: TcpStream) -> Result<(), SendError<ServerCore<Game>>> {
         self.send(move |core|{
             if !core.game_is_started {
                 let player_index = core.tcp_inputs.len();
@@ -177,7 +178,7 @@ impl<Game: GameTrait> Sender<ServerCore<Game>> {
             } else {
                 info!("TcpStream connected after the core has stated and will be dropped. {:?}", tcp_stream);
             }
-        }).unwrap();
+        })
     }
 
     pub fn on_time_message(&self, time_message: TimeMessage) {

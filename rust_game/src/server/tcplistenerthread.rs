@@ -35,7 +35,7 @@ impl<Game: GameTrait> ChannelThread<()> for TcpListenerThread<Game> {
                     //TODO: this doesn't really do anything, should probably check if listening should stop
                     receiver.try_iter(&mut self);
 
-                    self.server_core_sender.on_tcp_connection(tcp_stream);
+                    self.server_core_sender.on_tcp_connection(tcp_stream).unwrap();
                 }
                 Err(error) => {
                     error!("{:?}", error);
