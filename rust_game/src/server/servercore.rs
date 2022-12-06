@@ -13,6 +13,7 @@ use std::str::FromStr;
 use crate::server::udpinput::UdpInput;
 use crate::server::udpoutput::UdpOutput;
 use crate::server::clientaddress::ClientAddress;
+use crate::server::remoteudppeer::RemoteUdpPeer;
 use crate::server::servergametimerobserver::ServerGameTimerObserver;
 use crate::server::servermanagerobserver::ServerManagerObserver;
 
@@ -82,6 +83,16 @@ impl<Game: GameTrait> Sender<ServerCore<Game>> {
         }).unwrap();
     }
 
+    pub fn on_remote_udp_peer(&self, remote_udp_peer: RemoteUdpPeer) {
+        self.send(|core|{
+
+            if let Some(udp_output_sender) = core.udp_outputs.get(remote_udp_peer.get_player_index()) {
+                udp_output_sender.on_remote_peer(remote_udp_peer);
+            }
+
+        }).unwrap();
+    }
+
     pub fn start_game(&self) -> RenderReceiver<Game> {
         let (render_receiver_sender, render_receiver) = RenderReceiver::<Game>::new();
         let core_sender = self.clone();
@@ -143,6 +154,12 @@ impl<Game: GameTrait> Sender<ServerCore<Game>> {
         return render_receiver;
     }
 
+    /*
+    TODO:
+    Server      Cliend
+    Tcp Hello ->
+        <- UdpHello
+     */
     pub fn on_tcp_connection(&self, tcp_stream: TcpStream) {
         self.send(move |core|{
             if !core.game_is_started {
@@ -165,7 +182,6 @@ impl<Game: GameTrait> Sender<ServerCore<Game>> {
                 ).unwrap().build();
 
                 let input_sender = core.udp_input_sender.as_ref().unwrap();
-                input_sender.add_remote_peer_consumers(udp_out_sender.clone()).unwrap();
                 input_sender.accept(client_address);
 
                 tcp_out_builder.name("ServerTcpOutput").start().unwrap();

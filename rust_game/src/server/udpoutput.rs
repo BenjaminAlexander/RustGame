@@ -118,6 +118,16 @@ impl<Game: GameTrait> ChannelThread<()> for UdpOutput<Game> {
 
 impl<Game: GameTrait> Sender<UdpOutput<Game>> {
 
+    pub fn on_remote_peer(&self, remote_peer: RemoteUdpPeer) {
+        self.send(|udp_output|{
+
+            if udp_output.player_index == remote_peer.get_player_index() {
+                info!("Setting remote peer: {:?}", remote_peer);
+                udp_output.remote_peer = Some(remote_peer);
+            }
+        }).unwrap();
+    }
+
     pub fn on_completed_step(&self, state_message: StateMessage<Game>) {
 
         let time_in_queue = TimeValue::now();
@@ -217,19 +227,6 @@ impl<Game: GameTrait> Consumer<ServerInputMessage<Game>> for Sender<UdpOutput<Ga
                 udp_output.log_time_in_queue(time_in_queue);
             } else {
                 //info!("ServerInputMessage dropped. Last state: {:?}", tcp_output.last_state_sequence);
-            }
-        }).unwrap();
-    }
-}
-
-impl<Game: GameTrait> Consumer<RemoteUdpPeer> for Sender<UdpOutput<Game>> {
-
-    fn accept(&self, remote_peer: RemoteUdpPeer) {
-        self.send(|udp_output|{
-
-            if udp_output.player_index == remote_peer.get_player_index() {
-                info!("Setting remote peer: {:?}", remote_peer);
-                udp_output.remote_peer = Some(remote_peer);
             }
         }).unwrap();
     }
