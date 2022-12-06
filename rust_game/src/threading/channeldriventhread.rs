@@ -2,16 +2,22 @@ use log::{trace, info};
 
 use crate::threading::{ChannelThread, Receiver};
 use std::sync::mpsc::{TryRecvError};
+use crate::threading::channeldriventhread::ThreadAction::{Continue, Stop};
+
+pub enum ThreadAction<T> {
+    Continue,
+    Stop(T)
+}
 
 pub trait ChannelDrivenThread<T>: Send + 'static
     where T: Send + 'static {
 
-    fn after_message(&mut self) -> Option<T> {
-        None
+    fn after_message(&mut self) -> ThreadAction<T> {
+        Continue
     }
 
-    fn on_none_pending(&mut self) -> Option<T> {
-        None
+    fn on_none_pending(&mut self) -> ThreadAction<T> {
+        Continue
     }
 
     fn on_channel_disconnect(&mut self) -> T;
@@ -33,17 +39,21 @@ impl<T, U: ChannelDrivenThread<T>> ChannelThread<T> for U
             }
 
             match self.after_message() {
-                None => {
+                Stop(return_value) => {
+                    info!("Thread is returning.");
+                    return return_value;
+                }
+                Continue => {
                     loop {
                         trace!("Looking for more.");
                         match receiver.try_recv(&mut self) {
                             Ok(()) => {
                                 match self.after_message() {
-                                    Some(return_value) => {
+                                    Stop(return_value) => {
                                         info!("Thread is returning.");
                                         return return_value;
                                     }
-                                    _=>{}
+                                    Continue => {}
                                 }
                             }
                             Err(error) => {
@@ -55,19 +65,15 @@ impl<T, U: ChannelDrivenThread<T>> ChannelThread<T> for U
                         }
                     }
                 }
-                Some(return_value) => {
-                    info!("Thread is returning.");
-                    return return_value;
-                }
             }
 
             trace!("None left.");
             match self.on_none_pending() {
-                None => {/*continue*/}
-                Some(return_value) => {
+                Stop(return_value) => {
                     info!("Thread is returning.");
                     return return_value;
                 }
+                Continue => {}
             }
         }
     }
