@@ -2,15 +2,15 @@ use std::marker::PhantomData;
 use crate::threading::{Receiver, Sender, channel};
 use crate::threading::thread::{Thread, ThreadBuilder};
 
-pub trait ChannelThread<T> : Sized + Send + 'static
-    where T: Send + 'static {
+pub trait ChannelThread<ThreadReturnType> : Sized + Send + 'static
+    where ThreadReturnType: Send + 'static {
 
-    fn build(self) -> (Sender<Self>, ThreadBuilder<T>) {
+    fn build(self) -> (Sender<Self>, ThreadBuilder<ThreadReturnType>) {
         let (sender, receiver) = channel();
         self.build_from_channel(sender, receiver)
     }
 
-    fn build_from_channel(self, sender: Sender<Self>, receiver: Receiver<Self>) -> (Sender<Self>, ThreadBuilder<T>) {
+    fn build_from_channel(self, sender: Sender<Self>, receiver: Receiver<Self>) -> (Sender<Self>, ThreadBuilder<ThreadReturnType>) {
 
         let thread = RawChannelThread{
             receiver,
@@ -23,23 +23,23 @@ pub trait ChannelThread<T> : Sized + Send + 'static
         (sender, builder)
     }
 
-    fn run(self, receiver: Receiver<Self>) -> T;
+    fn run(self, receiver: Receiver<Self>) -> ThreadReturnType;
 }
 
-struct RawChannelThread<T, U>
-    where T: ChannelThread<U>,
-          U: Send + 'static {
+struct RawChannelThread<ChannelThreadType, ThreadReturnType>
+    where ChannelThreadType: ChannelThread<ThreadReturnType>,
+          ThreadReturnType: Send + 'static {
 
-    receiver: Receiver<T>,
-    channel_thread: T,
-    u_phantom: PhantomData<U>
+    receiver: Receiver<ChannelThreadType>,
+    channel_thread: ChannelThreadType,
+    u_phantom: PhantomData<ThreadReturnType>
 }
 
-impl<T, U> Thread<U> for RawChannelThread<T, U>
-    where T: ChannelThread<U>,
-          U: Send + 'static {
+impl<ChannelThreadType, ThreadReturnType> Thread<ThreadReturnType> for RawChannelThread<ChannelThreadType, ThreadReturnType>
+    where ChannelThreadType: ChannelThread<ThreadReturnType>,
+          ThreadReturnType: Send + 'static {
 
-    fn run(self) -> U {
+    fn run(self) -> ThreadReturnType {
         let receiver = self.receiver;
         let channel_thread = self.channel_thread;
         channel_thread.run(receiver)

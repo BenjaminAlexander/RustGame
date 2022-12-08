@@ -1,5 +1,5 @@
 use std::{thread, time, io};
-use log::info;
+use log::{error, info};
 use crate::simplegame::{SimpleInput, SimpleState, SimpleInputEvent, SimpleInputEventHandler, SimpleWindow, SimpleServerInput, SimpleGameImpl};
 use crate::threading::ChannelThread;
 use crate::gametime::TimeDuration;
@@ -49,7 +49,11 @@ pub fn main() {
 
         let (server_core_sender, server_core_builder) = server_core.build();
 
-        server_core_sender.start_listener();
+        if let Err(error) = server_core_sender.start_listener() {
+            error!("{:?}", error);
+            return;
+        }
+
         server_core_builder.name("ServerCore").start().unwrap();
 
         server_core_sender_option = Some(server_core_sender);

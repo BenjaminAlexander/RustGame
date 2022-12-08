@@ -1,6 +1,6 @@
-use std::net::{TcpStream, Ipv4Addr, SocketAddrV4, UdpSocket};
+use std::net::{TcpStream, Ipv4Addr, SocketAddrV4, UdpSocket, AddrParseError};
 
-use log::info;
+use log::{error, info};
 use crate::interface::GameTrait;
 use crate::server::tcpinput::TcpInput;
 use crate::threading::{ChannelDrivenThread, ChannelThread, Consumer, Sender};
@@ -56,27 +56,65 @@ impl<Game: GameTrait> ServerCore<Game> {
             manager_sender: None
         }
     }
+
 }
 
 impl<Game: GameTrait> Sender<ServerCore<Game>> {
 
-    pub fn start_listener(&self) {
+    pub fn start_listener(&self) -> Result<(), SendError<ServerCore<Game>>> {
+
         let clone = self.clone();
 
         self.send(|core| {
-            let ip_addr_v4 = Ipv4Addr::from_str("127.0.0.1").unwrap();
-            let socket_addr_v4 = SocketAddrV4::new(ip_addr_v4, Game::UDP_PORT);
-            core.udp_socket = Some(UdpSocket::bind(socket_addr_v4).unwrap());
 
-            let udp_input = UdpInput::<Game>::new(core.udp_socket.as_ref().unwrap()).unwrap();
+            //TODO: on error, make sure other threads are closed
+            //TODO: could these other threads be started somewhere else?
+
+            let ip_addr_v4 = match Ipv4Addr::from_str("127.0.0.1") {
+                Ok(ip_addr_v4) => ip_addr_v4,
+                Err(error) => {
+                    error!("{:?}", error);
+                    return;
+                }
+            };
+
+            let socket_addr_v4 = SocketAddrV4::new(ip_addr_v4, Game::UDP_PORT);
+
+            core.udp_socket = match UdpSocket::bind(socket_addr_v4) {
+                Ok(udp_socket) => Some(udp_socket),
+                Err(error) => {
+                    error!("{:?}", error);
+                    return;
+                }
+            };
+
+            let udp_input = match UdpInput::<Game>::new(core.udp_socket.as_ref().unwrap()) {
+                Ok(udp_input) => udp_input,
+                Err(error) => {
+                    error!("{:?}", error);
+                    return;
+                }
+            };
+
             let (udp_input_sender, udp_input_builder) = udp_input.build();
-            udp_input_builder.name("ServerUdpInput").start().unwrap();
+
             core.udp_input_sender = Some(udp_input_sender);
 
-            let (listener_sender, listener_builder) = TcpListenerThread::<Game>::new(clone).build();
-            listener_builder.name("ServerTcpListener").start().unwrap();
+            //TODO: hold onto this join handle
+            if let Err(error) = udp_input_builder.name("ServerUdpInput").start() {
+                error!("{:?}", error);
+                return;
+            }
 
-        }).unwrap();
+            //TODO: hold onto these
+            let (listener_sender, listener_builder) = TcpListenerThread::<Game>::new(clone).build();
+
+            if let Err(error) = listener_builder.name("ServerTcpListener").start() {
+                error!("{:?}", error);
+                return;
+            }
+
+        })
     }
 
     pub fn start_game(&self) -> RenderReceiver<Game> {
