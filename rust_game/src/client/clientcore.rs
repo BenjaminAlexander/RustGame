@@ -1,11 +1,11 @@
 use std::net::{Ipv4Addr, SocketAddrV4, SocketAddr, TcpStream, UdpSocket};
 use std::str::FromStr;
 use crate::gametime::{GameTimer, TimeMessage};
-use crate::threading::{ChannelThread, Sender, ChannelDrivenThread};
+use crate::threading::{ChannelThread, ChannelDrivenThreadSender as Sender, ChannelDrivenThread, ThreadAction};
 use crate::client::tcpinput::TcpInput;
 use crate::interface::GameTrait;
 use crate::client::tcpoutput::TcpOutput;
-use crate::messaging::{InitialInformation, InputMessage, StateMessage};
+use crate::messaging::{InitialInformation, InputMessage};
 use crate::gamemanager::{Manager, RenderReceiver};
 use log::{info, trace};
 use crate::client::clientgametimeobserver::ClientGameTimerObserver;
@@ -99,6 +99,7 @@ impl<Game: GameTrait> Sender<ClientCore<Game>> {
             core.tcp_output_sender = Some(tcp_output_sender);
             core.udp_output_sender = Some(udp_output_sender);
 
+            return ThreadAction::Continue;
         }).unwrap();
 
         return render_receiver;
@@ -112,6 +113,8 @@ impl<Game: GameTrait> Sender<ClientCore<Game>> {
 
                 Game::handle_input_event(&mut core.input_event_handler, input_event);
             }
+
+            return ThreadAction::Continue;
         }).unwrap();
     }
 
@@ -119,6 +122,8 @@ impl<Game: GameTrait> Sender<ClientCore<Game>> {
         self.send(move |core|{
             info!("InitialInformation Received.");
             core.initial_information = Some(initial_information);
+
+            return ThreadAction::Continue;
         }).unwrap();
     }
 
@@ -163,6 +168,7 @@ impl<Game: GameTrait> Sender<ClientCore<Game>> {
 
             core.last_time_message = Some(time_message);
 
+            return ThreadAction::Continue;
         }).unwrap();
     }
 }

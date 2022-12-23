@@ -2,15 +2,16 @@ use std::marker::PhantomData;
 use crate::threading::{Receiver, Sender, channel};
 use crate::threading::thread::{Thread, ThreadBuilder};
 
-pub trait ChannelThread<ThreadReturnType> : Sized + Send + 'static
-    where ThreadReturnType: Send + 'static {
+pub trait ChannelThread<ThreadReturnType, MessageReturnType> : Sized + Send + 'static
+    where ThreadReturnType: Send + 'static,
+        MessageReturnType: 'static {
 
-    fn build(self) -> (Sender<Self>, ThreadBuilder<ThreadReturnType>) {
+    fn build(self) -> (Sender<Self, MessageReturnType>, ThreadBuilder<ThreadReturnType>) {
         let (sender, receiver) = channel();
         self.build_from_channel(sender, receiver)
     }
 
-    fn build_from_channel(self, sender: Sender<Self>, receiver: Receiver<Self>) -> (Sender<Self>, ThreadBuilder<ThreadReturnType>) {
+    fn build_from_channel(self, sender: Sender<Self, MessageReturnType>, receiver: Receiver<Self, MessageReturnType>) -> (Sender<Self, MessageReturnType>, ThreadBuilder<ThreadReturnType>) {
 
         let thread = RawChannelThread{
             receiver,
@@ -23,20 +24,21 @@ pub trait ChannelThread<ThreadReturnType> : Sized + Send + 'static
         (sender, builder)
     }
 
-    fn run(self, receiver: Receiver<Self>) -> ThreadReturnType;
+    fn run(self, receiver: Receiver<Self, MessageReturnType>) -> ThreadReturnType;
 }
 
-struct RawChannelThread<ChannelThreadType, ThreadReturnType>
-    where ChannelThreadType: ChannelThread<ThreadReturnType>,
-          ThreadReturnType: Send + 'static {
+struct RawChannelThread<ChannelThreadType, ThreadReturnType, MessageReturnType>
+    where ChannelThreadType: ChannelThread<ThreadReturnType, MessageReturnType>,
+          ThreadReturnType: Send + 'static,
+          MessageReturnType: 'static {
 
-    receiver: Receiver<ChannelThreadType>,
+    receiver: Receiver<ChannelThreadType, MessageReturnType>,
     channel_thread: ChannelThreadType,
     u_phantom: PhantomData<ThreadReturnType>
 }
 
-impl<ChannelThreadType, ThreadReturnType> Thread<ThreadReturnType> for RawChannelThread<ChannelThreadType, ThreadReturnType>
-    where ChannelThreadType: ChannelThread<ThreadReturnType>,
+impl<ChannelThreadType, ThreadReturnType, MessageReturnType> Thread<ThreadReturnType> for RawChannelThread<ChannelThreadType, ThreadReturnType, MessageReturnType>
+    where ChannelThreadType: ChannelThread<ThreadReturnType, MessageReturnType>,
           ThreadReturnType: Send + 'static {
 
     fn run(self) -> ThreadReturnType {

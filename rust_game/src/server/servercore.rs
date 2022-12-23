@@ -1,26 +1,26 @@
-use std::net::{TcpStream, Ipv4Addr, SocketAddrV4, UdpSocket, AddrParseError};
+use std::net::{TcpStream, Ipv4Addr, SocketAddrV4, UdpSocket};
 
 use log::{error, info};
 use crate::interface::GameTrait;
 use crate::server::tcpinput::TcpInput;
-use crate::threading::{ChannelDrivenThread, ChannelThread, Consumer, Sender};
+use crate::threading::{ChannelDrivenThread, ChannelThread, Consumer, ChannelDrivenThreadSender as Sender, ChannelDrivenThreadSenderError as SendError, ThreadAction};
 use crate::server::{TcpListenerThread, ServerConfig};
 use crate::server::tcpoutput::TcpOutput;
 use crate::gametime::{GameTimer, TimeMessage};
 use crate::gamemanager::{Manager, RenderReceiver};
-use crate::messaging::{InputMessage, InitialInformation, StateMessage};
+use crate::messaging::{InputMessage, InitialInformation};
 use std::str::FromStr;
 use crate::server::udpinput::UdpInput;
 use crate::server::udpoutput::UdpOutput;
 use crate::server::clientaddress::ClientAddress;
 use crate::server::servergametimerobserver::ServerGameTimerObserver;
 use crate::server::servermanagerobserver::ServerManagerObserver;
-use crate::threading::sender::SendError;
 
 pub struct ServerCore<Game: GameTrait> {
 
     game_is_started: bool,
     server_config: ServerConfig,
+    tcp_listener_thread: Option<Sender<TcpListenerThread<Game>>>,
     tcp_inputs: Vec<Sender<TcpInput>>,
     tcp_outputs: Vec<Sender<TcpOutput<Game>>>,
     udp_socket: Option<UdpSocket>,
@@ -47,6 +47,7 @@ impl<Game: GameTrait> ServerCore<Game> {
         Self {
             game_is_started: false,
             server_config,
+            tcp_listener_thread: None,
             tcp_inputs: Vec::new(),
             tcp_outputs: Vec::new(),
             udp_outputs: Vec::new(),
@@ -74,7 +75,7 @@ impl<Game: GameTrait> Sender<ServerCore<Game>> {
                 Ok(ip_addr_v4) => ip_addr_v4,
                 Err(error) => {
                     error!("{:?}", error);
-                    return;
+                    return ThreadAction::Stop;
                 }
             };
 
@@ -84,7 +85,7 @@ impl<Game: GameTrait> Sender<ServerCore<Game>> {
                 Ok(udp_socket) => Some(udp_socket),
                 Err(error) => {
                     error!("{:?}", error);
-                    return;
+                    return ThreadAction::Stop;
                 }
             };
 
@@ -92,28 +93,29 @@ impl<Game: GameTrait> Sender<ServerCore<Game>> {
                 Ok(udp_input) => udp_input,
                 Err(error) => {
                     error!("{:?}", error);
-                    return;
+                    return ThreadAction::Stop;
                 }
             };
 
             let (udp_input_sender, udp_input_builder) = udp_input.build();
-
             core.udp_input_sender = Some(udp_input_sender);
 
             //TODO: hold onto this join handle
             if let Err(error) = udp_input_builder.name("ServerUdpInput").start() {
                 error!("{:?}", error);
-                return;
+                return ThreadAction::Stop;
             }
 
-            //TODO: hold onto these
             let (listener_sender, listener_builder) = TcpListenerThread::<Game>::new(clone).build();
+            core.tcp_listener_thread = Some(listener_sender);
 
+            //TODO: hold onto this join handle
             if let Err(error) = listener_builder.name("ServerTcpListener").start() {
                 error!("{:?}", error);
-                return;
+                return ThreadAction::Stop;
             }
 
+            return ThreadAction::Continue;
         })
     }
 
@@ -175,6 +177,8 @@ impl<Game: GameTrait> Sender<ServerCore<Game>> {
                 timer_builder.name("ServerTimer").start().unwrap();
                 manager_builder.name("ServerManager").start().unwrap();
             }
+
+            return ThreadAction::Continue;
         }).unwrap();
 
         return render_receiver;
@@ -216,6 +220,8 @@ impl<Game: GameTrait> Sender<ServerCore<Game>> {
             } else {
                 info!("TcpStream connected after the core has stated and will be dropped. {:?}", tcp_stream);
             }
+
+            return ThreadAction::Continue;
         })
     }
 
@@ -238,6 +244,7 @@ impl<Game: GameTrait> Sender<ServerCore<Game>> {
                 manager_sender.set_requested_step(time_message.get_step() + 1);
             }
 
+            return ThreadAction::Continue;
         }).unwrap();
     }
 }
@@ -257,6 +264,8 @@ impl<Game: GameTrait> Consumer<InputMessage<Game>> for Sender<ServerCore<Game>> 
                     udp_output.on_input_message(input_message.clone());
                 }
             }
+
+            return ThreadAction::Continue;
         }).unwrap();
     }
 }

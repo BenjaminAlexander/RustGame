@@ -1,6 +1,6 @@
 use log::{info, warn};
 use crate::messaging::{InputMessage, MAX_UDP_DATAGRAM_SIZE, ToServerMessageUDP, FragmentAssembler, MessageFragment};
-use crate::threading::{ConsumerList, ChannelThread, Receiver, Sender, Consumer};
+use crate::threading::{ConsumerList, ChannelThread, Receiver, ChannelDrivenThreadSender as Sender, Consumer, ThreadAction};
 use crate::interface::GameTrait;
 use std::net::{UdpSocket, SocketAddr, IpAddr};
 use std::io;
@@ -8,6 +8,7 @@ use rmp_serde::decode::Error;
 use crate::threading::sender::SendError;
 use crate::server::remoteudppeer::RemoteUdpPeer;
 use std::collections::{HashMap, HashSet};
+use std::sync::mpsc::TryRecvError;
 use crate::server::clientaddress::ClientAddress;
 
 pub struct UdpInput<Game: GameTrait> {
@@ -121,9 +122,9 @@ impl<Game: GameTrait> UdpInput<Game> {
     }
 }
 
-impl<Game: GameTrait> ChannelThread<()> for UdpInput<Game> {
+impl<Game: GameTrait> ChannelThread<(), ThreadAction> for UdpInput<Game> {
 
-    fn run(mut self, receiver: Receiver<Self>) -> () {
+    fn run(mut self, receiver: Receiver<Self, ThreadAction>) -> () {
 
         info!("Starting.");
 
@@ -132,15 +133,30 @@ impl<Game: GameTrait> ChannelThread<()> for UdpInput<Game> {
             let mut buf = [0; MAX_UDP_DATAGRAM_SIZE];
 
             let recv_result = self.socket.recv_from(&mut buf);
+
+            loop {
+                match receiver.try_recv(&mut self) {
+                    Ok(ThreadAction::Continue) => {}
+                    Err(TryRecvError::Empty) => break,
+                    Ok(ThreadAction::Stop) => {
+                        info!("Thread commanded to stop.");
+                        return;
+                    }
+                    Err(TryRecvError::Disconnected) => {
+                        info!("Thread stopping due to disconnect.");
+                        return;
+                    }
+                }
+            }
+
             match recv_result {
                 Ok((number_of_bytes, source)) => {
                     //TODO: check source against valid sources
                     let filled_buf = &mut buf[..number_of_bytes];
-                    receiver.try_iter(&mut self);
                     self.handle_receive(filled_buf, source);
                 }
-                Err(_) => {
-                    //no-op
+                Err(e) => {
+                    warn!("Error: {:?}", e);
                 }
             }
         }
@@ -149,15 +165,16 @@ impl<Game: GameTrait> ChannelThread<()> for UdpInput<Game> {
 
 impl<Game: GameTrait> Sender<UdpInput<Game>> {
 
-    pub fn add_input_consumer<T>(&self, consumer: T) -> Result<(), SendError<UdpInput<Game>>>
+    pub fn add_input_consumer<T>(&self, consumer: T) -> Result<(), SendError<UdpInput<Game>, ThreadAction>>
         where T: Consumer<InputMessage<Game>> {
 
         self.send(|udp_input|{
             udp_input.input_consumers.add_consumer(consumer);
+            return ThreadAction::Continue;
         })
     }
 
-    pub fn add_remote_peer_consumers<T>(&self, consumer: T) -> Result<(), SendError<UdpInput<Game>>>
+    pub fn add_remote_peer_consumers<T>(&self, consumer: T) -> Result<(), SendError<UdpInput<Game>, ThreadAction>>
         where T: Consumer<RemoteUdpPeer> {
 
         self.send(|udp_input|{
@@ -169,6 +186,8 @@ impl<Game: GameTrait> Sender<UdpInput<Game>> {
             }
 
             udp_input.remote_peer_consumers.add_consumer(consumer);
+
+            return ThreadAction::Continue;
         })
     }
 }
@@ -186,6 +205,8 @@ impl<Game: GameTrait> Consumer<ClientAddress> for Sender<UdpInput<Game>> {
             udp_input.client_addresses[index] = Some(client_address);
 
             info!("Added Client: {:?}", udp_input.client_addresses[index].as_ref().unwrap());
+
+            return ThreadAction::Continue;
         }).unwrap();
     }
 }

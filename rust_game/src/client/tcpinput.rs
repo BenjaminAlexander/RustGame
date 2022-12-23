@@ -1,10 +1,11 @@
 use log::{error, info};
 use std::net::TcpStream;
 use crate::gametime::{GameTimer, TimeValue};
-use crate::threading::{ChannelThread, Receiver, Sender};
+use crate::threading::{ChannelThread, Receiver, ChannelDrivenThreadSender as Sender, ThreadAction};
 use crate::messaging::ToClientMessageTCP;
 use rmp_serde::decode::Error;
 use std::io;
+use std::sync::mpsc::TryRecvError;
 use crate::client::ClientCore;
 use crate::client::clientgametimeobserver::ClientGameTimerObserver;
 use crate::client::clientmanagerobserver::ClientManagerObserver;
@@ -44,9 +45,9 @@ impl<Game: GameTrait> TcpInput<Game> {
     }
 }
 
-impl<Game: GameTrait> ChannelThread<()> for TcpInput<Game> {
+impl<Game: GameTrait> ChannelThread<(), ThreadAction> for TcpInput<Game> {
 
-    fn run(mut self, receiver: Receiver<Self>) {
+    fn run(mut self, receiver: Receiver<Self, ThreadAction>) {
         info!("Starting");
 
         let receiver = receiver;
@@ -62,7 +63,20 @@ impl<Game: GameTrait> ChannelThread<()> for TcpInput<Game> {
 
                     let _time_received = TimeValue::now();
 
-                    receiver.try_iter(&mut self);
+                    loop {
+                        match receiver.try_recv(&mut self) {
+                            Ok(ThreadAction::Continue) => {}
+                            Err(TryRecvError::Empty) => break,
+                            Ok(ThreadAction::Stop) => {
+                                info!("Thread commanded to stop.");
+                                return;
+                            }
+                            Err(TryRecvError::Disconnected) => {
+                                info!("Thread stopping due to disconnect.");
+                                return;
+                            }
+                        }
+                    }
 
                     match message {
                         ToClientMessageTCP::InitialInformation(initial_information_message) => {

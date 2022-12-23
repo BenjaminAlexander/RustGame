@@ -1,13 +1,13 @@
 use std::net::{UdpSocket, SocketAddrV4, SocketAddr};
 use crate::gametime::{TimeReceived, TimeValue, TimeDuration, GameTimer};
 use crate::messaging::{ToClientMessageUDP, MAX_UDP_DATAGRAM_SIZE, MessageFragment, FragmentAssembler};
-use crate::threading::{Sender, Receiver, ChannelThread};
+use crate::threading::{ChannelDrivenThreadSender as Sender, Receiver, ChannelThread, ThreadAction};
 use crate::interface::GameTrait;
 use rmp_serde::decode::Error;
 use std::io;
+use std::sync::mpsc::TryRecvError;
 use log::{error, info, warn};
 use std::time::Duration;
-use crate::client::ClientCore;
 use crate::client::clientgametimeobserver::ClientGameTimerObserver;
 use crate::client::clientmanagerobserver::ClientManagerObserver;
 use crate::gamemanager::Manager;
@@ -51,9 +51,9 @@ impl<Game: GameTrait> UdpInput<Game> {
     }
 }
 
-impl<Game: GameTrait> ChannelThread<()> for UdpInput<Game> {
+impl<Game: GameTrait> ChannelThread<(), ThreadAction> for UdpInput<Game> {
 
-    fn run(mut self, receiver: Receiver<Self>) {
+    fn run(mut self, receiver: Receiver<Self, ThreadAction>) {
         info!("Starting");
 
         let receiver = receiver;
@@ -99,7 +99,20 @@ impl<Game: GameTrait> ChannelThread<()> for UdpInput<Game> {
 
                         let time_received = TimeValue::now();
 
-                        receiver.try_iter(&mut self);
+                        loop {
+                            match receiver.try_recv(&mut self) {
+                                Ok(ThreadAction::Continue) => {}
+                                Err(TryRecvError::Empty) => break,
+                                Ok(ThreadAction::Stop) => {
+                                    info!("Thread commanded to stop.");
+                                    return;
+                                }
+                                Err(TryRecvError::Disconnected) => {
+                                    info!("Thread stopping due to disconnect.");
+                                    return;
+                                }
+                            }
+                        }
 
                         match message {
                             ToClientMessageUDP::TimeMessage(time_message) => {
