@@ -78,6 +78,8 @@ impl<Game: GameTrait> ChannelThread<(), ThreadAction> for TcpInput<Game> {
                         }
                     }
 
+                    info!("InitialInformation Received.");
+
                     match message {
                         ToClientMessageTCP::InitialInformation(initial_information_message) => {
                             self.player_index = Some(initial_information_message.get_player_index());

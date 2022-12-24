@@ -61,6 +61,8 @@ impl<Game: GameTrait> Sender<TcpOutput<Game>> {
             rmp_serde::encode::write(&mut tcp_output.tcp_stream, &message).unwrap();
             tcp_output.tcp_stream.flush().unwrap();
 
+            info!("Sent InitialInformation");
+
             return ThreadAction::Continue;
         }).unwrap();
     }

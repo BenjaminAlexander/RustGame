@@ -1,4 +1,4 @@
-use log::{info, error};
+use log::{info, error, debug};
 use crate::interface::GameTrait;
 use std::net::{UdpSocket, SocketAddrV4};
 use crate::messaging::{InputMessage, ToServerMessageUDP, InitialInformation, MAX_UDP_DATAGRAM_SIZE, Fragmenter};
@@ -91,7 +91,7 @@ impl<Game: GameTrait> Sender<UdpOutput<Game>> {
 
     pub fn on_initial_information(&self, initial_information: InitialInformation<Game>) {
         self.send(move |udp_output|{
-            info!("InitialInformation Received.");
+            debug!("InitialInformation Received.");
             udp_output.initial_information = Some(initial_information);
 
             let message = ToServerMessageUDP::<Game>::Hello{player_index: udp_output.initial_information.as_ref().unwrap().get_player_index()};

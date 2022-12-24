@@ -6,7 +6,7 @@ use crate::interface::GameTrait;
 use rmp_serde::decode::Error;
 use std::io;
 use std::sync::mpsc::TryRecvError;
-use log::{error, info, warn};
+use log::{debug, error, info, warn};
 use std::time::Duration;
 use crate::client::clientgametimeobserver::ClientGameTimerObserver;
 use crate::client::clientmanagerobserver::ClientManagerObserver;
@@ -58,14 +58,16 @@ impl<Game: GameTrait> ChannelThread<(), ThreadAction> for UdpInput<Game> {
 
         let receiver = receiver;
 
-        self.socket.set_read_timeout(Some(Duration::new(1, 0))).unwrap();
+        //self.socket.set_read_timeout(Some(Duration::new(1, 0))).unwrap();
 
         loop {
 
             let now = TimeValue::now();
             let duration_since_last_state = now.duration_since(self.time_of_last_state_receive);
             if duration_since_last_state > TimeDuration::one_second() {
-                warn!("It has been {:?} since last state message was received. Now: {:?}, Last: {:?}",
+
+                //TODO: this should probably be a warn
+                debug!("It has been {:?} since last state message was received. Now: {:?}, Last: {:?}",
                       duration_since_last_state, now, self.time_of_last_state_receive);
             }
 

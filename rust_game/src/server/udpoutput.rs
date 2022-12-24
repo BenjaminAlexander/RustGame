@@ -1,4 +1,4 @@
-use log::{trace, info, warn, error};
+use log::{trace, info, warn, error, debug};
 use crate::interface::GameTrait;
 use std::net::UdpSocket;
 use crate::gametime::{TimeDuration, TimeMessage, TimeValue};
@@ -107,7 +107,8 @@ impl<Game: GameTrait> ChannelThread<(), ThreadAction> for UdpOutput<Game> {
 
             let duration_since_last_state = now.duration_since(self.time_of_last_state_send);
             if duration_since_last_state > TimeDuration::one_second() {
-                warn!("It has been {:?} since last state message was sent. Now: {:?}, Last: {:?}",
+                //TODO: this should probably be a warn when it happens less often
+                debug!("It has been {:?} since last state message was sent. Now: {:?}, Last: {:?}",
                       duration_since_last_state, now, self.time_of_last_state_send);
             }
         }

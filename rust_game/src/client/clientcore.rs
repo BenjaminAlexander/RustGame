@@ -7,7 +7,7 @@ use crate::interface::GameTrait;
 use crate::client::tcpoutput::TcpOutput;
 use crate::messaging::{InitialInformation, InputMessage};
 use crate::gamemanager::{Manager, RenderReceiver};
-use log::{info, trace};
+use log::{trace};
 use crate::client::clientgametimeobserver::ClientGameTimerObserver;
 use crate::client::clientmanagerobserver::ClientManagerObserver;
 use crate::client::udpoutput::UdpOutput;
@@ -17,7 +17,9 @@ pub struct ClientCore<Game: GameTrait> {
     server_ip: String,
     input_event_handler: Game::ClientInputEventHandler,
     manager_sender: Option<Sender<Manager<ClientManagerObserver<Game>>>>,
+    udp_input_sender: Option<Sender<UdpInput<Game>>>,
     udp_output_sender: Option<Sender<UdpOutput<Game>>>,
+    tcp_input_sender: Option<Sender<TcpInput<Game>>>,
     tcp_output_sender: Option<Sender<TcpOutput>>,
     initial_information: Option<InitialInformation<Game>>,
     last_time_message: Option<TimeMessage>
@@ -30,7 +32,9 @@ impl<Game: GameTrait> ClientCore<Game> {
         ClientCore {server_ip: server_ip.to_string(),
             input_event_handler: Game::new_input_event_handler(),
             manager_sender: None,
+            udp_input_sender: None,
             udp_output_sender: None,
+            tcp_input_sender: None,
             tcp_output_sender: None,
             initial_information: None,
             last_time_message: None
@@ -82,6 +86,7 @@ impl<Game: GameTrait> Sender<ClientCore<Game>> {
                 &tcp_stream).unwrap().build();
 
             let (tcp_output_sender, tcp_output_builder) = TcpOutput::new(&tcp_stream).unwrap().build();
+
             let (udp_input_sender, udp_input_builder) = UdpInput::new(
                 server_udp_socket_addr_v4,
                 &udp_socket,
@@ -97,6 +102,8 @@ impl<Game: GameTrait> Sender<ClientCore<Game>> {
 
             core.manager_sender = Some(manager_sender);
             core.tcp_output_sender = Some(tcp_output_sender);
+            core.tcp_input_sender = Some(tcp_input_sender);
+            core.udp_input_sender = Some(udp_input_sender);
             core.udp_output_sender = Some(udp_output_sender);
 
             return ThreadAction::Continue;
@@ -120,7 +127,6 @@ impl<Game: GameTrait> Sender<ClientCore<Game>> {
 
     pub fn on_initial_information(&self, initial_information: InitialInformation<Game>) {
         self.send(move |core|{
-            info!("InitialInformation Received.");
             core.initial_information = Some(initial_information);
 
             return ThreadAction::Continue;
