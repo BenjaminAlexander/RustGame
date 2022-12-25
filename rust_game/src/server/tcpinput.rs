@@ -4,9 +4,10 @@ use log::{error, info};
 use rmp_serde::decode::Error;
 
 use crate::messaging::{ToServerMessageTCP};
-use crate::threading::{ChannelThread,  Receiver};
+use crate::threading::{ChannelThread, Receiver, ThreadAction};
 use crate::gametime::TimeValue;
 use std::io;
+use std::sync::mpsc::TryRecvError;
 
 pub struct TcpInput {
     tcp_stream: TcpStream
@@ -19,9 +20,10 @@ impl TcpInput {
     }
 }
 
-impl ChannelThread<()> for TcpInput {
+impl ChannelThread<(), ThreadAction> for TcpInput {
 
-    fn run(mut self, receiver: Receiver<Self>) {
+    //TODO: check player ID on message
+    fn run(mut self, receiver: Receiver<Self, ThreadAction>) {
         info!("Starting");
 
         let receiver = receiver;
@@ -29,25 +31,48 @@ impl ChannelThread<()> for TcpInput {
         loop {
             let result: Result<ToServerMessageTCP, Error> = rmp_serde::from_read(&self.tcp_stream);
 
-            //TODO: check player ID on message
+            loop {
+                match receiver.try_recv(&mut self) {
+                    Ok(ThreadAction::Continue) => {}
+                    Err(TryRecvError::Empty) => break,
+                    Ok(ThreadAction::Stop) => {
+                        info!("Thread commanded to stop.");
+                        return;
+                    }
+                    Err(TryRecvError::Disconnected) => {
+                        info!("Thread stopping due to disconnect.");
+                        return;
+                    }
+                }
+            }
 
             match result {
                 Ok(message) => {
                     let time_received = TimeValue::now();
-
-                    receiver.try_iter(&mut self);
-
                     match message {
 
-                    }
+                    };
                 }
                 Err(error) => {
-                    error!("Ending due to: {:?}", error);
-                    return;
+                    error!("rmp_serde Error: {:?}", error);
+                    //return;
                 }
             }
 
-            receiver.try_iter(&mut self);
+            loop {
+                match receiver.try_recv(&mut self) {
+                    Ok(ThreadAction::Continue) => {}
+                    Err(TryRecvError::Empty) => break,
+                    Ok(ThreadAction::Stop) => {
+                        info!("Thread commanded to stop.");
+                        return;
+                    }
+                    Err(TryRecvError::Disconnected) => {
+                        info!("Thread stopping due to disconnect.");
+                        return;
+                    }
+                }
+            }
         }
     }
 }

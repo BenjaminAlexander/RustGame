@@ -2,7 +2,7 @@ use crate::client::ClientCore;
 use crate::gamemanager::Data;
 use crate::gametime::{GameTimerObserverTrait, TimeMessage};
 use crate::interface::GameTrait;
-use crate::threading::{Consumer, Sender};
+use crate::threading::{Consumer, ChannelDrivenThreadSender as Sender};
 
 pub struct ClientGameTimerObserver<Game: GameTrait> {
     core_sender: Sender<ClientCore<Game>>,

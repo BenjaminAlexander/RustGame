@@ -1,7 +1,8 @@
-use log::warn;
+use std::sync::mpsc::TryRecvError;
+use log::{info, warn};
 use crate::interface::{InterpolationArg, GameTrait};
 use crate::gamemanager::stepmessage::StepMessage;
-use crate::threading::{Consumer, Sender, Receiver, channel};
+use crate::threading::{Consumer, ChannelDrivenThreadSender as Sender, ChannelDrivenThreadReceiver as Receiver, channel, ThreadAction};
 use crate::gametime::{TimeMessage, TimeValue, TimeDuration};
 use crate::messaging::InitialInformation;
 
@@ -22,7 +23,7 @@ pub struct Data<Game: GameTrait> {
 impl<Game: GameTrait> RenderReceiver<Game> {
 
     pub fn new() -> (Sender<Data<Game>>, Self) {
-        let (sender, receiver) = channel::<Data<Game>>();
+        let (sender, receiver) = channel::<Data<Game>, ThreadAction>();
 
         let data = Data::<Game> {
             step_queue: Vec::new(),
@@ -39,9 +40,25 @@ impl<Game: GameTrait> RenderReceiver<Game> {
     }
 
     //TODO: remove timeduration
+    //TODO: notify the caller if the channel is disconnected
     pub fn get_step_message(mut self: &mut Self) -> Option<(TimeDuration, Game::InterpolationResult)> {
 
-        self.receiver.try_iter(&mut self.data);
+        loop {
+            match self.receiver.try_recv(&mut self.data) {
+                Ok(ThreadAction::Continue) => {}
+                Err(TryRecvError::Empty) => break,
+                Ok(ThreadAction::Stop) => {
+                    info!("Thread commanded to stop, but not stopping...");
+                    //TODO: notify the caller if the channel is disconnected
+                    break;
+                }
+                Err(TryRecvError::Disconnected) => {
+                    info!("Channel disconnected.");
+                    //TODO: notify the caller if the channel is disconnected
+                    break;
+                }
+            }
+        }
 
         if self.data.initial_information.is_none() {
             return None;
@@ -120,6 +137,8 @@ impl<Game: GameTrait> Sender<Data<Game>> {
     pub fn on_initial_information(&self, initial_information: InitialInformation<Game>) {
         self.send(|data|{
             data.initial_information = Some(initial_information);
+
+            return ThreadAction::Continue;
         }).unwrap();
     }
 
@@ -150,6 +169,7 @@ impl<Game: GameTrait> Sender<Data<Game>> {
                 data.drop_steps_before(latest_step);
             }
 
+            return ThreadAction::Continue;
         }).unwrap();
     }
 }
@@ -167,6 +187,7 @@ impl<Game: GameTrait> Consumer<TimeMessage> for Sender<Data<Game>> {
 
             data.drop_steps_before(latest_step);
 
+            return ThreadAction::Continue;
         }).unwrap();
     }
 }

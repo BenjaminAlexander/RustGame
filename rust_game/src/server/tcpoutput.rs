@@ -1,6 +1,6 @@
-use log::{trace, info};
+use log::info;
 use std::net::TcpStream;
-use crate::threading::{Sender, ChannelThread, Receiver};
+use crate::threading::{ChannelDrivenThreadSender as Sender, ChannelThread, Receiver, ThreadAction};
 use std::io;
 use crate::messaging::{ToClientMessageTCP, InitialInformation};
 use std::io::Write;
@@ -27,21 +27,20 @@ impl<Game: GameTrait> TcpOutput<Game> {
     }
 }
 
-impl<Game: GameTrait> ChannelThread<()> for TcpOutput<Game> {
+impl<Game: GameTrait> ChannelThread<(), ThreadAction> for TcpOutput<Game> {
 
-    fn run(mut self, receiver: Receiver<Self>) -> () {
+    fn run(mut self, receiver: Receiver<Self, ThreadAction>) -> () {
 
         loop {
-            trace!("Waiting.");
+
             match receiver.recv(&mut self) {
-                Err(_error) => {
+                Err(error) => {
+
                     info!("Channel closed.");
                     return ();
                 }
                 _ => {}
             }
-
-            receiver.try_iter(&mut self);
         }
     }
 }
@@ -62,6 +61,9 @@ impl<Game: GameTrait> Sender<TcpOutput<Game>> {
             rmp_serde::encode::write(&mut tcp_output.tcp_stream, &message).unwrap();
             tcp_output.tcp_stream.flush().unwrap();
 
+            info!("Sent InitialInformation");
+
+            return ThreadAction::Continue;
         }).unwrap();
     }
 }

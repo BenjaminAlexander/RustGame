@@ -1,11 +1,11 @@
-use log::{trace, info, warn, error};
+use log::{trace, info, warn, error, debug};
 use crate::interface::GameTrait;
 use std::net::UdpSocket;
 use crate::gametime::{TimeDuration, TimeMessage, TimeValue};
 use crate::messaging::{InputMessage, StateMessage, ToClientMessageUDP, Fragmenter, MAX_UDP_DATAGRAM_SIZE, ServerInputMessage};
 use std::io;
 use crate::server::remoteudppeer::RemoteUdpPeer;
-use crate::threading::{ChannelThread, Receiver, Sender, Consumer};
+use crate::threading::{ChannelThread, Receiver, ChannelDrivenThreadSender as Sender, Consumer, ThreadAction};
 use std::time::Duration;
 use std::sync::mpsc::RecvTimeoutError;
 use std::marker::PhantomData;
@@ -79,24 +79,22 @@ impl<Game: GameTrait> UdpOutput<Game> {
     }
 }
 
-impl<Game: GameTrait> ChannelThread<()> for UdpOutput<Game> {
+impl<Game: GameTrait> ChannelThread<(), ThreadAction> for UdpOutput<Game> {
 
-    fn run(mut self, receiver: Receiver<Self>) -> () {
+    fn run(mut self, receiver: Receiver<Self, ThreadAction>) -> () {
 
         loop {
             trace!("Waiting.");
-
             match receiver.recv_timeout(&mut self, Duration::new(1, 0)) {
-                Err(error) => {
-                    match error {
-                        RecvTimeoutError::Timeout => { }
-                        RecvTimeoutError::Disconnected => {
-                            info!("Channel closed.");
-                            return ();
-                        }
-                    }
+                Err(RecvTimeoutError::Timeout) | Ok(ThreadAction::Continue) => {}
+                Ok(ThreadAction::Stop) => {
+                    info!("Thread commanded to stop.");
+                    return;
                 }
-                _ => {}
+                Err(RecvTimeoutError::Disconnected) => {
+                    info!("Thread stopping due to disconnect.");
+                    return;
+                }
             }
 
             let now = TimeValue::now();
@@ -109,7 +107,8 @@ impl<Game: GameTrait> ChannelThread<()> for UdpOutput<Game> {
 
             let duration_since_last_state = now.duration_since(self.time_of_last_state_send);
             if duration_since_last_state > TimeDuration::one_second() {
-                warn!("It has been {:?} since last state message was sent. Now: {:?}, Last: {:?}",
+                //TODO: this should probably be a warn when it happens less often
+                debug!("It has been {:?} since last state message was sent. Now: {:?}, Last: {:?}",
                       duration_since_last_state, now, self.time_of_last_state_send);
             }
         }
@@ -139,6 +138,8 @@ impl<Game: GameTrait> Sender<UdpOutput<Game>> {
                 udp_output.log_time_in_queue(time_in_queue);
 
             }
+
+            return ThreadAction::Continue;
         }).unwrap();
     }
 
@@ -170,6 +171,7 @@ impl<Game: GameTrait> Sender<UdpOutput<Game>> {
                 udp_output.log_time_in_queue(time_in_queue);
             }
 
+            return ThreadAction::Continue;
         }).unwrap();
     }
 
@@ -193,6 +195,8 @@ impl<Game: GameTrait> Sender<UdpOutput<Game>> {
             } else {
                 //info!("InputMessage dropped. Last state: {:?}", tcp_output.last_state_sequence);
             }
+
+            return ThreadAction::Continue;
         }).unwrap();
     }
 }
@@ -218,6 +222,8 @@ impl<Game: GameTrait> Consumer<ServerInputMessage<Game>> for Sender<UdpOutput<Ga
             } else {
                 //info!("ServerInputMessage dropped. Last state: {:?}", tcp_output.last_state_sequence);
             }
+
+            return ThreadAction::Continue;
         }).unwrap();
     }
 }
@@ -231,6 +237,8 @@ impl<Game: GameTrait> Consumer<RemoteUdpPeer> for Sender<UdpOutput<Game>> {
                 info!("Setting remote peer: {:?}", remote_peer);
                 udp_output.remote_peer = Some(remote_peer);
             }
+
+            return ThreadAction::Continue;
         }).unwrap();
     }
 }
