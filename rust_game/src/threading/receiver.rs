@@ -1,26 +1,26 @@
 use std::sync::mpsc::{Receiver as MpscReceiver, RecvError, TryRecvError, RecvTimeoutError};
 use core::time::Duration;
 
-pub struct Receiver<T: ?Sized> {
-    receiver: MpscReceiver<Box<dyn FnOnce(&mut T) + Send + 'static>>
+pub struct Receiver<T: ?Sized, U> {
+    receiver: MpscReceiver<Box<dyn FnOnce(&mut T) -> U + Send + 'static>>
 }
 
-impl<T> Receiver<T> {
-    pub fn new(receiver: MpscReceiver<Box<dyn FnOnce(&mut T) + Send + 'static>>) -> Self {
+impl<T, U> Receiver<T, U> {
+    pub fn new(receiver: MpscReceiver<Box<dyn FnOnce(&mut T) -> U + Send + 'static>>) -> Self {
         Receiver { receiver }
     }
 
-    pub fn recv(&self, t: &mut T) -> Result<(), RecvError> {
+    pub fn recv(&self, t: &mut T) -> Result<U, RecvError> {
         let message = self.receiver.recv()?;
-        Self::apply_message(message, t)
+        return Self::apply_message(message, t);
     }
 
-    pub fn recv_timeout(&self, t: &mut T, timeout: Duration) -> Result<(), RecvTimeoutError> {
+    pub fn recv_timeout(&self, t: &mut T, timeout: Duration) -> Result<U, RecvTimeoutError> {
         let message = self.receiver.recv_timeout(timeout)?;
         return Self::apply_message(message, t);
     }
 
-    pub fn try_recv(&self, t: &mut T) -> Result<(), TryRecvError> {
+    pub fn try_recv(&self, t: &mut T) -> Result<U, TryRecvError> {
         let message = self.receiver.try_recv()?;
         return Self::apply_message(message, t);
     }
@@ -31,21 +31,20 @@ impl<T> Receiver<T> {
     //     }
     // }
 
-    pub fn try_iter(&self, t: &mut T) {
-        for message in self.receiver.try_iter() {
-            message(t);
-        }
-    }
+    //pub fn try_iter(&self, t: &mut T) {
+    //    for message in self.receiver.try_iter() {
+    //        message(t);
+    //    }
+    //}
 
-    pub fn recv_try_iter(&self, t: &mut T) -> Result<(), RecvError> {
-        self.recv(t)?;
-        self.try_iter(t);
-        Ok(())
-    }
+    //pub fn recv_try_iter(&self, t: &mut T) -> Result<(), RecvError> {
+    //    self.recv(t)?;
+    //    self.try_iter(t);
+    //    Ok(())
+    //}
 
-    fn apply_message<U>(message: Box<dyn FnOnce(&mut T) + Send + 'static>, t: &mut T) -> Result<(), U> {
-        message(t);
-        Ok(())
+    fn apply_message<V>(message: Box<dyn FnOnce(&mut T) -> U + Send + 'static>, t: &mut T) -> Result<U, V> {
+        Ok(message(t))
     }
 
     // pub fn bundle(self, t: T) -> ReceiverBundle<T> {

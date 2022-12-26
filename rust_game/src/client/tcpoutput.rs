@@ -1,10 +1,10 @@
-use log::{trace, info};
+use log::info;
 use std::net::TcpStream;
-use crate::threading::{ChannelThread, Receiver};
+use crate::threading::{ChannelThread, Receiver, ThreadAction};
 use std::io;
 
 //TODO: Send response to time messages to calculate ping
-
+//Should this e a channel driven thread?
 pub struct TcpOutput {
     tcp_stream: TcpStream
 }
@@ -18,24 +18,20 @@ impl TcpOutput {
     }
 }
 
-impl ChannelThread<()> for TcpOutput {
+impl ChannelThread<(), ThreadAction> for TcpOutput {
 
-    fn run(mut self, receiver: Receiver<Self>) -> () {
+    fn run(mut self, receiver: Receiver<Self, ThreadAction>) -> () {
         loop {
-            trace!("Waiting.");
             match receiver.recv(&mut self) {
-                Err(_error) => {
-                    info!("Channel closed.");
-                    return ();
+                Ok(ThreadAction::Continue) => {}
+                Ok(ThreadAction::Stop) => {
+                    info!("Thread commanded to stop.");
+                    return;
                 }
-                _ => {}
-            }
-
-            let mut send_another_message = true;
-            while send_another_message {
-                receiver.try_iter(&mut self);
-
-                send_another_message = false;
+                Err(error) => {
+                    info!("Thread stopped due to disconnect: {:?}", error);
+                    return;
+                }
             }
         }
     }

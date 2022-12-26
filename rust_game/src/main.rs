@@ -1,5 +1,6 @@
-use std::{thread, time, io};
-use log::info;
+use std::{thread, time, io, process};
+use std::path::{Path, PathBuf};
+use log::{error, info};
 use crate::simplegame::{SimpleInput, SimpleState, SimpleInputEvent, SimpleInputEventHandler, SimpleWindow, SimpleServerInput, SimpleGameImpl};
 use crate::threading::ChannelThread;
 use crate::gametime::TimeDuration;
@@ -17,25 +18,32 @@ mod gamemanager;
 
 pub fn main() {
 
-    logging::init_logging();
-
     let args: Vec<String> = std::env::args().collect();
-
-    info!("args: {:?}", args);
 
     let mut run_client = true;
     let mut run_server = true;
     let mut window_name:String = String::from("Server");
 
-    if args.len() > 2  {
+    if args.len() >= 2  {
         if args[1].eq("-s") {
             run_client = false;
 
         } else if args[1].eq("-c") {
             run_server = false;
-            window_name = String::from(&args[2]);
         }
     }
+
+    if args.len() > 2  {
+        window_name = String::from(&args[2]);
+    }
+
+    let mut log_file_path = PathBuf::new();
+    log_file_path.push("log");
+    log_file_path.push(format!("{}-{}.log", window_name, process::id()));
+
+    logging::init_logging(log_file_path);
+
+    info!("args: {:?}", args);
 
     let mut server_core_sender_option = None;
     let mut render_receiver_option = None;
@@ -49,7 +57,11 @@ pub fn main() {
 
         let (server_core_sender, server_core_builder) = server_core.build();
 
-        server_core_sender.start_listener();
+        if let Err(error) = server_core_sender.start_listener() {
+            error!("{:?}", error);
+            return;
+        }
+
         server_core_builder.name("ServerCore").start().unwrap();
 
         server_core_sender_option = Some(server_core_sender);

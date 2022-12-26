@@ -1,9 +1,10 @@
-use log::{trace, info, error};
+use log::{info, error, debug};
 use crate::interface::GameTrait;
 use std::net::{UdpSocket, SocketAddrV4};
 use crate::messaging::{InputMessage, ToServerMessageUDP, InitialInformation, MAX_UDP_DATAGRAM_SIZE, Fragmenter};
 use std::io;
-use crate::threading::{ChannelThread, Receiver, Consumer, Sender};
+use std::sync::mpsc::TryRecvError;
+use crate::threading::{ChannelThread, Receiver, ChannelDrivenThreadSender as Sender, ThreadAction};
 
 pub struct UdpOutput<Game: GameTrait> {
     server_address: SocketAddrV4,
@@ -46,23 +47,28 @@ impl<Game: GameTrait> UdpOutput<Game> {
     }
 }
 
-impl<Game: GameTrait> ChannelThread<()> for UdpOutput<Game> {
+impl<Game: GameTrait> ChannelThread<(), ThreadAction> for UdpOutput<Game> {
 
-    fn run(mut self, receiver: Receiver<Self>) -> () {
+    fn run(mut self, receiver: Receiver<Self, ThreadAction>) -> () {
 
         loop {
-            trace!("Waiting.");
-            match receiver.recv(&mut self) {
-                Err(_error) => {
-                    info!("Channel closed.");
-                    return ();
+            loop {
+                match receiver.try_recv(&mut self) {
+                    Ok(ThreadAction::Continue) => {}
+                    Err(TryRecvError::Empty) => break,
+                    Ok(ThreadAction::Stop) => {
+                        info!("Thread commanded to stop.");
+                        return;
+                    }
+                    Err(TryRecvError::Disconnected) => {
+                        info!("Thread stopped due to disconnect");
+                        return;
+                    }
                 }
-                _ => {}
             }
 
             let mut send_another_message = true;
             while send_another_message {
-                receiver.try_iter(&mut self);
 
                 if self.input_queue.len() > self.max_observed_input_queue {
                     self.max_observed_input_queue = self.input_queue.len();
@@ -85,12 +91,13 @@ impl<Game: GameTrait> Sender<UdpOutput<Game>> {
 
     pub fn on_initial_information(&self, initial_information: InitialInformation<Game>) {
         self.send(move |udp_output|{
-            info!("InitialInformation Received.");
+            debug!("InitialInformation Received.");
             udp_output.initial_information = Some(initial_information);
 
             let message = ToServerMessageUDP::<Game>::Hello{player_index: udp_output.initial_information.as_ref().unwrap().get_player_index()};
             udp_output.send_message(message);
 
+            return ThreadAction::Continue;
         }).unwrap();
     }
 
@@ -103,6 +110,7 @@ impl<Game: GameTrait> Sender<UdpOutput<Game>> {
                 Err(pos) => udp_output.input_queue.insert(pos, input_message)
             }
 
+            return ThreadAction::Continue;
         }).unwrap();
     }
 }

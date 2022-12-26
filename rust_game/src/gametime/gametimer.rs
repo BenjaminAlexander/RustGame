@@ -1,7 +1,7 @@
 use crate::gametime::{TimeValue, TimeDuration, TimeMessage, TimeReceived};
 use chrono::Local;
 use timer::{Guard, Timer};
-use crate::threading::{ChannelDrivenThread, Sender};
+use crate::threading::{ChannelDrivenThread, ChannelDrivenThreadSender as Sender, ThreadAction};
 use crate::util::RollingAverage;
 use crate::threading::sender::SendError;
 use log::{trace, info, warn};
@@ -52,7 +52,7 @@ impl<Observer: GameTimerObserverTrait> ChannelDrivenThread<()> for GameTimer<Obs
 
 impl<Observer: GameTimerObserverTrait> Sender<GameTimer<Observer>> {
 
-    pub fn start(&self) -> Result<(), SendError<GameTimer<Observer>>> {
+    pub fn start(&self) -> Result<(), SendError<GameTimer<Observer>, ThreadAction>> {
         let clone = self.clone();
 
         self.send(|game_timer| {
@@ -68,12 +68,15 @@ impl<Observer: GameTimerObserverTrait> Sender<GameTimer<Observer>> {
                     move ||clone.tick()
                 )
             );
+
+            return ThreadAction::Continue;
         })
     }
 
     pub fn on_initial_information(&self, initial_information: InitialInformation<Observer::Game>) {
         self.send(|game_timer|{
             game_timer.server_config = Some(initial_information.move_server_config());
+            return ThreadAction::Continue;
         }).unwrap();
     }
 
@@ -122,6 +125,8 @@ impl<Observer: GameTimerObserverTrait> Sender<GameTimer<Observer>> {
             } else {
                 warn!("TimeMessage received but ignored because this timer does not yet have a ServerConfig: {:?}", time_message);
             }
+
+            return ThreadAction::Continue;
         }).unwrap();
     }
 
@@ -143,6 +148,7 @@ impl<Observer: GameTimerObserverTrait> Sender<GameTimer<Observer>> {
 
             game_timer.observer.on_time_message(time_message.clone());
 
+            return ThreadAction::Continue;
         }).unwrap();
     }
 }

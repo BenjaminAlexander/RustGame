@@ -1,14 +1,14 @@
 use std::net::{TcpStream, Ipv4Addr, SocketAddrV4, UdpSocket};
 
-use log::info;
+use log::{error, info};
 use crate::interface::GameTrait;
 use crate::server::tcpinput::TcpInput;
-use crate::threading::{ChannelDrivenThread, ChannelThread, Consumer, Sender};
+use crate::threading::{ChannelDrivenThread, ChannelThread, Consumer, ChannelDrivenThreadSender as Sender, ChannelDrivenThreadSenderError as SendError, ThreadAction};
 use crate::server::{TcpListenerThread, ServerConfig};
 use crate::server::tcpoutput::TcpOutput;
 use crate::gametime::{GameTimer, TimeMessage};
 use crate::gamemanager::{Manager, RenderReceiver};
-use crate::messaging::{InputMessage, InitialInformation, StateMessage};
+use crate::messaging::{InputMessage, InitialInformation};
 use std::str::FromStr;
 use crate::server::udpinput::UdpInput;
 use crate::server::udpoutput::UdpOutput;
@@ -21,6 +21,7 @@ pub struct ServerCore<Game: GameTrait> {
 
     game_is_started: bool,
     server_config: ServerConfig,
+    tcp_listener_thread: Option<Sender<TcpListenerThread<Game>>>,
     tcp_inputs: Vec<Sender<TcpInput>>,
     tcp_outputs: Vec<Sender<TcpOutput<Game>>>,
     udp_socket: Option<UdpSocket>,
@@ -47,6 +48,7 @@ impl<Game: GameTrait> ServerCore<Game> {
         Self {
             game_is_started: false,
             server_config,
+            tcp_listener_thread: None,
             tcp_inputs: Vec::new(),
             tcp_outputs: Vec::new(),
             udp_outputs: Vec::new(),
@@ -56,31 +58,69 @@ impl<Game: GameTrait> ServerCore<Game> {
             manager_sender: None
         }
     }
+
 }
 
 impl<Game: GameTrait> Sender<ServerCore<Game>> {
 
-    pub fn start_listener(&self) {
+    pub fn start_listener(&self) -> Result<(), SendError<ServerCore<Game>>> {
+
         let core_sender = self.clone();
 
         self.send(|core| {
-            let ip_addr_v4 = Ipv4Addr::from_str("127.0.0.1").unwrap();
-            let socket_addr_v4 = SocketAddrV4::new(ip_addr_v4, Game::UDP_PORT);
-            core.udp_socket = Some(UdpSocket::bind(socket_addr_v4).unwrap());
 
-            let udp_input = UdpInput::<Game>::new(
+            //TODO: on error, make sure other threads are closed
+            //TODO: could these other threads be started somewhere else?
+
+            let ip_addr_v4 = match Ipv4Addr::from_str("127.0.0.1") {
+                Ok(ip_addr_v4) => ip_addr_v4,
+                Err(error) => {
+                    error!("{:?}", error);
+                    return ThreadAction::Stop;
+                }
+            };
+
+            let socket_addr_v4 = SocketAddrV4::new(ip_addr_v4, Game::UDP_PORT);
+
+            core.udp_socket = match UdpSocket::bind(socket_addr_v4) {
+                Ok(udp_socket) => Some(udp_socket),
+                Err(error) => {
+                    error!("{:?}", error);
+                    return ThreadAction::Stop;
+                }
+            };
+
+            let udp_input = match UdpInput::<Game>::new(
                 core.udp_socket.as_ref().unwrap(),
                 core_sender.clone()
-            ).unwrap();
+            ) {
+                Ok(udp_input) => udp_input,
+                Err(error) => {
+                    error!("{:?}", error);
+                    return ThreadAction::Stop;
+                }
+            };
 
             let (udp_input_sender, udp_input_builder) = udp_input.build();
-            udp_input_builder.name("ServerUdpInput").start().unwrap();
             core.udp_input_sender = Some(udp_input_sender);
 
-            let (listener_sender, listener_builder) = TcpListenerThread::<Game>::new(core_sender).build();
-            listener_builder.name("ServerTcpListener").start().unwrap();
+            //TODO: hold onto this join handle
+            if let Err(error) = udp_input_builder.name("ServerUdpInput").start() {
+                error!("{:?}", error);
+                return ThreadAction::Stop;
+            }
 
-        }).unwrap();
+            let (listener_sender, listener_builder) = TcpListenerThread::<Game>::new(core_sender).build();
+            core.tcp_listener_thread = Some(listener_sender);
+
+            //TODO: hold onto this join handle
+            if let Err(error) = listener_builder.name("ServerTcpListener").start() {
+                error!("{:?}", error);
+                return ThreadAction::Stop;
+            }
+
+            return ThreadAction::Continue;
+        })
     }
 
     pub fn on_remote_udp_peer(&self, remote_udp_peer: RemoteUdpPeer) {
@@ -90,6 +130,7 @@ impl<Game: GameTrait> Sender<ServerCore<Game>> {
                 udp_output_sender.on_remote_peer(remote_udp_peer);
             }
 
+            return ThreadAction::Continue;
         }).unwrap();
     }
 
@@ -149,6 +190,8 @@ impl<Game: GameTrait> Sender<ServerCore<Game>> {
                 timer_builder.name("ServerTimer").start().unwrap();
                 manager_builder.name("ServerManager").start().unwrap();
             }
+
+            return ThreadAction::Continue;
         }).unwrap();
 
         return render_receiver;
@@ -160,7 +203,7 @@ impl<Game: GameTrait> Sender<ServerCore<Game>> {
     Tcp Hello ->
         <- UdpHello
      */
-    pub fn on_tcp_connection(&self, tcp_stream: TcpStream) {
+    pub fn on_tcp_connection(&self, tcp_stream: TcpStream) -> Result<(), SendError<ServerCore<Game>>> {
         self.send(move |core|{
             if !core.game_is_started {
                 let player_index = core.tcp_inputs.len();
@@ -195,7 +238,9 @@ impl<Game: GameTrait> Sender<ServerCore<Game>> {
             } else {
                 info!("TcpStream connected after the core has stated and will be dropped. {:?}", tcp_stream);
             }
-        }).unwrap();
+
+            return ThreadAction::Continue;
+        })
     }
 
     pub fn on_time_message(&self, time_message: TimeMessage) {
@@ -217,6 +262,7 @@ impl<Game: GameTrait> Sender<ServerCore<Game>> {
                 manager_sender.set_requested_step(time_message.get_step() + 1);
             }
 
+            return ThreadAction::Continue;
         }).unwrap();
     }
 
@@ -233,6 +279,8 @@ impl<Game: GameTrait> Sender<ServerCore<Game>> {
                     udp_output.on_input_message(input_message.clone());
                 }
             }
+
+            return ThreadAction::Continue;
         }).unwrap();
     }
 }

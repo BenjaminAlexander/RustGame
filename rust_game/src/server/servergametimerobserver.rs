@@ -3,7 +3,7 @@ use crate::gametime::{GameTimerObserverTrait, TimeMessage};
 use crate::interface::GameTrait;
 use crate::server::ServerCore;
 use crate::server::udpoutput::UdpOutput;
-use crate::threading::{Consumer, Sender};
+use crate::threading::{Consumer, ChannelDrivenThreadSender as Sender};
 
 pub struct ServerGameTimerObserver<Game: GameTrait> {
     core_sender: Sender<ServerCore<Game>>,
