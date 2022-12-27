@@ -24,11 +24,11 @@ impl<Game: GameTrait> ManagerObserverTrait for ClientManagerObserver<Game> {
         self.render_receiver_sender.on_step_message(step_message);
     }
 
-    fn on_completed_step(&self, state_message: StateMessage<Game>) {
+    fn on_completed_step(&self, _state_message: StateMessage<Game>) {
 
     }
 
-    fn on_server_input_message(&self, server_input_message: ServerInputMessage<Self::Game>) {
+    fn on_server_input_message(&self, _server_input_message: ServerInputMessage<Self::Game>) {
 
     }
 }

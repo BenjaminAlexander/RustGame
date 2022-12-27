@@ -3,7 +3,7 @@ use std::net::{TcpStream, Ipv4Addr, SocketAddrV4, UdpSocket};
 use log::{error, info};
 use crate::interface::GameTrait;
 use crate::server::tcpinput::TcpInput;
-use crate::threading::{ChannelDrivenThread, ChannelThread, Consumer, ChannelDrivenThreadSender as Sender, ChannelDrivenThreadSenderError as SendError, ThreadAction};
+use crate::threading::{ChannelDrivenThread, ChannelThread, ChannelDrivenThreadSender as Sender, ChannelDrivenThreadSenderError as SendError, ThreadAction};
 use crate::server::{TcpListenerThread, ServerConfig};
 use crate::server::tcpoutput::TcpOutput;
 use crate::gametime::{GameTimer, TimeMessage};
@@ -13,6 +13,7 @@ use std::str::FromStr;
 use crate::server::udpinput::UdpInput;
 use crate::server::udpoutput::UdpOutput;
 use crate::server::clientaddress::ClientAddress;
+use crate::server::remoteudppeer::RemoteUdpPeer;
 use crate::server::servergametimerobserver::ServerGameTimerObserver;
 use crate::server::servermanagerobserver::ServerManagerObserver;
 
@@ -64,7 +65,7 @@ impl<Game: GameTrait> Sender<ServerCore<Game>> {
 
     pub fn start_listener(&self) -> Result<(), SendError<ServerCore<Game>>> {
 
-        let clone = self.clone();
+        let core_sender = self.clone();
 
         self.send(|core| {
 
@@ -89,7 +90,10 @@ impl<Game: GameTrait> Sender<ServerCore<Game>> {
                 }
             };
 
-            let udp_input = match UdpInput::<Game>::new(core.udp_socket.as_ref().unwrap()) {
+            let udp_input = match UdpInput::<Game>::new(
+                core.udp_socket.as_ref().unwrap(),
+                core_sender.clone()
+            ) {
                 Ok(udp_input) => udp_input,
                 Err(error) => {
                     error!("{:?}", error);
@@ -106,7 +110,7 @@ impl<Game: GameTrait> Sender<ServerCore<Game>> {
                 return ThreadAction::Stop;
             }
 
-            let (listener_sender, listener_builder) = TcpListenerThread::<Game>::new(clone).build();
+            let (listener_sender, listener_builder) = TcpListenerThread::<Game>::new(core_sender).build();
             core.tcp_listener_thread = Some(listener_sender);
 
             //TODO: hold onto this join handle
@@ -117,6 +121,17 @@ impl<Game: GameTrait> Sender<ServerCore<Game>> {
 
             return ThreadAction::Continue;
         })
+    }
+
+    pub fn on_remote_udp_peer(&self, remote_udp_peer: RemoteUdpPeer) {
+        self.send(|core|{
+
+            if let Some(udp_output_sender) = core.udp_outputs.get(remote_udp_peer.get_player_index()) {
+                udp_output_sender.on_remote_peer(remote_udp_peer);
+            }
+
+            return ThreadAction::Continue;
+        }).unwrap();
     }
 
     pub fn start_game(&self) -> RenderReceiver<Game> {
@@ -172,8 +187,6 @@ impl<Game: GameTrait> Sender<ServerCore<Game>> {
                     );
                 }
 
-                core.udp_input_sender.as_ref().unwrap().add_input_consumer(core_sender.clone()).unwrap();
-
                 timer_builder.name("ServerTimer").start().unwrap();
                 manager_builder.name("ServerManager").start().unwrap();
             }
@@ -184,6 +197,12 @@ impl<Game: GameTrait> Sender<ServerCore<Game>> {
         return render_receiver;
     }
 
+    /*
+    TODO:
+    Server      Cliend
+    Tcp Hello ->
+        <- UdpHello
+     */
     pub fn on_tcp_connection(&self, tcp_stream: TcpStream) -> Result<(), SendError<ServerCore<Game>>> {
         self.send(move |core|{
             if !core.game_is_started {
@@ -206,8 +225,7 @@ impl<Game: GameTrait> Sender<ServerCore<Game>> {
                 ).unwrap().build();
 
                 let input_sender = core.udp_input_sender.as_ref().unwrap();
-                input_sender.add_remote_peer_consumers(udp_out_sender.clone()).unwrap();
-                input_sender.accept(client_address);
+                input_sender.on_client_address(client_address);
 
                 tcp_out_builder.name("ServerTcpOutput").start().unwrap();
                 udp_out_builder.name("ServerUdpOutput").start().unwrap();
@@ -247,14 +265,11 @@ impl<Game: GameTrait> Sender<ServerCore<Game>> {
             return ThreadAction::Continue;
         }).unwrap();
     }
-}
 
-
-
-impl<Game: GameTrait> Consumer<InputMessage<Game>> for Sender<ServerCore<Game>> {
-
-    fn accept(&self, input_message: InputMessage<Game>) {
+    pub fn on_input_message(&self, input_message: InputMessage<Game>) {
         self.send(move |core|{
+
+            //TODO: is game started?
 
             if core.drop_steps_before <= input_message.get_step() &&
                 core.manager_sender.is_some() {
