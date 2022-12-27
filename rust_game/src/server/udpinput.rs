@@ -1,6 +1,6 @@
 use log::{info, warn};
 use crate::messaging::{MAX_UDP_DATAGRAM_SIZE, ToServerMessageUDP, FragmentAssembler, MessageFragment};
-use crate::threading::{ChannelThread, Receiver, ChannelDrivenThreadSender as Sender, Consumer, ThreadAction};
+use crate::threading::{ChannelThread, Receiver, ChannelDrivenThreadSender as Sender, ThreadAction};
 use crate::interface::GameTrait;
 use std::net::{UdpSocket, SocketAddr, IpAddr};
 use std::io;
@@ -88,7 +88,7 @@ impl<Game: GameTrait> UdpInput<Game> {
         self.handle_remote_peer(message.get_player_index(), source);
 
         match message {
-            ToServerMessageUDP::Hello { player_index } => {
+            ToServerMessageUDP::Hello {player_index: _} => {
 
             }
             ToServerMessageUDP::Input(input_message) => {
@@ -164,8 +164,9 @@ impl<Game: GameTrait> ChannelThread<(), ThreadAction> for UdpInput<Game> {
     }
 }
 
-impl<Game: GameTrait> Consumer<ClientAddress> for Sender<UdpInput<Game>> {
-    fn accept(&self, client_address: ClientAddress) {
+impl<Game: GameTrait> Sender<UdpInput<Game>> {
+
+    pub fn on_client_address(&self, client_address: ClientAddress) {
         self.send(move |udp_input|{
             udp_input.client_ip_set.insert(client_address.get_ip_address());
 

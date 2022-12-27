@@ -36,7 +36,7 @@ impl<Game: GameTrait> ChannelThread<(), ThreadAction> for TcpOutput<Game> {
             match receiver.recv(&mut self) {
                 Err(error) => {
 
-                    info!("Channel closed.");
+                    info!("Channel closed: {:?}", error);
                     return ();
                 }
                 _ => {}

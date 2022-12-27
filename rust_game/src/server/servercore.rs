@@ -3,7 +3,7 @@ use std::net::{TcpStream, Ipv4Addr, SocketAddrV4, UdpSocket};
 use log::{error, info};
 use crate::interface::GameTrait;
 use crate::server::tcpinput::TcpInput;
-use crate::threading::{ChannelDrivenThread, ChannelThread, Consumer, ChannelDrivenThreadSender as Sender, ChannelDrivenThreadSenderError as SendError, ThreadAction};
+use crate::threading::{ChannelDrivenThread, ChannelThread, ChannelDrivenThreadSender as Sender, ChannelDrivenThreadSenderError as SendError, ThreadAction};
 use crate::server::{TcpListenerThread, ServerConfig};
 use crate::server::tcpoutput::TcpOutput;
 use crate::gametime::{GameTimer, TimeMessage};
@@ -225,7 +225,7 @@ impl<Game: GameTrait> Sender<ServerCore<Game>> {
                 ).unwrap().build();
 
                 let input_sender = core.udp_input_sender.as_ref().unwrap();
-                input_sender.accept(client_address);
+                input_sender.on_client_address(client_address);
 
                 tcp_out_builder.name("ServerTcpOutput").start().unwrap();
                 udp_out_builder.name("ServerUdpOutput").start().unwrap();

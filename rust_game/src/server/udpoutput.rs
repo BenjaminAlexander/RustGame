@@ -5,9 +5,7 @@ use crate::gametime::{TimeDuration, TimeMessage, TimeValue};
 use crate::messaging::{InputMessage, StateMessage, ToClientMessageUDP, Fragmenter, MAX_UDP_DATAGRAM_SIZE, ServerInputMessage};
 use std::io;
 use crate::server::remoteudppeer::RemoteUdpPeer;
-use crate::threading::{ChannelThread, Receiver, ChannelDrivenThreadSender as Sender, Consumer, ThreadAction};
-use std::time::Duration;
-use std::sync::mpsc::RecvTimeoutError;
+use crate::threading::{ChannelThread, Receiver, ChannelDrivenThreadSender as Sender, ThreadAction};
 use std::marker::PhantomData;
 use crate::util::RollingAverage;
 
@@ -211,18 +209,15 @@ impl<Game: GameTrait> Sender<UdpOutput<Game>> {
             return ThreadAction::Continue;
         }).unwrap();
     }
-}
 
-impl<Game: GameTrait> Consumer<ServerInputMessage<Game>> for Sender<UdpOutput<Game>> {
-
-    fn accept(&self, server_input_message: ServerInputMessage<Game>) {
+    pub fn on_server_input_message(&self, server_input_message: ServerInputMessage<Game>) {
 
         let time_in_queue = TimeValue::now();
 
         self.send(move |udp_output|{
 
             if udp_output.last_state_sequence.is_none() ||
-               udp_output.last_state_sequence.as_ref().unwrap() <= &server_input_message.get_step() {
+                udp_output.last_state_sequence.as_ref().unwrap() <= &server_input_message.get_step() {
 
                 udp_output.time_of_last_server_input_send = TimeValue::now();
 

@@ -5,7 +5,6 @@ use rmp_serde::decode::Error;
 
 use crate::messaging::{ToServerMessageTCP};
 use crate::threading::{ChannelThread, Receiver, ThreadAction};
-use crate::gametime::TimeValue;
 use std::io;
 use std::sync::mpsc::TryRecvError;
 
@@ -48,7 +47,7 @@ impl ChannelThread<(), ThreadAction> for TcpInput {
 
             match result {
                 Ok(message) => {
-                    let time_received = TimeValue::now();
+                    //let time_received = TimeValue::now();
                     match message {
 
                     };
