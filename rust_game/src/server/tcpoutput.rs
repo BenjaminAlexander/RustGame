@@ -1,4 +1,4 @@
-use log::info;
+use log::{debug, info};
 use std::net::TcpStream;
 use crate::threading::{ChannelDrivenThreadSender as Sender, ChannelThread, Receiver, ThreadAction};
 use std::io;
@@ -61,7 +61,7 @@ impl<Game: GameTrait> Sender<TcpOutput<Game>> {
             rmp_serde::encode::write(&mut tcp_output.tcp_stream, &message).unwrap();
             tcp_output.tcp_stream.flush().unwrap();
 
-            info!("Sent InitialInformation");
+            debug!("Sent InitialInformation");
 
             return ThreadAction::Continue;
         }).unwrap();

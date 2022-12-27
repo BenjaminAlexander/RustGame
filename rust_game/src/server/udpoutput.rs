@@ -85,14 +85,14 @@ impl<Game: GameTrait> ChannelThread<(), ThreadAction> for UdpOutput<Game> {
 
         loop {
             trace!("Waiting.");
-            match receiver.recv_timeout(&mut self, Duration::new(1, 0)) {
-                Err(RecvTimeoutError::Timeout) | Ok(ThreadAction::Continue) => {}
+            match receiver.recv(&mut self) {
+                Ok(ThreadAction::Continue) => {}
                 Ok(ThreadAction::Stop) => {
                     info!("Thread commanded to stop.");
                     return;
                 }
-                Err(RecvTimeoutError::Disconnected) => {
-                    info!("Thread stopping due to disconnect.");
+                Err(error) => {
+                    info!("Thread stopping due to disconnect: {:?}", error);
                     return;
                 }
             }
