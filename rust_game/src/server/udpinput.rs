@@ -1,15 +1,15 @@
 use log::{info, warn};
-use crate::messaging::{InputMessage, MAX_UDP_DATAGRAM_SIZE, ToServerMessageUDP, FragmentAssembler, MessageFragment};
-use crate::threading::{ConsumerList, ChannelThread, Receiver, ChannelDrivenThreadSender as Sender, Consumer, ThreadAction};
+use crate::messaging::{MAX_UDP_DATAGRAM_SIZE, ToServerMessageUDP, FragmentAssembler, MessageFragment};
+use crate::threading::{ChannelThread, Receiver, ChannelDrivenThreadSender as Sender, ThreadAction};
 use crate::interface::GameTrait;
 use std::net::{UdpSocket, SocketAddr, IpAddr};
 use std::io;
 use rmp_serde::decode::Error;
-use crate::threading::sender::SendError;
 use crate::server::remoteudppeer::RemoteUdpPeer;
 use std::collections::{HashMap, HashSet};
 use std::sync::mpsc::TryRecvError;
 use crate::server::clientaddress::ClientAddress;
+use crate::server::ServerCore;
 
 pub struct UdpInput<Game: GameTrait> {
     socket: UdpSocket,
@@ -17,13 +17,15 @@ pub struct UdpInput<Game: GameTrait> {
     client_addresses: Vec<Option<ClientAddress>>,
     client_ip_set: HashSet<IpAddr>,
     fragment_assemblers: HashMap<SocketAddr, FragmentAssembler>,
-    input_consumers: ConsumerList<InputMessage<Game>>,
-    remote_peer_consumers: ConsumerList<RemoteUdpPeer>
+    core_sender: Sender<ServerCore<Game>>
 }
 
 impl<Game: GameTrait> UdpInput<Game> {
 
-    pub fn new(socket: &UdpSocket) -> io::Result<Self> {
+    pub fn new(
+        socket: &UdpSocket,
+        core_sender: Sender<ServerCore<Game>>) -> io::Result<Self> {
+
         return Ok(Self{
             socket: socket.try_clone()?,
             remote_peers: Vec::new(),
@@ -31,8 +33,7 @@ impl<Game: GameTrait> UdpInput<Game> {
             client_ip_set: HashSet::new(),
             //TODO: make this more configurable
             fragment_assemblers: HashMap::new(),
-            input_consumers: ConsumerList::new(),
-            remote_peer_consumers: ConsumerList::new(),
+            core_sender
         });
     }
 
@@ -87,11 +88,11 @@ impl<Game: GameTrait> UdpInput<Game> {
         self.handle_remote_peer(message.get_player_index(), source);
 
         match message {
-            ToServerMessageUDP::Hello { player_index } => {
+            ToServerMessageUDP::Hello {player_index: _} => {
 
             }
             ToServerMessageUDP::Input(input_message) => {
-                self.input_consumers.accept(&input_message);
+                self.core_sender.on_input_message(input_message);
             }
         }
     }
@@ -106,15 +107,15 @@ impl<Game: GameTrait> UdpInput<Game> {
         match &self.remote_peers[player_index] {
             None => {
                 info!("First time UDP remote peer: {:?}", remote_peer);
+                self.core_sender.on_remote_udp_peer(remote_peer.clone());
                 self.remote_peers[player_index] = Some(remote_peer);
-                self.remote_peer_consumers.accept(self.remote_peers[player_index].as_ref().unwrap());
             }
             Some(existing_remote_peer) => {
                 let existing_socket = existing_remote_peer.get_socket_addr();
                 if !existing_socket.eq(&remote_peer.get_socket_addr()) {
                     info!("Change of UDP remote peer: {:?}", remote_peer);
+                    self.core_sender.on_remote_udp_peer(remote_peer.clone());
                     self.remote_peers[player_index] = Some(remote_peer);
-                    self.remote_peer_consumers.accept(self.remote_peers[player_index].as_ref().unwrap());
                     self.fragment_assemblers.remove(&existing_socket);
                 }
             }
@@ -165,35 +166,7 @@ impl<Game: GameTrait> ChannelThread<(), ThreadAction> for UdpInput<Game> {
 
 impl<Game: GameTrait> Sender<UdpInput<Game>> {
 
-    pub fn add_input_consumer<T>(&self, consumer: T) -> Result<(), SendError<UdpInput<Game>, ThreadAction>>
-        where T: Consumer<InputMessage<Game>> {
-
-        self.send(|udp_input|{
-            udp_input.input_consumers.add_consumer(consumer);
-            return ThreadAction::Continue;
-        })
-    }
-
-    pub fn add_remote_peer_consumers<T>(&self, consumer: T) -> Result<(), SendError<UdpInput<Game>, ThreadAction>>
-        where T: Consumer<RemoteUdpPeer> {
-
-        self.send(|udp_input|{
-
-            for option in &udp_input.remote_peers {
-                if let Some(remote_peer) = option {
-                    consumer.accept(remote_peer.clone());
-                }
-            }
-
-            udp_input.remote_peer_consumers.add_consumer(consumer);
-
-            return ThreadAction::Continue;
-        })
-    }
-}
-
-impl<Game: GameTrait> Consumer<ClientAddress> for Sender<UdpInput<Game>> {
-    fn accept(&self, client_address: ClientAddress) {
+    pub fn on_client_address(&self, client_address: ClientAddress) {
         self.send(move |udp_input|{
             udp_input.client_ip_set.insert(client_address.get_ip_address());
 

@@ -3,7 +3,7 @@ use crate::interface::GameTrait;
 use crate::messaging::{ServerInputMessage, StateMessage};
 use crate::server::ServerCore;
 use crate::server::udpoutput::UdpOutput;
-use crate::threading::{ChannelDrivenThreadSender as Sender, Consumer};
+use crate::threading::{ChannelDrivenThreadSender as Sender};
 
 pub struct ServerManagerObserver<Game: GameTrait> {
     server_core_sender: Sender<ServerCore<Game>>,
@@ -46,7 +46,7 @@ impl<Game: GameTrait> ManagerObserverTrait for ServerManagerObserver<Game> {
     fn on_server_input_message(&self, server_input_message: ServerInputMessage<Game>) {
 
         for udp_output in self.udp_outputs.iter() {
-            udp_output.accept(server_input_message.clone());
+            udp_output.on_server_input_message(server_input_message.clone());
         }
     }
 }

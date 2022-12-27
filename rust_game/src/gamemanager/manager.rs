@@ -1,7 +1,6 @@
 use std::collections::vec_deque::VecDeque;
 use log::{warn, trace};
 use crate::messaging::{StateMessage, InputMessage, InitialInformation, ServerInputMessage};
-use crate::interface::GameTrait;
 use crate::threading::{ChannelDrivenThread, ChannelDrivenThreadSender as Sender, ThreadAction};
 use crate::gamemanager::step::Step;
 use crate::gametime::{TimeDuration, TimeValue};

@@ -2,7 +2,7 @@ use std::sync::mpsc::TryRecvError;
 use log::{info, warn};
 use crate::interface::{InterpolationArg, GameTrait};
 use crate::gamemanager::stepmessage::StepMessage;
-use crate::threading::{Consumer, ChannelDrivenThreadSender as Sender, ChannelDrivenThreadReceiver as Receiver, channel, ThreadAction};
+use crate::threading::{ChannelDrivenThreadSender as Sender, ChannelDrivenThreadReceiver as Receiver, channel, ThreadAction};
 use crate::gametime::{TimeMessage, TimeValue, TimeDuration};
 use crate::messaging::InitialInformation;
 
@@ -41,7 +41,7 @@ impl<Game: GameTrait> RenderReceiver<Game> {
 
     //TODO: remove timeduration
     //TODO: notify the caller if the channel is disconnected
-    pub fn get_step_message(mut self: &mut Self) -> Option<(TimeDuration, Game::InterpolationResult)> {
+    pub fn get_step_message(self: &mut Self) -> Option<(TimeDuration, Game::InterpolationResult)> {
 
         loop {
             match self.receiver.try_recv(&mut self.data) {
@@ -172,11 +172,8 @@ impl<Game: GameTrait> Sender<Data<Game>> {
             return ThreadAction::Continue;
         }).unwrap();
     }
-}
 
-impl<Game: GameTrait> Consumer<TimeMessage> for Sender<Data<Game>> {
-
-    fn accept(&self, time_message: TimeMessage) {
+    pub fn on_time_message(&self, time_message: TimeMessage) {
         self.send(move |data|{
 
             //TODO: put this in a method

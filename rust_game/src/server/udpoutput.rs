@@ -5,9 +5,7 @@ use crate::gametime::{TimeDuration, TimeMessage, TimeValue};
 use crate::messaging::{InputMessage, StateMessage, ToClientMessageUDP, Fragmenter, MAX_UDP_DATAGRAM_SIZE, ServerInputMessage};
 use std::io;
 use crate::server::remoteudppeer::RemoteUdpPeer;
-use crate::threading::{ChannelThread, Receiver, ChannelDrivenThreadSender as Sender, Consumer, ThreadAction};
-use std::time::Duration;
-use std::sync::mpsc::RecvTimeoutError;
+use crate::threading::{ChannelThread, Receiver, ChannelDrivenThreadSender as Sender, ThreadAction};
 use std::marker::PhantomData;
 use crate::util::RollingAverage;
 
@@ -85,14 +83,14 @@ impl<Game: GameTrait> ChannelThread<(), ThreadAction> for UdpOutput<Game> {
 
         loop {
             trace!("Waiting.");
-            match receiver.recv_timeout(&mut self, Duration::new(1, 0)) {
-                Err(RecvTimeoutError::Timeout) | Ok(ThreadAction::Continue) => {}
+            match receiver.recv(&mut self) {
+                Ok(ThreadAction::Continue) => {}
                 Ok(ThreadAction::Stop) => {
                     info!("Thread commanded to stop.");
                     return;
                 }
-                Err(RecvTimeoutError::Disconnected) => {
-                    info!("Thread stopping due to disconnect.");
+                Err(error) => {
+                    info!("Thread stopping due to disconnect: {:?}", error);
                     return;
                 }
             }
@@ -116,6 +114,18 @@ impl<Game: GameTrait> ChannelThread<(), ThreadAction> for UdpOutput<Game> {
 }
 
 impl<Game: GameTrait> Sender<UdpOutput<Game>> {
+
+    pub fn on_remote_peer(&self, remote_peer: RemoteUdpPeer) {
+        self.send(|udp_output|{
+
+            if udp_output.player_index == remote_peer.get_player_index() {
+                info!("Setting remote peer: {:?}", remote_peer);
+                udp_output.remote_peer = Some(remote_peer);
+            }
+
+            return ThreadAction::Continue;
+        }).unwrap();
+    }
 
     pub fn on_completed_step(&self, state_message: StateMessage<Game>) {
 
@@ -199,18 +209,15 @@ impl<Game: GameTrait> Sender<UdpOutput<Game>> {
             return ThreadAction::Continue;
         }).unwrap();
     }
-}
 
-impl<Game: GameTrait> Consumer<ServerInputMessage<Game>> for Sender<UdpOutput<Game>> {
-
-    fn accept(&self, server_input_message: ServerInputMessage<Game>) {
+    pub fn on_server_input_message(&self, server_input_message: ServerInputMessage<Game>) {
 
         let time_in_queue = TimeValue::now();
 
         self.send(move |udp_output|{
 
             if udp_output.last_state_sequence.is_none() ||
-               udp_output.last_state_sequence.as_ref().unwrap() <= &server_input_message.get_step() {
+                udp_output.last_state_sequence.as_ref().unwrap() <= &server_input_message.get_step() {
 
                 udp_output.time_of_last_server_input_send = TimeValue::now();
 
@@ -221,21 +228,6 @@ impl<Game: GameTrait> Consumer<ServerInputMessage<Game>> for Sender<UdpOutput<Ga
                 udp_output.log_time_in_queue(time_in_queue);
             } else {
                 //info!("ServerInputMessage dropped. Last state: {:?}", tcp_output.last_state_sequence);
-            }
-
-            return ThreadAction::Continue;
-        }).unwrap();
-    }
-}
-
-impl<Game: GameTrait> Consumer<RemoteUdpPeer> for Sender<UdpOutput<Game>> {
-
-    fn accept(&self, remote_peer: RemoteUdpPeer) {
-        self.send(|udp_output|{
-
-            if udp_output.player_index == remote_peer.get_player_index() {
-                info!("Setting remote peer: {:?}", remote_peer);
-                udp_output.remote_peer = Some(remote_peer);
             }
 
             return ThreadAction::Continue;

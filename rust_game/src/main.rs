@@ -1,5 +1,5 @@
 use std::{thread, time, io, process};
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 use log::{error, info};
 use crate::simplegame::{SimpleInput, SimpleState, SimpleInputEvent, SimpleInputEventHandler, SimpleWindow, SimpleServerInput, SimpleGameImpl};
 use crate::threading::ChannelThread;
