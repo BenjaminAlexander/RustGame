@@ -7,7 +7,7 @@ use crate::threading::{ChannelDrivenThread, ChannelThread, ChannelDrivenThreadSe
 use crate::server::{TcpListenerThread, ServerConfig};
 use crate::server::tcpoutput::TcpOutput;
 use crate::gametime::{GameTimer, TimeMessage};
-use crate::gamemanager::{Manager, RenderReceiver};
+use crate::gamemanager::{Manager, RenderReceiver, RenderReceiverMessage};
 use crate::messaging::{InputMessage, InitialInformation};
 use std::str::FromStr;
 use crate::server::udpinput::UdpInput;
@@ -174,7 +174,7 @@ impl<Game: GameTrait> Sender<ServerCore<Game>> {
                 );
 
                 manager_sender.on_initial_information(server_initial_information.clone());
-                render_receiver_sender.on_initial_information(server_initial_information.clone());
+                render_receiver_sender.send(RenderReceiverMessage::InitialInformation(server_initial_information.clone())).unwrap();
                 timer_sender.on_initial_information(server_initial_information.clone());
 
                 timer_sender.start().unwrap();

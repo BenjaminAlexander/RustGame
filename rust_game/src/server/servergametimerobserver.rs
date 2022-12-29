@@ -1,20 +1,20 @@
-use crate::gamemanager::Data;
+use crate::gamemanager::RenderReceiverMessage;
 use crate::gametime::{GameTimerObserverTrait, TimeMessage};
 use crate::interface::GameTrait;
 use crate::server::ServerCore;
 use crate::server::udpoutput::UdpOutput;
-use crate::threading::{ChannelDrivenThreadSender as Sender};
+use crate::threading::{ChannelDrivenThreadSender as Sender, MessageChannelSender};
 
 pub struct ServerGameTimerObserver<Game: GameTrait> {
     core_sender: Sender<ServerCore<Game>>,
-    render_receiver_sender: Sender<Data<Game>>,
+    render_receiver_sender: MessageChannelSender<RenderReceiverMessage<Game>>,
     udp_outputs: Vec<Sender<UdpOutput<Game>>>,
 }
 
 impl<Game: GameTrait> ServerGameTimerObserver<Game> {
 
     pub fn new(core_sender: Sender<ServerCore<Game>>,
-               render_receiver_sender: Sender<Data<Game>>,
+               render_receiver_sender: MessageChannelSender<RenderReceiverMessage<Game>>,
                udp_outputs: Vec<Sender<UdpOutput<Game>>>) -> Self {
 
         Self {
@@ -36,6 +36,6 @@ impl<Game: GameTrait> GameTimerObserverTrait for ServerGameTimerObserver<Game> {
         }
 
         self.core_sender.on_time_message(time_message.clone());
-        self.render_receiver_sender.on_time_message(time_message.clone());
+        self.render_receiver_sender.send(RenderReceiverMessage::TimeMessage(time_message.clone())).unwrap();
     }
 }

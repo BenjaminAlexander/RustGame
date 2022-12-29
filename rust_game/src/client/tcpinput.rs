@@ -1,7 +1,7 @@
 use log::{error, info};
 use std::net::TcpStream;
 use crate::gametime::{GameTimer, TimeValue};
-use crate::threading::{ChannelThread, Receiver, ChannelDrivenThreadSender as Sender, ThreadAction};
+use crate::threading::{ChannelThread, Receiver, ChannelDrivenThreadSender as Sender, ThreadAction, MessageChannelSender};
 use crate::messaging::ToClientMessageTCP;
 use rmp_serde::decode::Error;
 use std::io;
@@ -10,7 +10,7 @@ use crate::client::ClientCore;
 use crate::client::clientgametimeobserver::ClientGameTimerObserver;
 use crate::client::clientmanagerobserver::ClientManagerObserver;
 use crate::client::udpoutput::UdpOutput;
-use crate::gamemanager::{Data, Manager};
+use crate::gamemanager::{Manager, RenderReceiverMessage};
 use crate::interface::GameTrait;
 
 pub struct TcpInput <Game: GameTrait> {
@@ -20,7 +20,7 @@ pub struct TcpInput <Game: GameTrait> {
     manager_sender: Sender<Manager<ClientManagerObserver<Game>>>,
     client_core_sender: Sender<ClientCore<Game>>,
     udp_output_sender: Sender<UdpOutput<Game>>,
-    render_data_sender: Sender<Data<Game>>
+    render_data_sender: MessageChannelSender<RenderReceiverMessage<Game>>
 }
 
 impl<Game: GameTrait> TcpInput<Game> {
@@ -30,7 +30,7 @@ impl<Game: GameTrait> TcpInput<Game> {
         manager_sender: Sender<Manager<ClientManagerObserver<Game>>>,
         client_core_sender: Sender<ClientCore<Game>>,
         udp_output_sender: Sender<UdpOutput<Game>>,
-        render_data_sender: Sender<Data<Game>>,
+        render_data_sender: MessageChannelSender<RenderReceiverMessage<Game>>,
         tcp_stream: &TcpStream) -> io::Result<Self> {
 
         Ok(Self {
@@ -87,7 +87,7 @@ impl<Game: GameTrait> ChannelThread<(), ThreadAction> for TcpInput<Game> {
                             self.manager_sender.on_initial_information(initial_information_message.clone());
                             self.client_core_sender.on_initial_information(initial_information_message.clone());
                             self.udp_output_sender.on_initial_information(initial_information_message.clone());
-                            self.render_data_sender.on_initial_information(initial_information_message.clone());
+                            self.render_data_sender.send(RenderReceiverMessage::InitialInformation(initial_information_message.clone())).unwrap();
                         }
                     }
                 }

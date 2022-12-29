@@ -6,6 +6,15 @@ pub use self::channeldriventhread::{
     ChannelDrivenThreadReceiver
 };
 
+pub use self::messagechannel::{
+    message_channel,
+    MessageHolder,
+    MessageChannelSender,
+    MessageChannelReceiver,
+    MessageChannelTryRecvError,
+    MessageChannelSendError
+};
+
 pub use self::channelthread::ChannelThread;
 pub use self::receiver::Receiver;
 pub use self::sender::{Sender, SendError};
@@ -18,4 +27,5 @@ mod channelthread;
 mod thread;
 mod channeldriventhread;
 mod channel;
+mod messagechannel;
 
