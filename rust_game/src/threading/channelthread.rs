@@ -6,12 +6,12 @@ pub trait ChannelThread<ThreadReturnType, MessageReturnType> : Sized + Send + 's
     where ThreadReturnType: Send + 'static,
         MessageReturnType: 'static {
 
-    fn build(self) -> (Sender<Self, MessageReturnType>, ThreadBuilder<ThreadReturnType>) {
+    fn build(self) -> (Sender<Self, MessageReturnType>, ThreadBuilder<RawChannelThread<Self, ThreadReturnType, MessageReturnType>>) {
         let (sender, receiver) = channel();
         self.build_from_channel(sender, receiver)
     }
 
-    fn build_from_channel(self, sender: Sender<Self, MessageReturnType>, receiver: Receiver<Self, MessageReturnType>) -> (Sender<Self, MessageReturnType>, ThreadBuilder<ThreadReturnType>) {
+    fn build_from_channel(self, sender: Sender<Self, MessageReturnType>, receiver: Receiver<Self, MessageReturnType>) -> (Sender<Self, MessageReturnType>, ThreadBuilder<RawChannelThread<Self, ThreadReturnType, MessageReturnType>>) {
 
         let thread = RawChannelThread{
             receiver,
@@ -27,7 +27,7 @@ pub trait ChannelThread<ThreadReturnType, MessageReturnType> : Sized + Send + 's
     fn run(self, receiver: Receiver<Self, MessageReturnType>) -> ThreadReturnType;
 }
 
-struct RawChannelThread<ChannelThreadType, ThreadReturnType, MessageReturnType>
+pub struct RawChannelThread<ChannelThreadType, ThreadReturnType, MessageReturnType>
     where ChannelThreadType: ChannelThread<ThreadReturnType, MessageReturnType>,
           ThreadReturnType: Send + 'static,
           MessageReturnType: 'static {
@@ -37,9 +37,11 @@ struct RawChannelThread<ChannelThreadType, ThreadReturnType, MessageReturnType>
     u_phantom: PhantomData<ThreadReturnType>
 }
 
-impl<ChannelThreadType, ThreadReturnType, MessageReturnType> Thread<ThreadReturnType> for RawChannelThread<ChannelThreadType, ThreadReturnType, MessageReturnType>
+impl<ChannelThreadType, ThreadReturnType, MessageReturnType> Thread for RawChannelThread<ChannelThreadType, ThreadReturnType, MessageReturnType>
     where ChannelThreadType: ChannelThread<ThreadReturnType, MessageReturnType>,
           ThreadReturnType: Send + 'static {
+
+    type ReturnType = ThreadReturnType;
 
     fn run(self) -> ThreadReturnType {
         let receiver = self.receiver;

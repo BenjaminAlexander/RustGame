@@ -1,38 +1,47 @@
-use std::io;
+use std::io::Result;
 use std::thread::{Builder, JoinHandle};
 
-pub trait Thread<T> : Sized + Send + 'static
-    where T: Send + 'static {
+pub trait Thread : Sized + Send + 'static {
 
-    fn build(self) -> ThreadBuilder<T> {
-        let x = Box::new(||{
-            self.run()
-        });
-        ThreadBuilder{thread: x, builder: Builder::new()}
+    type ReturnType: Send + 'static;
+
+    fn build(self) -> ThreadBuilder<Self> {
+        return ThreadBuilder{
+            thread: self,
+            builder: Builder::new()
+        };
     }
 
-    fn run(self) -> T;
+    fn run(self) -> Self::ReturnType;
 }
 
-pub struct ThreadBuilder<T>
-    where T: Send + 'static {
+pub trait ThreadBuilderTrait {
+    type StartResultType;
 
-    thread: Box<dyn FnOnce() -> T + Send>,
+    fn name(self, name: &str) -> Self;
+
+    fn start(self) -> Self::StartResultType;
+}
+
+pub struct ThreadBuilder<ThreadType: Thread> {
+    thread: ThreadType,
     builder: Builder
 }
 
-impl<T> ThreadBuilder<T>
-    where T: Send + 'static {
+impl<T: Thread> ThreadBuilderTrait for ThreadBuilder<T> {
+    type StartResultType = Result<JoinHandle<T::ReturnType>>;
 
-    pub fn name(mut self, name: &str) -> Self {
+    fn name(mut self, name: &str) -> Self {
         self.builder = self.builder.name(name.to_string());
-        self
+        return self;
     }
 
-    pub fn start(self) -> io::Result<JoinHandle<T>> {
+    fn start(self) -> Result<JoinHandle<T::ReturnType>> {
         let builder = self.builder;
         let thread = self.thread;
 
-        builder.spawn(thread)
+        return builder.spawn(||{
+            thread.run()
+        });
     }
 }

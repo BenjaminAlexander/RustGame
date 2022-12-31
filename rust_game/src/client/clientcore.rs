@@ -1,7 +1,7 @@
 use std::net::{Ipv4Addr, SocketAddrV4, SocketAddr, TcpStream, UdpSocket};
 use std::str::FromStr;
 use crate::gametime::{GameTimer, TimeMessage};
-use crate::threading::{ChannelThread, ChannelDrivenThreadSender as Sender, ChannelDrivenThread, ThreadAction};
+use crate::threading::{ChannelThread, ChannelDrivenThreadSender as Sender, ChannelDrivenThread, ThreadAction, ThreadBuilderTrait};
 use crate::client::tcpinput::TcpInput;
 use crate::interface::GameTrait;
 use crate::client::tcpoutput::TcpOutput;
