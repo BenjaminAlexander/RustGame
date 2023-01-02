@@ -3,8 +3,15 @@ use log::info;
 use crate::threading::{message_channel, MessageChannelReceiver, MessageChannelSender, MessageChannelTryRecvError, Thread, ThreadBuilder};
 use crate::threading::thread::ThreadBuilderTrait;
 
-pub enum ContinueOrStop<T: MessageHandlerTrait> {
-    Continue(T),
+pub enum MessageHandlerEvent<T: MessageHandlerTrait> {
+    Message(T::MessageType),
+    ChannelEmpty,
+    ChannelDisconnected
+}
+
+pub enum MessageHandlerThreadAction<T: MessageHandlerTrait> {
+    WaitForNextMessage(T),
+    TryForNextMessage(T),
     Stop(T::ThreadReturnType)
 }
 
@@ -31,11 +38,7 @@ pub trait MessageHandlerTrait: Send + Sized + 'static {
         };
     }
 
-    fn on_message(self, message: Self::MessageType) -> ContinueOrStop<Self>;
-
-    fn on_none_pending(self) -> ContinueOrStop<Self>;
-
-    fn on_channel_disconnect(self) -> ContinueOrStop<Self>;
+    fn on_event(self, event: MessageHandlerEvent<Self>) -> MessageHandlerThreadAction<Self>;
 
     fn on_stop(self) -> Self::ThreadReturnType;
 }
@@ -89,6 +92,46 @@ struct MessageHandlingThread<MessageHandlerType: MessageHandlerTrait> {
     message_handler: MessageHandlerType
 }
 
+impl<MessageHandlerType: MessageHandlerTrait> MessageHandlingThread<MessageHandlerType> {
+
+    fn wait_for_message(message_handler: MessageHandlerType, receiver: &MessageHandlingThreadReceiver<MessageHandlerType>) -> MessageHandlerThreadAction<MessageHandlerType> {
+
+        return match receiver.recv() {
+            Ok(MessageOrStop::Message(message)) => Self::on_message(message_handler, message),
+            Ok(MessageOrStop::Stop) => Self::on_stop(message_handler),
+            Err(_) => Self::on_channel_disconnected(message_handler)
+        };
+    }
+
+    fn try_for_message(message_handler: MessageHandlerType, receiver: &MessageHandlingThreadReceiver<MessageHandlerType>) -> MessageHandlerThreadAction<MessageHandlerType> {
+
+        return match receiver.try_recv() {
+            Ok(MessageOrStop::Message(message)) => Self::on_message(message_handler, message),
+            Ok(MessageOrStop::Stop) => Self::on_stop(message_handler),
+            Err(MessageChannelTryRecvError::Disconnected) => Self::on_channel_disconnected(message_handler),
+            Err(MessageChannelTryRecvError::Empty) => Self::on_channel_empty(message_handler)
+        };
+    }
+
+    fn on_message(message_handler: MessageHandlerType, message: MessageHandlerType::MessageType) -> MessageHandlerThreadAction<MessageHandlerType> {
+        return message_handler.on_event(MessageHandlerEvent::Message(message));
+    }
+
+    fn on_channel_empty(message_handler: MessageHandlerType) -> MessageHandlerThreadAction<MessageHandlerType> {
+        return message_handler.on_event(MessageHandlerEvent::ChannelEmpty);
+    }
+
+    fn on_channel_disconnected(message_handler: MessageHandlerType) -> MessageHandlerThreadAction<MessageHandlerType> {
+        info!("The receiver channel has been disconnected.");
+        return message_handler.on_event(MessageHandlerEvent::ChannelDisconnected);
+    }
+
+    fn on_stop(message_handler: MessageHandlerType) -> MessageHandlerThreadAction<MessageHandlerType> {
+        info!("The MessageHandlingThread has received a message commanding it to stop.");
+        return MessageHandlerThreadAction::Stop(message_handler.on_stop());
+    }
+}
+
 impl<MessageHandlerType: MessageHandlerTrait> Thread for MessageHandlingThread<MessageHandlerType> {
     type ReturnType = MessageHandlerType::ThreadReturnType;
 
@@ -96,67 +139,17 @@ impl<MessageHandlerType: MessageHandlerTrait> Thread for MessageHandlingThread<M
 
         info!("Thread Starting");
 
+        let mut next_action = MessageHandlerThreadAction::TryForNextMessage(self.message_handler);
+
         loop {
-
-            //Wait for and handle the first message
-            match self.receiver.recv() {
-                Ok(MessageOrStop::Message(message)) => {
-                    match self.message_handler.on_message(message) {
-                        ContinueOrStop::Continue(next_self) => { self.message_handler = next_self; }
-                        ContinueOrStop::Stop(return_value) => {
-                            info!("After handling a message, the MessageHandler commanded the thread to stop.");
-                            return return_value;
-                        }
-                    }
+            next_action = match next_action {
+                MessageHandlerThreadAction::WaitForNextMessage(message_handler) => Self::wait_for_message(message_handler, &self.receiver),
+                MessageHandlerThreadAction::TryForNextMessage(message_handler) => Self::try_for_message(message_handler, &self.receiver),
+                MessageHandlerThreadAction::Stop(thread_return) => {
+                    info!("The MessageHandler commanded the thread to stop.");
+                    return thread_return;
                 }
-                Ok(MessageOrStop::Stop) => { return self.message_handler.on_stop(); }
-                Err(_) => {
-                    match self.message_handler.on_channel_disconnect() {
-                        ContinueOrStop::Continue(next_self) => { self.message_handler = next_self; }
-                        ContinueOrStop::Stop(return_value) => {
-                            info!("After channel disconnect, the MessageHandler commanded the thread to stop.");
-                            return return_value;
-                        }
-                    }
-                }
-            }
-
-            //Handle the rest of the messages in the queue
-            loop {
-                match self.receiver.try_recv() {
-                    Ok(MessageOrStop::Message(message)) => {
-                        match self.message_handler.on_message(message) {
-                            ContinueOrStop::Continue(next_self) => { self.message_handler = next_self; }
-                            ContinueOrStop::Stop(return_value) => {
-                                info!("After handling a message, the MessageHandler commanded the thread to stop.");
-                                return return_value;
-                            }
-                        }
-                    }
-                    Ok(MessageOrStop::Stop) => { return self.message_handler.on_stop(); }
-                    Err(MessageChannelTryRecvError::Disconnected) => {
-                        match self.message_handler.on_channel_disconnect() {
-                            ContinueOrStop::Continue(next_self) => { self.message_handler = next_self; }
-                            ContinueOrStop::Stop(return_value) => {
-                                info!("After channel disconnect, the MessageHandler commanded the thread to stop.");
-                                return return_value;
-                            }
-                        }
-                    }
-                    Err(MessageChannelTryRecvError::Empty) => {
-                        match self.message_handler.on_none_pending() {
-                            ContinueOrStop::Continue(next_self) => {
-                                self.message_handler = next_self;
-                                continue;
-                            }
-                            ContinueOrStop::Stop(return_value) => {
-                                info!("After no messages pending, the MessageHandler commanded the thread to stop.");
-                                return return_value;
-                            }
-                        }
-                    }
-                }
-            }
+            };
         }
     }
 }

@@ -1,12 +1,11 @@
 use std::net::{UdpSocket, SocketAddrV4, SocketAddr};
 use crate::gametime::{TimeReceived, TimeValue, TimeDuration, GameTimer};
 use crate::messaging::{ToClientMessageUDP, MAX_UDP_DATAGRAM_SIZE, MessageFragment, FragmentAssembler};
-use crate::threading::{ChannelDrivenThreadSender as Sender, Receiver, ChannelThread, ThreadAction};
+use crate::threading::{ChannelDrivenThreadSender as Sender, MessageHandlerTrait, MessageHandlerThreadAction, MessageHandlerEvent};
 use crate::interface::GameTrait;
 use rmp_serde::decode::Error;
 use std::io;
-use std::sync::mpsc::TryRecvError;
-use log::{debug, error, info, warn};
+use log::{debug, error, warn};
 use crate::client::clientgametimeobserver::ClientGameTimerObserver;
 use crate::client::clientmanagerobserver::ClientManagerObserver;
 use crate::gamemanager::Manager;
@@ -17,6 +16,7 @@ pub struct UdpInput<Game: GameTrait> {
     fragment_assembler: FragmentAssembler,
     game_timer_sender: Sender<GameTimer<ClientGameTimerObserver<Game>>>,
     manager_sender: Sender<Manager<ClientManagerObserver<Game>>>,
+    message_option: Option<(ToClientMessageUDP<Game>, TimeValue)>,
 
     //metrics
     time_of_last_state_receive: TimeValue,
@@ -41,6 +41,7 @@ impl<Game: GameTrait> UdpInput<Game> {
             fragment_assembler: FragmentAssembler::new(5),
             game_timer_sender,
             manager_sender,
+            message_option: None,
 
             //metrics
             time_of_last_state_receive: TimeValue::now(),
@@ -50,104 +51,108 @@ impl<Game: GameTrait> UdpInput<Game> {
     }
 }
 
-impl<Game: GameTrait> ChannelThread<(), ThreadAction> for UdpInput<Game> {
+impl<Game: GameTrait> MessageHandlerTrait for UdpInput<Game> {
+    type MessageType = ();
+    type ThreadReturnType = ();
 
-    fn run(mut self, receiver: Receiver<Self, ThreadAction>) {
-        info!("Starting");
-
-        let receiver = receiver;
-
-        //self.socket.set_read_timeout(Some(Duration::new(1, 0))).unwrap();
-
-        loop {
-
-            let now = TimeValue::now();
-            let duration_since_last_state = now.duration_since(self.time_of_last_state_receive);
-            if duration_since_last_state > TimeDuration::one_second() {
-
-                //TODO: this should probably be a warn
-                debug!("It has been {:?} since last state message was received. Now: {:?}, Last: {:?}",
-                      duration_since_last_state, now, self.time_of_last_state_receive);
+    fn on_event(mut self, event: MessageHandlerEvent<Self>) -> MessageHandlerThreadAction<Self> {
+        return match event {
+            MessageHandlerEvent::Message(_) => {
+                warn!("This handler does not have any meaningful messages");
+                MessageHandlerThreadAction::TryForNextMessage(self)
             }
-
-            let mut buf = [0; MAX_UDP_DATAGRAM_SIZE];
-
-            let recv_result = self.socket.recv_from(&mut buf);
-            if recv_result.is_err() {
-                warn!("Error on socket recv: {:?}", recv_result);
-                continue;
+            MessageHandlerEvent::ChannelEmpty => {
+                self.handle_received_message();
+                self.wait_for_message()
             }
+            MessageHandlerEvent::ChannelDisconnected => MessageHandlerThreadAction::Stop(self.on_stop())
+        };
+    }
 
-            let (number_of_bytes, source) = recv_result.unwrap();
+    fn on_stop(self) -> Self::ThreadReturnType {
+        return ();
+    }
+}
 
-            if !self.server_socket_addr.eq(&source) {
-                warn!("Received from wrong source. Expected: {:?}, Actual: {:?}", self.server_socket_addr, source);
-                continue;
-            }
+impl<Game: GameTrait> UdpInput<Game> {
 
-            let filled_buf = &mut buf[..number_of_bytes];
-            let fragment = MessageFragment::from_vec(filled_buf.to_vec());
+    fn handle_received_message(&mut self) {
+        if let Some((message, time_received)) = self.message_option.take() {
 
-            if let Some(message_buf) = self.fragment_assembler.add_fragment(fragment) {
+            match message {
+                ToClientMessageUDP::TimeMessage(time_message) => {
+                    //info!("Time message: {:?}", time_message.get_step());
+                    self.game_timer_sender.on_time_message(TimeReceived::new(time_received, time_message));
+                }
+                ToClientMessageUDP::InputMessage(input_message) => {
+                    //TODO: ignore input messages from this player
+                    //info!("Input message: {:?}", input_message.get_step());
+                    self.time_of_last_input_receive = TimeValue::now();
+                    self.manager_sender.on_input_message(input_message.clone());
+                }
+                ToClientMessageUDP::ServerInputMessage(server_input_message) => {
+                    //info!("Server Input message: {:?}", server_input_message.get_step());
+                    self.time_of_last_server_input_receive = TimeValue::now();
+                    self.manager_sender.on_server_input_message(server_input_message);
+                }
+                ToClientMessageUDP::StateMessage(state_message) => {
+                    //info!("State message: {:?}", state_message.get_sequence());
 
-                let result: Result<ToClientMessageUDP<Game>, Error> = rmp_serde::from_read_ref(&message_buf);
+                    let now = TimeValue::now();
+                    let duration_since_last_state = now.duration_since(self.time_of_last_state_receive);
+                    if duration_since_last_state > TimeDuration::one_second() {
 
-                match result {
-                    Ok(message) => {
-
-                        //Why does this crash the client?
-                        //info!("{:?}", message);
-
-                        let time_received = TimeValue::now();
-
-                        loop {
-                            match receiver.try_recv(&mut self) {
-                                Ok(ThreadAction::Continue) => {}
-                                Err(TryRecvError::Empty) => break,
-                                Ok(ThreadAction::Stop) => {
-                                    info!("Thread commanded to stop.");
-                                    return;
-                                }
-                                Err(TryRecvError::Disconnected) => {
-                                    info!("Thread stopping due to disconnect.");
-                                    return;
-                                }
-                            }
-                        }
-
-                        match message {
-                            ToClientMessageUDP::TimeMessage(time_message) => {
-                                //info!("Time message: {:?}", time_message.get_step());
-                                self.game_timer_sender.on_time_message(TimeReceived::new(time_received, time_message));
-
-                            }
-                            ToClientMessageUDP::InputMessage(input_message) => {
-                                //TODO: ignore input messages from this player
-                                //info!("Input message: {:?}", input_message.get_step());
-                                self.time_of_last_input_receive = TimeValue::now();
-                                self.manager_sender.on_input_message(input_message.clone());
-
-                            }
-                            ToClientMessageUDP::ServerInputMessage(server_input_message) => {
-                                //info!("Server Input message: {:?}", server_input_message.get_step());
-                                self.time_of_last_server_input_receive = TimeValue::now();
-                                self.manager_sender.on_server_input_message(server_input_message);
-
-                            }
-                            ToClientMessageUDP::StateMessage(state_message) => {
-                                //info!("State message: {:?}", state_message.get_sequence());
-                                self.time_of_last_state_receive = TimeValue::now();
-                                self.manager_sender.on_state_message(state_message);
-
-                            }
-                        }
+                        //TODO: this should probably be a warn
+                        debug!("It has been {:?} since last state message was received. Now: {:?}, Last: {:?}",
+                                duration_since_last_state, now, self.time_of_last_state_receive);
                     }
-                    Err(error) => {
-                        error!("Error: {:?}", error);
-                        return;
-                    }
+
+                    self.time_of_last_state_receive = now;
+                    self.manager_sender.on_state_message(state_message);
                 }
             }
         }
+    }
+
+    fn wait_for_message(mut self) -> MessageHandlerThreadAction<Self> {
+
+        let mut buf = [0; MAX_UDP_DATAGRAM_SIZE];
+
+        let recv_result = self.socket.recv_from(&mut buf);
+        if recv_result.is_err() {
+            warn!("Error on socket recv: {:?}", recv_result);
+            return MessageHandlerThreadAction::TryForNextMessage(self);
+        }
+
+        let (number_of_bytes, source) = recv_result.unwrap();
+
+        if !self.server_socket_addr.eq(&source) {
+            warn!("Received from wrong source. Expected: {:?}, Actual: {:?}", self.server_socket_addr, source);
+            return MessageHandlerThreadAction::TryForNextMessage(self);
+        }
+
+        let filled_buf = &mut buf[..number_of_bytes];
+        let fragment = MessageFragment::from_vec(filled_buf.to_vec());
+
+        if let Some(message_buf) = self.fragment_assembler.add_fragment(fragment) {
+
+            let result: Result<ToClientMessageUDP<Game>, Error> = rmp_serde::from_read_ref(&message_buf);
+
+            match result {
+                Ok(message) => {
+
+                    //Why does this crash the client?
+                    //info!("{:?}", message);
+
+                    self.message_option = Some((message, TimeValue::now()))
+                }
+                Err(error) => {
+                    error!("Error: {:?}", error);
+
+                }
+            }
+        }
+
+        return MessageHandlerThreadAction::TryForNextMessage(self);
     }
 }

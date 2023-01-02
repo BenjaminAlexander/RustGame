@@ -25,7 +25,8 @@ pub use self::thread::{
     ThreadBuilder,
 };
 pub use self::messagehandlingthread::{
-    ContinueOrStop,
+    MessageHandlerEvent,
+    MessageHandlerThreadAction,
     MessageOrStop,
     MessageHandlingThreadSender,
     MessageHandlingThreadReceiver,

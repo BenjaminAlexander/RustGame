@@ -1,7 +1,7 @@
 use std::net::{Ipv4Addr, SocketAddrV4, SocketAddr, TcpStream, UdpSocket};
 use std::str::FromStr;
 use crate::gametime::{GameTimer, TimeMessage};
-use crate::threading::{ChannelThread, ChannelDrivenThreadSender as Sender, ChannelDrivenThread, ThreadAction, ThreadBuilderTrait};
+use crate::threading::{ChannelThread, ChannelDrivenThreadSender as Sender, ChannelDrivenThread, ThreadAction, ThreadBuilderTrait, MessageHandlerTrait, MessageHandlingThreadJoinHandle};
 use crate::client::tcpinput::TcpInput;
 use crate::interface::GameTrait;
 use crate::client::tcpoutput::TcpOutput;
@@ -17,7 +17,7 @@ pub struct ClientCore<Game: GameTrait> {
     server_ip: String,
     input_event_handler: Game::ClientInputEventHandler,
     manager_sender: Option<Sender<Manager<ClientManagerObserver<Game>>>>,
-    udp_input_sender: Option<Sender<UdpInput<Game>>>,
+    udp_input_join_handle_option: Option<MessageHandlingThreadJoinHandle<UdpInput<Game>>>,
     udp_output_sender: Option<Sender<UdpOutput<Game>>>,
     tcp_input_sender: Option<Sender<TcpInput<Game>>>,
     tcp_output_sender: Option<Sender<TcpOutput>>,
@@ -32,7 +32,7 @@ impl<Game: GameTrait> ClientCore<Game> {
         ClientCore {server_ip: server_ip.to_string(),
             input_event_handler: Game::new_input_event_handler(),
             manager_sender: None,
-            udp_input_sender: None,
+            udp_input_join_handle_option: None,
             udp_output_sender: None,
             tcp_input_sender: None,
             tcp_output_sender: None,
@@ -87,23 +87,24 @@ impl<Game: GameTrait> Sender<ClientCore<Game>> {
 
             let (tcp_output_sender, tcp_output_builder) = TcpOutput::new(&tcp_stream).unwrap().build();
 
-            let (udp_input_sender, udp_input_builder) = UdpInput::new(
+            let udp_input_builder = UdpInput::new(
                 server_udp_socket_addr_v4,
                 &udp_socket,
                 game_timer_sender.clone(),
-                manager_sender.clone()).unwrap().build();
+                manager_sender.clone()
+            ).unwrap().build();
 
             let _manager_join_handle = manager_builder.name("ClientManager").start().unwrap();
             let _tcp_input_join_handle = tcp_input_builder.name("ClientTcpInput").start().unwrap();
             let _tcp_output_join_handle = tcp_output_builder.name("ClientTcpOutput").start().unwrap();
             let _udp_output_join_handle = udp_output_builder.name("ClientUdpOutput").start().unwrap();
-            let _udp_input_join_handle = udp_input_builder.name("ClientUdpInput").start().unwrap();
+            let udp_input_join_handle = udp_input_builder.name("ClientUdpInput").start().unwrap();
             let _game_timer_join_handle = game_timer_builder.name("ClientGameTimer").start().unwrap();
 
             core.manager_sender = Some(manager_sender);
             core.tcp_output_sender = Some(tcp_output_sender);
             core.tcp_input_sender = Some(tcp_input_sender);
-            core.udp_input_sender = Some(udp_input_sender);
+            core.udp_input_join_handle_option = Some(udp_input_join_handle);
             core.udp_output_sender = Some(udp_output_sender);
 
             return ThreadAction::Continue;
