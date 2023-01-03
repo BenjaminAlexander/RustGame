@@ -1,8 +1,7 @@
-use std::sync::mpsc::TryRecvError;
 use log::{info, warn};
 use crate::interface::{InterpolationArg, GameTrait};
 use crate::gamemanager::stepmessage::StepMessage;
-use crate::threading::{ChannelDrivenThreadSender as Sender, ChannelDrivenThreadReceiver as Receiver, channel, ThreadAction, MessageChannelReceiver, message_channel, MessageChannelSender, MessageHolder, MessageChannelTryRecvError};
+use crate::threading::{MessageChannelReceiver, message_channel, MessageChannelSender, MessageChannelTryRecvError};
 use crate::gametime::{TimeMessage, TimeValue, TimeDuration};
 use crate::messaging::InitialInformation;
 

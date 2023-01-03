@@ -3,7 +3,6 @@ use crate::gametime::{TimeReceived, TimeValue, TimeDuration, GameTimer};
 use crate::messaging::{ToClientMessageUDP, MAX_UDP_DATAGRAM_SIZE, MessageFragment, FragmentAssembler};
 use crate::threading::{ChannelDrivenThreadSender as Sender, MessageHandlerTrait, MessageHandlerThreadAction, MessageHandlerEvent};
 use crate::interface::GameTrait;
-use rmp_serde::decode::Error;
 use std::io;
 use log::{debug, error, warn};
 use crate::client::clientgametimeobserver::ClientGameTimerObserver;
@@ -16,7 +15,7 @@ pub struct UdpInput<Game: GameTrait> {
     fragment_assembler: FragmentAssembler,
     game_timer_sender: Sender<GameTimer<ClientGameTimerObserver<Game>>>,
     manager_sender: Sender<Manager<ClientManagerObserver<Game>>>,
-    message_option: Option<(ToClientMessageUDP<Game>, TimeValue)>,
+    received_message_option: Option<(ToClientMessageUDP<Game>, TimeValue)>,
 
     //metrics
     time_of_last_state_receive: TimeValue,
@@ -41,7 +40,7 @@ impl<Game: GameTrait> UdpInput<Game> {
             fragment_assembler: FragmentAssembler::new(5),
             game_timer_sender,
             manager_sender,
-            message_option: None,
+            received_message_option: None,
 
             //metrics
             time_of_last_state_receive: TimeValue::now(),
@@ -77,7 +76,7 @@ impl<Game: GameTrait> MessageHandlerTrait for UdpInput<Game> {
 impl<Game: GameTrait> UdpInput<Game> {
 
     fn handle_received_message(&mut self) {
-        if let Some((message, time_received)) = self.message_option.take() {
+        if let Some((message, time_received)) = self.received_message_option.take() {
 
             match message {
                 ToClientMessageUDP::TimeMessage(time_message) => {
@@ -136,15 +135,13 @@ impl<Game: GameTrait> UdpInput<Game> {
 
         if let Some(message_buf) = self.fragment_assembler.add_fragment(fragment) {
 
-            let result: Result<ToClientMessageUDP<Game>, Error> = rmp_serde::from_read_ref(&message_buf);
-
-            match result {
+            match rmp_serde::from_read_ref(&message_buf) {
                 Ok(message) => {
 
                     //Why does this crash the client?
                     //info!("{:?}", message);
 
-                    self.message_option = Some((message, TimeValue::now()))
+                    self.received_message_option = Some((message, TimeValue::now()))
                 }
                 Err(error) => {
                     error!("Error: {:?}", error);

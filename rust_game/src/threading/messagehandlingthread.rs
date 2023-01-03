@@ -27,7 +27,7 @@ pub trait MessageHandlerTrait: Send + Sized + 'static {
     type MessageType: Send + 'static;
     type ThreadReturnType: Send + 'static;
 
-    fn build(self) -> MessageHandlingThreadBuilder<Self> {
+    fn build_thread(self) -> MessageHandlingThreadBuilder<Self> {
         let (sender, receiver) = message_channel();
         return MessageHandlingThreadBuilder{
             sender,
@@ -135,7 +135,7 @@ impl<MessageHandlerType: MessageHandlerTrait> MessageHandlingThread<MessageHandl
 impl<MessageHandlerType: MessageHandlerTrait> Thread for MessageHandlingThread<MessageHandlerType> {
     type ReturnType = MessageHandlerType::ThreadReturnType;
 
-    fn run(mut self) -> Self::ReturnType {
+    fn run(self) -> Self::ReturnType {
 
         info!("Thread Starting");
 

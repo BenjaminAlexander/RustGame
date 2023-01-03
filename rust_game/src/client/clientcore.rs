@@ -19,7 +19,7 @@ pub struct ClientCore<Game: GameTrait> {
     manager_sender: Option<Sender<Manager<ClientManagerObserver<Game>>>>,
     udp_input_join_handle_option: Option<MessageHandlingThreadJoinHandle<UdpInput<Game>>>,
     udp_output_sender: Option<Sender<UdpOutput<Game>>>,
-    tcp_input_sender: Option<Sender<TcpInput<Game>>>,
+    tcp_input_join_handle_option: Option<MessageHandlingThreadJoinHandle<TcpInput<Game>>>,
     tcp_output_sender: Option<Sender<TcpOutput>>,
     initial_information: Option<InitialInformation<Game>>,
     last_time_message: Option<TimeMessage>
@@ -34,7 +34,7 @@ impl<Game: GameTrait> ClientCore<Game> {
             manager_sender: None,
             udp_input_join_handle_option: None,
             udp_output_sender: None,
-            tcp_input_sender: None,
+            tcp_input_join_handle_option: None,
             tcp_output_sender: None,
             initial_information: None,
             last_time_message: None
@@ -77,13 +77,13 @@ impl<Game: GameTrait> Sender<ClientCore<Game>> {
                 client_game_time_observer).build();
 
             let (udp_output_sender, udp_output_builder) = UdpOutput::<Game>::new(server_udp_socket_addr_v4, &udp_socket).unwrap().build();
-            let (tcp_input_sender, tcp_input_builder) = TcpInput::new(
+            let tcp_input_builder = TcpInput::new(
                 game_timer_sender.clone(),
                 manager_sender.clone(),
                 core_sender.clone(),
                 udp_output_sender.clone(),
                 render_receiver_sender.clone(),
-                &tcp_stream).unwrap().build();
+                &tcp_stream).unwrap().build_thread();
 
             let (tcp_output_sender, tcp_output_builder) = TcpOutput::new(&tcp_stream).unwrap().build();
 
@@ -92,10 +92,10 @@ impl<Game: GameTrait> Sender<ClientCore<Game>> {
                 &udp_socket,
                 game_timer_sender.clone(),
                 manager_sender.clone()
-            ).unwrap().build();
+            ).unwrap().build_thread();
 
             let _manager_join_handle = manager_builder.name("ClientManager").start().unwrap();
-            let _tcp_input_join_handle = tcp_input_builder.name("ClientTcpInput").start().unwrap();
+            let tcp_input_join_handle = tcp_input_builder.name("ClientTcpInput").start().unwrap();
             let _tcp_output_join_handle = tcp_output_builder.name("ClientTcpOutput").start().unwrap();
             let _udp_output_join_handle = udp_output_builder.name("ClientUdpOutput").start().unwrap();
             let udp_input_join_handle = udp_input_builder.name("ClientUdpInput").start().unwrap();
@@ -103,7 +103,7 @@ impl<Game: GameTrait> Sender<ClientCore<Game>> {
 
             core.manager_sender = Some(manager_sender);
             core.tcp_output_sender = Some(tcp_output_sender);
-            core.tcp_input_sender = Some(tcp_input_sender);
+            core.tcp_input_join_handle_option = Some(tcp_input_join_handle);
             core.udp_input_join_handle_option = Some(udp_input_join_handle);
             core.udp_output_sender = Some(udp_output_sender);
 

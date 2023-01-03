@@ -1,11 +1,9 @@
-use log::{error, info};
+use log::{error, info, warn};
 use std::net::TcpStream;
-use crate::gametime::{GameTimer, TimeValue};
-use crate::threading::{ChannelThread, Receiver, ChannelDrivenThreadSender as Sender, ThreadAction, MessageChannelSender};
+use crate::gametime::GameTimer;
+use crate::threading::{ChannelDrivenThreadSender as Sender, MessageChannelSender, MessageHandlerTrait, MessageHandlerEvent, MessageHandlerThreadAction};
 use crate::messaging::ToClientMessageTCP;
-use rmp_serde::decode::Error;
 use std::io;
-use std::sync::mpsc::TryRecvError;
 use crate::client::ClientCore;
 use crate::client::clientgametimeobserver::ClientGameTimerObserver;
 use crate::client::clientmanagerobserver::ClientManagerObserver;
@@ -20,7 +18,8 @@ pub struct TcpInput <Game: GameTrait> {
     manager_sender: Sender<Manager<ClientManagerObserver<Game>>>,
     client_core_sender: Sender<ClientCore<Game>>,
     udp_output_sender: Sender<UdpOutput<Game>>,
-    render_data_sender: MessageChannelSender<RenderReceiverMessage<Game>>
+    render_data_sender: MessageChannelSender<RenderReceiverMessage<Game>>,
+    received_message_option: Option<ToClientMessageTCP<Game>>
 }
 
 impl<Game: GameTrait> TcpInput<Game> {
@@ -40,61 +39,69 @@ impl<Game: GameTrait> TcpInput<Game> {
             manager_sender,
             client_core_sender,
             udp_output_sender,
-            render_data_sender
+            render_data_sender,
+            received_message_option: None
         })
     }
 }
 
-impl<Game: GameTrait> ChannelThread<(), ThreadAction> for TcpInput<Game> {
+impl<Game: GameTrait> MessageHandlerTrait for TcpInput<Game> {
+    type MessageType = ();
+    type ThreadReturnType = ();
 
-    fn run(mut self, receiver: Receiver<Self, ThreadAction>) {
-        info!("Starting");
+    fn on_event(mut self, event: MessageHandlerEvent<Self>) -> MessageHandlerThreadAction<Self> {
+        return match event {
+            MessageHandlerEvent::Message(_) => {
+                warn!("This handler does not have any meaningful messages");
+                MessageHandlerThreadAction::TryForNextMessage(self)
+            }
+            MessageHandlerEvent::ChannelEmpty => {
+                self.handle_received_message();
+                self.wait_for_message()
+            }
+            MessageHandlerEvent::ChannelDisconnected => MessageHandlerThreadAction::Stop(self.on_stop())
+        };
+    }
 
-        let receiver = receiver;
+    fn on_stop(self) -> Self::ThreadReturnType {
+        return ();
+    }
+}
 
-        loop {
-            let result: Result<ToClientMessageTCP::<Game>, Error> = rmp_serde::from_read(&self.tcp_stream);
+impl<Game: GameTrait> TcpInput<Game> {
 
-            match result {
-                Ok(message) => {
+    fn handle_received_message(&mut self) {
 
-                    //Why does this crash the client?
-                    //info!("{:?}", message);
-
-                    let _time_received = TimeValue::now();
-
-                    loop {
-                        match receiver.try_recv(&mut self) {
-                            Ok(ThreadAction::Continue) => {}
-                            Err(TryRecvError::Empty) => break,
-                            Ok(ThreadAction::Stop) => {
-                                info!("Thread commanded to stop.");
-                                return;
-                            }
-                            Err(TryRecvError::Disconnected) => {
-                                info!("Thread stopping due to disconnect.");
-                                return;
-                            }
-                        }
-                    }
+        if let Some(message) = self.received_message_option.take() {
+            match message {
+                ToClientMessageTCP::InitialInformation(initial_information_message) => {
 
                     info!("InitialInformation Received.");
 
-                    match message {
-                        ToClientMessageTCP::InitialInformation(initial_information_message) => {
-                            self.player_index = Some(initial_information_message.get_player_index());
-                            self.game_timer_sender.on_initial_information(initial_information_message.clone());
-                            self.manager_sender.on_initial_information(initial_information_message.clone());
-                            self.client_core_sender.on_initial_information(initial_information_message.clone());
-                            self.udp_output_sender.on_initial_information(initial_information_message.clone());
-                            self.render_data_sender.send(RenderReceiverMessage::InitialInformation(initial_information_message.clone())).unwrap();
-                        }
-                    }
+                    self.player_index = Some(initial_information_message.get_player_index());
+                    self.game_timer_sender.on_initial_information(initial_information_message.clone());
+                    self.manager_sender.on_initial_information(initial_information_message.clone());
+                    self.client_core_sender.on_initial_information(initial_information_message.clone());
+                    self.udp_output_sender.on_initial_information(initial_information_message.clone());
+                    self.render_data_sender.send(RenderReceiverMessage::InitialInformation(initial_information_message)).unwrap();
                 }
-                Err(error) => {
-                    error!("Error: {:?}", error);
-                    return;
-                }
+            }
+        }
+    }
+
+    fn wait_for_message(mut self) -> MessageHandlerThreadAction<Self> {
+        return match rmp_serde::from_read(&self.tcp_stream) {
+            Ok(message) => {
+
+                //Why does this crash the client?
+                //info!("{:?}", message);
+
+                self.received_message_option = Some(message);
+                MessageHandlerThreadAction::TryForNextMessage(self)
+            }
+            Err(error) => {
+                error!("Error: {:?}", error);
+                MessageHandlerThreadAction::Stop(self.on_stop())
             }
         }
     }
