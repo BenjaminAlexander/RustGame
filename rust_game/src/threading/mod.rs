@@ -5,6 +5,7 @@ pub use self::channeldriventhread::{
     ChannelDrivenThreadSenderError,
     ChannelDrivenThreadReceiver
 };
+
 pub use self::messagechannel::{
     message_channel,
     MessageHolder,
@@ -34,6 +35,14 @@ pub use self::messagehandlingthread::{
     MessageHandlingThreadBuilder,
     MessageHandlingThreadJoinHandle
 };
+pub use self::listenerthread::{
+    ListenerTrait,
+    ListenerEvent,
+    HeardValue,
+    ListenerAction,
+    AfterListen,
+    ListenerMessageHandler
+};
 pub use self::channel::channel;
 
 pub(crate) mod sender;
@@ -44,4 +53,5 @@ mod channeldriventhread;
 mod channel;
 mod messagechannel;
 mod messagehandlingthread;
+mod listenerthread;
 

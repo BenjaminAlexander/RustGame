@@ -3,7 +3,7 @@ use std::net::{TcpStream, Ipv4Addr, SocketAddrV4, UdpSocket};
 use log::{error, info};
 use crate::interface::GameTrait;
 use crate::server::tcpinput::TcpInput;
-use crate::threading::{ChannelDrivenThread, ChannelThread, ChannelDrivenThreadSender as Sender, ChannelDrivenThreadSenderError as SendError, ThreadAction, ThreadBuilderTrait};
+use crate::threading::{ChannelDrivenThread, ChannelThread, ChannelDrivenThreadSender as Sender, ChannelDrivenThreadSenderError as SendError, ThreadAction, ThreadBuilderTrait, ListenerTrait, MessageHandlerTrait, ListenerMessageHandler, MessageHandlingThreadJoinHandle};
 use crate::server::{TcpListenerThread, ServerConfig};
 use crate::server::tcpoutput::TcpOutput;
 use crate::gametime::{GameTimer, TimeMessage};
@@ -21,7 +21,7 @@ pub struct ServerCore<Game: GameTrait> {
 
     game_is_started: bool,
     server_config: ServerConfig,
-    tcp_listener_thread: Option<Sender<TcpListenerThread<Game>>>,
+    tcp_listener_join_handle_option: Option<MessageHandlingThreadJoinHandle<ListenerMessageHandler<TcpListenerThread<Game>>>>,
     tcp_inputs: Vec<Sender<TcpInput>>,
     tcp_outputs: Vec<Sender<TcpOutput<Game>>>,
     udp_socket: Option<UdpSocket>,
@@ -48,7 +48,7 @@ impl<Game: GameTrait> ServerCore<Game> {
         Self {
             game_is_started: false,
             server_config,
-            tcp_listener_thread: None,
+            tcp_listener_join_handle_option: None,
             tcp_inputs: Vec::new(),
             tcp_outputs: Vec::new(),
             udp_outputs: Vec::new(),
@@ -110,16 +110,22 @@ impl<Game: GameTrait> Sender<ServerCore<Game>> {
                 return ThreadAction::Stop;
             }
 
-            let (listener_sender, listener_builder) = TcpListenerThread::<Game>::new(core_sender).build();
-            core.tcp_listener_thread = Some(listener_sender);
+            let tcp_listener_join_handle_result = TcpListenerThread::<Game>::new(core_sender)
+                .to_message_handler()
+                .build_thread()
+                .name("ServerTcpListener")
+                .start();
 
-            //TODO: hold onto this join handle
-            if let Err(error) = listener_builder.name("ServerTcpListener").start() {
-                error!("{:?}", error);
-                return ThreadAction::Stop;
+            match tcp_listener_join_handle_result {
+                Ok(tcp_listener_join_handle) => {
+                    core.tcp_listener_join_handle_option = Some(tcp_listener_join_handle);
+                    return ThreadAction::Continue;
+                }
+                Err(error) => {
+                    error!("Error starting Tcp Listener Thread: {:?}", error);
+                    return ThreadAction::Stop;
+                }
             }
-
-            return ThreadAction::Continue;
         })
     }
 
