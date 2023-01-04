@@ -38,9 +38,9 @@ pub use self::messagehandlingthread::{
 pub use self::listenerthread::{
     ListenerTrait,
     ListenerEvent,
-    HeardValue,
-    ListenerAction,
-    AfterListen,
+    ListenedValue,
+    ListenerEventResult,
+    ListenResult,
     ListenerMessageHandler
 };
 pub use self::channel::channel;

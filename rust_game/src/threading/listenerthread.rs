@@ -1,43 +1,42 @@
 use crate::threading::{MessageHandlerEvent, MessageHandlerThreadAction, MessageHandlerTrait};
 
-pub enum AfterListen<T: ListenerTrait> {
-    Heard(T, T::ListenForType),
+pub enum ListenResult<T: ListenerTrait> {
+    Listened(T, T::ListenForType),
+    DidNotListen(ListenerEventResult<T>)
+}
+
+impl<T: ListenerTrait> ListenResult<T> {
+
+    fn to_listener_message_handler_action(self) -> ListenerMessageHandler<T> {
+        match self {
+            Self::Listened(listener, value) =>
+                ListenerMessageHandler::Heard(listener, ListenedValue {value}),
+            Self::DidNotListen(listener_event_result) =>
+                listener_event_result.to_listener_message_handler_action()
+        }
+    }
+}
+
+pub enum ListenerEventResult<T: ListenerTrait> {
     Continue(T),
     Stop(T::ThreadReturnType)
 }
 
-impl<T: ListenerTrait> AfterListen<T> {
+impl<T: ListenerTrait> ListenerEventResult<T> {
 
     fn to_listener_message_handler_action(self) -> ListenerMessageHandler<T> {
         match self {
-            Self::Heard(listener, value) =>
-                ListenerMessageHandler::Heard(listener, HeardValue{value}),
             Self::Continue(listener) => ListenerMessageHandler::Continue(listener),
             Self::Stop(return_value) => ListenerMessageHandler::Stop(return_value)
         }
     }
 }
 
-pub enum ListenerAction<T: ListenerTrait> {
-    Continue(T),
-    Stop(T::ThreadReturnType)
-}
-
-impl<T: ListenerTrait> ListenerAction<T> {
-
-    fn to_listener_message_handler_action(self) -> ListenerMessageHandler<T> {
-        match self {
-            Self::Continue(listener) => ListenerMessageHandler::Continue(listener),
-            Self::Stop(return_value) => ListenerMessageHandler::Stop(return_value)
-        }
-    }
-}
-
-pub struct HeardValue<T: ListenerTrait> {
+pub struct ListenedValue<T: ListenerTrait> {
     value: T::ListenForType
 }
 
-impl<T: ListenerTrait> HeardValue<T> {
+impl<T: ListenerTrait> ListenedValue<T> {
 
     pub fn get_value(&self) -> &T::ListenForType {
         return &self.value;
@@ -49,7 +48,7 @@ impl<T: ListenerTrait> HeardValue<T> {
 }
 
 pub enum ListenerEvent<T: ListenerTrait> {
-    Heard(HeardValue<T>),
+    ChannelEmptyAfterListen(ListenedValue<T>),
     Message(T::MessageType),
     ChannelDisconnected
 }
@@ -63,16 +62,18 @@ pub trait ListenerTrait: Send + Sized + 'static {
         return ListenerMessageHandler::Continue(self);
     }
 
-    fn listen(self) -> AfterListen<Self>;
+    fn listen(self) -> ListenResult<Self>;
 
-    fn on_event(self, event: ListenerEvent<Self>) -> ListenerAction<Self>;
+    fn on_event(self, event: ListenerEvent<Self>) -> ListenerEventResult<Self>;
 
     fn on_stop(self) -> Self::ThreadReturnType;
 }
 
 pub enum ListenerMessageHandler<T: ListenerTrait> {
-    Heard(T, HeardValue<T>),
+    Heard(T, ListenedValue<T>),
     Continue(T),
+
+    //TODO: can this be removed
     Stop(T::ThreadReturnType)
 }
 
@@ -81,7 +82,7 @@ impl<T: ListenerTrait> ListenerMessageHandler<T> {
     fn listen(self) -> ListenerMessageHandler<T> {
         match self {
             ListenerMessageHandler::Heard(listener, heard_value) =>
-                Self::listen(listener.on_event(ListenerEvent::Heard(heard_value)).to_listener_message_handler_action()),
+                Self::listen(listener.on_event(ListenerEvent::ChannelEmptyAfterListen(heard_value)).to_listener_message_handler_action()),
             ListenerMessageHandler::Continue(listener) =>
                 listener.listen().to_listener_message_handler_action(),
             ListenerMessageHandler::Stop(return_value) =>
@@ -89,26 +90,26 @@ impl<T: ListenerTrait> ListenerMessageHandler<T> {
         }
     }
 
-    fn on_message(self, message: T::MessageType) -> ListenerMessageHandler<T> {
+    fn on_message(self, message: T::MessageType) -> MessageHandlerThreadAction<ListenerMessageHandler<T>> {
         match self {
             ListenerMessageHandler::Heard(listener, heard_value) =>
                 match listener.on_event(ListenerEvent::Message(message)) {
-                    ListenerAction::Continue(listener) => ListenerMessageHandler::Heard(listener, heard_value),
-                    ListenerAction::Stop(return_value) => ListenerMessageHandler::Stop(return_value),
+                    ListenerEventResult::Continue(listener) => ListenerMessageHandler::Heard(listener, heard_value),
+                    ListenerEventResult::Stop(return_value) => ListenerMessageHandler::Stop(return_value),
                 },
             ListenerMessageHandler::Continue(listener) =>
                 listener.on_event(ListenerEvent::Message(message)).to_listener_message_handler_action(),
             ListenerMessageHandler::Stop(return_value) =>
                 ListenerMessageHandler::Stop(return_value)
-        }
+        }.to_message_handler_thread_action()
     }
 
     fn on_channel_disconnected(self) -> ListenerMessageHandler<T> {
         match self {
             ListenerMessageHandler::Heard(listener, heard_value) =>
                 match listener.on_event(ListenerEvent::ChannelDisconnected) {
-                    ListenerAction::Continue(listener) => ListenerMessageHandler::Heard(listener, heard_value),
-                    ListenerAction::Stop(return_value) => ListenerMessageHandler::Stop(return_value),
+                    ListenerEventResult::Continue(listener) => ListenerMessageHandler::Heard(listener, heard_value),
+                    ListenerEventResult::Stop(return_value) => ListenerMessageHandler::Stop(return_value),
                 },
             ListenerMessageHandler::Continue(listener) =>
                 listener.on_event(ListenerEvent::ChannelDisconnected).to_listener_message_handler_action(),
@@ -136,7 +137,7 @@ impl<T: ListenerTrait> MessageHandlerTrait for ListenerMessageHandler<T> {
     fn on_event(mut self, event: MessageHandlerEvent<Self>) -> MessageHandlerThreadAction<Self> {
         match event {
             MessageHandlerEvent::Message(message) => {
-                return self.on_message(message).to_message_handler_thread_action();
+                return self.on_message(message);
             }
             MessageHandlerEvent::ChannelEmpty => {
                 return self.listen().to_message_handler_thread_action();
