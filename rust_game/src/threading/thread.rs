@@ -6,7 +6,7 @@ pub trait Thread : Sized + Send + 'static {
     type ReturnType: Send + 'static;
 
     fn build(self) -> ThreadBuilder<Self> {
-        return ThreadBuilder{
+        return ThreadBuilder {
             thread: self,
             builder: Builder::new()
         };
