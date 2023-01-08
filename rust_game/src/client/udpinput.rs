@@ -4,6 +4,7 @@ use crate::messaging::{ToClientMessageUDP, MAX_UDP_DATAGRAM_SIZE, MessageFragmen
 use crate::threading::{ChannelDrivenThreadSender as Sender, EventHandlerTrait, WaitOrTry, ChannelEvent, EventHandlerResult};
 use crate::interface::GameTrait;
 use std::io;
+use std::ops::ControlFlow::{Break, Continue};
 use log::{debug, error, warn};
 use crate::client::clientgametimeobserver::ClientGameTimerObserver;
 use crate::client::clientmanagerobserver::ClientManagerObserver;
@@ -58,13 +59,13 @@ impl<Game: GameTrait> EventHandlerTrait for UdpInput<Game> {
         return match event {
             ChannelEvent::ReceivedEvent(_) => {
                 warn!("This handler does not have any meaningful messages");
-                Ok(WaitOrTry::TryForNextEvent(self))
+                Continue(WaitOrTry::TryForNextEvent(self))
             }
             ChannelEvent::ChannelEmpty => {
                 self.handle_received_message();
                 self.wait_for_message()
             }
-            ChannelEvent::ChannelDisconnected => Err(self.on_stop())
+            ChannelEvent::ChannelDisconnected => Break(self.on_stop())
         };
     }
 
@@ -120,14 +121,14 @@ impl<Game: GameTrait> UdpInput<Game> {
         let recv_result = self.socket.recv_from(&mut buf);
         if recv_result.is_err() {
             warn!("Error on socket recv: {:?}", recv_result);
-            return Ok(WaitOrTry::TryForNextEvent(self));
+            return Continue(WaitOrTry::TryForNextEvent(self));
         }
 
         let (number_of_bytes, source) = recv_result.unwrap();
 
         if !self.server_socket_addr.eq(&source) {
             warn!("Received from wrong source. Expected: {:?}, Actual: {:?}", self.server_socket_addr, source);
-            return Ok(WaitOrTry::TryForNextEvent(self));
+            return Continue(WaitOrTry::TryForNextEvent(self));
         }
 
         let filled_buf = &mut buf[..number_of_bytes];
@@ -150,6 +151,6 @@ impl<Game: GameTrait> UdpInput<Game> {
             }
         }
 
-        return Ok(WaitOrTry::TryForNextEvent(self));
+        return Continue(WaitOrTry::TryForNextEvent(self));
     }
 }

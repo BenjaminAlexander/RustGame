@@ -39,7 +39,9 @@ pub use self::listenerthread::{
     ListenerEvent,
     ListenedValueHolder,
     ListenedOrDidNotListen,
-    ListenerMessageHandler
+    ListenerMessageHandler,
+    ListenResult,
+    ListenerEventResult
 };
 pub use self::channel::channel;
 

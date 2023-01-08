@@ -1,3 +1,5 @@
+use std::ops::ControlFlow;
+use std::ops::ControlFlow::*;
 use std::thread::JoinHandle;
 use log::info;
 use crate::threading::{message_channel, ValueReceiver, ValueSender, ValueTryRecvError, Thread, ThreadBuilder, ValueSendError};
@@ -54,9 +56,7 @@ impl<T: EventHandlerTrait> EventSender<T>{
 
 pub type EventSendError<T> = ValueSendError<EventOrStop<T>>;
 pub type EventSendResult<T> = Result<(), EventSendError<T>>;
-
-//TODO: make this FlowControl
-pub type EventHandlerResult<T: EventHandlerTrait> = Result<WaitOrTry<T>, T::ThreadReturnType>;
+pub type EventHandlerResult<T: EventHandlerTrait> = ControlFlow<T::ThreadReturnType, WaitOrTry<T>>;
 
 type EventReceiver<T> = ValueReceiver<EventOrStop<T>>;
 
@@ -137,7 +137,7 @@ impl<MessageHandlerType: EventHandlerTrait> EventHandlingThread<MessageHandlerTy
 
         return match receiver.recv() {
             Ok(Event(sent_event_holder)) => Self::on_message(message_handler, sent_event_holder),
-            Ok(StopThread) => Err(Self::on_stop(message_handler)),
+            Ok(StopThread) => Break(Self::on_stop(message_handler)),
             Err(_) => Self::on_channel_disconnected(message_handler)
         };
     }
@@ -146,7 +146,7 @@ impl<MessageHandlerType: EventHandlerTrait> EventHandlingThread<MessageHandlerTy
 
         return match receiver.try_recv() {
             Ok(Event(sent_event_holder)) => Self::on_message(message_handler, sent_event_holder),
-            Ok(StopThread) => Err(Self::on_stop(message_handler)),
+            Ok(StopThread) => Break(Self::on_stop(message_handler)),
             Err(ValueTryRecvError::Disconnected) => Self::on_channel_disconnected(message_handler),
             Err(ValueTryRecvError::Empty) => Self::on_channel_empty(message_handler)
         };
@@ -176,8 +176,6 @@ impl<MessageHandlerType: EventHandlerTrait> Thread for EventHandlingThread<Messa
 
     fn run(self) -> Self::ReturnType {
 
-        info!("Thread Starting");
-
         let mut wait_or_try = TryForNextEvent(self.message_handler);
 
         loop {
@@ -188,8 +186,8 @@ impl<MessageHandlerType: EventHandlerTrait> Thread for EventHandlingThread<Messa
             };
 
             wait_or_try = match result {
-                Ok(wait_or_try) => wait_or_try,
-                Err(return_value) => {
+                Continue(wait_or_try) => wait_or_try,
+                Break(return_value) => {
                     return return_value;
                 }
             };

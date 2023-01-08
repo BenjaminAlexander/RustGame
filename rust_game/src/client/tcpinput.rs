@@ -4,6 +4,7 @@ use crate::gametime::GameTimer;
 use crate::threading::{ChannelDrivenThreadSender as Sender, ValueSender, EventHandlerTrait, ChannelEvent, WaitOrTry, EventHandlerResult};
 use crate::messaging::ToClientMessageTCP;
 use std::io;
+use std::ops::ControlFlow::*;
 use crate::client::ClientCore;
 use crate::client::clientgametimeobserver::ClientGameTimerObserver;
 use crate::client::clientmanagerobserver::ClientManagerObserver;
@@ -53,13 +54,13 @@ impl<Game: GameTrait> EventHandlerTrait for TcpInput<Game> {
         return match event {
             ChannelEvent::ReceivedEvent(_) => {
                 warn!("This handler does not have any meaningful messages");
-                Ok(WaitOrTry::TryForNextEvent(self))
+                Continue(WaitOrTry::TryForNextEvent(self))
             }
             ChannelEvent::ChannelEmpty => {
                 self.handle_received_message();
                 self.wait_for_message()
             }
-            ChannelEvent::ChannelDisconnected => Err(self.on_stop())
+            ChannelEvent::ChannelDisconnected => Break(self.on_stop())
         };
     }
 
@@ -97,11 +98,11 @@ impl<Game: GameTrait> TcpInput<Game> {
                 //info!("{:?}", message);
 
                 self.received_message_option = Some(message);
-                Ok(WaitOrTry::TryForNextEvent(self))
+                Continue(WaitOrTry::TryForNextEvent(self))
             }
             Err(error) => {
                 error!("Error: {:?}", error);
-                Err(self.on_stop())
+                Break(self.on_stop())
             }
         }
     }

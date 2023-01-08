@@ -1,5 +1,6 @@
 use std::io::Result;
 use std::thread::{Builder, JoinHandle};
+use log::info;
 
 pub trait Thread : Sized + Send + 'static {
 
@@ -41,7 +42,14 @@ impl<T: Thread> ThreadBuilderTrait for ThreadBuilder<T> {
         let thread = self.thread;
 
         return builder.spawn(||{
-            thread.run()
+
+            info!("Thread Starting");
+
+            let return_value = thread.run();
+
+            info!("Thread Ending");
+
+            return return_value;
         });
     }
 }

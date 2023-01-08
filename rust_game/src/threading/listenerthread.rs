@@ -1,5 +1,9 @@
+use std::ops::ControlFlow;
+use std::ops::ControlFlow::*;
 use crate::threading::{ChannelEvent, WaitOrTry, EventHandlerTrait, EventHandlerResult};
 use crate::threading::messagehandlingthread::ReceivedEventHolder;
+
+//TODO: use local enums
 
 pub enum ListenedOrDidNotListen<T: ListenerTrait> {
     Listened(T, T::ListenForType),
@@ -27,6 +31,10 @@ pub enum ListenerEvent<T: ListenerTrait> {
     ChannelDisconnected
 }
 
+pub type ListenResult<T: ListenerTrait> = ControlFlow<T::ThreadReturnType, ListenedOrDidNotListen<T>>;
+pub type ListenerEventResult<T: ListenerTrait> = ControlFlow<T::ThreadReturnType, T>;
+pub type ListenerMessageHandlerResult<T: ListenerTrait> = ControlFlow<T::ThreadReturnType, ListenerMessageHandler<T>>;
+
 pub trait ListenerTrait: Send + Sized + 'static {
     type MessageType: Send + 'static;
     type ThreadReturnType: Send + 'static;
@@ -36,9 +44,9 @@ pub trait ListenerTrait: Send + Sized + 'static {
         return ListenerMessageHandler::Continue(self);
     }
 
-    fn listen(self) -> Result<ListenedOrDidNotListen<Self>, Self::ThreadReturnType>;
+    fn listen(self) -> ListenResult<Self>;
 
-    fn on_event(self, event: ListenerEvent<Self>) -> Result<Self, Self::ThreadReturnType>;
+    fn on_event(self, event: ListenerEvent<Self>) -> ListenerEventResult<Self>;
 
     fn on_stop(self) -> Self::ThreadReturnType;
 }
@@ -50,7 +58,8 @@ pub enum ListenerMessageHandler<T: ListenerTrait> {
 
 impl<T: ListenerTrait> ListenerMessageHandler<T> {
 
-    fn listen(self) -> Result<ListenerMessageHandler<T>, T::ThreadReturnType> {
+    //TODO: move contiue to outside match
+    fn listen(self) -> ListenerMessageHandlerResult<T> {
         return match
             match self {
                 ListenerMessageHandler::Heard(listener, heard_value) =>
@@ -58,17 +67,18 @@ impl<T: ListenerTrait> ListenerMessageHandler<T> {
                 ListenerMessageHandler::Continue(listener) => listener
             }.listen()?
         {
-            ListenedOrDidNotListen::Listened(listener, value) => Ok(ListenerMessageHandler::Heard(listener, ListenedValueHolder {value})),
-            ListenedOrDidNotListen::DidNotListen(listener) => Ok(ListenerMessageHandler::Continue(listener))
+            ListenedOrDidNotListen::Listened(listener, value) => Continue(ListenerMessageHandler::Heard(listener, ListenedValueHolder {value})),
+            ListenedOrDidNotListen::DidNotListen(listener) => Continue(ListenerMessageHandler::Continue(listener))
         };
     }
 
-    fn on_event(self, event: ListenerEvent<T>) -> Result<ListenerMessageHandler<T>, T::ThreadReturnType> {
+    //TODO: move contiue to outside match
+    fn on_event(self, event: ListenerEvent<T>) -> ListenerMessageHandlerResult<T> {
         return match self {
             ListenerMessageHandler::Heard(listener, listened_value_holder) =>
-                Ok(ListenerMessageHandler::Heard(listener.on_event(event)?, listened_value_holder)),
+                Continue(ListenerMessageHandler::Heard(listener.on_event(event)?, listened_value_holder)),
             ListenerMessageHandler::Continue(listener) =>
-                Ok(ListenerMessageHandler::Continue(listener.on_event(event)?))
+                Continue(ListenerMessageHandler::Continue(listener.on_event(event)?))
         };
     }
 }
@@ -81,10 +91,10 @@ impl<T: ListenerTrait> EventHandlerTrait for ListenerMessageHandler<T> {
 
         match event {
             ChannelEvent::ReceivedEvent(message) => {
-                return Ok(WaitOrTry::TryForNextEvent(self.on_event(ListenerEvent::Message(message))?));
+                return Continue(WaitOrTry::TryForNextEvent(self.on_event(ListenerEvent::Message(message))?));
             }
             ChannelEvent::ChannelEmpty => {
-                return Ok(WaitOrTry::TryForNextEvent(self.listen()?));
+                return Continue(WaitOrTry::TryForNextEvent(self.listen()?));
             }
             ChannelEvent::ChannelDisconnected => {
 
