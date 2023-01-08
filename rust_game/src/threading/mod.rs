@@ -27,20 +27,20 @@ pub use self::thread::{
 };
 pub use self::messagehandlingthread::{
     MessageHandlerEvent,
-    MessageHandlerThreadAction,
+    WaitOrTry,
     MessageOrStop,
     MessageHandlingThreadSender,
     MessageHandlingThreadReceiver,
     MessageHandlerTrait,
     MessageHandlingThreadBuilder,
-    MessageHandlingThreadJoinHandle
+    MessageHandlingThreadJoinHandle,
+    MessageHandlerEventResult
 };
 pub use self::listenerthread::{
     ListenerTrait,
     ListenerEvent,
-    ListenedValue,
-    ListenerEventResult,
-    ListenResult,
+    ListenedValueHolder,
+    ListenedOrDidNotListen,
     ListenerMessageHandler
 };
 pub use self::channel::channel;

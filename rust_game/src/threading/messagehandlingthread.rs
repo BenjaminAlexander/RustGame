@@ -4,22 +4,25 @@ use crate::threading::{message_channel, MessageChannelReceiver, MessageChannelSe
 use crate::threading::thread::ThreadBuilderTrait;
 
 pub enum MessageHandlerEvent<T: MessageHandlerTrait> {
+
+    //TODO: refactor into struct
     Message(T::MessageType),
     ChannelEmpty,
     ChannelDisconnected
 }
 
-pub enum MessageHandlerThreadAction<T: MessageHandlerTrait> {
+pub enum WaitOrTry<T: MessageHandlerTrait> {
     WaitForNextMessage(T),
-    TryForNextMessage(T),
-    Stop(T::ThreadReturnType)
+    TryForNextMessage(T)
 }
 
 pub enum MessageOrStop<T: MessageHandlerTrait> {
     Message(T::MessageType),
-    Stop
+    StopThread
 }
 
+//TODO: try using from residual instead of Result
+pub type MessageHandlerEventResult<T: MessageHandlerTrait> = Result<WaitOrTry<T>, T::ThreadReturnType>;
 pub type MessageHandlingThreadSender<T> = MessageChannelSender<MessageOrStop<T>>;
 pub type MessageHandlingThreadReceiver<T> = MessageChannelReceiver<MessageOrStop<T>>;
 
@@ -38,7 +41,7 @@ pub trait MessageHandlerTrait: Send + Sized + 'static {
         };
     }
 
-    fn on_event(self, event: MessageHandlerEvent<Self>) -> MessageHandlerThreadAction<Self>;
+    fn on_event(self, event: MessageHandlerEvent<Self>) -> MessageHandlerEventResult<Self>;
 
     fn on_stop(self) -> Self::ThreadReturnType;
 }
@@ -94,41 +97,41 @@ struct MessageHandlingThread<MessageHandlerType: MessageHandlerTrait> {
 
 impl<MessageHandlerType: MessageHandlerTrait> MessageHandlingThread<MessageHandlerType> {
 
-    fn wait_for_message(message_handler: MessageHandlerType, receiver: &MessageHandlingThreadReceiver<MessageHandlerType>) -> MessageHandlerThreadAction<MessageHandlerType> {
+    fn wait_for_message(message_handler: MessageHandlerType, receiver: &MessageHandlingThreadReceiver<MessageHandlerType>) -> MessageHandlerEventResult<MessageHandlerType> {
 
         return match receiver.recv() {
             Ok(MessageOrStop::Message(message)) => Self::on_message(message_handler, message),
-            Ok(MessageOrStop::Stop) => Self::on_stop(message_handler),
+            Ok(MessageOrStop::StopThread) => Err(Self::on_stop(message_handler)),
             Err(_) => Self::on_channel_disconnected(message_handler)
         };
     }
 
-    fn try_for_message(message_handler: MessageHandlerType, receiver: &MessageHandlingThreadReceiver<MessageHandlerType>) -> MessageHandlerThreadAction<MessageHandlerType> {
+    fn try_for_message(message_handler: MessageHandlerType, receiver: &MessageHandlingThreadReceiver<MessageHandlerType>) -> MessageHandlerEventResult<MessageHandlerType> {
 
         return match receiver.try_recv() {
             Ok(MessageOrStop::Message(message)) => Self::on_message(message_handler, message),
-            Ok(MessageOrStop::Stop) => Self::on_stop(message_handler),
+            Ok(MessageOrStop::StopThread) => Err(Self::on_stop(message_handler)),
             Err(MessageChannelTryRecvError::Disconnected) => Self::on_channel_disconnected(message_handler),
             Err(MessageChannelTryRecvError::Empty) => Self::on_channel_empty(message_handler)
         };
     }
 
-    fn on_message(message_handler: MessageHandlerType, message: MessageHandlerType::MessageType) -> MessageHandlerThreadAction<MessageHandlerType> {
+    fn on_message(message_handler: MessageHandlerType, message: MessageHandlerType::MessageType) -> MessageHandlerEventResult<MessageHandlerType> {
         return message_handler.on_event(MessageHandlerEvent::Message(message));
     }
 
-    fn on_channel_empty(message_handler: MessageHandlerType) -> MessageHandlerThreadAction<MessageHandlerType> {
+    fn on_channel_empty(message_handler: MessageHandlerType) -> MessageHandlerEventResult<MessageHandlerType> {
         return message_handler.on_event(MessageHandlerEvent::ChannelEmpty);
     }
 
-    fn on_channel_disconnected(message_handler: MessageHandlerType) -> MessageHandlerThreadAction<MessageHandlerType> {
+    fn on_channel_disconnected(message_handler: MessageHandlerType) -> MessageHandlerEventResult<MessageHandlerType> {
         info!("The receiver channel has been disconnected.");
         return message_handler.on_event(MessageHandlerEvent::ChannelDisconnected);
     }
 
-    fn on_stop(message_handler: MessageHandlerType) -> MessageHandlerThreadAction<MessageHandlerType> {
+    fn on_stop(message_handler: MessageHandlerType) -> MessageHandlerType::ThreadReturnType {
         info!("The MessageHandlingThread has received a message commanding it to stop.");
-        return MessageHandlerThreadAction::Stop(message_handler.on_stop());
+        return message_handler.on_stop();
     }
 }
 
@@ -139,17 +142,28 @@ impl<MessageHandlerType: MessageHandlerTrait> Thread for MessageHandlingThread<M
 
         info!("Thread Starting");
 
-        let mut next_action = MessageHandlerThreadAction::TryForNextMessage(self.message_handler);
+        let mut wait_or_try = WaitOrTry::TryForNextMessage(self.message_handler);
 
         loop {
-            next_action = match next_action {
-                MessageHandlerThreadAction::WaitForNextMessage(message_handler) => Self::wait_for_message(message_handler, &self.receiver),
-                MessageHandlerThreadAction::TryForNextMessage(message_handler) => Self::try_for_message(message_handler, &self.receiver),
-                MessageHandlerThreadAction::Stop(thread_return) => {
-                    info!("The MessageHandler commanded the thread to stop.");
-                    return thread_return;
+
+            let result = match wait_or_try {
+                WaitOrTry::WaitForNextMessage(message_handler) => Self::wait_for_message(message_handler, &self.receiver),
+                WaitOrTry::TryForNextMessage(message_handler) => Self::try_for_message(message_handler, &self.receiver),
+            };
+
+            wait_or_try = match result {
+                Ok(wait_or_try) => wait_or_try,
+                Err(return_value) => {
+                    return return_value;
                 }
             };
         }
     }
 }
+
+/*
+                WaitOrTry::Stop(thread_return) => {
+                    info!("The MessageHandler commanded the thread to stop.");
+                    return thread_return;
+                }
+ */

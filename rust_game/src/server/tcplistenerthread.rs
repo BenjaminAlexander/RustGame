@@ -4,7 +4,7 @@ use log::{error, info};
 use crate::interface::GameTrait;
 use crate::server::ServerCore;
 
-use crate::threading::{ListenResult, ChannelDrivenThreadSender as Sender, ListenedValue, ListenerEventResult, ListenerEvent, ListenerTrait};
+use crate::threading::{ListenedOrDidNotListen, ChannelDrivenThreadSender as Sender, ListenedValueHolder, ListenerEvent, ListenerTrait};
 
 pub struct TcpListenerThread<Game: GameTrait> {
     tcp_listener_option: Option<TcpListener>,
@@ -21,7 +21,7 @@ impl<Game: GameTrait> TcpListenerThread<Game> {
         }
     }
 
-    fn handle_tcp_stream_and_socket_addr(self, heard_value: ListenedValue<Self>) -> ListenerEventResult<Self> {
+    fn handle_tcp_stream_and_socket_addr(self, heard_value: ListenedValueHolder<Self>) -> Result<Self, <Self as ListenerTrait>::ThreadReturnType> {
 
         let (tcp_stream, socket_addr) = heard_value.get_value();
 
@@ -40,18 +40,18 @@ impl<Game: GameTrait> TcpListenerThread<Game> {
         let stream_clone = match tcp_stream.try_clone() {
             Ok(stream_clone) => stream_clone,
             Err(error) => {
-                error!("Unable to get clone tcp stream: {:?}", error);
-                return ListenerEventResult::Continue(self);
+                error!("Unable to clone tcp stream: {:?}", error);
+                return Ok(self);
             }
         };
 
         match self.server_core_sender.on_tcp_connection(stream_clone) {
             Ok(()) => {
-                return ListenerEventResult::Continue(self);
+                return Ok(self);
             }
             Err(error) => {
                 error!("Error sending to the core: {:?}", error);
-                return ListenerEventResult::Stop(self.on_stop());
+                return Err(self.on_stop());
             }
         }
     }
@@ -62,7 +62,7 @@ impl<Game: GameTrait> ListenerTrait for TcpListenerThread<Game> {
     type ThreadReturnType = ();
     type ListenForType = (TcpStream, SocketAddr);
 
-    fn listen(mut self) -> ListenResult<Self> {
+    fn listen(mut self) -> Result<ListenedOrDidNotListen<Self>, Self::ThreadReturnType> {
 
         let tcp_listner = match self.tcp_listener_option.as_ref() {
             None => {
@@ -73,7 +73,7 @@ impl<Game: GameTrait> ListenerTrait for TcpListenerThread<Game> {
                     Ok(tcp_listener) => tcp_listener,
                     Err(error) => {
                         error!("Error while binding TcpListener: {:?}", error);
-                        return ListenResult::DidNotListen(ListenerEventResult::Stop(self.on_stop()));
+                        return Err(self.on_stop());
                     }
                 });
 
@@ -84,23 +84,21 @@ impl<Game: GameTrait> ListenerTrait for TcpListenerThread<Game> {
 
         return match tcp_listner.accept() {
             Ok(tcp_stream_and_socket_addr) =>
-                ListenResult::Listened(self, tcp_stream_and_socket_addr),
+                Ok(ListenedOrDidNotListen::Listened(self, tcp_stream_and_socket_addr)),
             Err(error) => {
                 error!("Error on TcpListener.accept: {:?}", error);
-                ListenResult::DidNotListen(ListenerEventResult::Continue(self))
+                Ok(ListenedOrDidNotListen::DidNotListen(self))
             }
         }
     }
 
-    fn on_event(self, event: ListenerEvent<Self>) -> ListenerEventResult<Self> {
+    fn on_event(self, event: ListenerEvent<Self>) -> Result<Self, Self::ThreadReturnType> {
         return match event {
             ListenerEvent::ChannelEmptyAfterListen(heard_value) => self.handle_tcp_stream_and_socket_addr(heard_value),
-            ListenerEvent::Message(()) => ListenerEventResult::Continue(self),
-            ListenerEvent::ChannelDisconnected => ListenerEventResult::Stop(self.on_stop())
+            ListenerEvent::Message(()) => Ok(self),
+            ListenerEvent::ChannelDisconnected => Err(self.on_stop())
         }
     }
 
-    fn on_stop(self) -> Self::ThreadReturnType {
-        return ();
-    }
+    fn on_stop(self) -> Self::ThreadReturnType { () }
 }

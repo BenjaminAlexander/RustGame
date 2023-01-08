@@ -1,7 +1,7 @@
 use log::{error, info, warn};
 use std::net::TcpStream;
 use crate::gametime::GameTimer;
-use crate::threading::{ChannelDrivenThreadSender as Sender, MessageChannelSender, MessageHandlerTrait, MessageHandlerEvent, MessageHandlerThreadAction};
+use crate::threading::{ChannelDrivenThreadSender as Sender, MessageChannelSender, MessageHandlerTrait, MessageHandlerEvent, WaitOrTry, MessageHandlerEventResult};
 use crate::messaging::ToClientMessageTCP;
 use std::io;
 use crate::client::ClientCore;
@@ -49,17 +49,17 @@ impl<Game: GameTrait> MessageHandlerTrait for TcpInput<Game> {
     type MessageType = ();
     type ThreadReturnType = ();
 
-    fn on_event(mut self, event: MessageHandlerEvent<Self>) -> MessageHandlerThreadAction<Self> {
+    fn on_event(mut self, event: MessageHandlerEvent<Self>) -> MessageHandlerEventResult<Self> {
         return match event {
             MessageHandlerEvent::Message(_) => {
                 warn!("This handler does not have any meaningful messages");
-                MessageHandlerThreadAction::TryForNextMessage(self)
+                Ok(WaitOrTry::TryForNextMessage(self))
             }
             MessageHandlerEvent::ChannelEmpty => {
                 self.handle_received_message();
                 self.wait_for_message()
             }
-            MessageHandlerEvent::ChannelDisconnected => MessageHandlerThreadAction::Stop(self.on_stop())
+            MessageHandlerEvent::ChannelDisconnected => Err(self.on_stop())
         };
     }
 
@@ -89,7 +89,7 @@ impl<Game: GameTrait> TcpInput<Game> {
         }
     }
 
-    fn wait_for_message(mut self) -> MessageHandlerThreadAction<Self> {
+    fn wait_for_message(mut self) -> MessageHandlerEventResult<Self> {
         return match rmp_serde::from_read(&self.tcp_stream) {
             Ok(message) => {
 
@@ -97,11 +97,11 @@ impl<Game: GameTrait> TcpInput<Game> {
                 //info!("{:?}", message);
 
                 self.received_message_option = Some(message);
-                MessageHandlerThreadAction::TryForNextMessage(self)
+                Ok(WaitOrTry::TryForNextMessage(self))
             }
             Err(error) => {
                 error!("Error: {:?}", error);
-                MessageHandlerThreadAction::Stop(self.on_stop())
+                Err(self.on_stop())
             }
         }
     }
