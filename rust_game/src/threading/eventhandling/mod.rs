@@ -11,6 +11,8 @@ pub(crate) use self::enums::{ChannelEvent, EventOrStopThread, WaitOrTryForNextEv
 pub(crate) use self::joinhandle::JoinHandle;
 pub(crate) use self::receivedeventholder::ReceivedEventHolder;
 pub(crate) use self::sender::{Sender, SentEventHolder, SendError, SendResult};
+pub(crate) use self::threadbuilder::ThreadBuilder;
+pub(in crate::threading) use self::thread::Thread;
 
 
 

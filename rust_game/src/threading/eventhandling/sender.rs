@@ -7,8 +7,8 @@ pub type SendError<T> = ValueSendError<EventOrStopThread<T>>;
 
 pub type SendResult<T> = Result<(), SendError<T>>;
 
-pub struct SentEventHolder<T: EventHandlerTrait> {
-    pub(super) event: T::Event
+pub struct SentEventHolder<T> {
+    pub(super) event: T
 }
 
 pub struct Sender<T: EventHandlerTrait> {

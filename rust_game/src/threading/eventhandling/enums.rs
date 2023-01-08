@@ -3,13 +3,13 @@ use crate::threading::eventhandling::receivedeventholder::ReceivedEventHolder;
 use crate::threading::eventhandling::SentEventHolder;
 
 pub enum ChannelEvent<T: EventHandlerTrait> {
-    ReceivedEvent(ReceivedEventHolder<T>),
+    ReceivedEvent(ReceivedEventHolder<T::Event>),
     ChannelEmpty,
     ChannelDisconnected
 }
 
 pub enum EventOrStopThread<T: EventHandlerTrait> {
-    Event(SentEventHolder<T>),
+    Event(SentEventHolder<T::Event>),
     StopThread
 }
 

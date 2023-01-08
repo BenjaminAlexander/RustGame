@@ -17,6 +17,7 @@ pub trait Thread : Sized + Send + 'static {
 }
 
 pub trait ThreadBuilderTrait {
+    //TODO: rename
     type StartResultType;
 
     fn name(self, name: &str) -> Self;

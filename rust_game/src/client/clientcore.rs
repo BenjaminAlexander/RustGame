@@ -12,7 +12,7 @@ use crate::client::clientgametimeobserver::ClientGameTimerObserver;
 use crate::client::clientmanagerobserver::ClientManagerObserver;
 use crate::client::udpoutput::UdpOutput;
 use crate::client::udpinput::UdpInput;
-use crate::threading::eventhandling::{build_thread, EventHandlerTrait, JoinHandle};
+use crate::threading::eventhandling::{build_thread, JoinHandle};
 
 pub struct ClientCore<Game: GameTrait> {
     server_ip: String,

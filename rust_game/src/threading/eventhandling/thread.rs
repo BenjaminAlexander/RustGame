@@ -1,15 +1,15 @@
 use std::ops::ControlFlow::{Break, Continue};
 use log::info;
-use crate::threading::eventhandling::{ChannelEventResult, EventHandlerTrait, EventOrStopThread, Sender, ReceivedEventHolder, SentEventHolder};
+use crate::threading;
+use crate::threading::eventhandling::{ChannelEventResult, EventHandlerTrait, EventOrStopThread, ReceivedEventHolder, SentEventHolder};
 use crate::threading::eventhandling::EventOrStopThread::{Event, StopThread};
-use crate::threading::{message_channel, build_thread as build_base_thread, Thread as BaseThread, ValueReceiver, ValueTryRecvError};
+use crate::threading::{ValueReceiver, ValueTryRecvError};
 use crate::threading::eventhandling::ChannelEvent::{ChannelDisconnected, ChannelEmpty, ReceivedEvent};
-use crate::threading::eventhandling::threadbuilder::ThreadBuilder;
 use crate::threading::eventhandling::WaitOrTryForNextEvent::{TryForNextEvent, WaitForNextEvent};
 
 type EventReceiver<T> = ValueReceiver<EventOrStopThread<T>>;
 
-pub(super) struct Thread<T: EventHandlerTrait> {
+pub(in crate::threading) struct Thread<T: EventHandlerTrait> {
     pub(super) receiver: EventReceiver<T>,
     pub(super) event_handler: T
 }
@@ -35,7 +35,7 @@ impl<T: EventHandlerTrait> Thread<T> {
         };
     }
 
-    fn on_message(message_handler: T, sent_event_holder: SentEventHolder<T>) -> ChannelEventResult<T> {
+    fn on_message(message_handler: T, sent_event_holder: SentEventHolder<T::Event>) -> ChannelEventResult<T> {
         return message_handler.on_channel_event(ReceivedEvent(ReceivedEventHolder { sent_event_holder }));
     }
 
@@ -54,7 +54,7 @@ impl<T: EventHandlerTrait> Thread<T> {
     }
 }
 
-impl<T: EventHandlerTrait> BaseThread for Thread<T> {
+impl<T: EventHandlerTrait> threading::Thread for Thread<T> {
     type ReturnType = T::ThreadReturn;
 
     fn run(self) -> Self::ReturnType {
