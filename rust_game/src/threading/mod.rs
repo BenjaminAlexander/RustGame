@@ -20,20 +20,12 @@ pub use self::sender::{
     SendError
 };
 pub use self::thread::{
+    build_thread,
     Thread,
     ThreadBuilderTrait,
     ThreadBuilder,
 };
 
-pub use self::listenerthread::{
-    ListenerTrait,
-    ListenerEvent,
-    ListenedValueHolder,
-    ListenedOrDidNotListen,
-    ListenerMessageHandler,
-    ListenResult,
-    ListenerEventResult
-};
 pub use self::channel::channel;
 
 pub(crate) mod sender;
@@ -43,6 +35,6 @@ mod thread;
 mod channeldriventhread;
 mod channel;
 mod messagechannel;
-mod listenerthread;
 pub(crate) mod eventhandling;
+pub(crate) mod listener;
 

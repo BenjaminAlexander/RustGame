@@ -1,4 +1,4 @@
-use crate::threading::eventhandling::eventhandler::EventHandlerTrait;
+use crate::threading::eventhandling::eventhandlertrait::EventHandlerTrait;
 use crate::threading::eventhandling::SentEventHolder;
 
 pub struct ReceivedEventHolder<T: EventHandlerTrait> {

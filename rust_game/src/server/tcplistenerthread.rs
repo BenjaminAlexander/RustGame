@@ -4,8 +4,8 @@ use std::ops::ControlFlow::*;
 use log::{error, info};
 use crate::interface::GameTrait;
 use crate::server::ServerCore;
-
-use crate::threading::{ListenedOrDidNotListen, ChannelDrivenThreadSender as Sender, ListenedValueHolder, ListenerEvent, ListenerTrait, ListenResult, ListenerEventResult};
+use crate::threading::ChannelDrivenThreadSender as Sender;
+use crate::threading::listener::{ListenedOrDidNotListen, ListenedValueHolder, ChannelEvent, ListenerEventResult, ListenerTrait, ListenResult};
 
 pub struct TcpListenerThread<Game: GameTrait> {
     tcp_listener_option: Option<TcpListener>,
@@ -59,9 +59,9 @@ impl<Game: GameTrait> TcpListenerThread<Game> {
 }
 
 impl<Game: GameTrait> ListenerTrait for TcpListenerThread<Game> {
-    type MessageType = ();
-    type ThreadReturnType = ();
-    type ListenForType = (TcpStream, SocketAddr);
+    type Event = ();
+    type ThreadReturn = ();
+    type ListenFor = (TcpStream, SocketAddr);
 
     fn listen(mut self) -> ListenResult<Self> {
 
@@ -93,16 +93,16 @@ impl<Game: GameTrait> ListenerTrait for TcpListenerThread<Game> {
         }
     }
 
-    fn on_event(self, event: ListenerEvent<Self>) -> ListenerEventResult<Self> {
+    fn on_channel_event(self, event: ChannelEvent<Self>) -> ListenerEventResult<Self> {
         return match event {
-            ListenerEvent::ChannelEmptyAfterListen(heard_value) => self.handle_tcp_stream_and_socket_addr(heard_value),
-            ListenerEvent::Message(received_event_holder) =>
+            ChannelEvent::ChannelEmptyAfterListen(heard_value) => self.handle_tcp_stream_and_socket_addr(heard_value),
+            ChannelEvent::ReceivedEvent(received_event_holder) =>
                 match received_event_holder.move_event() {
                     () => Continue(self)
                 }
-            ListenerEvent::ChannelDisconnected => Break(self.on_stop())
+            ChannelEvent::ChannelDisconnected => Break(self.on_stop())
         }
     }
 
-    fn on_stop(self) -> Self::ThreadReturnType { () }
+    fn on_stop(self) -> Self::ThreadReturn { () }
 }

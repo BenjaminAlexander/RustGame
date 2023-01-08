@@ -11,7 +11,7 @@ use crate::client::clientmanagerobserver::ClientManagerObserver;
 use crate::client::udpoutput::UdpOutput;
 use crate::gamemanager::{Manager, RenderReceiverMessage};
 use crate::interface::GameTrait;
-use crate::threading::eventhandling::{ChannelEvent, EventHandlerResult, EventHandlerTrait, WaitOrTryForNextEvent};
+use crate::threading::eventhandling::{ChannelEvent, ChannelEventResult, EventHandlerTrait, WaitOrTryForNextEvent};
 
 pub struct TcpInput <Game: GameTrait> {
     player_index: Option<usize>,
@@ -49,9 +49,9 @@ impl<Game: GameTrait> TcpInput<Game> {
 
 impl<Game: GameTrait> EventHandlerTrait for TcpInput<Game> {
     type Event = ();
-    type ThreadReturnType = ();
+    type ThreadReturn = ();
 
-    fn on_event(mut self, event: ChannelEvent<Self>) -> EventHandlerResult<Self> {
+    fn on_channel_event(mut self, event: ChannelEvent<Self>) -> ChannelEventResult<Self> {
         return match event {
             ChannelEvent::ReceivedEvent(_) => {
                 warn!("This handler does not have any meaningful messages");
@@ -65,7 +65,7 @@ impl<Game: GameTrait> EventHandlerTrait for TcpInput<Game> {
         };
     }
 
-    fn on_stop(self) -> Self::ThreadReturnType {
+    fn on_stop(self) -> Self::ThreadReturn {
         return ();
     }
 }
@@ -91,7 +91,7 @@ impl<Game: GameTrait> TcpInput<Game> {
         }
     }
 
-    fn wait_for_message(mut self) -> EventHandlerResult<Self> {
+    fn wait_for_message(mut self) -> ChannelEventResult<Self> {
         return match rmp_serde::from_read(&self.tcp_stream) {
             Ok(message) => {
 

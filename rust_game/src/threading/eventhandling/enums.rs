@@ -1,5 +1,5 @@
-use crate::threading::eventhandling::eventhandler::EventHandlerTrait;
-use crate::threading::eventhandling::receiver::ReceivedEventHolder;
+use crate::threading::eventhandling::eventhandlertrait::EventHandlerTrait;
+use crate::threading::eventhandling::receivedeventholder::ReceivedEventHolder;
 use crate::threading::eventhandling::SentEventHolder;
 
 pub enum ChannelEvent<T: EventHandlerTrait> {

@@ -1,18 +1,18 @@
 use crate::ThreadBuilderTrait;
-use crate::threading::eventhandling::eventhandler::EventHandlerTrait;
+use crate::threading::eventhandling::eventhandlertrait::EventHandlerTrait;
 use crate::threading::eventhandling::thread::Thread;
-use crate::threading::eventhandling::EventSender;
+use crate::threading::eventhandling::Sender;
 use crate::threading::ThreadBuilder as BaseThreadBuilder;
 use crate::threading::eventhandling::joinhandle::JoinHandle;
 
 pub struct ThreadBuilder<T: EventHandlerTrait> {
-    pub(super) sender: EventSender<T>,
+    pub(super) sender: Sender<T>,
     pub(super) builder: BaseThreadBuilder<Thread<T>>
 }
 
 impl<T: EventHandlerTrait> ThreadBuilder<T> {
 
-    pub fn get_sender(&self) -> &EventSender<T> { &self.sender }
+    pub fn get_sender(&self) -> &Sender<T> { &self.sender }
 
 }
 

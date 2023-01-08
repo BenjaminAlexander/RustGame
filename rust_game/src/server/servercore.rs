@@ -3,7 +3,7 @@ use std::net::{TcpStream, Ipv4Addr, SocketAddrV4, UdpSocket};
 use log::{error, info};
 use crate::interface::GameTrait;
 use crate::server::tcpinput::TcpInput;
-use crate::threading::{ChannelDrivenThread, ChannelThread, ChannelDrivenThreadSender as Sender, ChannelDrivenThreadSenderError as SendError, ThreadAction, ThreadBuilderTrait, ListenerTrait, ListenerMessageHandler};
+use crate::threading::{ChannelDrivenThread, ChannelThread, ChannelDrivenThreadSender as Sender, ChannelDrivenThreadSenderError as SendError, ThreadAction, ThreadBuilderTrait};
 use crate::server::{TcpListenerThread, ServerConfig};
 use crate::server::tcpoutput::TcpOutput;
 use crate::gametime::{GameTimer, TimeMessage};
@@ -16,13 +16,14 @@ use crate::server::clientaddress::ClientAddress;
 use crate::server::remoteudppeer::RemoteUdpPeer;
 use crate::server::servergametimerobserver::ServerGameTimerObserver;
 use crate::server::servermanagerobserver::ServerManagerObserver;
-use crate::threading::eventhandling::{EventHandlerTrait, JoinHandle};
+use crate::threading::eventhandling::{build_thread, EventHandlerTrait, JoinHandle};
+use crate::threading::listener::{ListenerState, ListenerTrait};
 
 pub struct ServerCore<Game: GameTrait> {
 
     game_is_started: bool,
     server_config: ServerConfig,
-    tcp_listener_join_handle_option: Option<JoinHandle<ListenerMessageHandler<TcpListenerThread<Game>>>>,
+    tcp_listener_join_handle_option: Option<JoinHandle<ListenerState<TcpListenerThread<Game>>>>,
     tcp_inputs: Vec<Sender<TcpInput>>,
     tcp_outputs: Vec<Sender<TcpOutput<Game>>>,
     udp_socket: Option<UdpSocket>,
@@ -111,9 +112,8 @@ impl<Game: GameTrait> Sender<ServerCore<Game>> {
                 return ThreadAction::Stop;
             }
 
-            let tcp_listener_join_handle_result = TcpListenerThread::<Game>::new(core_sender)
-                .to_message_handler()
-                .build_thread()
+            let tcp_listener_join_handle_result = build_thread(TcpListenerThread::<Game>::new(core_sender)
+                .to_message_handler())
                 .name("ServerTcpListener")
                 .start();
 

@@ -12,7 +12,7 @@ use crate::client::clientgametimeobserver::ClientGameTimerObserver;
 use crate::client::clientmanagerobserver::ClientManagerObserver;
 use crate::client::udpoutput::UdpOutput;
 use crate::client::udpinput::UdpInput;
-use crate::threading::eventhandling::{EventHandlerTrait, JoinHandle};
+use crate::threading::eventhandling::{build_thread, EventHandlerTrait, JoinHandle};
 
 pub struct ClientCore<Game: GameTrait> {
     server_ip: String,
@@ -78,22 +78,22 @@ impl<Game: GameTrait> Sender<ClientCore<Game>> {
                 client_game_time_observer).build();
 
             let (udp_output_sender, udp_output_builder) = UdpOutput::<Game>::new(server_udp_socket_addr_v4, &udp_socket).unwrap().build();
-            let tcp_input_builder = TcpInput::new(
+            let tcp_input_builder = build_thread(TcpInput::new(
                 game_timer_sender.clone(),
                 manager_sender.clone(),
                 core_sender.clone(),
                 udp_output_sender.clone(),
                 render_receiver_sender.clone(),
-                &tcp_stream).unwrap().build_thread();
+                &tcp_stream).unwrap());
 
             let (tcp_output_sender, tcp_output_builder) = TcpOutput::new(&tcp_stream).unwrap().build();
 
-            let udp_input_builder = UdpInput::new(
+            let udp_input_builder = build_thread(UdpInput::new(
                 server_udp_socket_addr_v4,
                 &udp_socket,
                 game_timer_sender.clone(),
                 manager_sender.clone()
-            ).unwrap().build_thread();
+            ).unwrap());
 
             let _manager_join_handle = manager_builder.name("ClientManager").start().unwrap();
             let tcp_input_join_handle = tcp_input_builder.name("ClientTcpInput").start().unwrap();

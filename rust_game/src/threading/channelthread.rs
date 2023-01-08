@@ -1,5 +1,5 @@
 use std::marker::PhantomData;
-use crate::threading::{Receiver, Sender, channel};
+use crate::threading::{Receiver, Sender, channel, build_thread};
 use crate::threading::thread::{Thread, ThreadBuilder};
 
 pub trait ChannelThread<ThreadReturnType, MessageReturnType> : Sized + Send + 'static
@@ -19,9 +19,7 @@ pub trait ChannelThread<ThreadReturnType, MessageReturnType> : Sized + Send + 's
             u_phantom: PhantomData
         };
 
-        let builder = thread.build();
-
-        (sender, builder)
+        (sender, build_thread(thread))
     }
 
     fn run(self, receiver: Receiver<Self, MessageReturnType>) -> ThreadReturnType;

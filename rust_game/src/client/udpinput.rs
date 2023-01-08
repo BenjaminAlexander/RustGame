@@ -9,7 +9,7 @@ use log::{debug, error, warn};
 use crate::client::clientgametimeobserver::ClientGameTimerObserver;
 use crate::client::clientmanagerobserver::ClientManagerObserver;
 use crate::gamemanager::Manager;
-use crate::threading::eventhandling::{ChannelEvent, EventHandlerResult, EventHandlerTrait, WaitOrTryForNextEvent};
+use crate::threading::eventhandling::{ChannelEvent, ChannelEventResult, EventHandlerTrait, WaitOrTryForNextEvent};
 
 pub struct UdpInput<Game: GameTrait> {
     server_socket_addr: SocketAddr,
@@ -54,9 +54,9 @@ impl<Game: GameTrait> UdpInput<Game> {
 
 impl<Game: GameTrait> EventHandlerTrait for UdpInput<Game> {
     type Event = ();
-    type ThreadReturnType = ();
+    type ThreadReturn = ();
 
-    fn on_event(mut self, event: ChannelEvent<Self>) -> EventHandlerResult<Self> {
+    fn on_channel_event(mut self, event: ChannelEvent<Self>) -> ChannelEventResult<Self> {
         return match event {
             ChannelEvent::ReceivedEvent(_) => {
                 warn!("This handler does not have any meaningful messages");
@@ -70,7 +70,7 @@ impl<Game: GameTrait> EventHandlerTrait for UdpInput<Game> {
         };
     }
 
-    fn on_stop(self) -> Self::ThreadReturnType {
+    fn on_stop(self) -> Self::ThreadReturn {
         return ();
     }
 }
@@ -115,7 +115,7 @@ impl<Game: GameTrait> UdpInput<Game> {
         }
     }
 
-    fn wait_for_message(mut self) -> EventHandlerResult<Self> {
+    fn wait_for_message(mut self) -> ChannelEventResult<Self> {
 
         let mut buf = [0; MAX_UDP_DATAGRAM_SIZE];
 

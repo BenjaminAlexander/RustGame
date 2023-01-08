@@ -2,16 +2,16 @@ use std::io::Result;
 use std::thread::{Builder, JoinHandle};
 use log::info;
 
+pub fn build_thread<T: Thread>(thread: T) -> ThreadBuilder<T> {
+    return ThreadBuilder {
+        thread,
+        builder: Builder::new()
+    };
+}
+
 pub trait Thread : Sized + Send + 'static {
 
     type ReturnType: Send + 'static;
-
-    fn build(self) -> ThreadBuilder<Self> {
-        return ThreadBuilder {
-            thread: self,
-            builder: Builder::new()
-        };
-    }
 
     fn run(self) -> Self::ReturnType;
 }

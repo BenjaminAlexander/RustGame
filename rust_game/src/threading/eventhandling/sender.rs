@@ -1,27 +1,27 @@
-use crate::threading::eventhandling::eventhandler::EventHandlerTrait;
+use crate::threading::eventhandling::eventhandlertrait::EventHandlerTrait;
 use crate::threading::{ValueSender, ValueSendError};
 use crate::threading::eventhandling::EventOrStopThread;
 use crate::threading::eventhandling::EventOrStopThread::{Event, StopThread};
 
-pub type EventSendError<T> = ValueSendError<EventOrStopThread<T>>;
+pub type SendError<T> = ValueSendError<EventOrStopThread<T>>;
 
-pub type EventSendResult<T> = Result<(), EventSendError<T>>;
+pub type SendResult<T> = Result<(), SendError<T>>;
 
 pub struct SentEventHolder<T: EventHandlerTrait> {
     pub(super) event: T::Event
 }
 
-pub struct EventSender<T: EventHandlerTrait> {
+pub struct Sender<T: EventHandlerTrait> {
     pub(super) sender: ValueSender<EventOrStopThread<T>>
 }
 
-impl<T: EventHandlerTrait> EventSender<T>{
+impl<T: EventHandlerTrait> Sender<T>{
 
-    pub fn send_event(&self, event: T::Event) -> EventSendResult<T> {
+    pub fn send_event(&self, event: T::Event) -> SendResult<T> {
         return self.sender.send(Event(SentEventHolder { event }));
     }
 
-    pub fn send_stop_thread(&self) -> EventSendResult<T> {
+    pub fn send_stop_thread(&self) -> SendResult<T> {
         return self.sender.send(StopThread);
     }
 }
