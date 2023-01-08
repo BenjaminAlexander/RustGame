@@ -95,7 +95,10 @@ impl<Game: GameTrait> ListenerTrait for TcpListenerThread<Game> {
     fn on_event(self, event: ListenerEvent<Self>) -> Result<Self, Self::ThreadReturnType> {
         return match event {
             ListenerEvent::ChannelEmptyAfterListen(heard_value) => self.handle_tcp_stream_and_socket_addr(heard_value),
-            ListenerEvent::Message(()) => Ok(self),
+            ListenerEvent::Message(received_event_holder) =>
+                match received_event_holder.move_event() {
+                    () => Ok(self)
+                }
             ListenerEvent::ChannelDisconnected => Err(self.on_stop())
         }
     }

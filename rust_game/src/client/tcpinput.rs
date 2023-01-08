@@ -1,7 +1,7 @@
 use log::{error, info, warn};
 use std::net::TcpStream;
 use crate::gametime::GameTimer;
-use crate::threading::{ChannelDrivenThreadSender as Sender, MessageChannelSender, MessageHandlerTrait, MessageHandlerEvent, WaitOrTry, MessageHandlerEventResult};
+use crate::threading::{ChannelDrivenThreadSender as Sender, ValueSender, EventHandlerTrait, ChannelEvent, WaitOrTry, EventHandlerResult};
 use crate::messaging::ToClientMessageTCP;
 use std::io;
 use crate::client::ClientCore;
@@ -18,7 +18,7 @@ pub struct TcpInput <Game: GameTrait> {
     manager_sender: Sender<Manager<ClientManagerObserver<Game>>>,
     client_core_sender: Sender<ClientCore<Game>>,
     udp_output_sender: Sender<UdpOutput<Game>>,
-    render_data_sender: MessageChannelSender<RenderReceiverMessage<Game>>,
+    render_data_sender: ValueSender<RenderReceiverMessage<Game>>,
     received_message_option: Option<ToClientMessageTCP<Game>>
 }
 
@@ -29,7 +29,7 @@ impl<Game: GameTrait> TcpInput<Game> {
         manager_sender: Sender<Manager<ClientManagerObserver<Game>>>,
         client_core_sender: Sender<ClientCore<Game>>,
         udp_output_sender: Sender<UdpOutput<Game>>,
-        render_data_sender: MessageChannelSender<RenderReceiverMessage<Game>>,
+        render_data_sender: ValueSender<RenderReceiverMessage<Game>>,
         tcp_stream: &TcpStream) -> io::Result<Self> {
 
         Ok(Self {
@@ -45,21 +45,21 @@ impl<Game: GameTrait> TcpInput<Game> {
     }
 }
 
-impl<Game: GameTrait> MessageHandlerTrait for TcpInput<Game> {
-    type MessageType = ();
+impl<Game: GameTrait> EventHandlerTrait for TcpInput<Game> {
+    type Event = ();
     type ThreadReturnType = ();
 
-    fn on_event(mut self, event: MessageHandlerEvent<Self>) -> MessageHandlerEventResult<Self> {
+    fn on_event(mut self, event: ChannelEvent<Self>) -> EventHandlerResult<Self> {
         return match event {
-            MessageHandlerEvent::Message(_) => {
+            ChannelEvent::ReceivedEvent(_) => {
                 warn!("This handler does not have any meaningful messages");
-                Ok(WaitOrTry::TryForNextMessage(self))
+                Ok(WaitOrTry::TryForNextEvent(self))
             }
-            MessageHandlerEvent::ChannelEmpty => {
+            ChannelEvent::ChannelEmpty => {
                 self.handle_received_message();
                 self.wait_for_message()
             }
-            MessageHandlerEvent::ChannelDisconnected => Err(self.on_stop())
+            ChannelEvent::ChannelDisconnected => Err(self.on_stop())
         };
     }
 
@@ -89,7 +89,7 @@ impl<Game: GameTrait> TcpInput<Game> {
         }
     }
 
-    fn wait_for_message(mut self) -> MessageHandlerEventResult<Self> {
+    fn wait_for_message(mut self) -> EventHandlerResult<Self> {
         return match rmp_serde::from_read(&self.tcp_stream) {
             Ok(message) => {
 
@@ -97,7 +97,7 @@ impl<Game: GameTrait> TcpInput<Game> {
                 //info!("{:?}", message);
 
                 self.received_message_option = Some(message);
-                Ok(WaitOrTry::TryForNextMessage(self))
+                Ok(WaitOrTry::TryForNextEvent(self))
             }
             Err(error) => {
                 error!("Error: {:?}", error);

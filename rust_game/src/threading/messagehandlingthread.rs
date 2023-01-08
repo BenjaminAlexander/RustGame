@@ -1,65 +1,100 @@
 use std::thread::JoinHandle;
 use log::info;
-use crate::threading::{message_channel, MessageChannelReceiver, MessageChannelSender, MessageChannelTryRecvError, Thread, ThreadBuilder};
+use crate::threading::{message_channel, ValueReceiver, ValueSender, ValueTryRecvError, Thread, ThreadBuilder, ValueSendError};
 use crate::threading::thread::ThreadBuilderTrait;
+use crate::threading::EventOrStop::*;
+use crate::threading::ChannelEvent::*;
+use crate::threading::WaitOrTry::*;
 
-pub enum MessageHandlerEvent<T: MessageHandlerTrait> {
+pub struct SentEventHolder<T: EventHandlerTrait> {
+    event: T::Event
+}
 
-    //TODO: refactor into struct
-    Message(T::MessageType),
+pub struct ReceivedEventHolder<T: EventHandlerTrait> {
+    sent_event_holder: SentEventHolder<T>
+}
+
+impl<T: EventHandlerTrait> ReceivedEventHolder<T> {
+
+    pub fn get_event(&self) -> &T::Event { &self.sent_event_holder.event }
+
+    pub fn move_event(self) -> T::Event { self.sent_event_holder.event }
+}
+
+pub enum ChannelEvent<T: EventHandlerTrait> {
+    ReceivedEvent(ReceivedEventHolder<T>),
     ChannelEmpty,
     ChannelDisconnected
 }
 
-pub enum WaitOrTry<T: MessageHandlerTrait> {
-    WaitForNextMessage(T),
-    TryForNextMessage(T)
+pub enum WaitOrTry<T: EventHandlerTrait> {
+    WaitForNextEvent(T),
+    TryForNextEvent(T)
 }
 
-pub enum MessageOrStop<T: MessageHandlerTrait> {
-    Message(T::MessageType),
+pub enum EventOrStop<T: EventHandlerTrait> {
+    Event(SentEventHolder<T>),
     StopThread
 }
 
-//TODO: try using from residual instead of Result
-pub type MessageHandlerEventResult<T: MessageHandlerTrait> = Result<WaitOrTry<T>, T::ThreadReturnType>;
-pub type MessageHandlingThreadSender<T> = MessageChannelSender<MessageOrStop<T>>;
-pub type MessageHandlingThreadReceiver<T> = MessageChannelReceiver<MessageOrStop<T>>;
+pub struct EventSender<T: EventHandlerTrait> {
+    sender: ValueSender<EventOrStop<T>>
+}
 
-pub trait MessageHandlerTrait: Send + Sized + 'static {
-    type MessageType: Send + 'static;
+impl<T: EventHandlerTrait> EventSender<T>{
+
+    pub fn send_event(&self, event: T::Event) -> EventSendResult<T> {
+        return self.sender.send(Event(SentEventHolder { event }));
+    }
+
+    pub fn send_stop_thread(&self) -> EventSendResult<T> {
+        return self.sender.send(StopThread);
+    }
+}
+
+pub type EventSendError<T> = ValueSendError<EventOrStop<T>>;
+pub type EventSendResult<T> = Result<(), EventSendError<T>>;
+
+//TODO: make this FlowControl
+pub type EventHandlerResult<T: EventHandlerTrait> = Result<WaitOrTry<T>, T::ThreadReturnType>;
+
+type EventReceiver<T> = ValueReceiver<EventOrStop<T>>;
+
+pub trait EventHandlerTrait: Send + Sized + 'static {
+    type Event: Send + 'static;
     type ThreadReturnType: Send + 'static;
 
     fn build_thread(self) -> MessageHandlingThreadBuilder<Self> {
         let (sender, receiver) = message_channel();
         return MessageHandlingThreadBuilder{
-            sender,
-            builder: MessageHandlingThread{
+            sender: EventSender { sender },
+            builder: EventHandlingThread {
                 receiver,
                 message_handler: self
             }.build()
         };
     }
 
-    fn on_event(self, event: MessageHandlerEvent<Self>) -> MessageHandlerEventResult<Self>;
+    fn on_event(self, event: ChannelEvent<Self>) -> EventHandlerResult<Self>;
 
     fn on_stop(self) -> Self::ThreadReturnType;
 }
 
-pub struct MessageHandlingThreadBuilder<MessageHandlerType: MessageHandlerTrait> {
-    sender: MessageHandlingThreadSender<MessageHandlerType>,
-    builder: ThreadBuilder<MessageHandlingThread<MessageHandlerType>>
+//TODO: rename this
+pub struct MessageHandlingThreadBuilder<MessageHandlerType: EventHandlerTrait> {
+    sender: EventSender<MessageHandlerType>,
+    builder: ThreadBuilder<EventHandlingThread<MessageHandlerType>>
 }
 
-impl<MessageHandlerType: MessageHandlerTrait> MessageHandlingThreadBuilder<MessageHandlerType> {
+impl<MessageHandlerType: EventHandlerTrait> MessageHandlingThreadBuilder<MessageHandlerType> {
 
-    pub fn get_sender(&self) -> &MessageHandlingThreadSender<MessageHandlerType> {
+    pub fn get_sender(&self) -> &EventSender<MessageHandlerType> {
         return &self.sender;
     }
 
 }
 
-impl<MessageHandlerType: MessageHandlerTrait> ThreadBuilderTrait for MessageHandlingThreadBuilder<MessageHandlerType> {
+impl<MessageHandlerType: EventHandlerTrait> ThreadBuilderTrait for MessageHandlingThreadBuilder<MessageHandlerType> {
     type StartResultType = std::io::Result<MessageHandlingThreadJoinHandle<MessageHandlerType>>;
 
     fn name(mut self, name: &str) -> Self {
@@ -77,56 +112,57 @@ impl<MessageHandlerType: MessageHandlerTrait> ThreadBuilderTrait for MessageHand
     }
 }
 
-pub struct MessageHandlingThreadJoinHandle<MessageHandlerType: MessageHandlerTrait> {
-    sender: MessageHandlingThreadSender<MessageHandlerType>,
+//TODO: rename this
+pub struct MessageHandlingThreadJoinHandle<MessageHandlerType: EventHandlerTrait> {
+    sender: EventSender<MessageHandlerType>,
     join_handle: JoinHandle<MessageHandlerType::ThreadReturnType>
 }
 
-impl<MessageHandlerType: MessageHandlerTrait> MessageHandlingThreadJoinHandle<MessageHandlerType> {
+impl<MessageHandlerType: EventHandlerTrait> MessageHandlingThreadJoinHandle<MessageHandlerType> {
 
-    pub fn get_sender(&self) -> &MessageHandlingThreadSender<MessageHandlerType> {
+    pub fn get_sender(&self) -> &EventSender<MessageHandlerType> {
         return &self.sender;
     }
 
 }
 
-struct MessageHandlingThread<MessageHandlerType: MessageHandlerTrait> {
-    receiver: MessageHandlingThreadReceiver<MessageHandlerType>,
+struct EventHandlingThread<MessageHandlerType: EventHandlerTrait> {
+    receiver: EventReceiver<MessageHandlerType>,
     message_handler: MessageHandlerType
 }
 
-impl<MessageHandlerType: MessageHandlerTrait> MessageHandlingThread<MessageHandlerType> {
+impl<MessageHandlerType: EventHandlerTrait> EventHandlingThread<MessageHandlerType> {
 
-    fn wait_for_message(message_handler: MessageHandlerType, receiver: &MessageHandlingThreadReceiver<MessageHandlerType>) -> MessageHandlerEventResult<MessageHandlerType> {
+    fn wait_for_message(message_handler: MessageHandlerType, receiver: &EventReceiver<MessageHandlerType>) -> EventHandlerResult<MessageHandlerType> {
 
         return match receiver.recv() {
-            Ok(MessageOrStop::Message(message)) => Self::on_message(message_handler, message),
-            Ok(MessageOrStop::StopThread) => Err(Self::on_stop(message_handler)),
+            Ok(Event(sent_event_holder)) => Self::on_message(message_handler, sent_event_holder),
+            Ok(StopThread) => Err(Self::on_stop(message_handler)),
             Err(_) => Self::on_channel_disconnected(message_handler)
         };
     }
 
-    fn try_for_message(message_handler: MessageHandlerType, receiver: &MessageHandlingThreadReceiver<MessageHandlerType>) -> MessageHandlerEventResult<MessageHandlerType> {
+    fn try_for_message(message_handler: MessageHandlerType, receiver: &EventReceiver<MessageHandlerType>) -> EventHandlerResult<MessageHandlerType> {
 
         return match receiver.try_recv() {
-            Ok(MessageOrStop::Message(message)) => Self::on_message(message_handler, message),
-            Ok(MessageOrStop::StopThread) => Err(Self::on_stop(message_handler)),
-            Err(MessageChannelTryRecvError::Disconnected) => Self::on_channel_disconnected(message_handler),
-            Err(MessageChannelTryRecvError::Empty) => Self::on_channel_empty(message_handler)
+            Ok(Event(sent_event_holder)) => Self::on_message(message_handler, sent_event_holder),
+            Ok(StopThread) => Err(Self::on_stop(message_handler)),
+            Err(ValueTryRecvError::Disconnected) => Self::on_channel_disconnected(message_handler),
+            Err(ValueTryRecvError::Empty) => Self::on_channel_empty(message_handler)
         };
     }
 
-    fn on_message(message_handler: MessageHandlerType, message: MessageHandlerType::MessageType) -> MessageHandlerEventResult<MessageHandlerType> {
-        return message_handler.on_event(MessageHandlerEvent::Message(message));
+    fn on_message(message_handler: MessageHandlerType, sent_event_holder: SentEventHolder<MessageHandlerType>) -> EventHandlerResult<MessageHandlerType> {
+        return message_handler.on_event(ReceivedEvent(ReceivedEventHolder { sent_event_holder }));
     }
 
-    fn on_channel_empty(message_handler: MessageHandlerType) -> MessageHandlerEventResult<MessageHandlerType> {
-        return message_handler.on_event(MessageHandlerEvent::ChannelEmpty);
+    fn on_channel_empty(message_handler: MessageHandlerType) -> EventHandlerResult<MessageHandlerType> {
+        return message_handler.on_event(ChannelEmpty);
     }
 
-    fn on_channel_disconnected(message_handler: MessageHandlerType) -> MessageHandlerEventResult<MessageHandlerType> {
+    fn on_channel_disconnected(message_handler: MessageHandlerType) -> EventHandlerResult<MessageHandlerType> {
         info!("The receiver channel has been disconnected.");
-        return message_handler.on_event(MessageHandlerEvent::ChannelDisconnected);
+        return message_handler.on_event(ChannelDisconnected);
     }
 
     fn on_stop(message_handler: MessageHandlerType) -> MessageHandlerType::ThreadReturnType {
@@ -135,20 +171,20 @@ impl<MessageHandlerType: MessageHandlerTrait> MessageHandlingThread<MessageHandl
     }
 }
 
-impl<MessageHandlerType: MessageHandlerTrait> Thread for MessageHandlingThread<MessageHandlerType> {
+impl<MessageHandlerType: EventHandlerTrait> Thread for EventHandlingThread<MessageHandlerType> {
     type ReturnType = MessageHandlerType::ThreadReturnType;
 
     fn run(self) -> Self::ReturnType {
 
         info!("Thread Starting");
 
-        let mut wait_or_try = WaitOrTry::TryForNextMessage(self.message_handler);
+        let mut wait_or_try = TryForNextEvent(self.message_handler);
 
         loop {
 
             let result = match wait_or_try {
-                WaitOrTry::WaitForNextMessage(message_handler) => Self::wait_for_message(message_handler, &self.receiver),
-                WaitOrTry::TryForNextMessage(message_handler) => Self::try_for_message(message_handler, &self.receiver),
+                WaitForNextEvent(message_handler) => Self::wait_for_message(message_handler, &self.receiver),
+                TryForNextEvent(message_handler) => Self::try_for_message(message_handler, &self.receiver),
             };
 
             wait_or_try = match result {
@@ -160,10 +196,3 @@ impl<MessageHandlerType: MessageHandlerTrait> Thread for MessageHandlingThread<M
         }
     }
 }
-
-/*
-                WaitOrTry::Stop(thread_return) => {
-                    info!("The MessageHandler commanded the thread to stop.");
-                    return thread_return;
-                }
- */

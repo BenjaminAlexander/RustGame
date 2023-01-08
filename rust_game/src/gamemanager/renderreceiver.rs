@@ -1,7 +1,7 @@
 use log::{info, warn};
 use crate::interface::{InterpolationArg, GameTrait};
 use crate::gamemanager::stepmessage::StepMessage;
-use crate::threading::{MessageChannelReceiver, message_channel, MessageChannelSender, MessageChannelTryRecvError};
+use crate::threading::{ValueReceiver, message_channel, ValueSender, ValueTryRecvError};
 use crate::gametime::{TimeMessage, TimeValue, TimeDuration};
 use crate::messaging::InitialInformation;
 
@@ -14,7 +14,7 @@ pub enum RenderReceiverMessage<Game: GameTrait> {
 
 //TODO: made the difference between the render receiver and the Data more clear
 pub struct RenderReceiver<Game: GameTrait> {
-    receiver: MessageChannelReceiver<RenderReceiverMessage<Game>>,
+    receiver: ValueReceiver<RenderReceiverMessage<Game>>,
     data: Data<Game>
 }
 
@@ -28,7 +28,7 @@ struct Data<Game: GameTrait> {
 
 impl<Game: GameTrait> RenderReceiver<Game> {
 
-    pub fn new() -> (MessageChannelSender<RenderReceiverMessage<Game>>, Self) {
+    pub fn new() -> (ValueSender<RenderReceiverMessage<Game>>, Self) {
         let (sender, receiver) = message_channel::<RenderReceiverMessage<Game>>();
 
         let data = Data::<Game> {
@@ -68,9 +68,9 @@ impl<Game: GameTrait> RenderReceiver<Game> {
                     break;
                 }
 
-                Err(MessageChannelTryRecvError::Empty) => break,
+                Err(ValueTryRecvError::Empty) => break,
 
-                Err(MessageChannelTryRecvError::Disconnected) => {
+                Err(ValueTryRecvError::Disconnected) => {
                     info!("Channel disconnected.");
                     //TODO: notify the caller if the channel is disconnected
                     break;

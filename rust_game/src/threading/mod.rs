@@ -8,11 +8,10 @@ pub use self::channeldriventhread::{
 
 pub use self::messagechannel::{
     message_channel,
-    MessageHolder,
-    MessageChannelSender,
-    MessageChannelReceiver,
-    MessageChannelTryRecvError,
-    MessageChannelSendError
+    ValueSender,
+    ValueReceiver,
+    ValueTryRecvError,
+    ValueSendError
 };
 pub use self::channelthread::ChannelThread;
 pub use self::receiver::Receiver;
@@ -26,15 +25,14 @@ pub use self::thread::{
     ThreadBuilder,
 };
 pub use self::messagehandlingthread::{
-    MessageHandlerEvent,
+    ChannelEvent,
     WaitOrTry,
-    MessageOrStop,
-    MessageHandlingThreadSender,
-    MessageHandlingThreadReceiver,
-    MessageHandlerTrait,
+    EventOrStop,
+    EventSender,
+    EventHandlerTrait,
     MessageHandlingThreadBuilder,
     MessageHandlingThreadJoinHandle,
-    MessageHandlerEventResult
+    EventHandlerResult
 };
 pub use self::listenerthread::{
     ListenerTrait,

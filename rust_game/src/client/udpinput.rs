@@ -1,7 +1,7 @@
 use std::net::{UdpSocket, SocketAddrV4, SocketAddr};
 use crate::gametime::{TimeReceived, TimeValue, TimeDuration, GameTimer};
 use crate::messaging::{ToClientMessageUDP, MAX_UDP_DATAGRAM_SIZE, MessageFragment, FragmentAssembler};
-use crate::threading::{ChannelDrivenThreadSender as Sender, MessageHandlerTrait, WaitOrTry, MessageHandlerEvent, MessageHandlerEventResult};
+use crate::threading::{ChannelDrivenThreadSender as Sender, EventHandlerTrait, WaitOrTry, ChannelEvent, EventHandlerResult};
 use crate::interface::GameTrait;
 use std::io;
 use log::{debug, error, warn};
@@ -50,21 +50,21 @@ impl<Game: GameTrait> UdpInput<Game> {
     }
 }
 
-impl<Game: GameTrait> MessageHandlerTrait for UdpInput<Game> {
-    type MessageType = ();
+impl<Game: GameTrait> EventHandlerTrait for UdpInput<Game> {
+    type Event = ();
     type ThreadReturnType = ();
 
-    fn on_event(mut self, event: MessageHandlerEvent<Self>) -> MessageHandlerEventResult<Self> {
+    fn on_event(mut self, event: ChannelEvent<Self>) -> EventHandlerResult<Self> {
         return match event {
-            MessageHandlerEvent::Message(_) => {
+            ChannelEvent::ReceivedEvent(_) => {
                 warn!("This handler does not have any meaningful messages");
-                Ok(WaitOrTry::TryForNextMessage(self))
+                Ok(WaitOrTry::TryForNextEvent(self))
             }
-            MessageHandlerEvent::ChannelEmpty => {
+            ChannelEvent::ChannelEmpty => {
                 self.handle_received_message();
                 self.wait_for_message()
             }
-            MessageHandlerEvent::ChannelDisconnected => Err(self.on_stop())
+            ChannelEvent::ChannelDisconnected => Err(self.on_stop())
         };
     }
 
@@ -113,21 +113,21 @@ impl<Game: GameTrait> UdpInput<Game> {
         }
     }
 
-    fn wait_for_message(mut self) -> MessageHandlerEventResult<Self> {
+    fn wait_for_message(mut self) -> EventHandlerResult<Self> {
 
         let mut buf = [0; MAX_UDP_DATAGRAM_SIZE];
 
         let recv_result = self.socket.recv_from(&mut buf);
         if recv_result.is_err() {
             warn!("Error on socket recv: {:?}", recv_result);
-            return Ok(WaitOrTry::TryForNextMessage(self));
+            return Ok(WaitOrTry::TryForNextEvent(self));
         }
 
         let (number_of_bytes, source) = recv_result.unwrap();
 
         if !self.server_socket_addr.eq(&source) {
             warn!("Received from wrong source. Expected: {:?}, Actual: {:?}", self.server_socket_addr, source);
-            return Ok(WaitOrTry::TryForNextMessage(self));
+            return Ok(WaitOrTry::TryForNextEvent(self));
         }
 
         let filled_buf = &mut buf[..number_of_bytes];
@@ -150,6 +150,6 @@ impl<Game: GameTrait> UdpInput<Game> {
             }
         }
 
-        return Ok(WaitOrTry::TryForNextMessage(self));
+        return Ok(WaitOrTry::TryForNextEvent(self));
     }
 }

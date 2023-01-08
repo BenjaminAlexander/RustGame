@@ -1,63 +1,80 @@
 use std::sync::mpsc;
 use std::sync::mpsc::{Receiver, RecvError, Sender, SendError, TryRecvError};
 
-pub type MessageChannelTryRecvError = TryRecvError;
+//TODO: rename to Sender Receiver once the old ones are gone
 
-pub type MessageChannelSendError<T> = SendError<MessageHolder<T>>;
+pub type ValueTryRecvError = TryRecvError;
 
-pub type MessageChannelRecvError = RecvError;
+pub type ValueSendError<T> = SendError<SentValueHolder<T>>;
 
-pub fn message_channel<T: Send + 'static>() -> (MessageChannelSender<T>, MessageChannelReceiver<T>) {
+pub type ValueRecvError = RecvError;
 
-    let (sender, receiver): (Sender<MessageHolder<T>>, Receiver<MessageHolder<T>>) = mpsc::channel();
+pub fn message_channel<T: Send + 'static>() -> (ValueSender<T>, ValueReceiver<T>) {
+
+    let (sender, receiver): (Sender<SentValueHolder<T>>, Receiver<SentValueHolder<T>>) = mpsc::channel();
 
     return (
-        MessageChannelSender{sender},
-        MessageChannelReceiver{receiver}
+        ValueSender {sender},
+        ValueReceiver {receiver}
     );
 }
 
-pub struct MessageHolder<T> {
-    message: T
+pub struct SentValueHolder<T> {
+    value: T
 }
 
-pub struct MessageChannelSender<T> {
-    sender: Sender<MessageHolder<T>>
+pub struct ReceivedValueHolder<T> {
+    sent_value_holder: SentValueHolder<T>
 }
 
-pub struct MessageChannelReceiver<T> {
-    receiver: Receiver<MessageHolder<T>>
+impl<T> ReceivedValueHolder<T> {
+
+    pub fn get_message(&self) -> &T { &self.sent_value_holder.value }
+
+    pub fn move_message(self) -> T { self.sent_value_holder.value }
 }
 
-impl<T> Clone for MessageChannelSender<T> {
+pub struct ValueSender<T> {
+    sender: Sender<SentValueHolder<T>>
+}
+
+pub struct ValueReceiver<T> {
+    receiver: Receiver<SentValueHolder<T>>
+}
+
+impl<T> Clone for ValueSender<T> {
     fn clone(&self) -> Self {
         Self {sender: self.sender.clone()}
     }
 }
 
-impl<T> MessageChannelSender<T> {
+impl<T> ValueSender<T> {
 
-    pub fn send(&self, message: T) -> Result<(), MessageChannelSendError<T>> {
-        return self.sender.send(MessageHolder::<T>{message});
+    pub fn send(&self, value: T) -> Result<(), ValueSendError<T>> {
+        return self.sender.send(SentValueHolder{value});
     }
 
 }
 
-impl<T> MessageChannelReceiver<T> {
+impl<T> ValueReceiver<T> {
 
-    pub fn try_recv_holder(&self) -> Result<MessageHolder<T>, MessageChannelTryRecvError> {
-        return self.receiver.try_recv();
+    pub fn try_recv_holder(&self) -> Result<ReceivedValueHolder<T>, ValueTryRecvError> {
+        return Ok(ReceivedValueHolder {
+            sent_value_holder: self.receiver.try_recv()?
+        });
     }
 
-    pub fn try_recv(&self) -> Result<T, MessageChannelTryRecvError> {
-        return Ok(self.try_recv_holder()?.message);
+    pub fn try_recv(&self) -> Result<T, ValueTryRecvError> {
+        return Ok(self.try_recv_holder()?.move_message());
     }
 
-    pub fn recv_holder(&self) -> Result<MessageHolder<T>, MessageChannelRecvError> {
-        return self.receiver.recv();
+    pub fn recv_holder(&self) -> Result<ReceivedValueHolder<T>, ValueRecvError> {
+        return Ok(ReceivedValueHolder {
+            sent_value_holder: self.receiver.recv()?
+        });
     }
 
-    pub fn recv(&self) -> Result<T, MessageChannelRecvError> {
-        return Ok(self.recv_holder()?.message);
+    pub fn recv(&self) -> Result<T, ValueRecvError> {
+        return Ok(self.recv_holder()?.move_message());
     }
 }

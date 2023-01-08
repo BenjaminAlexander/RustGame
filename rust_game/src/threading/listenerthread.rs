@@ -1,4 +1,5 @@
-use crate::threading::{MessageHandlerEvent, WaitOrTry, MessageHandlerTrait, MessageHandlerEventResult};
+use crate::threading::{ChannelEvent, WaitOrTry, EventHandlerTrait, EventHandlerResult};
+use crate::threading::messagehandlingthread::ReceivedEventHolder;
 
 pub enum ListenedOrDidNotListen<T: ListenerTrait> {
     Listened(T, T::ListenForType),
@@ -22,7 +23,7 @@ impl<T: ListenerTrait> ListenedValueHolder<T> {
 
 pub enum ListenerEvent<T: ListenerTrait> {
     ChannelEmptyAfterListen(ListenedValueHolder<T>),
-    Message(T::MessageType),
+    Message(ReceivedEventHolder<ListenerMessageHandler<T>>),
     ChannelDisconnected
 }
 
@@ -72,20 +73,20 @@ impl<T: ListenerTrait> ListenerMessageHandler<T> {
     }
 }
 
-impl<T: ListenerTrait> MessageHandlerTrait for ListenerMessageHandler<T> {
-    type MessageType = T::MessageType;
+impl<T: ListenerTrait> EventHandlerTrait for ListenerMessageHandler<T> {
+    type Event = T::MessageType;
     type ThreadReturnType = T::ThreadReturnType;
 
-    fn on_event(mut self, event: MessageHandlerEvent<Self>) -> MessageHandlerEventResult<Self> {
+    fn on_event(mut self, event: ChannelEvent<Self>) -> EventHandlerResult<Self> {
 
         match event {
-            MessageHandlerEvent::Message(message) => {
-                return Ok(WaitOrTry::TryForNextMessage(self.on_event(ListenerEvent::Message(message))?));
+            ChannelEvent::ReceivedEvent(message) => {
+                return Ok(WaitOrTry::TryForNextEvent(self.on_event(ListenerEvent::Message(message))?));
             }
-            MessageHandlerEvent::ChannelEmpty => {
-                return Ok(WaitOrTry::TryForNextMessage(self.listen()?));
+            ChannelEvent::ChannelEmpty => {
+                return Ok(WaitOrTry::TryForNextEvent(self.listen()?));
             }
-            MessageHandlerEvent::ChannelDisconnected => {
+            ChannelEvent::ChannelDisconnected => {
 
                 self = self.on_event(ListenerEvent::ChannelDisconnected)?;
 
