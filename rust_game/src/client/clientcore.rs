@@ -1,7 +1,7 @@
 use std::net::{Ipv4Addr, SocketAddrV4, SocketAddr, TcpStream, UdpSocket};
 use std::str::FromStr;
 use crate::gametime::{GameTimer, TimeMessage};
-use crate::threading::{ChannelThread, ChannelDrivenThreadSender as Sender, ChannelDrivenThread, ThreadAction, ThreadBuilderTrait, EventHandlerTrait, MessageHandlingThreadJoinHandle};
+use crate::threading::{ChannelThread, ChannelDrivenThreadSender as Sender, ChannelDrivenThread, ThreadAction, ThreadBuilderTrait};
 use crate::client::tcpinput::TcpInput;
 use crate::interface::GameTrait;
 use crate::client::tcpoutput::TcpOutput;
@@ -12,14 +12,15 @@ use crate::client::clientgametimeobserver::ClientGameTimerObserver;
 use crate::client::clientmanagerobserver::ClientManagerObserver;
 use crate::client::udpoutput::UdpOutput;
 use crate::client::udpinput::UdpInput;
+use crate::threading::eventhandling::{EventHandlerTrait, JoinHandle};
 
 pub struct ClientCore<Game: GameTrait> {
     server_ip: String,
     input_event_handler: Game::ClientInputEventHandler,
     manager_sender: Option<Sender<Manager<ClientManagerObserver<Game>>>>,
-    udp_input_join_handle_option: Option<MessageHandlingThreadJoinHandle<UdpInput<Game>>>,
+    udp_input_join_handle_option: Option<JoinHandle<UdpInput<Game>>>,
     udp_output_sender: Option<Sender<UdpOutput<Game>>>,
-    tcp_input_join_handle_option: Option<MessageHandlingThreadJoinHandle<TcpInput<Game>>>,
+    tcp_input_join_handle_option: Option<JoinHandle<TcpInput<Game>>>,
     tcp_output_sender: Option<Sender<TcpOutput>>,
     initial_information: Option<InitialInformation<Game>>,
     last_time_message: Option<TimeMessage>

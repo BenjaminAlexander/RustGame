@@ -3,7 +3,7 @@ use std::net::{TcpStream, Ipv4Addr, SocketAddrV4, UdpSocket};
 use log::{error, info};
 use crate::interface::GameTrait;
 use crate::server::tcpinput::TcpInput;
-use crate::threading::{ChannelDrivenThread, ChannelThread, ChannelDrivenThreadSender as Sender, ChannelDrivenThreadSenderError as SendError, ThreadAction, ThreadBuilderTrait, ListenerTrait, EventHandlerTrait, ListenerMessageHandler, MessageHandlingThreadJoinHandle};
+use crate::threading::{ChannelDrivenThread, ChannelThread, ChannelDrivenThreadSender as Sender, ChannelDrivenThreadSenderError as SendError, ThreadAction, ThreadBuilderTrait, ListenerTrait, ListenerMessageHandler};
 use crate::server::{TcpListenerThread, ServerConfig};
 use crate::server::tcpoutput::TcpOutput;
 use crate::gametime::{GameTimer, TimeMessage};
@@ -16,12 +16,13 @@ use crate::server::clientaddress::ClientAddress;
 use crate::server::remoteudppeer::RemoteUdpPeer;
 use crate::server::servergametimerobserver::ServerGameTimerObserver;
 use crate::server::servermanagerobserver::ServerManagerObserver;
+use crate::threading::eventhandling::{EventHandlerTrait, JoinHandle};
 
 pub struct ServerCore<Game: GameTrait> {
 
     game_is_started: bool,
     server_config: ServerConfig,
-    tcp_listener_join_handle_option: Option<MessageHandlingThreadJoinHandle<ListenerMessageHandler<TcpListenerThread<Game>>>>,
+    tcp_listener_join_handle_option: Option<JoinHandle<ListenerMessageHandler<TcpListenerThread<Game>>>>,
     tcp_inputs: Vec<Sender<TcpInput>>,
     tcp_outputs: Vec<Sender<TcpOutput<Game>>>,
     udp_socket: Option<UdpSocket>,

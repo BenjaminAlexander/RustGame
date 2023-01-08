@@ -24,16 +24,7 @@ pub use self::thread::{
     ThreadBuilderTrait,
     ThreadBuilder,
 };
-pub use self::messagehandlingthread::{
-    ChannelEvent,
-    WaitOrTry,
-    EventOrStop,
-    EventSender,
-    EventHandlerTrait,
-    MessageHandlingThreadBuilder,
-    MessageHandlingThreadJoinHandle,
-    EventHandlerResult
-};
+
 pub use self::listenerthread::{
     ListenerTrait,
     ListenerEvent,
@@ -52,6 +43,6 @@ mod thread;
 mod channeldriventhread;
 mod channel;
 mod messagechannel;
-mod messagehandlingthread;
 mod listenerthread;
+pub(crate) mod eventhandling;
 

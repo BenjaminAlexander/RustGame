@@ -1,7 +1,6 @@
 use std::ops::ControlFlow;
-use std::ops::ControlFlow::*;
-use crate::threading::{ChannelEvent, WaitOrTry, EventHandlerTrait, EventHandlerResult};
-use crate::threading::messagehandlingthread::ReceivedEventHolder;
+use std::ops::ControlFlow::Continue;
+use crate::threading::eventhandling::{ChannelEvent, EventHandlerResult, EventHandlerTrait, ReceivedEventHolder, WaitOrTryForNextEvent};
 
 //TODO: use local enums
 
@@ -91,10 +90,10 @@ impl<T: ListenerTrait> EventHandlerTrait for ListenerMessageHandler<T> {
 
         match event {
             ChannelEvent::ReceivedEvent(message) => {
-                return Continue(WaitOrTry::TryForNextEvent(self.on_event(ListenerEvent::Message(message))?));
+                return Continue(WaitOrTryForNextEvent::TryForNextEvent(self.on_event(ListenerEvent::Message(message))?));
             }
             ChannelEvent::ChannelEmpty => {
-                return Continue(WaitOrTry::TryForNextEvent(self.listen()?));
+                return Continue(WaitOrTryForNextEvent::TryForNextEvent(self.listen()?));
             }
             ChannelEvent::ChannelDisconnected => {
 

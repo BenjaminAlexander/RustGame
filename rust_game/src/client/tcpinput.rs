@@ -1,7 +1,7 @@
 use log::{error, info, warn};
 use std::net::TcpStream;
 use crate::gametime::GameTimer;
-use crate::threading::{ChannelDrivenThreadSender as Sender, ValueSender, EventHandlerTrait, ChannelEvent, WaitOrTry, EventHandlerResult};
+use crate::threading::{ChannelDrivenThreadSender as Sender, ValueSender};
 use crate::messaging::ToClientMessageTCP;
 use std::io;
 use std::ops::ControlFlow::*;
@@ -11,6 +11,7 @@ use crate::client::clientmanagerobserver::ClientManagerObserver;
 use crate::client::udpoutput::UdpOutput;
 use crate::gamemanager::{Manager, RenderReceiverMessage};
 use crate::interface::GameTrait;
+use crate::threading::eventhandling::{ChannelEvent, EventHandlerResult, EventHandlerTrait, WaitOrTryForNextEvent};
 
 pub struct TcpInput <Game: GameTrait> {
     player_index: Option<usize>,
@@ -54,7 +55,7 @@ impl<Game: GameTrait> EventHandlerTrait for TcpInput<Game> {
         return match event {
             ChannelEvent::ReceivedEvent(_) => {
                 warn!("This handler does not have any meaningful messages");
-                Continue(WaitOrTry::TryForNextEvent(self))
+                Continue(WaitOrTryForNextEvent::TryForNextEvent(self))
             }
             ChannelEvent::ChannelEmpty => {
                 self.handle_received_message();
@@ -98,7 +99,7 @@ impl<Game: GameTrait> TcpInput<Game> {
                 //info!("{:?}", message);
 
                 self.received_message_option = Some(message);
-                Continue(WaitOrTry::TryForNextEvent(self))
+                Continue(WaitOrTryForNextEvent::TryForNextEvent(self))
             }
             Err(error) => {
                 error!("Error: {:?}", error);
