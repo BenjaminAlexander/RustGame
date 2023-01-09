@@ -1,5 +1,5 @@
 use std::marker::PhantomData;
-use crate::threading::{OldReceiver, OldSender, channel, build_thread, old_channel};
+use crate::threading::{OldReceiver, OldSender, oldchannel, build_thread, old_channel};
 use crate::threading::thread::{Thread, ThreadBuilder};
 
 pub trait ChannelThread<ThreadReturnType, MessageReturnType> : Sized + Send + 'static

@@ -3,7 +3,7 @@ use chrono::Local;
 use timer::{Guard, Timer};
 use crate::threading::{ChannelDrivenThread, ChannelDrivenThreadSender as Sender, ThreadAction};
 use crate::util::RollingAverage;
-use crate::threading::sender::OldSendError;
+use crate::threading::oldsender::OldSendError;
 use log::{trace, info, warn};
 use crate::gametime::gametimerobserver::GameTimerObserverTrait;
 use crate::server::ServerConfig;

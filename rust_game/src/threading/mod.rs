@@ -14,8 +14,8 @@ pub use self::messagechannel::{
     ValueSendError
 };
 pub use self::channelthread::ChannelThread;
-pub use self::receiver::OldReceiver;
-pub use self::sender::{
+pub use self::oldreceiver::OldReceiver;
+pub use self::oldsender::{
     OldSender,
     OldSendError
 };
@@ -26,14 +26,14 @@ pub use self::thread::{
     ThreadBuilder,
 };
 
-pub use self::channel::old_channel;
+pub use self::oldchannel::old_channel;
 
-pub(crate) mod sender;
-mod receiver;
+pub(crate) mod oldsender;
+mod oldreceiver;
 mod channelthread;
 mod thread;
 mod channeldriventhread;
-mod channel;
+mod oldchannel;
 mod messagechannel;
 pub(crate) mod eventhandling;
 pub(crate) mod listener;
