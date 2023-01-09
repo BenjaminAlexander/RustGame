@@ -5,7 +5,7 @@ use crate::gametime::{TimeDuration, TimeMessage, TimeValue};
 use crate::messaging::{InputMessage, StateMessage, ToClientMessageUDP, Fragmenter, MAX_UDP_DATAGRAM_SIZE, ServerInputMessage};
 use std::io;
 use crate::server::remoteudppeer::RemoteUdpPeer;
-use crate::threading::{ChannelThread, Receiver, ChannelDrivenThreadSender as Sender, ThreadAction};
+use crate::threading::{ChannelThread, OldReceiver, ChannelDrivenThreadSender as Sender, ThreadAction};
 use std::marker::PhantomData;
 use crate::util::RollingAverage;
 
@@ -79,7 +79,7 @@ impl<Game: GameTrait> UdpOutput<Game> {
 
 impl<Game: GameTrait> ChannelThread<(), ThreadAction> for UdpOutput<Game> {
 
-    fn run(mut self, receiver: Receiver<Self, ThreadAction>) -> () {
+    fn run(mut self, receiver: OldReceiver<Self, ThreadAction>) -> () {
 
         loop {
             trace!("Waiting.");

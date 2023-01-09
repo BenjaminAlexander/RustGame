@@ -4,7 +4,7 @@ use std::net::{UdpSocket, SocketAddrV4};
 use crate::messaging::{InputMessage, ToServerMessageUDP, InitialInformation, MAX_UDP_DATAGRAM_SIZE, Fragmenter};
 use std::io;
 use std::sync::mpsc::TryRecvError;
-use crate::threading::{ChannelThread, Receiver, ChannelDrivenThreadSender as Sender, ThreadAction};
+use crate::threading::{ChannelThread, OldReceiver, ChannelDrivenThreadSender as Sender, ThreadAction};
 
 pub struct UdpOutput<Game: GameTrait> {
     server_address: SocketAddrV4,
@@ -49,7 +49,7 @@ impl<Game: GameTrait> UdpOutput<Game> {
 
 impl<Game: GameTrait> ChannelThread<(), ThreadAction> for UdpOutput<Game> {
 
-    fn run(mut self, receiver: Receiver<Self, ThreadAction>) -> () {
+    fn run(mut self, receiver: OldReceiver<Self, ThreadAction>) -> () {
 
         loop {
             loop {

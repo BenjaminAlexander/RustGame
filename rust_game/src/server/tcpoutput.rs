@@ -1,6 +1,6 @@
 use log::{debug, info};
 use std::net::TcpStream;
-use crate::threading::{ChannelDrivenThreadSender as Sender, ChannelThread, Receiver, ThreadAction};
+use crate::threading::{ChannelDrivenThreadSender as Sender, ChannelThread, OldReceiver, ThreadAction};
 use std::io;
 use crate::messaging::{ToClientMessageTCP, InitialInformation};
 use std::io::Write;
@@ -29,7 +29,7 @@ impl<Game: GameTrait> TcpOutput<Game> {
 
 impl<Game: GameTrait> ChannelThread<(), ThreadAction> for TcpOutput<Game> {
 
-    fn run(mut self, receiver: Receiver<Self, ThreadAction>) -> () {
+    fn run(mut self, receiver: OldReceiver<Self, ThreadAction>) -> () {
 
         loop {
 

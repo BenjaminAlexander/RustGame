@@ -1,8 +1,8 @@
 use std::sync::mpsc::{Sender as MpscSender, Receiver as MpscReceiver};
-use crate::threading::{Sender, Receiver};
+use crate::threading::{OldSender, OldReceiver};
 use std::sync::mpsc;
 
-pub fn channel<T: Send + 'static, U>() -> (Sender<T, U>, Receiver<T, U>) {
+pub fn old_channel<T: Send + 'static, U>() -> (OldSender<T, U>, OldReceiver<T, U>) {
     let (sender, receiver): (MpscSender<Box<dyn FnOnce(&mut T) -> U + Send + 'static>>, MpscReceiver<Box<dyn FnOnce(&mut T) -> U + Send + 'static>>) = mpsc::channel();
-    (Sender::<T, U>::new(sender), Receiver::<T, U>::new(receiver))
+    (OldSender::<T, U>::new(sender), OldReceiver::<T, U>::new(receiver))
 }

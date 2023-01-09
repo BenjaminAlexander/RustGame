@@ -8,9 +8,8 @@ use crate::threading::listener::ChannelEvent::{ChannelDisconnected, ChannelEmpty
 use crate::threading::listener::eventhandler::ListenerState::{ReadyToListen, WaitingForChannelEmptyAfterListen};
 use crate::threading::listener::ListenedOrDidNotListen::{DidNotListen, Listened};
 
-type EventResult<T> = ControlFlow<T::ThreadReturn, ListenerState<T>>;
+type EventResult<T> = ControlFlow<<T as ListenerTrait>::ThreadReturn, ListenerState<T>>;
 
-//TODO: make struct
 pub(super) enum ListenerState<T: ListenerTrait> {
     WaitingForChannelEmptyAfterListen(T, ListenedValueHolder<T>),
     ReadyToListen(T),

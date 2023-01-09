@@ -1,6 +1,6 @@
 use log::{info, warn};
 use crate::messaging::{MAX_UDP_DATAGRAM_SIZE, ToServerMessageUDP, FragmentAssembler, MessageFragment};
-use crate::threading::{ChannelThread, Receiver, ChannelDrivenThreadSender as Sender, ThreadAction};
+use crate::threading::{ChannelThread, OldReceiver, ChannelDrivenThreadSender as Sender, ThreadAction};
 use crate::interface::GameTrait;
 use std::net::{UdpSocket, SocketAddr, IpAddr};
 use std::io;
@@ -125,7 +125,7 @@ impl<Game: GameTrait> UdpInput<Game> {
 
 impl<Game: GameTrait> ChannelThread<(), ThreadAction> for UdpInput<Game> {
 
-    fn run(mut self, receiver: Receiver<Self, ThreadAction>) -> () {
+    fn run(mut self, receiver: OldReceiver<Self, ThreadAction>) -> () {
 
         info!("Starting.");
 

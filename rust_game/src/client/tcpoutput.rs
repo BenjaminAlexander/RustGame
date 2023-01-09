@@ -1,6 +1,6 @@
 use log::info;
 use std::net::TcpStream;
-use crate::threading::{ChannelThread, Receiver, ThreadAction};
+use crate::threading::{ChannelThread, OldReceiver, ThreadAction};
 use std::io;
 
 //TODO: Send response to time messages to calculate ping
@@ -20,7 +20,7 @@ impl TcpOutput {
 
 impl ChannelThread<(), ThreadAction> for TcpOutput {
 
-    fn run(mut self, receiver: Receiver<Self, ThreadAction>) -> () {
+    fn run(mut self, receiver: OldReceiver<Self, ThreadAction>) -> () {
         loop {
             match receiver.recv(&mut self) {
                 Ok(ThreadAction::Continue) => {}

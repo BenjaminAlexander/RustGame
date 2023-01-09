@@ -1,17 +1,17 @@
 use std::marker::PhantomData;
-use crate::threading::{Receiver, Sender, channel, build_thread};
+use crate::threading::{OldReceiver, OldSender, channel, build_thread, old_channel};
 use crate::threading::thread::{Thread, ThreadBuilder};
 
 pub trait ChannelThread<ThreadReturnType, MessageReturnType> : Sized + Send + 'static
     where ThreadReturnType: Send + 'static,
         MessageReturnType: 'static {
 
-    fn build(self) -> (Sender<Self, MessageReturnType>, ThreadBuilder<RawChannelThread<Self, ThreadReturnType, MessageReturnType>>) {
-        let (sender, receiver) = channel();
+    fn build(self) -> (OldSender<Self, MessageReturnType>, ThreadBuilder<RawChannelThread<Self, ThreadReturnType, MessageReturnType>>) {
+        let (sender, receiver) = old_channel();
         self.build_from_channel(sender, receiver)
     }
 
-    fn build_from_channel(self, sender: Sender<Self, MessageReturnType>, receiver: Receiver<Self, MessageReturnType>) -> (Sender<Self, MessageReturnType>, ThreadBuilder<RawChannelThread<Self, ThreadReturnType, MessageReturnType>>) {
+    fn build_from_channel(self, sender: OldSender<Self, MessageReturnType>, receiver: OldReceiver<Self, MessageReturnType>) -> (OldSender<Self, MessageReturnType>, ThreadBuilder<RawChannelThread<Self, ThreadReturnType, MessageReturnType>>) {
 
         let thread = RawChannelThread{
             receiver,
@@ -22,7 +22,7 @@ pub trait ChannelThread<ThreadReturnType, MessageReturnType> : Sized + Send + 's
         (sender, build_thread(thread))
     }
 
-    fn run(self, receiver: Receiver<Self, MessageReturnType>) -> ThreadReturnType;
+    fn run(self, receiver: OldReceiver<Self, MessageReturnType>) -> ThreadReturnType;
 }
 
 pub struct RawChannelThread<ChannelThreadType, ThreadReturnType, MessageReturnType>
@@ -30,7 +30,7 @@ pub struct RawChannelThread<ChannelThreadType, ThreadReturnType, MessageReturnTy
           ThreadReturnType: Send + 'static,
           MessageReturnType: 'static {
 
-    receiver: Receiver<ChannelThreadType, MessageReturnType>,
+    receiver: OldReceiver<ChannelThreadType, MessageReturnType>,
     channel_thread: ChannelThreadType,
     u_phantom: PhantomData<ThreadReturnType>
 }

@@ -1,6 +1,6 @@
 use log::{trace, info};
 
-use crate::threading::{ChannelThread, Receiver, Sender, SendError};
+use crate::threading::{ChannelThread, OldReceiver, OldSender, OldSendError};
 use std::sync::mpsc::{TryRecvError};
 use crate::threading::channeldriventhread::ThreadAction::{Continue, Stop};
 
@@ -9,11 +9,11 @@ pub enum ThreadAction {
     Stop
 }
 
-pub type ChannelDrivenThreadSender<T> = Sender<T, ThreadAction>;
+pub type ChannelDrivenThreadSender<T> = OldSender<T, ThreadAction>;
 
-pub type ChannelDrivenThreadReceiver<T> = Receiver<T, ThreadAction>;
+pub type ChannelDrivenThreadReceiver<T> = OldReceiver<T, ThreadAction>;
 
-pub type ChannelDrivenThreadSenderError<T> = SendError<T, ThreadAction>;
+pub type ChannelDrivenThreadSenderError<T> = OldSendError<T, ThreadAction>;
 
 pub trait ChannelDrivenThread<T>: Send + 'static
     where T: Send + 'static {
@@ -32,7 +32,7 @@ pub trait ChannelDrivenThread<T>: Send + 'static
 impl<T, U: ChannelDrivenThread<T>> ChannelThread<T, ThreadAction> for U
     where T: Send + 'static {
 
-    fn run(mut self, receiver: Receiver<Self, ThreadAction>) -> T {
+    fn run(mut self, receiver: OldReceiver<Self, ThreadAction>) -> T {
         info!("Starting");
 
         loop {

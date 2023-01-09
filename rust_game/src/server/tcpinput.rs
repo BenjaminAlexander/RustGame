@@ -4,7 +4,7 @@ use log::{error, info};
 use rmp_serde::decode::Error;
 
 use crate::messaging::{ToServerMessageTCP};
-use crate::threading::{ChannelThread, Receiver, ThreadAction};
+use crate::threading::{ChannelThread, OldReceiver, ThreadAction};
 use std::io;
 use std::sync::mpsc::TryRecvError;
 
@@ -22,7 +22,7 @@ impl TcpInput {
 impl ChannelThread<(), ThreadAction> for TcpInput {
 
     //TODO: check player ID on message
-    fn run(mut self, receiver: Receiver<Self, ThreadAction>) {
+    fn run(mut self, receiver: OldReceiver<Self, ThreadAction>) {
         info!("Starting");
 
         let receiver = receiver;

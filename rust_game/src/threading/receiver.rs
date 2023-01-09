@@ -1,13 +1,13 @@
 use std::sync::mpsc::{Receiver as MpscReceiver, RecvError, TryRecvError, RecvTimeoutError};
 use core::time::Duration;
 
-pub struct Receiver<T: ?Sized, U> {
+pub struct OldReceiver<T: ?Sized, U> {
     receiver: MpscReceiver<Box<dyn FnOnce(&mut T) -> U + Send + 'static>>
 }
 
-impl<T, U> Receiver<T, U> {
+impl<T, U> OldReceiver<T, U> {
     pub fn new(receiver: MpscReceiver<Box<dyn FnOnce(&mut T) -> U + Send + 'static>>) -> Self {
-        Receiver { receiver }
+        OldReceiver { receiver }
     }
 
     pub fn recv(&self, t: &mut T) -> Result<U, RecvError> {

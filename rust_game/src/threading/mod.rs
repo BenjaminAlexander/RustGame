@@ -14,10 +14,10 @@ pub use self::messagechannel::{
     ValueSendError
 };
 pub use self::channelthread::ChannelThread;
-pub use self::receiver::Receiver;
+pub use self::receiver::OldReceiver;
 pub use self::sender::{
-    Sender,
-    SendError
+    OldSender,
+    OldSendError
 };
 pub use self::thread::{
     build_thread,
@@ -26,7 +26,7 @@ pub use self::thread::{
     ThreadBuilder,
 };
 
-pub use self::channel::channel;
+pub use self::channel::old_channel;
 
 pub(crate) mod sender;
 mod receiver;
