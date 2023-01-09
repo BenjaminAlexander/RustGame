@@ -5,7 +5,7 @@ use crate::threading::eventhandling::{ChannelEvent, Sender, WaitOrTryForNextEven
 use crate::threading::eventhandling::thread::Thread;
 use crate::threading::eventhandling::threadbuilder::ThreadBuilder;
 
-pub type ChannelEventResult<T: EventHandlerTrait> = ControlFlow<T::ThreadReturn, WaitOrTryForNextEvent<T>>;
+pub type ChannelEventResult<T> = ControlFlow<<T as EventHandlerTrait>::ThreadReturn, WaitOrTryForNextEvent<T>>;
 
 pub trait EventHandlerTrait: Send + Sized + 'static {
     type Event: Send + 'static;
