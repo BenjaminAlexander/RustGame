@@ -1,15 +1,15 @@
 use crate::gamemanager::{ManagerObserverTrait, RenderReceiverMessage, StepMessage};
 use crate::interface::GameTrait;
 use crate::messaging::{ServerInputMessage, StateMessage};
-use crate::threading::ValueSender;
+use crate::threading::channel::Sender;
 
 pub struct ClientManagerObserver<Game: GameTrait> {
-    render_receiver_sender: ValueSender<RenderReceiverMessage<Game>>
+    render_receiver_sender: Sender<RenderReceiverMessage<Game>>
 }
 
 impl<Game: GameTrait> ClientManagerObserver<Game> {
 
-    pub fn new(render_receiver_sender: ValueSender<RenderReceiverMessage<Game>>) -> Self{
+    pub fn new(render_receiver_sender: Sender<RenderReceiverMessage<Game>>) -> Self{
         Self{render_receiver_sender}
     }
 

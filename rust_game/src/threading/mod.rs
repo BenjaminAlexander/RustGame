@@ -5,14 +5,6 @@ pub use self::channeldriventhread::{
     ChannelDrivenThreadSenderError,
     ChannelDrivenThreadReceiver
 };
-
-pub use self::messagechannel::{
-    message_channel,
-    ValueSender,
-    ValueReceiver,
-    TryRecvError,
-    SendError
-};
 pub use self::channelthread::ChannelThread;
 pub use self::oldreceiver::OldReceiver;
 pub use self::oldsender::{
@@ -34,7 +26,7 @@ mod channelthread;
 mod thread;
 mod channeldriventhread;
 mod oldchannel;
-mod messagechannel;
 pub(crate) mod eventhandling;
 pub(crate) mod listener;
+pub(crate) mod channel;
 

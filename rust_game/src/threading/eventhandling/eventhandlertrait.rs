@@ -1,6 +1,6 @@
 use std::ops::ControlFlow;
 use crate::threading;
-use crate::threading::message_channel;
+use crate::threading::channel::message_channel;
 use crate::threading::eventhandling::{ChannelEvent, Sender, WaitOrTryForNextEvent};
 use crate::threading::eventhandling::thread::Thread;
 use crate::threading::eventhandling::threadbuilder::ThreadBuilder;

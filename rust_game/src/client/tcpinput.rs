@@ -1,7 +1,7 @@
 use log::{error, info, warn};
 use std::net::TcpStream;
 use crate::gametime::GameTimer;
-use crate::threading::{ChannelDrivenThreadSender, ValueSender};
+use crate::threading::ChannelDrivenThreadSender;
 use crate::messaging::ToClientMessageTCP;
 use std::io;
 use std::ops::ControlFlow::*;
@@ -11,6 +11,7 @@ use crate::client::clientmanagerobserver::ClientManagerObserver;
 use crate::client::udpoutput::UdpOutput;
 use crate::gamemanager::{Manager, RenderReceiverMessage};
 use crate::interface::GameTrait;
+use crate::threading::channel::Sender;
 use crate::threading::eventhandling::{ChannelEvent, ChannelEventResult, EventHandlerTrait, WaitOrTryForNextEvent};
 
 pub struct TcpInput <Game: GameTrait> {
@@ -20,7 +21,7 @@ pub struct TcpInput <Game: GameTrait> {
     manager_sender: ChannelDrivenThreadSender<Manager<ClientManagerObserver<Game>>>,
     client_core_sender: ChannelDrivenThreadSender<ClientCore<Game>>,
     udp_output_sender: ChannelDrivenThreadSender<UdpOutput<Game>>,
-    render_data_sender: ValueSender<RenderReceiverMessage<Game>>,
+    render_data_sender: Sender<RenderReceiverMessage<Game>>,
     received_message_option: Option<ToClientMessageTCP<Game>>
 }
 
@@ -31,7 +32,7 @@ impl<Game: GameTrait> TcpInput<Game> {
         manager_sender: ChannelDrivenThreadSender<Manager<ClientManagerObserver<Game>>>,
         client_core_sender: ChannelDrivenThreadSender<ClientCore<Game>>,
         udp_output_sender: ChannelDrivenThreadSender<UdpOutput<Game>>,
-        render_data_sender: ValueSender<RenderReceiverMessage<Game>>,
+        render_data_sender: Sender<RenderReceiverMessage<Game>>,
         tcp_stream: &TcpStream) -> io::Result<Self> {
 
         Ok(Self {

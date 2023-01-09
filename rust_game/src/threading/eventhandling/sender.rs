@@ -1,10 +1,9 @@
-use crate::threading;
+use crate::threading::channel;
 use crate::threading::eventhandling::eventhandlertrait::EventHandlerTrait;
-use crate::threading::{ValueSender};
 use crate::threading::eventhandling::EventOrStopThread;
 use crate::threading::eventhandling::EventOrStopThread::{Event, StopThread};
 
-pub type SendError<T> = threading::SendError<EventOrStopThread<T>>;
+pub type SendError<T> = channel::SendError<EventOrStopThread<T>>;
 
 pub type SendResult<T> = Result<(), SendError<T>>;
 
@@ -13,7 +12,7 @@ pub struct SentEventHolder<T> {
 }
 
 pub struct Sender<T: EventHandlerTrait> {
-    pub(super) sender: ValueSender<EventOrStopThread<T>>
+    pub(super) sender: channel::Sender<EventOrStopThread<T>>
 }
 
 impl<T: EventHandlerTrait> Sender<T>{

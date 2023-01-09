@@ -1,13 +1,13 @@
 use std::ops::ControlFlow::{Break, Continue};
 use log::info;
 use crate::threading;
+use crate::threading::channel::{TryRecvError, Receiver};
 use crate::threading::eventhandling::{ChannelEventResult, EventHandlerTrait, EventOrStopThread, ReceivedEventHolder, SentEventHolder};
 use crate::threading::eventhandling::EventOrStopThread::{Event, StopThread};
-use crate::threading::{ValueReceiver, TryRecvError};
 use crate::threading::eventhandling::ChannelEvent::{ChannelDisconnected, ChannelEmpty, ReceivedEvent};
 use crate::threading::eventhandling::WaitOrTryForNextEvent::{TryForNextEvent, WaitForNextEvent};
 
-type EventReceiver<T> = ValueReceiver<EventOrStopThread<T>>;
+type EventReceiver<T> = Receiver<EventOrStopThread<T>>;
 
 pub(in crate::threading) struct Thread<T: EventHandlerTrait> {
     pub(super) receiver: EventReceiver<T>,
