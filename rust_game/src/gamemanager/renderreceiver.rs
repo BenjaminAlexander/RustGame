@@ -1,7 +1,7 @@
 use log::{info, warn};
 use crate::interface::{InterpolationArg, GameTrait};
 use crate::gamemanager::stepmessage::StepMessage;
-use crate::threading::{ValueReceiver, message_channel, ValueSender, ValueTryRecvError};
+use crate::threading::{ValueReceiver, message_channel, ValueSender, TryRecvError};
 use crate::gametime::{TimeMessage, TimeValue, TimeDuration};
 use crate::messaging::InitialInformation;
 
@@ -68,9 +68,9 @@ impl<Game: GameTrait> RenderReceiver<Game> {
                     break;
                 }
 
-                Err(ValueTryRecvError::Empty) => break,
+                Err(TryRecvError::Empty) => break,
 
-                Err(ValueTryRecvError::Disconnected) => {
+                Err(TryRecvError::Disconnected) => {
                     info!("Channel disconnected.");
                     //TODO: notify the caller if the channel is disconnected
                     break;

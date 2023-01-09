@@ -3,7 +3,7 @@ use log::info;
 use crate::threading;
 use crate::threading::eventhandling::{ChannelEventResult, EventHandlerTrait, EventOrStopThread, ReceivedEventHolder, SentEventHolder};
 use crate::threading::eventhandling::EventOrStopThread::{Event, StopThread};
-use crate::threading::{ValueReceiver, ValueTryRecvError};
+use crate::threading::{ValueReceiver, TryRecvError};
 use crate::threading::eventhandling::ChannelEvent::{ChannelDisconnected, ChannelEmpty, ReceivedEvent};
 use crate::threading::eventhandling::WaitOrTryForNextEvent::{TryForNextEvent, WaitForNextEvent};
 
@@ -30,8 +30,8 @@ impl<T: EventHandlerTrait> Thread<T> {
         return match receiver.try_recv() {
             Ok(Event(sent_event_holder)) => Self::on_message(message_handler, sent_event_holder),
             Ok(StopThread) => Break(Self::on_stop(message_handler)),
-            Err(ValueTryRecvError::Disconnected) => Self::on_channel_disconnected(message_handler),
-            Err(ValueTryRecvError::Empty) => Self::on_channel_empty(message_handler)
+            Err(TryRecvError::Disconnected) => Self::on_channel_disconnected(message_handler),
+            Err(TryRecvError::Empty) => Self::on_channel_empty(message_handler)
         };
     }
 

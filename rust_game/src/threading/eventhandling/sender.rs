@@ -1,9 +1,10 @@
+use crate::threading;
 use crate::threading::eventhandling::eventhandlertrait::EventHandlerTrait;
-use crate::threading::{ValueSender, ValueSendError};
+use crate::threading::{ValueSender};
 use crate::threading::eventhandling::EventOrStopThread;
 use crate::threading::eventhandling::EventOrStopThread::{Event, StopThread};
 
-pub type SendError<T> = ValueSendError<EventOrStopThread<T>>;
+pub type SendError<T> = threading::SendError<EventOrStopThread<T>>;
 
 pub type SendResult<T> = Result<(), SendError<T>>;
 

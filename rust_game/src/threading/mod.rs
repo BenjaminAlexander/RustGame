@@ -10,8 +10,8 @@ pub use self::messagechannel::{
     message_channel,
     ValueSender,
     ValueReceiver,
-    ValueTryRecvError,
-    ValueSendError
+    TryRecvError,
+    SendError
 };
 pub use self::channelthread::ChannelThread;
 pub use self::oldreceiver::OldReceiver;
