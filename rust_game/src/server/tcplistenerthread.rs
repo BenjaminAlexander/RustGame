@@ -1,7 +1,7 @@
 use std::marker::PhantomData;
 use std::net::{Ipv4Addr, SocketAddr, SocketAddrV4, TcpListener, TcpStream};
 use std::ops::ControlFlow::*;
-use log::{error, info};
+use log::{error, info, warn};
 use crate::interface::GameTrait;
 use crate::server::ServerCore;
 use crate::threading::ChannelDrivenThreadSender;
@@ -98,7 +98,10 @@ impl<Game: GameTrait> ListenerTrait for TcpListenerThread<Game> {
             ChannelEvent::ChannelEmptyAfterListen(heard_value) => self.handle_tcp_stream_and_socket_addr(heard_value),
             ChannelEvent::ReceivedEvent(received_event_holder) =>
                 match received_event_holder.move_event() {
-                    () => Continue(self)
+                    () => {
+                        warn!("This listener doesn't have meaningful messages, but one was sent.");
+                        Continue(self)
+                    }
                 }
             ChannelEvent::ChannelDisconnected => Break(self.on_stop())
         }

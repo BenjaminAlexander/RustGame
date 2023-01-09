@@ -1,3 +1,5 @@
+//TODO: split time and game time
+
 mod timereceived;
 mod timevalue;
 mod timeduration;

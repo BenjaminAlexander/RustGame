@@ -57,7 +57,7 @@ impl<T: ListenerTrait> ListenerState<T> {
                 ReadyToListen(listener) => listener
             }.listen()?
         {
-            Listened(listener, value) => WaitingForChannelEmptyAfterListen(listener, ListenedValueHolder { value }),
+            Listened(listener, value) => WaitingForChannelEmptyAfterListen(listener, ListenedValueHolder::new(value)),
             DidNotListen(listener) => ReadyToListen(listener)
         });
     }
