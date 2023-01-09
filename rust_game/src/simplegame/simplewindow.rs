@@ -2,7 +2,7 @@ use opengl_graphics::{GlGraphics, OpenGL};
 use crate::gamemanager::RenderReceiver;
 use crate::simplegame::SimpleInputEvent;
 use crate::client::ClientCore;
-use crate::threading::{ChannelDrivenThreadSender as Sender};
+use crate::threading::ChannelDrivenThreadSender;
 use piston::{RenderArgs, WindowSettings, Events, EventSettings, RenderEvent, Event};
 use piston::input::Input as PistonInput;
 use graphics::*;
@@ -13,14 +13,14 @@ use crate::simplegame::simplegameimpl::SimpleGameImpl;
 pub struct SimpleWindow {
     window_name: String,
     render_receiver: RenderReceiver<SimpleGameImpl>,
-    client_core_sender_option: Option<Sender<ClientCore<SimpleGameImpl>>>
+    client_core_sender_option: Option<ChannelDrivenThreadSender<ClientCore<SimpleGameImpl>>>
 }
 
 impl SimpleWindow {
 
     pub fn new(window_name: String,
                render_receiver: RenderReceiver<SimpleGameImpl>,
-               client_core_sender_option: Option<Sender<ClientCore<SimpleGameImpl>>>) -> Self {
+               client_core_sender_option: Option<ChannelDrivenThreadSender<ClientCore<SimpleGameImpl>>>) -> Self {
 
         return Self{
             window_name,

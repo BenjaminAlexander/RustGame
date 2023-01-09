@@ -1,6 +1,6 @@
 use log::{debug, info};
 use std::net::TcpStream;
-use crate::threading::{ChannelDrivenThreadSender as Sender, ChannelThread, OldReceiver, ThreadAction};
+use crate::threading::{ChannelDrivenThreadSender, ChannelThread, OldReceiver, ThreadAction};
 use std::io;
 use crate::messaging::{ToClientMessageTCP, InitialInformation};
 use std::io::Write;
@@ -45,7 +45,7 @@ impl<Game: GameTrait> ChannelThread<(), ThreadAction> for TcpOutput<Game> {
     }
 }
 
-impl<Game: GameTrait> Sender<TcpOutput<Game>> {
+impl<Game: GameTrait> ChannelDrivenThreadSender<TcpOutput<Game>> {
 
     pub fn send_initial_information(&self, server_config: ServerConfig, player_count: usize, initial_state: Game::State) {
         self.send(move |tcp_output|{

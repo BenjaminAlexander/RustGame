@@ -3,7 +3,7 @@ use std::net::{TcpStream, Ipv4Addr, SocketAddrV4, UdpSocket};
 use log::{error, info};
 use crate::interface::GameTrait;
 use crate::server::tcpinput::TcpInput;
-use crate::threading::{ChannelDrivenThread, ChannelThread, ChannelDrivenThreadSender as Sender, ChannelDrivenThreadSenderError as SendError, ThreadAction, ThreadBuilderTrait, listener};
+use crate::threading::{ChannelDrivenThread, ChannelThread, ChannelDrivenThreadSender, ChannelDrivenThreadSenderError as SendError, ThreadAction, ThreadBuilderTrait, listener};
 use crate::server::{TcpListenerThread, ServerConfig};
 use crate::server::tcpoutput::TcpOutput;
 use crate::gametime::{GameTimer, TimeMessage};
@@ -22,12 +22,12 @@ pub struct ServerCore<Game: GameTrait> {
     game_is_started: bool,
     server_config: ServerConfig,
     tcp_listener_join_handle_option: Option<listener::JoinHandle<TcpListenerThread<Game>>>,
-    tcp_inputs: Vec<Sender<TcpInput>>,
-    tcp_outputs: Vec<Sender<TcpOutput<Game>>>,
+    tcp_inputs: Vec<ChannelDrivenThreadSender<TcpInput>>,
+    tcp_outputs: Vec<ChannelDrivenThreadSender<TcpOutput<Game>>>,
     udp_socket: Option<UdpSocket>,
-    udp_outputs: Vec<Sender<UdpOutput<Game>>>,
-    udp_input_sender: Option<Sender<UdpInput<Game>>>,
-    manager_sender: Option<Sender<Manager<ServerManagerObserver<Game>>>>,
+    udp_outputs: Vec<ChannelDrivenThreadSender<UdpOutput<Game>>>,
+    udp_input_sender: Option<ChannelDrivenThreadSender<UdpInput<Game>>>,
+    manager_sender: Option<ChannelDrivenThreadSender<Manager<ServerManagerObserver<Game>>>>,
     drop_steps_before: usize
 }
 
@@ -61,7 +61,7 @@ impl<Game: GameTrait> ServerCore<Game> {
 
 }
 
-impl<Game: GameTrait> Sender<ServerCore<Game>> {
+impl<Game: GameTrait> ChannelDrivenThreadSender<ServerCore<Game>> {
 
     pub fn start_listener(&self) -> Result<(), SendError<ServerCore<Game>>> {
 

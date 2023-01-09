@@ -1,7 +1,7 @@
 use crate::gametime::{TimeValue, TimeDuration, TimeMessage, TimeReceived};
 use chrono::Local;
 use timer::{Guard, Timer};
-use crate::threading::{ChannelDrivenThread, ChannelDrivenThreadSender as Sender, ThreadAction};
+use crate::threading::{ChannelDrivenThread, ChannelDrivenThreadSender, ThreadAction};
 use crate::util::RollingAverage;
 use crate::threading::oldsender::OldSendError;
 use log::{trace, info, warn};
@@ -50,7 +50,7 @@ impl<Observer: GameTimerObserverTrait> ChannelDrivenThread<()> for GameTimer<Obs
     }
 }
 
-impl<Observer: GameTimerObserverTrait> Sender<GameTimer<Observer>> {
+impl<Observer: GameTimerObserverTrait> ChannelDrivenThreadSender<GameTimer<Observer>> {
 
     pub fn start(&self) -> Result<(), OldSendError<GameTimer<Observer>, ThreadAction>> {
         let clone = self.clone();

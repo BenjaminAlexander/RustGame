@@ -1,7 +1,7 @@
 use log::{error, info, warn};
 use std::net::TcpStream;
 use crate::gametime::GameTimer;
-use crate::threading::{ChannelDrivenThreadSender as Sender, ValueSender};
+use crate::threading::{ChannelDrivenThreadSender, ValueSender};
 use crate::messaging::ToClientMessageTCP;
 use std::io;
 use std::ops::ControlFlow::*;
@@ -16,10 +16,10 @@ use crate::threading::eventhandling::{ChannelEvent, ChannelEventResult, EventHan
 pub struct TcpInput <Game: GameTrait> {
     player_index: Option<usize>,
     tcp_stream: TcpStream,
-    game_timer_sender: Sender<GameTimer<ClientGameTimerObserver<Game>>>,
-    manager_sender: Sender<Manager<ClientManagerObserver<Game>>>,
-    client_core_sender: Sender<ClientCore<Game>>,
-    udp_output_sender: Sender<UdpOutput<Game>>,
+    game_timer_sender: ChannelDrivenThreadSender<GameTimer<ClientGameTimerObserver<Game>>>,
+    manager_sender: ChannelDrivenThreadSender<Manager<ClientManagerObserver<Game>>>,
+    client_core_sender: ChannelDrivenThreadSender<ClientCore<Game>>,
+    udp_output_sender: ChannelDrivenThreadSender<UdpOutput<Game>>,
     render_data_sender: ValueSender<RenderReceiverMessage<Game>>,
     received_message_option: Option<ToClientMessageTCP<Game>>
 }
@@ -27,10 +27,10 @@ pub struct TcpInput <Game: GameTrait> {
 impl<Game: GameTrait> TcpInput<Game> {
 
     pub fn new(
-        game_timer_sender: Sender<GameTimer<ClientGameTimerObserver<Game>>>,
-        manager_sender: Sender<Manager<ClientManagerObserver<Game>>>,
-        client_core_sender: Sender<ClientCore<Game>>,
-        udp_output_sender: Sender<UdpOutput<Game>>,
+        game_timer_sender: ChannelDrivenThreadSender<GameTimer<ClientGameTimerObserver<Game>>>,
+        manager_sender: ChannelDrivenThreadSender<Manager<ClientManagerObserver<Game>>>,
+        client_core_sender: ChannelDrivenThreadSender<ClientCore<Game>>,
+        udp_output_sender: ChannelDrivenThreadSender<UdpOutput<Game>>,
         render_data_sender: ValueSender<RenderReceiverMessage<Game>>,
         tcp_stream: &TcpStream) -> io::Result<Self> {
 

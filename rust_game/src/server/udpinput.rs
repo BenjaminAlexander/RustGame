@@ -1,6 +1,6 @@
 use log::{info, warn};
 use crate::messaging::{MAX_UDP_DATAGRAM_SIZE, ToServerMessageUDP, FragmentAssembler, MessageFragment};
-use crate::threading::{ChannelThread, OldReceiver, ChannelDrivenThreadSender as Sender, ThreadAction};
+use crate::threading::{ChannelThread, OldReceiver, ChannelDrivenThreadSender, ThreadAction};
 use crate::interface::GameTrait;
 use std::net::{UdpSocket, SocketAddr, IpAddr};
 use std::io;
@@ -17,14 +17,14 @@ pub struct UdpInput<Game: GameTrait> {
     client_addresses: Vec<Option<ClientAddress>>,
     client_ip_set: HashSet<IpAddr>,
     fragment_assemblers: HashMap<SocketAddr, FragmentAssembler>,
-    core_sender: Sender<ServerCore<Game>>
+    core_sender: ChannelDrivenThreadSender<ServerCore<Game>>
 }
 
 impl<Game: GameTrait> UdpInput<Game> {
 
     pub fn new(
         socket: &UdpSocket,
-        core_sender: Sender<ServerCore<Game>>) -> io::Result<Self> {
+        core_sender: ChannelDrivenThreadSender<ServerCore<Game>>) -> io::Result<Self> {
 
         return Ok(Self{
             socket: socket.try_clone()?,
@@ -164,7 +164,7 @@ impl<Game: GameTrait> ChannelThread<(), ThreadAction> for UdpInput<Game> {
     }
 }
 
-impl<Game: GameTrait> Sender<UdpInput<Game>> {
+impl<Game: GameTrait> ChannelDrivenThreadSender<UdpInput<Game>> {
 
     pub fn on_client_address(&self, client_address: ClientAddress) {
         self.send(move |udp_input|{

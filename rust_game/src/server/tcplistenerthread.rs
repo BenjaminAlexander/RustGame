@@ -4,17 +4,17 @@ use std::ops::ControlFlow::*;
 use log::{error, info};
 use crate::interface::GameTrait;
 use crate::server::ServerCore;
-use crate::threading::ChannelDrivenThreadSender as Sender;
+use crate::threading::ChannelDrivenThreadSender;
 use crate::threading::listener::{ListenedOrDidNotListen, ListenedValueHolder, ChannelEvent, ListenerEventResult, ListenerTrait, ListenResult};
 
 pub struct TcpListenerThread<Game: GameTrait> {
     tcp_listener_option: Option<TcpListener>,
-    server_core_sender: Sender<ServerCore<Game>>,
+    server_core_sender: ChannelDrivenThreadSender<ServerCore<Game>>,
     phantom: PhantomData<Game>
 }
 
 impl<Game: GameTrait> TcpListenerThread<Game> {
-    pub fn new(server_core_sender: Sender<ServerCore<Game>>) -> Self {
+    pub fn new(server_core_sender: ChannelDrivenThreadSender<ServerCore<Game>>) -> Self {
         Self{
             tcp_listener_option: None,
             server_core_sender,

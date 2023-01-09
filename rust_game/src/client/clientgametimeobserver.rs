@@ -2,16 +2,16 @@ use crate::client::ClientCore;
 use crate::gamemanager::RenderReceiverMessage;
 use crate::gametime::{GameTimerObserverTrait, TimeMessage};
 use crate::interface::GameTrait;
-use crate::threading::{ChannelDrivenThreadSender as Sender, ValueSender};
+use crate::threading::{ChannelDrivenThreadSender, ValueSender};
 
 pub struct ClientGameTimerObserver<Game: GameTrait> {
-    core_sender: Sender<ClientCore<Game>>,
+    core_sender: ChannelDrivenThreadSender<ClientCore<Game>>,
     render_receiver_sender: ValueSender<RenderReceiverMessage<Game>>
 }
 
 impl<Game: GameTrait> ClientGameTimerObserver<Game> {
 
-    pub fn new(core_sender: Sender<ClientCore<Game>>,
+    pub fn new(core_sender: ChannelDrivenThreadSender<ClientCore<Game>>,
                render_receiver_sender: ValueSender<RenderReceiverMessage<Game>>) -> Self {
 
         Self {

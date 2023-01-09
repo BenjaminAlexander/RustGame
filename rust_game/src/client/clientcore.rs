@@ -1,7 +1,7 @@
 use std::net::{Ipv4Addr, SocketAddrV4, SocketAddr, TcpStream, UdpSocket};
 use std::str::FromStr;
 use crate::gametime::{GameTimer, TimeMessage};
-use crate::threading::{ChannelThread, ChannelDrivenThreadSender as Sender, ChannelDrivenThread, ThreadAction, ThreadBuilderTrait};
+use crate::threading::{ChannelThread, ChannelDrivenThreadSender, ChannelDrivenThread, ThreadAction, ThreadBuilderTrait};
 use crate::client::tcpinput::TcpInput;
 use crate::interface::GameTrait;
 use crate::client::tcpoutput::TcpOutput;
@@ -17,11 +17,11 @@ use crate::threading::eventhandling::{build_thread, JoinHandle};
 pub struct ClientCore<Game: GameTrait> {
     server_ip: String,
     input_event_handler: Game::ClientInputEventHandler,
-    manager_sender: Option<Sender<Manager<ClientManagerObserver<Game>>>>,
+    manager_sender: Option<ChannelDrivenThreadSender<Manager<ClientManagerObserver<Game>>>>,
     udp_input_join_handle_option: Option<JoinHandle<UdpInput<Game>>>,
-    udp_output_sender: Option<Sender<UdpOutput<Game>>>,
+    udp_output_sender: Option<ChannelDrivenThreadSender<UdpOutput<Game>>>,
     tcp_input_join_handle_option: Option<JoinHandle<TcpInput<Game>>>,
-    tcp_output_sender: Option<Sender<TcpOutput>>,
+    tcp_output_sender: Option<ChannelDrivenThreadSender<TcpOutput>>,
     initial_information: Option<InitialInformation<Game>>,
     last_time_message: Option<TimeMessage>
 }
@@ -50,7 +50,7 @@ impl<Game: GameTrait> ChannelDrivenThread<()> for ClientCore<Game> {
     }
 }
 
-impl<Game: GameTrait> Sender<ClientCore<Game>> {
+impl<Game: GameTrait> ChannelDrivenThreadSender<ClientCore<Game>> {
 
     pub fn connect(&self) -> RenderReceiver<Game> {
         let (render_receiver_sender, render_receiver) = RenderReceiver::<Game>::new();

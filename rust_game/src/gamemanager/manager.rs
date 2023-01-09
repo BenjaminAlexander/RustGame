@@ -1,7 +1,7 @@
 use std::collections::vec_deque::VecDeque;
 use log::{warn, trace};
 use crate::messaging::{StateMessage, InputMessage, InitialInformation, ServerInputMessage};
-use crate::threading::{ChannelDrivenThread, ChannelDrivenThreadSender as Sender, ThreadAction};
+use crate::threading::{ChannelDrivenThread, ChannelDrivenThreadSender, ThreadAction};
 use crate::gamemanager::step::Step;
 use crate::gametime::{TimeDuration, TimeValue};
 use std::sync::Arc;
@@ -184,7 +184,7 @@ impl<ManagerObserver: ManagerObserverTrait> ChannelDrivenThread<()> for Manager<
     }
 }
 
-impl<ManagerObserver: ManagerObserverTrait> Sender<Manager<ManagerObserver>> {
+impl<ManagerObserver: ManagerObserverTrait> ChannelDrivenThreadSender<Manager<ManagerObserver>> {
 
     pub fn drop_steps_before(&self, step :usize) {
         self.send(move |manager|{

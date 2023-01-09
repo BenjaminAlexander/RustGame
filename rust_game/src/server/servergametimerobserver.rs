@@ -3,19 +3,19 @@ use crate::gametime::{GameTimerObserverTrait, TimeMessage};
 use crate::interface::GameTrait;
 use crate::server::ServerCore;
 use crate::server::udpoutput::UdpOutput;
-use crate::threading::{ChannelDrivenThreadSender as Sender, ValueSender};
+use crate::threading::{ChannelDrivenThreadSender, ValueSender};
 
 pub struct ServerGameTimerObserver<Game: GameTrait> {
-    core_sender: Sender<ServerCore<Game>>,
+    core_sender: ChannelDrivenThreadSender<ServerCore<Game>>,
     render_receiver_sender: ValueSender<RenderReceiverMessage<Game>>,
-    udp_outputs: Vec<Sender<UdpOutput<Game>>>,
+    udp_outputs: Vec<ChannelDrivenThreadSender<UdpOutput<Game>>>,
 }
 
 impl<Game: GameTrait> ServerGameTimerObserver<Game> {
 
-    pub fn new(core_sender: Sender<ServerCore<Game>>,
+    pub fn new(core_sender: ChannelDrivenThreadSender<ServerCore<Game>>,
                render_receiver_sender: ValueSender<RenderReceiverMessage<Game>>,
-               udp_outputs: Vec<Sender<UdpOutput<Game>>>) -> Self {
+               udp_outputs: Vec<ChannelDrivenThreadSender<UdpOutput<Game>>>) -> Self {
 
         Self {
             core_sender,
