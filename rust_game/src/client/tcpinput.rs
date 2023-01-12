@@ -12,7 +12,8 @@ use crate::client::udpoutput::UdpOutput;
 use crate::gamemanager::{Manager, RenderReceiverMessage};
 use crate::interface::GameTrait;
 use crate::threading::channel::Sender;
-use crate::threading::eventhandling::{ChannelEvent, ChannelEventResult, EventHandlerTrait, WaitOrTryForNextEvent};
+use crate::threading::listener::{ChannelEvent, ListenerEventResult, ListenerTrait, ListenResult};
+use crate::threading::listener::ListenedOrDidNotListen::Listened;
 
 pub struct TcpInput <Game: GameTrait> {
     player_index: Option<usize>,
@@ -21,8 +22,7 @@ pub struct TcpInput <Game: GameTrait> {
     manager_sender: ChannelDrivenThreadSender<Manager<ClientManagerObserver<Game>>>,
     client_core_sender: ChannelDrivenThreadSender<ClientCore<Game>>,
     udp_output_sender: ChannelDrivenThreadSender<UdpOutput<Game>>,
-    render_data_sender: Sender<RenderReceiverMessage<Game>>,
-    received_message_option: Option<ToClientMessageTCP<Game>>
+    render_data_sender: Sender<RenderReceiverMessage<Game>>
 }
 
 impl<Game: GameTrait> TcpInput<Game> {
@@ -42,69 +42,61 @@ impl<Game: GameTrait> TcpInput<Game> {
             manager_sender,
             client_core_sender,
             udp_output_sender,
-            render_data_sender,
-            received_message_option: None
+            render_data_sender
         })
     }
 }
 
-impl<Game: GameTrait> EventHandlerTrait for TcpInput<Game> {
+impl<Game: GameTrait> ListenerTrait for TcpInput<Game> {
     type Event = ();
     type ThreadReturn = ();
+    type ListenFor = ToClientMessageTCP<Game>;
 
-    fn on_channel_event(mut self, event: ChannelEvent<Self>) -> ChannelEventResult<Self> {
-        return match event {
-            ChannelEvent::ReceivedEvent(_) => {
-                warn!("This handler does not have any meaningful messages");
-                Continue(WaitOrTryForNextEvent::TryForNextEvent(self))
-            }
-            ChannelEvent::ChannelEmpty => {
-                self.handle_received_message();
-                self.wait_for_message()
-            }
-            ChannelEvent::ChannelDisconnected => Break(self.on_stop())
-        };
-    }
-
-    fn on_stop(self) -> Self::ThreadReturn {
-        return ();
-    }
-}
-
-impl<Game: GameTrait> TcpInput<Game> {
-
-    fn handle_received_message(&mut self) {
-
-        if let Some(message) = self.received_message_option.take() {
-            match message {
-                ToClientMessageTCP::InitialInformation(initial_information_message) => {
-
-                    info!("InitialInformation Received.");
-
-                    self.player_index = Some(initial_information_message.get_player_index());
-                    self.game_timer_sender.on_initial_information(initial_information_message.clone());
-                    self.manager_sender.on_initial_information(initial_information_message.clone());
-                    self.client_core_sender.on_initial_information(initial_information_message.clone());
-                    self.udp_output_sender.on_initial_information(initial_information_message.clone());
-                    self.render_data_sender.send(RenderReceiverMessage::InitialInformation(initial_information_message)).unwrap();
-                }
+    fn listen(self) -> ListenResult<Self> {
+        return match rmp_serde::from_read(&self.tcp_stream) {
+            Ok(message) => Continue(Listened(self, message)),
+            Err(error) => {
+                error!("Error: {:?}", error);
+                Break(self.on_stop())
             }
         }
     }
 
-    fn wait_for_message(mut self) -> ChannelEventResult<Self> {
-        return match rmp_serde::from_read(&self.tcp_stream) {
-            Ok(message) => {
-
-                //Why does this crash the client?
-                //info!("{:?}", message);
-
-                self.received_message_option = Some(message);
-                Continue(WaitOrTryForNextEvent::TryForNextEvent(self))
+    fn on_channel_event(mut self, event: crate::threading::listener::ChannelEvent<Self>) -> ListenerEventResult<Self> {
+        match event {
+            ChannelEvent::ChannelEmptyAfterListen(listened_value_holder) => {
+                self.handle_received_message(listened_value_holder.move_value());
+                Continue(self)
             }
-            Err(error) => {
-                error!("Error: {:?}", error);
-                Break(self.on_stop())
+            ChannelEvent::ReceivedEvent(received_event_holder) => {
+                match received_event_holder.move_event() {
+                    () => {
+                        warn!("This handler does not have any meaningful messages");
+                        Continue(self)
+                    }
+                }
+            }
+            ChannelEvent::ChannelDisconnected => Break(self.on_stop())
+        }
+    }
+
+    fn on_stop(self) -> Self::ThreadReturn { () }
+}
+
+impl<Game: GameTrait> TcpInput<Game> {
+
+    fn handle_received_message(&mut self, message: ToClientMessageTCP<Game>) {
+
+        match message {
+            ToClientMessageTCP::InitialInformation(initial_information_message) => {
+                info!("InitialInformation Received.");
+
+                self.player_index = Some(initial_information_message.get_player_index());
+                self.game_timer_sender.on_initial_information(initial_information_message.clone());
+                self.manager_sender.on_initial_information(initial_information_message.clone());
+                self.client_core_sender.on_initial_information(initial_information_message.clone());
+                self.udp_output_sender.on_initial_information(initial_information_message.clone());
+                self.render_data_sender.send(RenderReceiverMessage::InitialInformation(initial_information_message)).unwrap();
             }
         }
     }
