@@ -7,7 +7,7 @@ use crate::threading::eventhandling::EventOrStopThread::{Event, StopThread};
 use crate::threading::eventhandling::ChannelEvent::{ChannelDisconnected, ChannelEmpty, ReceivedEvent};
 use crate::threading::eventhandling::WaitOrTryForNextEvent::{TryForNextEvent, WaitForNextEvent};
 
-type EventReceiver<T> = Receiver<EventOrStopThread<T>>;
+type EventReceiver<T> = Receiver<EventOrStopThread<<T as EventHandlerTrait>::Event>>;
 
 pub(in crate::threading) struct Thread<T: EventHandlerTrait> {
     pub(super) receiver: EventReceiver<T>,

@@ -10,7 +10,7 @@ use crate::gametime::{GameTimer, TimeMessage};
 use crate::gamemanager::{Manager, RenderReceiver, RenderReceiverMessage};
 use crate::messaging::{InputMessage, InitialInformation};
 use std::str::FromStr;
-use crate::server::udpinput::UdpInput;
+use crate::server::udpinput::{UdpInput, UdpInputEvent};
 use crate::server::udpoutput::UdpOutput;
 use crate::server::clientaddress::ClientAddress;
 use crate::server::remoteudppeer::RemoteUdpPeer;
@@ -26,7 +26,7 @@ pub struct ServerCore<Game: GameTrait> {
     tcp_outputs: Vec<ChannelDrivenThreadSender<TcpOutput<Game>>>,
     udp_socket: Option<UdpSocket>,
     udp_outputs: Vec<ChannelDrivenThreadSender<UdpOutput<Game>>>,
-    udp_input_sender: Option<ChannelDrivenThreadSender<UdpInput<Game>>>,
+    udp_input_join_handle_option: Option<listener::JoinHandle<UdpInput<Game>>>,
     manager_sender: Option<ChannelDrivenThreadSender<Manager<ServerManagerObserver<Game>>>>,
     drop_steps_before: usize
 }
@@ -54,7 +54,7 @@ impl<Game: GameTrait> ServerCore<Game> {
             udp_outputs: Vec::new(),
             drop_steps_before: 0,
             udp_socket: None,
-            udp_input_sender: None,
+            udp_input_join_handle_option: None,
             manager_sender: None
         }
     }
@@ -101,14 +101,15 @@ impl<Game: GameTrait> ChannelDrivenThreadSender<ServerCore<Game>> {
                 }
             };
 
-            let (udp_input_sender, udp_input_builder) = udp_input.build();
-            core.udp_input_sender = Some(udp_input_sender);
+            let udp_input_builder = listener::build_thread(udp_input);
 
-            //TODO: hold onto this join handle
-            if let Err(error) = udp_input_builder.name("ServerUdpInput").start() {
-                error!("{:?}", error);
-                return ThreadAction::Stop;
-            }
+            core.udp_input_join_handle_option = Some(match udp_input_builder.name("ServerUdpInput").start() {
+                Ok(udp_input_join_handle) => udp_input_join_handle,
+                Err(error) => {
+                    error!("{:?}", error);
+                    return ThreadAction::Stop;
+                }
+            });
 
             let tcp_listener_join_handle_result = listener::build_thread(TcpListenerThread::<Game>::new(core_sender))
                 .name("ServerTcpListener")
@@ -228,8 +229,11 @@ impl<Game: GameTrait> ChannelDrivenThreadSender<ServerCore<Game>> {
                     core.udp_socket.as_ref().unwrap()
                 ).unwrap().build();
 
-                let input_sender = core.udp_input_sender.as_ref().unwrap();
-                input_sender.on_client_address(client_address);
+                core.udp_input_join_handle_option.as_ref()
+                    .unwrap()
+                    .get_sender()
+                    .send_event(UdpInputEvent::ClientAddress(client_address))
+                    .unwrap();
 
                 tcp_out_builder.name("ServerTcpOutput").start().unwrap();
                 udp_out_builder.name("ServerUdpOutput").start().unwrap();

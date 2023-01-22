@@ -2,11 +2,12 @@ use crate::threading::eventhandling;
 use crate::threading::listener::eventhandler::ListenerState;
 use crate::threading::listener::ListenerTrait;
 
-pub struct SendError<T: ListenerTrait> {
-    event_send_error: eventhandling::SendError<ListenerState<T>>
+#[derive(Debug)]
+pub struct SendError<T> {
+    event_send_error: eventhandling::SendError<T>
 }
 
-pub type SendResult<T> = Result<(), SendError<T>>;
+pub type SendResult<T> = Result<(), SendError<<T as ListenerTrait>::Event>>;
 
 pub struct Sender<T: ListenerTrait> {
     pub(super) sender: eventhandling::Sender<ListenerState<T>>

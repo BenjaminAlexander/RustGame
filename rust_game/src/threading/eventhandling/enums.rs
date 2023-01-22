@@ -8,8 +8,8 @@ pub enum ChannelEvent<T: EventHandlerTrait> {
     ChannelDisconnected
 }
 
-pub enum EventOrStopThread<T: EventHandlerTrait> {
-    Event(SentEventHolder<T::Event>),
+pub enum EventOrStopThread<T> {
+    Event(SentEventHolder<T>),
     StopThread
 }
 

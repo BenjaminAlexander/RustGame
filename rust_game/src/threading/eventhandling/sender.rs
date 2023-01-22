@@ -5,14 +5,14 @@ use crate::threading::eventhandling::EventOrStopThread::{Event, StopThread};
 
 pub type SendError<T> = channel::SendError<EventOrStopThread<T>>;
 
-pub type SendResult<T> = Result<(), SendError<T>>;
+pub type SendResult<T> = Result<(), SendError<<T as EventHandlerTrait>::Event>>;
 
 pub struct SentEventHolder<T> {
     pub(super) event: T
 }
 
 pub struct Sender<T: EventHandlerTrait> {
-    pub(super) sender: channel::Sender<EventOrStopThread<T>>
+    pub(super) sender: channel::Sender<EventOrStopThread<T::Event>>
 }
 
 impl<T: EventHandlerTrait> Sender<T>{
