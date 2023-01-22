@@ -29,3 +29,9 @@ impl<T: ListenerTrait> Sender<T> {
         }
     }
 }
+
+impl<T: ListenerTrait> Clone for Sender<T> {
+    fn clone(&self) -> Self {
+        Self {sender: self.sender.clone()}
+    }
+}

@@ -22,7 +22,7 @@ pub struct ServerCore<Game: GameTrait> {
     game_is_started: bool,
     server_config: ServerConfig,
     tcp_listener_join_handle_option: Option<listener::JoinHandle<TcpListenerThread<Game>>>,
-    tcp_inputs: Vec<ChannelDrivenThreadSender<TcpInput>>,
+    tcp_inputs: Vec<listener::JoinHandle<TcpInput>>,
     tcp_outputs: Vec<ChannelDrivenThreadSender<TcpOutput<Game>>>,
     udp_socket: Option<UdpSocket>,
     udp_outputs: Vec<ChannelDrivenThreadSender<UdpOutput<Game>>>,
@@ -215,9 +215,10 @@ impl<Game: GameTrait> ChannelDrivenThreadSender<ServerCore<Game>> {
 
                 let client_address = ClientAddress::new(player_index, tcp_stream.peer_addr().unwrap().ip());
 
-                let (in_sender, in_thread_builder) = TcpInput::new(&tcp_stream).unwrap().build();
-                in_thread_builder.name("ServerTcpInput").start().unwrap();
-                core.tcp_inputs.push(in_sender);
+                let tcp_input_join_handle = listener::build_thread(
+                    TcpInput::new(&tcp_stream).unwrap()
+                ).name("ServerTcpInput").start().unwrap();
+                core.tcp_inputs.push(tcp_input_join_handle);
 
                 let (tcp_out_sender, tcp_out_builder) = TcpOutput::new(
                     player_index,

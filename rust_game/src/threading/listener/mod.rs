@@ -10,3 +10,5 @@ pub(crate) use self::enums::{ListenedOrDidNotListen, ChannelEvent};
 pub(crate) use self::joinhandle::JoinHandle;
 pub(crate) use self::listenertrait::{ListenerTrait, ListenResult, ListenerEventResult, build_thread};
 pub(crate) use self::listenedvalueholder::ListenedValueHolder;
+pub(crate) use self::sender::Sender;
+

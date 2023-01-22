@@ -15,7 +15,7 @@ pub struct Sender<T: EventHandlerTrait> {
     pub(super) sender: channel::Sender<EventOrStopThread<T::Event>>
 }
 
-impl<T: EventHandlerTrait> Sender<T>{
+impl<T: EventHandlerTrait> Sender<T> {
 
     pub fn send_event(&self, event: T::Event) -> SendResult<T> {
         return self.sender.send(Event(SentEventHolder { event }));
@@ -23,5 +23,12 @@ impl<T: EventHandlerTrait> Sender<T>{
 
     pub fn send_stop_thread(&self) -> SendResult<T> {
         return self.sender.send(StopThread);
+    }
+}
+
+
+impl<T: EventHandlerTrait> Clone for Sender<T> {
+    fn clone(&self) -> Self {
+        Self {sender: self.sender.clone()}
     }
 }
