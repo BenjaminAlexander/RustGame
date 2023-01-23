@@ -68,7 +68,11 @@ impl<Game: GameTrait> UdpInput<Game> {
             return;
         }
 
+
+
         self.handle_remote_peer(message.get_player_index(), source);
+
+
 
         match message {
             ToServerMessageUDP::Hello {player_index: _} => {
@@ -124,6 +128,8 @@ impl<Game: GameTrait> ListenerTrait for UdpInput<Game> {
                 if !self.client_ip_set.contains(&source.ip()) {
                     warn!("Unexpected UDP packet received from {:?}", source);
                     return Continue(DidNotListen(self));
+                } else {
+                    warn!("UDP packet received from {:?}", source);
                 }
 
                 if let Some(assembled) = self.handle_fragment(source, filled_buf) {

@@ -175,6 +175,7 @@ impl<Game: GameTrait> ChannelDrivenThreadSender<UdpOutput<Game>> {
 
                 //TODO: timestamp when the time message is set, then use that info in client side time calc
                 let message = ToClientMessageUDP::<Game>::TimeMessage(time_message);
+
                 udp_output.send_message(message);
 
                 //info!("time_message");

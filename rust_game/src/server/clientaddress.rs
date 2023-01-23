@@ -1,6 +1,6 @@
 use std::net::IpAddr;
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Eq, Hash, PartialEq)]
 pub struct ClientAddress {
     player_index: usize,
     ip_address: IpAddr

@@ -7,6 +7,7 @@ pub type SendError<T> = channel::SendError<EventOrStopThread<T>>;
 
 pub type SendResult<T> = Result<(), SendError<<T as EventHandlerTrait>::Event>>;
 
+//TODO: can this be removed
 pub struct SentEventHolder<T> {
     pub(super) event: T
 }

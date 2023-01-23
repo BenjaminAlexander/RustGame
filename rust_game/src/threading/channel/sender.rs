@@ -2,6 +2,7 @@ use std::sync::mpsc;
 
 pub type SendError<T> = mpsc::SendError<SentValueHolder<T>>;
 
+//TODO: switch to sent value meta data struct
 pub struct SentValueHolder<T> {
     pub(super) value: T
 }
