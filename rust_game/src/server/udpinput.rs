@@ -12,6 +12,8 @@ use crate::server::ServerCore;
 use crate::threading::listener::{ChannelEvent, ListenerEventResult, ListenerTrait, ListenResult};
 use crate::threading::listener::ListenedOrDidNotListen::{DidNotListen, Listened};
 
+//TODO: timeout fragments or fragment assemblers
+
 #[derive(Debug)]
 pub enum UdpInputEvent {
     ClientAddress(ClientAddress)
@@ -42,6 +44,30 @@ impl<Game: GameTrait> UdpInput<Game> {
         });
     }
 
+    fn channel_empty_After_listen(&mut self, mut buf: [u8; MAX_UDP_DATAGRAM_SIZE], number_of_bytes: usize, source: SocketAddr) {
+        //TODO: check source against valid sources
+        let filled_buf = &mut buf[..number_of_bytes];
+
+        if !self.client_ip_set.contains(&source.ip()) {
+            warn!("Unexpected UDP packet received from {:?}", source);
+            return;
+        }
+
+        if let Some(assembled) = self.handle_fragment(source, filled_buf) {
+            match rmp_serde::from_read_ref(assembled.as_slice()) {
+                Ok(message) => {
+                    self.handle_message(message, source);
+                }
+                Err(error) => {
+
+                    //TODO: is removing the fragement assembler on error right?
+                    self.fragment_assemblers.remove(&source);
+                    warn!("Failed to deserialize a ToServerMessageUDP: {:?}", error);
+                }
+            }
+        }
+    }
+
     fn handle_fragment(&mut self, source: SocketAddr, fragment: &mut [u8]) -> Option<Vec<u8>> {
         let assembler = match self.fragment_assemblers.get_mut(&source) {
             None => {
@@ -68,11 +94,7 @@ impl<Game: GameTrait> UdpInput<Game> {
             return;
         }
 
-
-
         self.handle_remote_peer(message.get_player_index(), source);
-
-
 
         match message {
             ToServerMessageUDP::Hello {player_index: _} => {
@@ -113,7 +135,7 @@ impl<Game: GameTrait> UdpInput<Game> {
 impl<Game: GameTrait> ListenerTrait for UdpInput<Game> {
     type Event = UdpInputEvent;
     type ThreadReturn = ();
-    type ListenFor = (ToServerMessageUDP<Game>, SocketAddr);
+    type ListenFor = ([u8; MAX_UDP_DATAGRAM_SIZE], usize, SocketAddr);
 
     fn listen(mut self) -> ListenResult<Self> {
         let mut buf = [0; MAX_UDP_DATAGRAM_SIZE];
@@ -122,32 +144,7 @@ impl<Game: GameTrait> ListenerTrait for UdpInput<Game> {
 
         match recv_result {
             Ok((number_of_bytes, source)) => {
-                //TODO: check source against valid sources
-                let filled_buf = &mut buf[..number_of_bytes];
-
-                if !self.client_ip_set.contains(&source.ip()) {
-                    warn!("Unexpected UDP packet received from {:?}", source);
-                    return Continue(DidNotListen(self));
-                } else {
-                    warn!("UDP packet received from {:?}", source);
-                }
-
-                if let Some(assembled) = self.handle_fragment(source, filled_buf) {
-                    match rmp_serde::from_read_ref(assembled.as_slice()) {
-                        Ok(message) => {
-                            return Continue(Listened(self, (message, source)));
-                        }
-                        Err(error) => {
-
-                            //TODO: is removing the fragement assembler on error right?
-                            self.fragment_assemblers.remove(&source);
-                            warn!("Failed to deserialize a ToServerMessageUDP: {:?}", error);
-                            return Continue(DidNotListen(self));
-                        }
-                    }
-                }
-
-                return Continue(DidNotListen(self));
+                return Continue(Listened(self, (buf, number_of_bytes, source)));
             }
             Err(e) => {
                 warn!("Error: {:?}", e);
@@ -159,8 +156,8 @@ impl<Game: GameTrait> ListenerTrait for UdpInput<Game> {
     fn on_channel_event(mut self, event: ChannelEvent<Self>) -> ListenerEventResult<Self> {
         match event {
             ChannelEvent::ChannelEmptyAfterListen(listened_value_holder) => {
-                let (message, source) = listened_value_holder.move_value();
-                self.handle_message(message, source);
+                let (buf, number_of_bytes, source) = listened_value_holder.move_value();
+                self.channel_empty_After_listen(buf, number_of_bytes, source);
                 return Continue(self);
             }
             ChannelEvent::ReceivedEvent(received_event_holder) => {

@@ -81,7 +81,7 @@ impl<Game: GameTrait> ChannelDrivenThreadSender<ClientCore<Game>> {
             ));
 
             let game_timer_sender = game_timer_builder.get_sender().clone();
-            game_timer_builder.get_sender().send_event(GameTimerEvent::SetSender(game_timer_sender));
+            game_timer_builder.get_sender().send_event(GameTimerEvent::SetSender(game_timer_sender)).unwrap();
 
             let (udp_output_sender, udp_output_builder) = UdpOutput::<Game>::new(server_udp_socket_addr_v4, &udp_socket).unwrap().build();
             let tcp_input_builder = listener::build_thread(TcpInput::new(
