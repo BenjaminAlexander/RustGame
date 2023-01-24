@@ -8,7 +8,7 @@ use std::ops::ControlFlow::*;
 use crate::client::ClientCore;
 use crate::client::clientgametimeobserver::ClientGameTimerObserver;
 use crate::client::clientmanagerobserver::ClientManagerObserver;
-use crate::client::udpoutput::UdpOutput;
+use crate::client::udpoutput::{UdpOutput, UdpOutputEvent};
 use crate::gamemanager::{Manager, RenderReceiverMessage};
 use crate::interface::GameTrait;
 use crate::threading::channel::Sender;
@@ -21,7 +21,7 @@ pub struct TcpInput <Game: GameTrait> {
     game_timer_sender: eventhandling::Sender<GameTimer<ClientGameTimerObserver<Game>>>,
     manager_sender: ChannelDrivenThreadSender<Manager<ClientManagerObserver<Game>>>,
     client_core_sender: ChannelDrivenThreadSender<ClientCore<Game>>,
-    udp_output_sender: ChannelDrivenThreadSender<UdpOutput<Game>>,
+    udp_output_sender: eventhandling::Sender<UdpOutput<Game>>,
     render_data_sender: Sender<RenderReceiverMessage<Game>>
 }
 
@@ -31,7 +31,7 @@ impl<Game: GameTrait> TcpInput<Game> {
         game_timer_sender: eventhandling::Sender<GameTimer<ClientGameTimerObserver<Game>>>,
         manager_sender: ChannelDrivenThreadSender<Manager<ClientManagerObserver<Game>>>,
         client_core_sender: ChannelDrivenThreadSender<ClientCore<Game>>,
-        udp_output_sender: ChannelDrivenThreadSender<UdpOutput<Game>>,
+        udp_output_sender: eventhandling::Sender<UdpOutput<Game>>,
         render_data_sender: Sender<RenderReceiverMessage<Game>>,
         tcp_stream: &TcpStream) -> io::Result<Self> {
 
@@ -95,7 +95,7 @@ impl<Game: GameTrait> TcpInput<Game> {
                 self.game_timer_sender.send_event(GameTimerEvent::InitialInformationEvent(initial_information_message.clone())).unwrap();
                 self.manager_sender.on_initial_information(initial_information_message.clone());
                 self.client_core_sender.on_initial_information(initial_information_message.clone());
-                self.udp_output_sender.on_initial_information(initial_information_message.clone());
+                self.udp_output_sender.send_event(UdpOutputEvent::InitialInformationEvent(initial_information_message.clone()));
                 self.render_data_sender.send(RenderReceiverMessage::InitialInformation(initial_information_message)).unwrap();
             }
         }

@@ -10,7 +10,7 @@ use crate::gamemanager::{Manager, RenderReceiver};
 use log::{trace};
 use crate::client::clientgametimeobserver::ClientGameTimerObserver;
 use crate::client::clientmanagerobserver::ClientManagerObserver;
-use crate::client::udpoutput::UdpOutput;
+use crate::client::udpoutput::{UdpOutput, UdpOutputEvent};
 use crate::client::udpinput::UdpInput;
 use crate::threading::eventhandling;
 
@@ -20,7 +20,7 @@ pub struct ClientCore<Game: GameTrait> {
     manager_sender: Option<ChannelDrivenThreadSender<Manager<ClientManagerObserver<Game>>>>,
     timer_join_handle_option: Option<eventhandling::JoinHandle<GameTimer<ClientGameTimerObserver<Game>>>>,
     udp_input_join_handle_option: Option<listener::JoinHandle<UdpInput<Game>>>,
-    udp_output_sender: Option<ChannelDrivenThreadSender<UdpOutput<Game>>>,
+    udp_output_join_handle_option: Option<eventhandling::JoinHandle<UdpOutput<Game>>>,
     tcp_input_join_handle_option: Option<listener::JoinHandle<TcpInput<Game>>>,
     tcp_output_sender: Option<ChannelDrivenThreadSender<TcpOutput>>,
     initial_information: Option<InitialInformation<Game>>,
@@ -36,7 +36,7 @@ impl<Game: GameTrait> ClientCore<Game> {
             manager_sender: None,
             timer_join_handle_option: None,
             udp_input_join_handle_option: None,
-            udp_output_sender: None,
+            udp_output_join_handle_option: None,
             tcp_input_join_handle_option: None,
             tcp_output_sender: None,
             initial_information: None,
@@ -83,12 +83,13 @@ impl<Game: GameTrait> ChannelDrivenThreadSender<ClientCore<Game>> {
             let game_timer_sender = game_timer_builder.get_sender().clone();
             game_timer_builder.get_sender().send_event(GameTimerEvent::SetSender(game_timer_sender)).unwrap();
 
-            let (udp_output_sender, udp_output_builder) = UdpOutput::<Game>::new(server_udp_socket_addr_v4, &udp_socket).unwrap().build();
+            let udp_output_builder = eventhandling::build_thread(UdpOutput::<Game>::new(server_udp_socket_addr_v4, &udp_socket).unwrap());
+
             let tcp_input_builder = listener::build_thread(TcpInput::new(
                 game_timer_builder.get_sender().clone(),
                 manager_sender.clone(),
                 core_sender.clone(),
-                udp_output_sender.clone(),
+                udp_output_builder.get_sender().clone(),
                 render_receiver_sender.clone(),
                 &tcp_stream).unwrap());
 
@@ -104,7 +105,7 @@ impl<Game: GameTrait> ChannelDrivenThreadSender<ClientCore<Game>> {
             let _manager_join_handle = manager_builder.name("ClientManager").start().unwrap();
             let tcp_input_join_handle = tcp_input_builder.name("ClientTcpInput").start().unwrap();
             let _tcp_output_join_handle = tcp_output_builder.name("ClientTcpOutput").start().unwrap();
-            let _udp_output_join_handle = udp_output_builder.name("ClientUdpOutput").start().unwrap();
+            let udp_output_join_handle = udp_output_builder.name("ClientUdpOutput").start().unwrap();
             let udp_input_join_handle = udp_input_builder.name("ClientUdpInput").start().unwrap();
             let game_timer_join_handle = game_timer_builder.name("ClientGameTimer").start().unwrap();
 
@@ -113,7 +114,7 @@ impl<Game: GameTrait> ChannelDrivenThreadSender<ClientCore<Game>> {
             core.tcp_output_sender = Some(tcp_output_sender);
             core.tcp_input_join_handle_option = Some(tcp_input_join_handle);
             core.udp_input_join_handle_option = Some(udp_input_join_handle);
-            core.udp_output_sender = Some(udp_output_sender);
+            core.udp_output_join_handle_option = Some(udp_output_join_handle);
 
             return ThreadAction::Continue;
         }).unwrap();
@@ -156,7 +157,6 @@ impl<Game: GameTrait> ChannelDrivenThreadSender<ClientCore<Game>> {
 
                 let manager_sender = core.manager_sender.as_ref().unwrap();
                 let last_time_message = core.last_time_message.as_ref().unwrap();
-                let udp_output_sender = core.udp_output_sender.as_ref().unwrap();
                 let initial_information = core.initial_information.as_ref().unwrap();
 
                 if time_message.get_step() > last_time_message.get_step() {
@@ -169,7 +169,7 @@ impl<Game: GameTrait> ChannelDrivenThreadSender<ClientCore<Game>> {
                     );
 
                     manager_sender.on_input_message(message.clone());
-                    udp_output_sender.on_input_message(message);
+                    core.udp_output_join_handle_option.as_ref().unwrap().get_sender().send_event(UdpOutputEvent::InputMessageEvent(message));
 
                     let client_drop_time = time_message.get_scheduled_time().subtract(Game::GRACE_PERIOD * 2);
                     let drop_step = time_message.get_step_from_actual_time(client_drop_time).ceil() as usize;
