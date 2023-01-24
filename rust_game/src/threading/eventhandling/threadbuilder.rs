@@ -5,13 +5,13 @@ use crate::threading::eventhandling::Sender;
 use crate::threading::eventhandling::joinhandle::JoinHandle;
 
 pub struct ThreadBuilder<T: EventHandlerTrait> {
-    pub(in crate::threading) sender: Sender<T>,
+    pub(in crate::threading) sender: Sender<T::Event>,
     pub(in crate::threading) builder: threading::ThreadBuilder<Thread<T>>
 }
 
 impl<T: EventHandlerTrait> ThreadBuilder<T> {
 
-    pub fn get_sender(&self) -> &Sender<T> { &self.sender }
+    pub fn get_sender(&self) -> &Sender<T::Event> { &self.sender }
 
 }
 

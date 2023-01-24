@@ -10,7 +10,7 @@ use crate::gametime::gametimerobserver::GameTimerObserverTrait;
 use crate::server::ServerConfig;
 use crate::messaging::InitialInformation;
 use crate::threading::channel::ReceiveMetaData;
-use crate::threading::eventhandling::{ChannelEvent, ChannelEventResult, EventHandlerTrait, Sender};
+use crate::threading::eventhandling::{ChannelEvent, ChannelEventResult, EventHandlerTrait, EventSenderTrait, Sender};
 use crate::threading::eventhandling::WaitOrTryForNextEvent::WaitForNextEvent;
 
 const TICK_LATENESS_WARN_DURATION: TimeDuration = TimeDuration(20);
@@ -18,7 +18,9 @@ const CLIENT_ERROR_WARN_DURATION: TimeDuration = TimeDuration(20);
 
 pub enum GameTimerEvent<Observer: GameTimerObserverTrait> {
     InitialInformationEvent(InitialInformation<Observer::Game>),
-    SetSender(Sender<GameTimer<Observer>>),
+
+    //TODO: pass the sender to the event handler in another way
+    SetSender(Sender<GameTimerEvent<Observer>>),
     StartTickingEvent,
     //TODO: switch to sent value meta data
     TickEvent(TimeValue),
@@ -29,7 +31,7 @@ pub struct GameTimer<Observer: GameTimerObserverTrait> {
     timer: Timer,
     server_config: Option<ServerConfig>,
     start: Option<TimeValue>,
-    sender: Option<Sender<Self>>,
+    sender: Option<Sender<GameTimerEvent<Observer>>>,
     guard: Option<Guard>,
     rolling_average: RollingAverage<u64>,
     observer: Observer
@@ -62,7 +64,7 @@ impl<Observer: GameTimerObserverTrait> GameTimer<Observer> {
         self.server_config = Some(initial_information.move_server_config());
     }
 
-    fn set_sender(&mut self, sender: Sender<Self>) {
+    fn set_sender(&mut self, sender: Sender<GameTimerEvent<Observer>>) {
         self.sender = Some(sender);
     }
 

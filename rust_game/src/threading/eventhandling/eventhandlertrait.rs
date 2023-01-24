@@ -1,7 +1,7 @@
 use std::ops::ControlFlow;
 use crate::threading;
 use crate::threading::channel::{message_channel, ReceiveMetaData};
-use crate::threading::eventhandling::{ChannelEvent, Sender, WaitOrTryForNextEvent};
+use crate::threading::eventhandling::{ChannelEvent, WaitOrTryForNextEvent};
 use crate::threading::eventhandling::thread::Thread;
 use crate::threading::eventhandling::threadbuilder::ThreadBuilder;
 
@@ -19,7 +19,7 @@ pub trait EventHandlerTrait: Send + Sized + 'static {
 pub fn build_thread<T: EventHandlerTrait>(event_handler: T) -> ThreadBuilder<T> {
     let (sender, receiver) = message_channel();
     return ThreadBuilder {
-        sender: Sender { sender },
+        sender: sender,
         builder: threading::build_thread(Thread {
             receiver,
             event_handler

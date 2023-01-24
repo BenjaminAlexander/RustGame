@@ -1,5 +1,5 @@
 use std::net::{UdpSocket, SocketAddrV4, SocketAddr};
-use crate::gametime::{TimeReceived, TimeValue, TimeDuration, GameTimer, GameTimerEvent};
+use crate::gametime::{TimeReceived, TimeValue, TimeDuration, GameTimerEvent};
 use crate::messaging::{ToClientMessageUDP, MAX_UDP_DATAGRAM_SIZE, MessageFragment, FragmentAssembler};
 use crate::threading::{ChannelDrivenThreadSender, eventhandling, listener};
 use crate::interface::GameTrait;
@@ -10,6 +10,7 @@ use crate::client::clientgametimeobserver::ClientGameTimerObserver;
 use crate::client::clientmanagerobserver::ClientManagerObserver;
 use crate::gamemanager::Manager;
 use crate::threading::channel::ReceiveMetaData;
+use crate::threading::eventhandling::EventSenderTrait;
 use crate::threading::listener::{ListenedValueHolder, ListenerEventResult, ListenerTrait, ListenResult};
 use crate::threading::listener::ListenedOrDidNotListen::{DidNotListen, Listened};
 
@@ -17,7 +18,7 @@ pub struct UdpInput<Game: GameTrait> {
     server_socket_addr: SocketAddr,
     socket: UdpSocket,
     fragment_assembler: FragmentAssembler,
-    game_timer_sender: eventhandling::Sender<GameTimer<ClientGameTimerObserver<Game>>>,
+    game_timer_sender: eventhandling::Sender<GameTimerEvent<ClientGameTimerObserver<Game>>>,
     manager_sender: ChannelDrivenThreadSender<Manager<ClientManagerObserver<Game>>>,
 
     //metrics
@@ -31,7 +32,7 @@ impl<Game: GameTrait> UdpInput<Game> {
     pub fn new(
         server_socket_addr_v4: SocketAddrV4,
         socket: &UdpSocket,
-        game_timer_sender: eventhandling::Sender<GameTimer<ClientGameTimerObserver<Game>>>,
+        game_timer_sender: eventhandling::Sender<GameTimerEvent<ClientGameTimerObserver<Game>>>,
         manager_sender: ChannelDrivenThreadSender<Manager<ClientManagerObserver<Game>>>) -> io::Result<Self> {
 
         let server_socket_addr = SocketAddr::from(server_socket_addr_v4);

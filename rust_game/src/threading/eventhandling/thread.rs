@@ -7,16 +7,16 @@ use crate::threading::eventhandling::EventOrStopThread::{Event, StopThread};
 use crate::threading::eventhandling::ChannelEvent::{ChannelDisconnected, ChannelEmpty, ReceivedEvent};
 use crate::threading::eventhandling::WaitOrTryForNextEvent::{TryForNextEvent, WaitForNextEvent};
 
-type EventReceiver<T> = Receiver<EventOrStopThread<<T as EventHandlerTrait>::Event>>;
+type EventReceiver<T> = Receiver<EventOrStopThread<T>>;
 
 pub(in crate::threading) struct Thread<T: EventHandlerTrait> {
-    pub(super) receiver: EventReceiver<T>,
+    pub(super) receiver: EventReceiver<T::Event>,
     pub(super) event_handler: T
 }
 
 impl<T: EventHandlerTrait> Thread<T> {
 
-    fn wait_for_message(message_handler: T, receiver: &EventReceiver<T>) -> ChannelEventResult<T> {
+    fn wait_for_message(message_handler: T, receiver: &EventReceiver<T::Event>) -> ChannelEventResult<T> {
 
         return match receiver.recv_meta_data() {
             Ok((receive_meta_data, Event(event))) => Self::on_message(message_handler, receive_meta_data, event),
@@ -25,7 +25,7 @@ impl<T: EventHandlerTrait> Thread<T> {
         };
     }
 
-    fn try_for_message(message_handler: T, receiver: &EventReceiver<T>) -> ChannelEventResult<T> {
+    fn try_for_message(message_handler: T, receiver: &EventReceiver<T::Event>) -> ChannelEventResult<T> {
 
         return match receiver.try_recv_meta_data() {
             Ok((receive_meta_data, Event(event))) => Self::on_message(message_handler, receive_meta_data, event),

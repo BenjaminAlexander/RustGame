@@ -1,4 +1,5 @@
 use crate::threading::eventhandling;
+use crate::threading::eventhandling::EventSenderTrait;
 use crate::threading::listener::eventhandler::ListenerState;
 use crate::threading::listener::ListenerTrait;
 
@@ -10,7 +11,7 @@ pub struct SendError<T> {
 pub type SendResult<T> = Result<(), SendError<<T as ListenerTrait>::Event>>;
 
 pub struct Sender<T: ListenerTrait> {
-    pub(super) sender: eventhandling::Sender<ListenerState<T>>
+    pub(super) sender: eventhandling::Sender<T::Event>
 }
 
 impl<T: ListenerTrait> Sender<T> {
