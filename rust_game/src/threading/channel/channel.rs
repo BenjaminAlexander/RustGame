@@ -1,9 +1,9 @@
 use std::sync::mpsc;
-use crate::threading::channel::{SentValueHolder, Receiver, Sender};
+use crate::threading::channel::{Receiver, Sender, SendMetaData};
 
 pub fn message_channel<T: Send + 'static>() -> (Sender<T>, Receiver<T>) {
 
-    let (sender, receiver): (mpsc::Sender<SentValueHolder<T>>, mpsc::Receiver<SentValueHolder<T>>) = mpsc::channel();
+    let (sender, receiver): (mpsc::Sender<(SendMetaData, T)>, mpsc::Receiver<(SendMetaData, T)>) = mpsc::channel();
 
     return (
         Sender { sender },

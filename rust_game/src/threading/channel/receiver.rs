@@ -1,44 +1,34 @@
 use std::sync::mpsc;
-use crate::threading::channel::SentValueHolder;
+use crate::threading::channel::{ReceiveMetaData, SendMetaData};
 
 pub type TryRecvError = mpsc::TryRecvError;
 
 pub type RecvError = mpsc::RecvError;
 
-pub struct ReceivedValueHolder<T> {
-    pub(super) sent_value_holder: SentValueHolder<T>
-}
-
-impl<T> ReceivedValueHolder<T> {
-
-    pub fn get_message(&self) -> &T { &self.sent_value_holder.value }
-
-    pub fn move_message(self) -> T { self.sent_value_holder.value }
-}
-
 pub struct Receiver<T> {
-    pub(super) receiver: mpsc::Receiver<SentValueHolder<T>>
+    pub(super) receiver: mpsc::Receiver<(SendMetaData, T)>
 }
 
 impl<T> Receiver<T> {
 
-    pub fn try_recv_holder(&self) -> Result<ReceivedValueHolder<T>, TryRecvError> {
-        return Ok(ReceivedValueHolder {
-            sent_value_holder: self.receiver.try_recv()?
-        });
+    pub fn try_recv_meta_data(&self) -> Result<(ReceiveMetaData, T), TryRecvError> {
+        let (send_meta_data, value) = self.receiver.try_recv()?;
+        return Ok((ReceiveMetaData::new(send_meta_data), value));
     }
 
     pub fn try_recv(&self) -> Result<T, TryRecvError> {
-        return Ok(self.try_recv_holder()?.move_message());
+        let (_, value) = self.try_recv_meta_data()?;
+        return Ok(value);
     }
 
-    pub fn recv_holder(&self) -> Result<ReceivedValueHolder<T>, RecvError> {
-        return Ok(ReceivedValueHolder {
-            sent_value_holder: self.receiver.recv()?
-        });
+    pub fn recv_meta_data(&self) -> Result<(ReceiveMetaData, T), RecvError> {
+        let (send_meta_data, value) = self.receiver.recv()?;
+
+        return Ok((ReceiveMetaData::new(send_meta_data), value));
     }
 
     pub fn recv(&self) -> Result<T, RecvError> {
-        return Ok(self.recv_holder()?.move_message());
+        let (_, value) = self.recv_meta_data()?;
+        return Ok(value);
     }
 }

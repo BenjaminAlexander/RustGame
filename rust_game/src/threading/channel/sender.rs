@@ -1,20 +1,16 @@
 use std::sync::mpsc;
+use crate::threading::channel::SendMetaData;
 
-pub type SendError<T> = mpsc::SendError<SentValueHolder<T>>;
-
-//TODO: switch to sent value meta data struct
-pub struct SentValueHolder<T> {
-    pub(super) value: T
-}
+pub type SendError<T> = mpsc::SendError<(SendMetaData, T)>;
 
 pub struct Sender<T> {
-    pub(super) sender: mpsc::Sender<SentValueHolder<T>>
+    pub(super) sender: mpsc::Sender<(SendMetaData, T)>
 }
 
 impl<T> Sender<T> {
 
     pub fn send(&self, value: T) -> Result<(), SendError<T>> {
-        return self.sender.send(SentValueHolder { value } );
+        return self.sender.send((SendMetaData::new(), value));
     }
 
 }
