@@ -4,6 +4,7 @@ use std::net::{UdpSocket, SocketAddrV4};
 use crate::messaging::{InputMessage, ToServerMessageUDP, InitialInformation, MAX_UDP_DATAGRAM_SIZE, Fragmenter};
 use std::io;
 use std::ops::ControlFlow::{Continue, Break};
+use crate::threading::channel::ReceiveMetaData;
 use crate::threading::eventhandling::{ChannelEvent, ChannelEventResult, EventHandlerTrait};
 use crate::threading::eventhandling::WaitOrTryForNextEvent::{TryForNextEvent, WaitForNextEvent};
 
@@ -95,8 +96,8 @@ impl<Game: GameTrait> EventHandlerTrait for UdpOutput<Game> {
 
     fn on_channel_event(mut self, channel_event: ChannelEvent<Self>) -> ChannelEventResult<Self> {
         match channel_event {
-            ChannelEvent::ReceivedEvent(received_event_holder) => {
-                match received_event_holder.move_event() {
+            ChannelEvent::ReceivedEvent(_, event) => {
+                match event {
                     UdpOutputEvent::InitialInformationEvent(initial_information) => self.on_initial_information(initial_information),
                     UdpOutputEvent::InputMessageEvent(input_message) => self.on_input_message(input_message)
                 };
@@ -108,10 +109,10 @@ impl<Game: GameTrait> EventHandlerTrait for UdpOutput<Game> {
                 return Continue(WaitForNextEvent(self));
             }
             ChannelEvent::ChannelDisconnected => {
-                return Break(self.on_stop());
+                return Break(());
             }
         }
     }
 
-    fn on_stop(self) -> Self::ThreadReturn { () }
+    fn on_stop(self, _: ReceiveMetaData) -> Self::ThreadReturn { () }
 }

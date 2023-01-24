@@ -11,7 +11,7 @@ use crate::client::clientmanagerobserver::ClientManagerObserver;
 use crate::client::udpoutput::{UdpOutput, UdpOutputEvent};
 use crate::gamemanager::{Manager, RenderReceiverMessage};
 use crate::interface::GameTrait;
-use crate::threading::channel::Sender;
+use crate::threading::channel::{ReceiveMetaData, Sender};
 use crate::threading::listener::{ChannelEvent, ListenerEventResult, ListenerTrait, ListenResult};
 use crate::threading::listener::ListenedOrDidNotListen::Listened;
 
@@ -57,7 +57,7 @@ impl<Game: GameTrait> ListenerTrait for TcpInput<Game> {
             Ok(message) => Continue(Listened(self, message)),
             Err(error) => {
                 error!("Error: {:?}", error);
-                Break(self.on_stop())
+                Break(())
             }
         }
     }
@@ -68,19 +68,15 @@ impl<Game: GameTrait> ListenerTrait for TcpInput<Game> {
                 self.handle_received_message(listened_value_holder.move_value());
                 Continue(self)
             }
-            ChannelEvent::ReceivedEvent(received_event_holder) => {
-                match received_event_holder.move_event() {
-                    () => {
-                        warn!("This handler does not have any meaningful messages");
-                        Continue(self)
-                    }
-                }
+            ChannelEvent::ReceivedEvent(_, ()) => {
+                warn!("This handler does not have any meaningful messages");
+                Continue(self)
             }
-            ChannelEvent::ChannelDisconnected => Break(self.on_stop())
+            ChannelEvent::ChannelDisconnected => Break(())
         }
     }
 
-    fn on_stop(self) -> Self::ThreadReturn { () }
+    fn on_stop(self, _: ReceiveMetaData) -> Self::ThreadReturn { () }
 }
 
 impl<Game: GameTrait> TcpInput<Game> {

@@ -5,11 +5,11 @@ use crate::threading::{ChannelDrivenThreadSender, eventhandling, listener};
 use crate::interface::GameTrait;
 use std::io;
 use std::ops::ControlFlow::{Break, Continue};
-use log::{debug, error, info, warn};
+use log::{debug, error, warn};
 use crate::client::clientgametimeobserver::ClientGameTimerObserver;
 use crate::client::clientmanagerobserver::ClientManagerObserver;
 use crate::gamemanager::Manager;
-use crate::threading::eventhandling::EventHandlerTrait;
+use crate::threading::channel::ReceiveMetaData;
 use crate::threading::listener::{ListenedValueHolder, ListenerEventResult, ListenerTrait, ListenResult};
 use crate::threading::listener::ListenedOrDidNotListen::{DidNotListen, Listened};
 
@@ -98,17 +98,15 @@ impl<Game: GameTrait> ListenerTrait for UdpInput<Game> {
     fn on_channel_event(self, event: listener::ChannelEvent<Self>) -> ListenerEventResult<Self> {
         return match event {
             listener::ChannelEvent::ChannelEmptyAfterListen(listened_value_holder) => self.handle_received_message(listened_value_holder),
-            listener::ChannelEvent::ReceivedEvent(received_event_holder) => match received_event_holder.move_event() {
-                () => {
-                    warn!("This listener doesn't have meaningful messages, but one was sent.");
-                    Continue(self)
-                }
+            listener::ChannelEvent::ReceivedEvent(_, ()) => {
+                warn!("This listener doesn't have meaningful messages, but one was sent.");
+                Continue(self)
             },
-            listener::ChannelEvent::ChannelDisconnected => Break(self.on_stop())
+            listener::ChannelEvent::ChannelDisconnected => Break(())
         };
     }
 
-    fn on_stop(self) -> Self::ThreadReturn { () }
+    fn on_stop(self, _: ReceiveMetaData) -> Self::ThreadReturn { () }
 }
 
 impl<Game: GameTrait> UdpInput<Game> {

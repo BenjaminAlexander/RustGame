@@ -1,8 +1,8 @@
 use std::ops::ControlFlow::{Break, Continue};
 use log::info;
 use crate::threading;
-use crate::threading::channel::{TryRecvError, Receiver};
-use crate::threading::eventhandling::{ChannelEventResult, EventHandlerTrait, EventOrStopThread, ReceivedEventHolder, SentEventHolder};
+use crate::threading::channel::{TryRecvError, Receiver, ReceiveMetaData};
+use crate::threading::eventhandling::{ChannelEventResult, EventHandlerTrait, EventOrStopThread};
 use crate::threading::eventhandling::EventOrStopThread::{Event, StopThread};
 use crate::threading::eventhandling::ChannelEvent::{ChannelDisconnected, ChannelEmpty, ReceivedEvent};
 use crate::threading::eventhandling::WaitOrTryForNextEvent::{TryForNextEvent, WaitForNextEvent};
@@ -18,25 +18,25 @@ impl<T: EventHandlerTrait> Thread<T> {
 
     fn wait_for_message(message_handler: T, receiver: &EventReceiver<T>) -> ChannelEventResult<T> {
 
-        return match receiver.recv() {
-            Ok(Event(sent_event_holder)) => Self::on_message(message_handler, sent_event_holder),
-            Ok(StopThread) => Break(Self::on_stop(message_handler)),
+        return match receiver.recv_meta_data() {
+            Ok((receive_meta_data, Event(event))) => Self::on_message(message_handler, receive_meta_data, event),
+            Ok((receive_meta_data, StopThread)) => Break(Self::on_stop(message_handler, receive_meta_data)),
             Err(_) => Self::on_channel_disconnected(message_handler)
         };
     }
 
     fn try_for_message(message_handler: T, receiver: &EventReceiver<T>) -> ChannelEventResult<T> {
 
-        return match receiver.try_recv() {
-            Ok(Event(sent_event_holder)) => Self::on_message(message_handler, sent_event_holder),
-            Ok(StopThread) => Break(Self::on_stop(message_handler)),
+        return match receiver.try_recv_meta_data() {
+            Ok((receive_meta_data, Event(event))) => Self::on_message(message_handler, receive_meta_data, event),
+            Ok((receive_meta_data, StopThread)) => Break(Self::on_stop(message_handler, receive_meta_data)),
             Err(TryRecvError::Disconnected) => Self::on_channel_disconnected(message_handler),
             Err(TryRecvError::Empty) => Self::on_channel_empty(message_handler)
         };
     }
 
-    fn on_message(message_handler: T, sent_event_holder: SentEventHolder<T::Event>) -> ChannelEventResult<T> {
-        return message_handler.on_channel_event(ReceivedEvent(ReceivedEventHolder { sent_event_holder }));
+    fn on_message(message_handler: T, receive_meta_data: ReceiveMetaData, event: T::Event) -> ChannelEventResult<T> {
+        return message_handler.on_channel_event(ReceivedEvent(receive_meta_data, event));
     }
 
     fn on_channel_empty(message_handler: T) -> ChannelEventResult<T> {
@@ -48,9 +48,9 @@ impl<T: EventHandlerTrait> Thread<T> {
         return message_handler.on_channel_event(ChannelDisconnected);
     }
 
-    fn on_stop(message_handler: T) -> T::ThreadReturn {
+    fn on_stop(message_handler: T, receive_meta_data: ReceiveMetaData) -> T::ThreadReturn {
         info!("The MessageHandlingThread has received a message commanding it to stop.");
-        return message_handler.on_stop();
+        return message_handler.on_stop(receive_meta_data);
     }
 }
 

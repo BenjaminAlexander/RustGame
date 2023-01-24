@@ -1,4 +1,4 @@
-use crate::threading::eventhandling::ReceivedEventHolder;
+use crate::threading::channel::ReceiveMetaData;
 use crate::threading::listener::{ListenedValueHolder, ListenerTrait};
 
 pub enum ListenedOrDidNotListen<T: ListenerTrait> {
@@ -8,6 +8,6 @@ pub enum ListenedOrDidNotListen<T: ListenerTrait> {
 
 pub enum ChannelEvent<T: ListenerTrait> {
     ChannelEmptyAfterListen(ListenedValueHolder<T>),
-    ReceivedEvent(ReceivedEventHolder<T::Event>),
+    ReceivedEvent(ReceiveMetaData, T::Event),
     ChannelDisconnected
 }

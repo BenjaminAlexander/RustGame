@@ -1,15 +1,15 @@
+use crate::threading::channel::ReceiveMetaData;
 use crate::threading::eventhandling::eventhandlertrait::EventHandlerTrait;
-use crate::threading::eventhandling::receivedeventholder::ReceivedEventHolder;
-use crate::threading::eventhandling::SentEventHolder;
 
+//TODO: remove EventHandlerTrait and just use Event
 pub enum ChannelEvent<T: EventHandlerTrait> {
-    ReceivedEvent(ReceivedEventHolder<T::Event>),
+    ReceivedEvent(ReceiveMetaData, T::Event),
     ChannelEmpty,
     ChannelDisconnected
 }
 
 pub enum EventOrStopThread<T> {
-    Event(SentEventHolder<T>),
+    Event(T),
     StopThread
 }
 

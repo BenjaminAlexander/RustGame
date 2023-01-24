@@ -1,14 +1,12 @@
 use std::net::TcpStream;
 
-use log::{error, info};
+use log::error;
 use rmp_serde::decode::Error;
 
 use crate::messaging::{ToServerMessageTCP};
-use crate::threading::{ChannelThread, OldReceiver, ThreadAction};
 use std::io;
 use std::ops::ControlFlow::{Break, Continue};
-use std::sync::mpsc::TryRecvError;
-use crate::threading::eventhandling::ReceivedEventHolder;
+use crate::threading::channel::ReceiveMetaData;
 use crate::threading::listener::{ChannelEvent, ListenedOrDidNotListen, ListenerEventResult, ListenerTrait, ListenResult};
 
 pub struct TcpInput {
@@ -50,14 +48,10 @@ impl ListenerTrait for TcpInput {
 
                 return Continue(self);
             }
-            ChannelEvent::ReceivedEvent(received_event_holder) => {
-                match received_event_holder.move_event() {
-                    () => Continue(self)
-                }
-            }
-            ChannelEvent::ChannelDisconnected => Break(self.on_stop())
+            ChannelEvent::ReceivedEvent(_, ()) => Continue(self),
+            ChannelEvent::ChannelDisconnected => Break(())
         }
     }
 
-    fn on_stop(self) -> Self::ThreadReturn { () }
+    fn on_stop(self, _: ReceiveMetaData) -> Self::ThreadReturn { () }
 }

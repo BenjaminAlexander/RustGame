@@ -1,4 +1,5 @@
 use std::ops::ControlFlow;
+use crate::threading::channel::ReceiveMetaData;
 use crate::threading::eventhandling;
 use crate::threading::listener::{ListenedOrDidNotListen, ChannelEvent};
 use crate::threading::listener::eventhandler::ListenerState;
@@ -17,7 +18,7 @@ pub trait ListenerTrait: Send + Sized + 'static {
 
     fn on_channel_event(self, event: ChannelEvent<Self>) -> ListenerEventResult<Self>;
 
-    fn on_stop(self) -> Self::ThreadReturn;
+    fn on_stop(self, receive_meta_data: ReceiveMetaData) -> Self::ThreadReturn;
 }
 
 pub fn build_thread<T: ListenerTrait>(listener: T) -> ThreadBuilder<T> {

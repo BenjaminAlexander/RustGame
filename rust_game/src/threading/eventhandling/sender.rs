@@ -7,11 +7,6 @@ pub type SendError<T> = channel::SendError<EventOrStopThread<T>>;
 
 pub type SendResult<T> = Result<(), SendError<<T as EventHandlerTrait>::Event>>;
 
-//TODO: can this be removed
-pub struct SentEventHolder<T> {
-    pub(super) event: T
-}
-
 pub struct Sender<T: EventHandlerTrait> {
     pub(super) sender: channel::Sender<EventOrStopThread<T::Event>>
 }
@@ -19,7 +14,7 @@ pub struct Sender<T: EventHandlerTrait> {
 impl<T: EventHandlerTrait> Sender<T> {
 
     pub fn send_event(&self, event: T::Event) -> SendResult<T> {
-        return self.sender.send(Event(SentEventHolder { event }));
+        return self.sender.send(Event(event));
     }
 
     pub fn send_stop_thread(&self) -> SendResult<T> {

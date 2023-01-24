@@ -1,5 +1,6 @@
 use std::ops::ControlFlow;
 use std::ops::ControlFlow::Continue;
+use crate::threading::channel::ReceiveMetaData;
 use crate::threading::eventhandling;
 use crate::threading::eventhandling::{ChannelEventResult, EventHandlerTrait};
 use crate::threading::eventhandling::WaitOrTryForNextEvent::TryForNextEvent;
@@ -22,8 +23,8 @@ impl<T: ListenerTrait> EventHandlerTrait for ListenerState<T> {
     fn on_channel_event(mut self, event: eventhandling::ChannelEvent<Self>) -> ChannelEventResult<Self> {
 
         match event {
-            eventhandling::ChannelEvent::ReceivedEvent(message) => {
-                return Continue(TryForNextEvent(self.on_channel_event(ReceivedEvent(message))?));
+            eventhandling::ChannelEvent::ReceivedEvent(receive_meta_data, event) => {
+                return Continue(TryForNextEvent(self.on_channel_event(ReceivedEvent(receive_meta_data, event))?));
             }
             eventhandling::ChannelEvent::ChannelEmpty => {
                 return Continue(TryForNextEvent(self.listen()?));
@@ -39,10 +40,10 @@ impl<T: ListenerTrait> EventHandlerTrait for ListenerState<T> {
         };
     }
 
-    fn on_stop(self) -> Self::ThreadReturn {
+    fn on_stop(self, receive_meta_data: ReceiveMetaData) -> Self::ThreadReturn {
         match self {
-            WaitingForChannelEmptyAfterListen(listener, _) => listener.on_stop(),
-            ReadyToListen(listener) => listener.on_stop()
+            WaitingForChannelEmptyAfterListen(listener, _) => listener.on_stop(receive_meta_data),
+            ReadyToListen(listener) => listener.on_stop(receive_meta_data)
         }
     }
 }

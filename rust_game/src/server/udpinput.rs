@@ -9,6 +9,7 @@ use std::collections::{HashMap, HashSet};
 use std::ops::ControlFlow::{Break, Continue};
 use crate::server::clientaddress::ClientAddress;
 use crate::server::ServerCore;
+use crate::threading::channel::ReceiveMetaData;
 use crate::threading::listener::{ChannelEvent, ListenerEventResult, ListenerTrait, ListenResult};
 use crate::threading::listener::ListenedOrDidNotListen::{DidNotListen, Listened};
 
@@ -160,8 +161,8 @@ impl<Game: GameTrait> ListenerTrait for UdpInput<Game> {
                 self.channel_empty_After_listen(buf, number_of_bytes, source);
                 return Continue(self);
             }
-            ChannelEvent::ReceivedEvent(received_event_holder) => {
-                match received_event_holder.move_event() {
+            ChannelEvent::ReceivedEvent(_, event) => {
+                match event {
                     UdpInputEvent::ClientAddress(client_address) => {
                         self.client_ip_set.insert(client_address.get_ip_address());
 
@@ -178,9 +179,9 @@ impl<Game: GameTrait> ListenerTrait for UdpInput<Game> {
                     }
                 }
             }
-            ChannelEvent::ChannelDisconnected => Break(self.on_stop())
+            ChannelEvent::ChannelDisconnected => Break(())
         }
     }
 
-    fn on_stop(self) -> Self::ThreadReturn { () }
+    fn on_stop(self, _: ReceiveMetaData) -> Self::ThreadReturn { () }
 }

@@ -4,6 +4,7 @@ use std::ops::ControlFlow::*;
 use log::{error, info, warn};
 use crate::interface::GameTrait;
 use crate::server::ServerCore;
+use crate::threading::channel::ReceiveMetaData;
 use crate::threading::ChannelDrivenThreadSender;
 use crate::threading::listener::{ListenedOrDidNotListen, ListenedValueHolder, ChannelEvent, ListenerEventResult, ListenerTrait, ListenResult};
 
@@ -52,7 +53,7 @@ impl<Game: GameTrait> TcpListenerThread<Game> {
             }
             Err(error) => {
                 error!("Error sending to the core: {:?}", error);
-                return Break(self.on_stop());
+                return Break(());
             }
         }
     }
@@ -74,7 +75,7 @@ impl<Game: GameTrait> ListenerTrait for TcpListenerThread<Game> {
                     Ok(tcp_listener) => tcp_listener,
                     Err(error) => {
                         error!("Error while binding TcpListener: {:?}", error);
-                        return Break(self.on_stop());
+                        return Break(());
                     }
                 });
 
@@ -96,16 +97,13 @@ impl<Game: GameTrait> ListenerTrait for TcpListenerThread<Game> {
     fn on_channel_event(self, event: ChannelEvent<Self>) -> ListenerEventResult<Self> {
         return match event {
             ChannelEvent::ChannelEmptyAfterListen(heard_value) => self.handle_tcp_stream_and_socket_addr(heard_value),
-            ChannelEvent::ReceivedEvent(received_event_holder) =>
-                match received_event_holder.move_event() {
-                    () => {
-                        warn!("This listener doesn't have meaningful messages, but one was sent.");
-                        Continue(self)
-                    }
-                }
-            ChannelEvent::ChannelDisconnected => Break(self.on_stop())
+            ChannelEvent::ReceivedEvent(_, ()) => {
+                warn!("This listener doesn't have meaningful messages, but one was sent.");
+                Continue(self)
+            }
+            ChannelEvent::ChannelDisconnected => Break(())
         }
     }
 
-    fn on_stop(self) -> Self::ThreadReturn { () }
+    fn on_stop(self, _: ReceiveMetaData) -> Self::ThreadReturn { () }
 }

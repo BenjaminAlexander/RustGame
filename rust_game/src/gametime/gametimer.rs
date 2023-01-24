@@ -9,6 +9,7 @@ use crate::gametime::gametimer::GameTimerEvent::{InitialInformationEvent, SetSen
 use crate::gametime::gametimerobserver::GameTimerObserverTrait;
 use crate::server::ServerConfig;
 use crate::messaging::InitialInformation;
+use crate::threading::channel::ReceiveMetaData;
 use crate::threading::eventhandling::{ChannelEvent, ChannelEventResult, EventHandlerTrait, Sender};
 use crate::threading::eventhandling::WaitOrTryForNextEvent::WaitForNextEvent;
 
@@ -166,8 +167,8 @@ impl<Observer: GameTimerObserverTrait> EventHandlerTrait for GameTimer<Observer>
 
     fn on_channel_event(mut self, channel_event: ChannelEvent<Self>) -> ChannelEventResult<Self> {
         match channel_event {
-            ChannelEvent::ReceivedEvent(received_event) => {
-                match received_event.move_event() {
+            ChannelEvent::ReceivedEvent(_, event) => {
+                match event {
                     InitialInformationEvent(initial_information) => self.on_initial_information(initial_information),
                     SetSender(sender) => self.set_sender(sender),
                     StartTickingEvent => self.start_ticking(),
@@ -178,9 +179,9 @@ impl<Observer: GameTimerObserverTrait> EventHandlerTrait for GameTimer<Observer>
                 Continue(WaitForNextEvent(self))
             }
             ChannelEvent::ChannelEmpty => Continue(WaitForNextEvent(self)),
-            ChannelEvent::ChannelDisconnected => Break(self.on_stop())
+            ChannelEvent::ChannelDisconnected => Break(())
         }
     }
 
-    fn on_stop(self) -> Self::ThreadReturn { () }
+    fn on_stop(self, _: ReceiveMetaData) -> Self::ThreadReturn { () }
 }
