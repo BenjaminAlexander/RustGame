@@ -3,6 +3,8 @@ use crate::threading::eventhandling::EventSenderTrait;
 use crate::threading::listener::eventhandler::ListenerState;
 use crate::threading::listener::ListenerTrait;
 
+//TODO: delet this module
+
 #[derive(Debug)]
 pub struct SendError<T> {
     event_send_error: eventhandling::SendError<T>

@@ -1,15 +1,7 @@
 use crate::threading::channel;
 use crate::threading::eventhandling::eventhandlertrait::EventHandlerTrait;
-use crate::threading::eventhandling::EventOrStopThread;
+use crate::threading::eventhandling::{EventOrStopThread, Sender, SendResult};
 use crate::threading::eventhandling::EventOrStopThread::{Event, StopThread};
-
-//TODO: use event type not EventHandlerTrait type
-pub type SendError<T> = channel::SendError<EventOrStopThread<T>>;
-
-pub type SendResult<T> = Result<(), SendError<T>>;
-
-//TODO: remove this type
-pub type Sender<T> = channel::Sender<EventOrStopThread<T>>;
 
 pub trait EventSenderTrait<T> {
 

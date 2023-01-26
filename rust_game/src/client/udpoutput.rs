@@ -94,7 +94,7 @@ impl<Game: GameTrait> EventHandlerTrait for UdpOutput<Game> {
     type Event = UdpOutputEvent<Game>;
     type ThreadReturn = ();
 
-    fn on_channel_event(mut self, channel_event: ChannelEvent<Self>) -> ChannelEventResult<Self> {
+    fn on_channel_event(mut self, channel_event: ChannelEvent<Self::Event>) -> ChannelEventResult<Self> {
         match channel_event {
             ChannelEvent::ReceivedEvent(_, event) => {
                 match event {

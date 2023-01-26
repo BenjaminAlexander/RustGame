@@ -167,7 +167,7 @@ impl<Observer: GameTimerObserverTrait> EventHandlerTrait for GameTimer<Observer>
     type Event = GameTimerEvent<Observer>;
     type ThreadReturn = ();
 
-    fn on_channel_event(mut self, channel_event: ChannelEvent<Self>) -> ChannelEventResult<Self> {
+    fn on_channel_event(mut self, channel_event: ChannelEvent<Self::Event>) -> ChannelEventResult<Self> {
         match channel_event {
             ChannelEvent::ReceivedEvent(_, event) => {
                 match event {

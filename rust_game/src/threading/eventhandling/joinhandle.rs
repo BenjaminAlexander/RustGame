@@ -2,6 +2,7 @@ use std::thread;
 use crate::threading::eventhandling::eventhandlertrait::EventHandlerTrait;
 use crate::threading::eventhandling::Sender;
 
+//TODO: don't reference EventHandlerTrait
 pub struct JoinHandle<T: EventHandlerTrait> {
     pub(super) sender: Sender<T::Event>,
     pub(super) join_handle: thread::JoinHandle<T::ThreadReturn>

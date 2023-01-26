@@ -20,7 +20,7 @@ impl<T: ListenerTrait> EventHandlerTrait for ListenerState<T> {
     type Event = T::Event;
     type ThreadReturn = T::ThreadReturn;
 
-    fn on_channel_event(mut self, event: eventhandling::ChannelEvent<Self>) -> ChannelEventResult<Self> {
+    fn on_channel_event(mut self, event: eventhandling::ChannelEvent<Self::Event>) -> ChannelEventResult<Self> {
 
         match event {
             eventhandling::ChannelEvent::ReceivedEvent(receive_meta_data, event) => {

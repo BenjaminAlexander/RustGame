@@ -2,8 +2,8 @@ use crate::threading::channel::ReceiveMetaData;
 use crate::threading::eventhandling::eventhandlertrait::EventHandlerTrait;
 
 //TODO: remove EventHandlerTrait and just use Event
-pub enum ChannelEvent<T: EventHandlerTrait> {
-    ReceivedEvent(ReceiveMetaData, T::Event),
+pub enum ChannelEvent<T> {
+    ReceivedEvent(ReceiveMetaData, T),
     ChannelEmpty,
     ChannelDisconnected
 }
