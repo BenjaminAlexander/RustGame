@@ -12,9 +12,8 @@ use crate::client::clientmanagerobserver::ClientManagerObserver;
 use crate::client::udpoutput::{UdpOutput, UdpOutputEvent};
 use crate::client::udpinput::UdpInput;
 use crate::threading::{ThreadBuilder, ChannelThread, ChannelDrivenThreadSender, ChannelDrivenThread, ThreadAction, OldThreadBuilderTrait, listener};
-use crate::threading::channel::ChannelThreadBuilderBuilder;
 use crate::threading::eventhandling;
-use crate::threading::eventhandling::{EventHandlerThreadBuilderTrait, EventSenderTrait, EventHandlerChannelThreadBuilderTrait};
+use crate::threading::eventhandling::EventSenderTrait;
 
 pub struct ClientCore<Game: GameTrait> {
     server_ip: String,

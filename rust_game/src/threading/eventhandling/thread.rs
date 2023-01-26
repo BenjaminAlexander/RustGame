@@ -9,12 +9,19 @@ use crate::threading::eventhandling::WaitOrTryForNextEvent::{TryForNextEvent, Wa
 
 type EventReceiver<T> = Receiver<EventOrStopThread<T>>;
 
-pub(in crate::threading) struct Thread<T: EventHandlerTrait> {
-    pub(super) receiver: EventReceiver<T::Event>,
-    pub(super) event_handler: T
+pub struct Thread<T: EventHandlerTrait> {
+    receiver: EventReceiver<T::Event>,
+    event_handler: T
 }
 
 impl<T: EventHandlerTrait> Thread<T> {
+
+    pub(in crate::threading) fn new(receiver: EventReceiver<T::Event>, event_handler: T) -> Self {
+        return Self {
+            receiver,
+            event_handler
+        };
+    }
 
     fn wait_for_message(message_handler: T, receiver: &EventReceiver<T::Event>) -> ChannelEventResult<T> {
 

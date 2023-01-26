@@ -1,4 +1,5 @@
 use crate::threading::channel::{Channel, Sender};
+use crate::threading::eventhandling::{EventHandlerTrait, EventOrStopThread, JoinHandle, Thread};
 use crate::threading::threadbuilder::ThreadBuilder;
 
 pub struct ChannelThreadBuilder<T: Send + 'static> {
@@ -7,6 +8,13 @@ pub struct ChannelThreadBuilder<T: Send + 'static> {
 }
 
 impl<T: Send + 'static> ChannelThreadBuilder<T> {
+
+    pub fn new(thread_builder: ThreadBuilder) -> Self {
+        return Self {
+            thread_builder,
+            channel: Channel::new()
+        };
+    }
 
     pub fn take(self) -> (ThreadBuilder, Channel<T>) {
         return (self.thread_builder, self.channel);
@@ -25,20 +33,24 @@ impl<T: Send + 'static> ChannelThreadBuilder<T> {
     }
 }
 
-pub trait ChannelThreadBuilderBuilder {
+impl<T: Send + 'static> ChannelThreadBuilder<EventOrStopThread<T>> {
 
-    fn build_channel_thread<T: Send + 'static>(self) -> ChannelThreadBuilder<T>;
+    pub fn spawn_event_handler<U: EventHandlerTrait<Event=T>>(self, event_handler: U) -> std::io::Result<JoinHandle<U>> {
 
-}
+        let (thread_builder, channel) = self.take();
 
-impl ChannelThreadBuilderBuilder for ThreadBuilder {
+        let (sender, receiver) = channel.take();
 
-    fn build_channel_thread<T: Send + 'static>(self) -> ChannelThreadBuilder<T> {
+        let thread = Thread::new(
+            receiver,
+            event_handler
+        );
 
-        return ChannelThreadBuilder {
-            thread_builder: self,
-            channel: Channel::new()
-        };
+        let join_handle = thread_builder.spawn_thread(thread)?;
+
+        return Result::Ok(JoinHandle {
+            sender,
+            join_handle
+        });
     }
-
 }

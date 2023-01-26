@@ -20,9 +20,9 @@ pub fn build_thread<T: EventHandlerTrait>(event_handler: T) -> ThreadBuilder<T> 
     let (sender, receiver) = Channel::new().take();
     return ThreadBuilder {
         sender: sender,
-        builder: threading::old_build_thread(Thread {
+        builder: threading::old_build_thread(Thread::new(
             receiver,
             event_handler
-        })
+        ))
     };
 }

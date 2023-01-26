@@ -22,7 +22,7 @@ pub trait ListenerTrait: Send + Sized + 'static {
 }
 
 pub fn build_thread<T: ListenerTrait>(listener: T) -> ThreadBuilder<T> {
-    
+
     let event_thread_builder = eventhandling::build_thread(ListenerState::ReadyToListen(listener));
 
     return ThreadBuilder{

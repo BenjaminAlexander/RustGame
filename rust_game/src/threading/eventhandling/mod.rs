@@ -11,8 +11,8 @@ pub(crate) use self::eventhandlertrait::{EventHandlerTrait, ChannelEventResult, 
 pub(crate) use self::enums::{ChannelEvent, EventOrStopThread, WaitOrTryForNextEvent};
 pub(crate) use self::joinhandle::JoinHandle;
 pub(crate) use self::eventsendertrait::EventSenderTrait;
-pub(crate) use self::threadbuilder::{ThreadBuilder, EventHandlerThreadBuilderTrait, EventHandlerChannelThreadBuilderTrait};
-pub(in crate::threading) use self::thread::Thread;
+pub(crate) use self::threadbuilder::ThreadBuilder;
+pub(super) use self::thread::Thread;
 
 pub(crate) type SendError<T> = channel::SendError<EventOrStopThread<T>>;
 
