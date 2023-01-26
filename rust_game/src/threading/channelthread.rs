@@ -1,17 +1,17 @@
 use std::marker::PhantomData;
-use crate::threading::{OldReceiver, OldSender, build_thread, old_channel};
-use crate::threading::thread::{Thread, ThreadBuilder};
+use crate::threading::{OldReceiver, OldSender, old_build_thread, old_channel};
+use crate::threading::thread::{Thread, OldThreadBuilder};
 
 pub trait ChannelThread<ThreadReturnType, MessageReturnType> : Sized + Send + 'static
     where ThreadReturnType: Send + 'static,
         MessageReturnType: 'static {
 
-    fn build(self) -> (OldSender<Self, MessageReturnType>, ThreadBuilder<RawChannelThread<Self, ThreadReturnType, MessageReturnType>>) {
+    fn build(self) -> (OldSender<Self, MessageReturnType>, OldThreadBuilder<RawChannelThread<Self, ThreadReturnType, MessageReturnType>>) {
         let (sender, receiver) = old_channel();
         self.build_from_channel(sender, receiver)
     }
 
-    fn build_from_channel(self, sender: OldSender<Self, MessageReturnType>, receiver: OldReceiver<Self, MessageReturnType>) -> (OldSender<Self, MessageReturnType>, ThreadBuilder<RawChannelThread<Self, ThreadReturnType, MessageReturnType>>) {
+    fn build_from_channel(self, sender: OldSender<Self, MessageReturnType>, receiver: OldReceiver<Self, MessageReturnType>) -> (OldSender<Self, MessageReturnType>, OldThreadBuilder<RawChannelThread<Self, ThreadReturnType, MessageReturnType>>) {
 
         let thread = RawChannelThread{
             receiver,
@@ -19,7 +19,7 @@ pub trait ChannelThread<ThreadReturnType, MessageReturnType> : Sized + Send + 's
             u_phantom: PhantomData
         };
 
-        (sender, build_thread(thread))
+        (sender, old_build_thread(thread))
     }
 
     fn run(self, receiver: OldReceiver<Self, MessageReturnType>) -> ThreadReturnType;

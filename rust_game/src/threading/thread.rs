@@ -2,8 +2,8 @@ use std::io::Result;
 use std::thread::{Builder, JoinHandle};
 use log::info;
 
-pub fn build_thread<T: Thread>(thread: T) -> ThreadBuilder<T> {
-    return ThreadBuilder {
+pub fn old_build_thread<T: Thread>(thread: T) -> OldThreadBuilder<T> {
+    return OldThreadBuilder {
         thread,
         builder: Builder::new()
     };
@@ -16,7 +16,7 @@ pub trait Thread : Sized + Send + 'static {
     fn run(self) -> Self::ReturnType;
 }
 
-pub trait ThreadBuilderTrait {
+pub trait OldThreadBuilderTrait {
     //TODO: rename
     type StartResultType;
 
@@ -25,12 +25,12 @@ pub trait ThreadBuilderTrait {
     fn start(self) -> Self::StartResultType;
 }
 
-pub struct ThreadBuilder<ThreadType: Thread> {
+pub struct OldThreadBuilder<ThreadType: Thread> {
     thread: ThreadType,
     builder: Builder
 }
 
-impl<T: Thread> ThreadBuilderTrait for ThreadBuilder<T> {
+impl<T: Thread> OldThreadBuilderTrait for OldThreadBuilder<T> {
     type StartResultType = Result<JoinHandle<T::ReturnType>>;
 
     fn name(mut self, name: &str) -> Self {

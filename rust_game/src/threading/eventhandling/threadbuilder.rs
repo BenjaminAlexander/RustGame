@@ -1,4 +1,4 @@
-use crate::{ThreadBuilderTrait, threading};
+use crate::{OldThreadBuilderTrait, threading};
 use crate::threading::eventhandling::eventhandlertrait::EventHandlerTrait;
 use crate::threading::eventhandling::thread::Thread;
 use crate::threading::eventhandling::Sender;
@@ -6,7 +6,7 @@ use crate::threading::eventhandling::joinhandle::JoinHandle;
 
 pub struct ThreadBuilder<T: EventHandlerTrait> {
     pub(in crate::threading) sender: Sender<T::Event>,
-    pub(in crate::threading) builder: threading::ThreadBuilder<Thread<T>>
+    pub(in crate::threading) builder: threading::OldThreadBuilder<Thread<T>>
 }
 
 impl<T: EventHandlerTrait> ThreadBuilder<T> {
@@ -15,7 +15,7 @@ impl<T: EventHandlerTrait> ThreadBuilder<T> {
 
 }
 
-impl<T: EventHandlerTrait> ThreadBuilderTrait for ThreadBuilder<T> {
+impl<T: EventHandlerTrait> OldThreadBuilderTrait for ThreadBuilder<T> {
     type StartResultType = std::io::Result<JoinHandle<T>>;
 
     fn name(mut self, name: &str) -> Self {

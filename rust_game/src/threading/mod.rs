@@ -12,10 +12,10 @@ pub use self::oldsender::{
     OldSendError
 };
 pub use self::thread::{
-    build_thread,
+    old_build_thread,
     Thread,
-    ThreadBuilderTrait,
-    ThreadBuilder,
+    OldThreadBuilderTrait,
+    OldThreadBuilder,
 };
 
 pub use self::oldchannel::old_channel;

@@ -1,5 +1,5 @@
 use std::io::Error;
-use crate::{ThreadBuilderTrait, threading};
+use crate::{OldThreadBuilderTrait, threading};
 use crate::threading::eventhandling::Thread;
 use crate::threading::listener::eventhandler::ListenerState;
 use crate::threading::listener::ListenerTrait;
@@ -8,7 +8,7 @@ use crate::threading::listener::sender::Sender;
 
 pub struct ThreadBuilder<T: ListenerTrait> {
     pub(super) sender: Sender<T>,
-    pub(super) builder: threading::ThreadBuilder<Thread<ListenerState<T>>>
+    pub(super) builder: threading::OldThreadBuilder<Thread<ListenerState<T>>>
 }
 
 impl<T: ListenerTrait> ThreadBuilder<T> {
@@ -17,7 +17,7 @@ impl<T: ListenerTrait> ThreadBuilder<T> {
 
 }
 
-impl<T: ListenerTrait> ThreadBuilderTrait for ThreadBuilder<T> {
+impl<T: ListenerTrait> OldThreadBuilderTrait for ThreadBuilder<T> {
     type StartResultType = Result<JoinHandle<T>, Error>;
 
     fn name(mut self, name: &str) -> Self {
