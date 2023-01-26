@@ -6,10 +6,16 @@ pub type TryRecvError = mpsc::TryRecvError;
 pub type RecvError = mpsc::RecvError;
 
 pub struct Receiver<T> {
-    pub(super) receiver: mpsc::Receiver<(SendMetaData, T)>
+    receiver: mpsc::Receiver<(SendMetaData, T)>
 }
 
 impl<T> Receiver<T> {
+
+    pub fn new(receiver: mpsc::Receiver<(SendMetaData, T)>) -> Self {
+        return Self{
+            receiver
+        }
+    }
 
     pub fn try_recv_meta_data(&self) -> Result<(ReceiveMetaData, T), TryRecvError> {
         let (send_meta_data, value) = self.receiver.try_recv()?;

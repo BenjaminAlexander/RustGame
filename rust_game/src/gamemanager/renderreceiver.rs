@@ -3,7 +3,7 @@ use crate::interface::{InterpolationArg, GameTrait};
 use crate::gamemanager::stepmessage::StepMessage;
 use crate::gametime::{TimeMessage, TimeValue, TimeDuration};
 use crate::messaging::InitialInformation;
-use crate::threading::channel::{message_channel, TryRecvError, Receiver, Sender};
+use crate::threading::channel::{Channel, TryRecvError, Receiver, Sender};
 
 pub enum RenderReceiverMessage<Game: GameTrait> {
     InitialInformation(InitialInformation<Game>),
@@ -29,7 +29,7 @@ struct Data<Game: GameTrait> {
 impl<Game: GameTrait> RenderReceiver<Game> {
 
     pub fn new() -> (Sender<RenderReceiverMessage<Game>>, Self) {
-        let (sender, receiver) = message_channel::<RenderReceiverMessage<Game>>();
+        let (sender, receiver) = Channel::<RenderReceiverMessage<Game>>::new().take();
 
         let data = Data::<Game> {
             step_queue: Vec::new(),

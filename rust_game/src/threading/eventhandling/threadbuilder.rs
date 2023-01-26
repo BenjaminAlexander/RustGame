@@ -1,7 +1,8 @@
 use crate::{OldThreadBuilderTrait, threading};
+use crate::threading::channel::{ChannelThreadBuilder, ChannelThreadBuilderBuilder};
 use crate::threading::eventhandling::eventhandlertrait::EventHandlerTrait;
 use crate::threading::eventhandling::thread::Thread;
-use crate::threading::eventhandling::Sender;
+use crate::threading::eventhandling::{EventOrStopThread, Sender};
 use crate::threading::eventhandling::joinhandle::JoinHandle;
 
 pub struct ThreadBuilder<T: EventHandlerTrait> {
@@ -31,4 +32,52 @@ impl<T: EventHandlerTrait> OldThreadBuilderTrait for ThreadBuilder<T> {
             join_handle
         });
     }
+}
+
+pub trait EventHandlerThreadBuilderTrait {
+
+    fn build_channel_for_event_handler<T: EventHandlerTrait>(self) -> ChannelThreadBuilder<EventOrStopThread<T::Event>>;
+
+    fn spawn_event_handler<T: EventHandlerTrait>(self, event_handler: T) -> std::io::Result<JoinHandle<T>>;
+
+}
+
+impl EventHandlerThreadBuilderTrait for threading::ThreadBuilder {
+
+    fn build_channel_for_event_handler<T: EventHandlerTrait>(self) -> ChannelThreadBuilder<EventOrStopThread<T::Event>> {
+        return self.build_channel_thread();
+    }
+
+    fn spawn_event_handler<T: EventHandlerTrait>(self, event_handler: T) -> std::io::Result<JoinHandle<T>> {
+        return self.build_channel_for_event_handler::<T>().spawn_event_handler(event_handler);
+    }
+}
+
+pub trait EventHandlerChannelThreadBuilderTrait<T: EventHandlerTrait> {
+
+    fn spawn_event_handler(self, event_handler: T) -> std::io::Result<JoinHandle<T>>;
+
+}
+
+impl<T: EventHandlerTrait> EventHandlerChannelThreadBuilderTrait<T> for ChannelThreadBuilder<EventOrStopThread<T::Event>> {
+
+    fn spawn_event_handler(self, event_handler: T) -> std::io::Result<JoinHandle<T>> {
+
+        let (thread_builder, channel) = self.take();
+
+        let (sender, receiver) = channel.take();
+
+        let thread = Thread {
+            receiver,
+            event_handler
+        };
+
+        let join_handle = thread_builder.spawn_thread(thread)?;
+
+        return Result::Ok(JoinHandle {
+            sender,
+            join_handle
+        });
+    }
+
 }

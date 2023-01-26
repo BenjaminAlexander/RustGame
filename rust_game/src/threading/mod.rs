@@ -1,3 +1,16 @@
+pub(crate) mod oldsender;
+mod oldreceiver;
+mod channelthread;
+mod thread;
+mod channeldriventhread;
+mod oldchannel;
+pub(crate) mod eventhandling;
+pub(crate) mod listener;
+pub(crate) mod channel;
+mod threadbuilder;
+
+pub use self::threadbuilder::ThreadBuilder;
+
 pub use self::channeldriventhread::{
     ChannelDrivenThread,
     ThreadAction,
@@ -19,14 +32,3 @@ pub use self::thread::{
 };
 
 pub use self::oldchannel::old_channel;
-
-pub(crate) mod oldsender;
-mod oldreceiver;
-mod channelthread;
-mod thread;
-mod channeldriventhread;
-mod oldchannel;
-pub(crate) mod eventhandling;
-pub(crate) mod listener;
-pub(crate) mod channel;
-

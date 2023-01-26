@@ -3,7 +3,7 @@ use std::net::{TcpStream, Ipv4Addr, SocketAddrV4, UdpSocket};
 use log::{error, info};
 use crate::interface::GameTrait;
 use crate::server::tcpinput::TcpInput;
-use crate::threading::{ChannelDrivenThread, ChannelThread, ChannelDrivenThreadSender, ChannelDrivenThreadSenderError as SendError, ThreadAction, OldThreadBuilderTrait, listener, eventhandling};
+use crate::threading::{ChannelDrivenThread, ChannelThread, ChannelDrivenThreadSender, ChannelDrivenThreadSenderError as SendError, ThreadAction, OldThreadBuilderTrait, listener, eventhandling, ThreadBuilder};
 use crate::server::{TcpListenerThread, ServerConfig};
 use crate::server::tcpoutput::TcpOutput;
 use crate::gametime::{GameTimer, GameTimerEvent, TimeMessage};
@@ -16,7 +16,7 @@ use crate::server::clientaddress::ClientAddress;
 use crate::server::remoteudppeer::RemoteUdpPeer;
 use crate::server::servergametimerobserver::ServerGameTimerObserver;
 use crate::server::servermanagerobserver::ServerManagerObserver;
-use crate::threading::eventhandling::EventSenderTrait;
+use crate::threading::eventhandling::{EventHandlerChannelThreadBuilderTrait, EventHandlerThreadBuilderTrait, EventSenderTrait};
 
 pub struct ServerCore<Game: GameTrait> {
 
@@ -166,10 +166,9 @@ impl<Game: GameTrait> ChannelDrivenThreadSender<ServerCore<Game>> {
                     core.udp_outputs.clone()
                 );
 
-                let timer_builder = eventhandling::build_thread(GameTimer::new(
-                    0,
-                    server_game_timer_observer
-                ));
+                let timer_builder = ThreadBuilder::new()
+                    .name("ServerTimer")
+                    .build_channel_for_event_handler::<GameTimer<ServerGameTimerObserver<Game>>>();
 
                 core.manager_sender = Some(manager_sender.clone());
                 manager_sender.drop_steps_before(core.drop_steps_before);
@@ -186,8 +185,9 @@ impl<Game: GameTrait> ChannelDrivenThreadSender<ServerCore<Game>> {
 
                 timer_builder.get_sender().send_event(GameTimerEvent::InitialInformationEvent(server_initial_information.clone())).unwrap();
 
-                let timer_sender = timer_builder.get_sender().clone();
-                timer_builder.get_sender().send_event(GameTimerEvent::SetSender(timer_sender)).unwrap();
+                //TODO: fix this
+                timer_builder.get_sender().send_event(GameTimerEvent::SetSender(timer_builder.clone_sender())).unwrap();
+
                 timer_builder.get_sender().send_event(GameTimerEvent::StartTickingEvent).unwrap();
 
                 for tcp_output in core.tcp_outputs.iter() {
@@ -198,7 +198,11 @@ impl<Game: GameTrait> ChannelDrivenThreadSender<ServerCore<Game>> {
                     );
                 }
 
-                core.timer_join_handle_option = Some(timer_builder.name("ServerTimer").start().unwrap());
+                core.timer_join_handle_option = Some(timer_builder.spawn_event_handler(GameTimer::new(
+                    0,
+                    server_game_timer_observer
+                )).unwrap());
+
                 manager_builder.name("ServerManager").start().unwrap();
             }
 

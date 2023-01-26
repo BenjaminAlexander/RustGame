@@ -4,10 +4,16 @@ use crate::threading::channel::SendMetaData;
 pub type SendError<T> = mpsc::SendError<(SendMetaData, T)>;
 
 pub struct Sender<T> {
-    pub(super) sender: mpsc::Sender<(SendMetaData, T)>
+    sender: mpsc::Sender<(SendMetaData, T)>
 }
 
 impl<T> Sender<T> {
+
+    pub fn new(sender: mpsc::Sender<(SendMetaData, T)>) -> Self {
+        return Self{
+            sender
+        }
+    }
 
     pub fn send(&self, value: T) -> Result<(), SendError<T>> {
         return self.sender.send((SendMetaData::new(), value));
