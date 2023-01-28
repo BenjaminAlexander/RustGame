@@ -11,7 +11,7 @@ use crate::client::clientmanagerobserver::ClientManagerObserver;
 use crate::gamemanager::Manager;
 use crate::threading::channel::ReceiveMetaData;
 use crate::threading::eventhandling::EventSenderTrait;
-use crate::threading::listener::{ListenedValueHolder, ListenerEventResult, ListenerTrait, ListenResult};
+use crate::threading::listener::{ListenerEventResult, ListenerTrait, ListenMetaData, ListenResult};
 use crate::threading::listener::ListenedOrDidNotListen::{DidNotListen, Listened};
 
 pub struct UdpInput<Game: GameTrait> {
@@ -98,7 +98,7 @@ impl<Game: GameTrait> ListenerTrait for UdpInput<Game> {
 
     fn on_channel_event(self, event: listener::ChannelEvent<Self>) -> ListenerEventResult<Self> {
         return match event {
-            listener::ChannelEvent::ChannelEmptyAfterListen(listened_value_holder) => self.handle_received_message(listened_value_holder),
+            listener::ChannelEvent::ChannelEmptyAfterListen(listen_meta_data, value) => self.handle_received_message(listen_meta_data, value),
             listener::ChannelEvent::ReceivedEvent(_, ()) => {
                 warn!("This listener doesn't have meaningful messages, but one was sent.");
                 Continue(self)
@@ -112,11 +112,11 @@ impl<Game: GameTrait> ListenerTrait for UdpInput<Game> {
 
 impl<Game: GameTrait> UdpInput<Game> {
 
-    fn handle_received_message(mut self, listened_value_holder: ListenedValueHolder<Self>) -> ListenerEventResult<Self> {
+    fn handle_received_message(mut self, listen_meta_data: ListenMetaData, value: ToClientMessageUDP<Game>) -> ListenerEventResult<Self> {
 
-        let time_received = listened_value_holder.get_time_received();
+        let time_received = listen_meta_data.get_time_received();
 
-        match listened_value_holder.move_value() {
+        match value {
             ToClientMessageUDP::TimeMessage(time_message) => {
                 //info!("Time message: {:?}", time_message.get_step());
                 self.game_timer_sender.send_event(GameTimerEvent::TimeMessageEvent(TimeReceived::new(time_received, time_message))).unwrap();

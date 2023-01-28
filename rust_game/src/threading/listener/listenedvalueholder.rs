@@ -1,23 +1,16 @@
 use crate::gametime::TimeValue;
-use crate::threading::listener::ListenerTrait;
 
-pub struct ListenedValueHolder<T: ListenerTrait> {
-    value: T::ListenFor,
+pub struct ListenMetaData {
     time_received: TimeValue
 }
 
-impl<T: ListenerTrait> ListenedValueHolder<T> {
+impl ListenMetaData {
 
-    pub fn new(value: T::ListenFor) -> Self {
-        ListenedValueHolder {
-            value,
+    pub fn new() -> Self {
+        Self {
             time_received: TimeValue::now()
         }
     }
 
     pub fn get_time_received(&self) -> TimeValue { self.time_received }
-
-    pub fn get_value(&self) -> &T::ListenFor { &self.value }
-
-    pub fn move_value(self) -> T::ListenFor { self.value }
 }

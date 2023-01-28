@@ -4,7 +4,7 @@ use crate::threading::channel::ReceiveMetaData;
 use crate::threading::eventhandling;
 use crate::threading::eventhandling::{ChannelEventResult, EventHandlerTrait};
 use crate::threading::eventhandling::WaitOrTryForNextEvent::TryForNextEvent;
-use crate::threading::listener::{ListenedValueHolder, ChannelEvent, ListenerTrait};
+use crate::threading::listener::{ChannelEvent, ListenerTrait, ListenMetaData};
 use crate::threading::listener::ChannelEvent::{ChannelDisconnected, ChannelEmptyAfterListen, ReceivedEvent};
 use crate::threading::listener::eventhandler::ListenerState::{ReadyToListen, WaitingForChannelEmptyAfterListen};
 use crate::threading::listener::ListenedOrDidNotListen::{DidNotListen, Listened};
@@ -12,7 +12,7 @@ use crate::threading::listener::ListenedOrDidNotListen::{DidNotListen, Listened}
 type EventResult<T> = ControlFlow<<T as ListenerTrait>::ThreadReturn, ListenerState<T>>;
 
 pub enum ListenerState<T: ListenerTrait> {
-    WaitingForChannelEmptyAfterListen(T, ListenedValueHolder<T>),
+    WaitingForChannelEmptyAfterListen(T, ListenMetaData, T::ListenFor),
     ReadyToListen(T),
 }
 
@@ -42,7 +42,7 @@ impl<T: ListenerTrait> EventHandlerTrait for ListenerState<T> {
 
     fn on_stop(self, receive_meta_data: ReceiveMetaData) -> Self::ThreadReturn {
         match self {
-            WaitingForChannelEmptyAfterListen(listener, _) => listener.on_stop(receive_meta_data),
+            WaitingForChannelEmptyAfterListen(listener, _, _) => listener.on_stop(receive_meta_data),
             ReadyToListen(listener) => listener.on_stop(receive_meta_data)
         }
     }
@@ -53,20 +53,20 @@ impl<T: ListenerTrait> ListenerState<T> {
     fn listen(self) -> EventResult<T> {
         return Continue(match
             match self {
-                WaitingForChannelEmptyAfterListen(listener, heard_value) =>
-                    listener.on_channel_event(ChannelEmptyAfterListen(heard_value))?,
+                WaitingForChannelEmptyAfterListen(listener, listen_meta_data, value) =>
+                    listener.on_channel_event(ChannelEmptyAfterListen(listen_meta_data, value))?,
                 ReadyToListen(listener) => listener
             }.listen()?
         {
-            Listened(listener, value) => WaitingForChannelEmptyAfterListen(listener, ListenedValueHolder::new(value)),
+            Listened(listener, value) => WaitingForChannelEmptyAfterListen(listener, ListenMetaData::new(), value),
             DidNotListen(listener) => ReadyToListen(listener)
         });
     }
 
     fn on_channel_event(self, event: ChannelEvent<T>) -> EventResult<T> {
         return Continue(match self {
-            WaitingForChannelEmptyAfterListen(listener, listened_value_holder) =>
-                WaitingForChannelEmptyAfterListen(listener.on_channel_event(event)?, listened_value_holder),
+            WaitingForChannelEmptyAfterListen(listener, listen_meta_data, value) =>
+                WaitingForChannelEmptyAfterListen(listener.on_channel_event(event)?, listen_meta_data, value),
             ReadyToListen(listener) => ReadyToListen(listener.on_channel_event(event)?)
         });
     }

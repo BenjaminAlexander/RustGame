@@ -65,8 +65,8 @@ impl<Game: GameTrait> ListenerTrait for TcpInput<Game> {
 
     fn on_channel_event(mut self, event: ChannelEvent<Self>) -> ListenerEventResult<Self> {
         match event {
-            ChannelEvent::ChannelEmptyAfterListen(listened_value_holder) => {
-                self.handle_received_message(listened_value_holder.move_value());
+            ChannelEvent::ChannelEmptyAfterListen(_, value) => {
+                self.handle_received_message(value);
                 Continue(self)
             }
             ChannelEvent::ReceivedEvent(_, ()) => {

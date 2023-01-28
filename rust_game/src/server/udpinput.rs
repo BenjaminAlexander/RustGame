@@ -156,8 +156,7 @@ impl<Game: GameTrait> ListenerTrait for UdpInput<Game> {
 
     fn on_channel_event(mut self, event: ChannelEvent<Self>) -> ListenerEventResult<Self> {
         match event {
-            ChannelEvent::ChannelEmptyAfterListen(listened_value_holder) => {
-                let (buf, number_of_bytes, source) = listened_value_holder.move_value();
+            ChannelEvent::ChannelEmptyAfterListen(_, (buf, number_of_bytes, source)) => {
                 self.channel_empty_After_listen(buf, number_of_bytes, source);
                 return Continue(self);
             }

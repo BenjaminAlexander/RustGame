@@ -6,7 +6,7 @@ use crate::interface::GameTrait;
 use crate::server::ServerCore;
 use crate::threading::channel::ReceiveMetaData;
 use crate::threading::ChannelDrivenThreadSender;
-use crate::threading::listener::{ListenedOrDidNotListen, ListenedValueHolder, ChannelEvent, ListenerEventResult, ListenerTrait, ListenResult};
+use crate::threading::listener::{ListenedOrDidNotListen, ChannelEvent, ListenerEventResult, ListenerTrait, ListenResult};
 
 pub struct TcpListenerThread<Game: GameTrait> {
     tcp_listener_option: Option<TcpListener>,
@@ -23,9 +23,9 @@ impl<Game: GameTrait> TcpListenerThread<Game> {
         }
     }
 
-    fn handle_tcp_stream_and_socket_addr(self, heard_value: ListenedValueHolder<Self>) -> ListenerEventResult<Self> {
+    fn handle_tcp_stream_and_socket_addr(self, value: (TcpStream, SocketAddr)) -> ListenerEventResult<Self> {
 
-        let (tcp_stream, socket_addr) = heard_value.get_value();
+        let (tcp_stream, socket_addr) = value;
 
         info!("First Adder {:?}", socket_addr.to_string());
 
@@ -96,7 +96,7 @@ impl<Game: GameTrait> ListenerTrait for TcpListenerThread<Game> {
 
     fn on_channel_event(self, event: ChannelEvent<Self>) -> ListenerEventResult<Self> {
         return match event {
-            ChannelEvent::ChannelEmptyAfterListen(heard_value) => self.handle_tcp_stream_and_socket_addr(heard_value),
+            ChannelEvent::ChannelEmptyAfterListen(_, value) => self.handle_tcp_stream_and_socket_addr(value),
             ChannelEvent::ReceivedEvent(_, ()) => {
                 warn!("This listener doesn't have meaningful messages, but one was sent.");
                 Continue(self)

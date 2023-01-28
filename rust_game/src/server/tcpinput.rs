@@ -41,8 +41,8 @@ impl ListenerTrait for TcpInput {
 
     fn on_channel_event(self, event: ChannelEvent<Self>) -> ListenerEventResult<Self> {
         match event {
-            ChannelEvent::ChannelEmptyAfterListen(listened_value_holder) => {
-                match listened_value_holder.move_value() {
+            ChannelEvent::ChannelEmptyAfterListen(_, value) => {
+                match value {
 
                 };
 
