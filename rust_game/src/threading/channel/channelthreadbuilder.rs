@@ -1,5 +1,6 @@
 use crate::threading::channel::{Channel, Sender};
 use crate::threading::eventhandling::{EventHandlerTrait, EventOrStopThread, JoinHandle, Thread};
+use crate::threading::listener::{ListenerState, ListenerTrait};
 use crate::threading::threadbuilder::ThreadBuilder;
 
 pub struct ChannelThreadBuilder<T: Send + 'static> {
@@ -35,7 +36,7 @@ impl<T: Send + 'static> ChannelThreadBuilder<T> {
 
 impl<T: Send + 'static> ChannelThreadBuilder<EventOrStopThread<T>> {
 
-    pub fn spawn_event_handler<U: EventHandlerTrait<Event=T>>(self, event_handler: U) -> std::io::Result<JoinHandle<U>> {
+    pub fn spawn_event_handler<U: EventHandlerTrait<Event=T>>(self, event_handler: U) -> std::io::Result<JoinHandle<U::Event, U::ThreadReturn>> {
 
         let (thread_builder, channel) = self.take();
 
@@ -52,5 +53,9 @@ impl<T: Send + 'static> ChannelThreadBuilder<EventOrStopThread<T>> {
             sender,
             join_handle
         });
+    }
+
+    pub fn spawn_listener<U: ListenerTrait<Event=T>>(self, listener: U) -> std::io::Result<JoinHandle<U::Event, U::ThreadReturn>> {
+        return self.spawn_event_handler(ListenerState::ReadyToListen(listener));
     }
 }

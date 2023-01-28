@@ -19,10 +19,10 @@ pub struct ClientCore<Game: GameTrait> {
     server_ip: String,
     input_event_handler: Game::ClientInputEventHandler,
     manager_sender: Option<ChannelDrivenThreadSender<Manager<ClientManagerObserver<Game>>>>,
-    timer_join_handle_option: Option<eventhandling::JoinHandle<GameTimer<ClientGameTimerObserver<Game>>>>,
-    udp_input_join_handle_option: Option<listener::JoinHandle<UdpInput<Game>>>,
-    udp_output_join_handle_option: Option<eventhandling::JoinHandle<UdpOutput<Game>>>,
-    tcp_input_join_handle_option: Option<listener::JoinHandle<TcpInput<Game>>>,
+    timer_join_handle_option: Option<eventhandling::JoinHandle<GameTimerEvent<ClientGameTimerObserver<Game>>, ()>>,
+    udp_input_join_handle_option: Option<eventhandling::JoinHandle<(), ()>>,
+    udp_output_join_handle_option: Option<eventhandling::JoinHandle<UdpOutputEvent<Game>, ()>>,
+    tcp_input_join_handle_option: Option<eventhandling::JoinHandle<(), ()>>,
     tcp_output_sender: Option<ChannelDrivenThreadSender<TcpOutput>>,
     initial_information: Option<InitialInformation<Game>>,
     last_time_message: Option<TimeMessage>
@@ -87,32 +87,36 @@ impl<Game: GameTrait> ChannelDrivenThreadSender<ClientCore<Game>> {
                 .name("ClientUdpOutput")
                 .build_channel_for_event_handler::<UdpOutput<Game>>();
 
-            let tcp_input_builder = listener::build_thread(TcpInput::new(
-                game_timer_builder.clone_sender(),
-                manager_sender.clone(),
-                core_sender.clone(),
-                udp_output_builder.clone_sender(),
-                render_receiver_sender.clone(),
-                &tcp_stream).unwrap());
-
             let (tcp_output_sender, tcp_output_builder) = TcpOutput::new(&tcp_stream).unwrap().build();
 
-            let udp_input_builder = listener::build_thread(UdpInput::new(
-                server_udp_socket_addr_v4,
-                &udp_socket,
-                game_timer_builder.clone_sender(),
-                manager_sender.clone()
-            ).unwrap());
-
             let _manager_join_handle = manager_builder.name("ClientManager").start().unwrap();
-            let tcp_input_join_handle = tcp_input_builder.name("ClientTcpInput").start().unwrap();
+
+            let tcp_input_join_handle = ThreadBuilder::new()
+                .name("ClientTcpInput")
+                .spawn_listener(TcpInput::new(
+                    game_timer_builder.clone_sender(),
+                    manager_sender.clone(),
+                    core_sender.clone(),
+                    udp_output_builder.clone_sender(),
+                    render_receiver_sender.clone(),
+                    &tcp_stream).unwrap())
+                .unwrap();
+
             let _tcp_output_join_handle = tcp_output_builder.name("ClientTcpOutput").start().unwrap();
 
             let udp_output_join_handle = udp_output_builder.spawn_event_handler(
                 UdpOutput::<Game>::new(server_udp_socket_addr_v4, &udp_socket).unwrap()
             ).unwrap();
 
-            let udp_input_join_handle = udp_input_builder.name("ClientUdpInput").start().unwrap();
+            let udp_input_join_handle = ThreadBuilder::new()
+                .name("ClientUdpInput")
+                .spawn_listener(UdpInput::new(
+                    server_udp_socket_addr_v4,
+                    &udp_socket,
+                    game_timer_builder.clone_sender(),
+                    manager_sender.clone()
+                ).unwrap())
+                .unwrap();
 
             let game_timer_join_handle =  game_timer_builder.spawn_event_handler(GameTimer::new(
                 Game::CLOCK_AVERAGE_SIZE,

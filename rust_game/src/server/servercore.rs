@@ -22,13 +22,13 @@ pub struct ServerCore<Game: GameTrait> {
 
     game_is_started: bool,
     server_config: ServerConfig,
-    tcp_listener_join_handle_option: Option<listener::JoinHandle<TcpListenerThread<Game>>>,
-    timer_join_handle_option: Option<eventhandling::JoinHandle<GameTimer<ServerGameTimerObserver<Game>>>>,
-    tcp_inputs: Vec<listener::JoinHandle<TcpInput>>,
+    tcp_listener_join_handle_option: Option<eventhandling::JoinHandle<(), ()>>,
+    timer_join_handle_option: Option<eventhandling::JoinHandle<GameTimerEvent<ServerGameTimerObserver<Game>>, ()>>,
+    tcp_inputs: Vec<eventhandling::JoinHandle<(), ()>>,
     tcp_outputs: Vec<ChannelDrivenThreadSender<TcpOutput<Game>>>,
     udp_socket: Option<UdpSocket>,
     udp_outputs: Vec<ChannelDrivenThreadSender<UdpOutput<Game>>>,
-    udp_input_join_handle_option: Option<listener::JoinHandle<UdpInput<Game>>>,
+    udp_input_join_handle_option: Option<eventhandling::JoinHandle<UdpInputEvent, ()>>,
     manager_sender: Option<ChannelDrivenThreadSender<Manager<ServerManagerObserver<Game>>>>,
     drop_steps_before: usize
 }
@@ -104,9 +104,11 @@ impl<Game: GameTrait> ChannelDrivenThreadSender<ServerCore<Game>> {
                 }
             };
 
-            let udp_input_builder = listener::build_thread(udp_input);
+            let udp_input_builder = ThreadBuilder::new()
+                .name("ServerUdpInput")
+                .spawn_listener(udp_input);
 
-            core.udp_input_join_handle_option = Some(match udp_input_builder.name("ServerUdpInput").start() {
+            core.udp_input_join_handle_option = Some(match udp_input_builder {
                 Ok(udp_input_join_handle) => udp_input_join_handle,
                 Err(error) => {
                     error!("{:?}", error);
@@ -114,9 +116,9 @@ impl<Game: GameTrait> ChannelDrivenThreadSender<ServerCore<Game>> {
                 }
             });
 
-            let tcp_listener_join_handle_result = listener::build_thread(TcpListenerThread::<Game>::new(core_sender))
+            let tcp_listener_join_handle_result = ThreadBuilder::new()
                 .name("ServerTcpListener")
-                .start();
+                .spawn_listener(TcpListenerThread::<Game>::new(core_sender));
 
             match tcp_listener_join_handle_result {
                 Ok(tcp_listener_join_handle) => {
@@ -225,9 +227,11 @@ impl<Game: GameTrait> ChannelDrivenThreadSender<ServerCore<Game>> {
 
                 let client_address = ClientAddress::new(player_index, tcp_stream.peer_addr().unwrap().ip());
 
-                let tcp_input_join_handle = listener::build_thread(
-                    TcpInput::new(&tcp_stream).unwrap()
-                ).name("ServerTcpInput").start().unwrap();
+                let tcp_input_join_handle = ThreadBuilder::new()
+                    .name("ServerTcpInput")
+                    .spawn_listener(TcpInput::new(&tcp_stream).unwrap())
+                    .unwrap();
+
                 core.tcp_inputs.push(tcp_input_join_handle);
 
                 let (tcp_out_sender, tcp_out_builder) = TcpOutput::new(

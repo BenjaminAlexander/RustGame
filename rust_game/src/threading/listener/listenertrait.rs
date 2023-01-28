@@ -20,15 +20,3 @@ pub trait ListenerTrait: Send + Sized + 'static {
 
     fn on_stop(self, receive_meta_data: ReceiveMetaData) -> Self::ThreadReturn;
 }
-
-pub fn build_thread<T: ListenerTrait>(listener: T) -> ThreadBuilder<T> {
-
-    let event_thread_builder = eventhandling::build_thread(ListenerState::ReadyToListen(listener));
-
-    return ThreadBuilder{
-        sender: Sender {
-            sender: event_thread_builder.sender
-        },
-        builder: event_thread_builder.builder
-    };
-}

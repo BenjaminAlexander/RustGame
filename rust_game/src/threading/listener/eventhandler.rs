@@ -11,7 +11,7 @@ use crate::threading::listener::ListenedOrDidNotListen::{DidNotListen, Listened}
 
 type EventResult<T> = ControlFlow<<T as ListenerTrait>::ThreadReturn, ListenerState<T>>;
 
-pub(super) enum ListenerState<T: ListenerTrait> {
+pub enum ListenerState<T: ListenerTrait> {
     WaitingForChannelEmptyAfterListen(T, ListenedValueHolder<T>),
     ReadyToListen(T),
 }

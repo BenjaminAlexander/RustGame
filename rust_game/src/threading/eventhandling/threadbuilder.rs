@@ -17,14 +17,14 @@ impl<T: EventHandlerTrait> ThreadBuilder<T> {
 }
 
 impl<T: EventHandlerTrait> OldThreadBuilderTrait for ThreadBuilder<T> {
-    type StartResultType = std::io::Result<JoinHandle<T>>;
+    type StartResultType = std::io::Result<JoinHandle<T::Event, T::ThreadReturn>>;
 
     fn name(mut self, name: &str) -> Self {
         self.builder = self.builder.name(name);
         return self;
     }
 
-    fn start(self) -> std::io::Result<JoinHandle<T>> {
+    fn start(self) -> std::io::Result<JoinHandle<T::Event, T::ThreadReturn>> {
         let join_handle = self.builder.start()?;
 
         return Result::Ok(JoinHandle {

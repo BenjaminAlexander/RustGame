@@ -4,6 +4,7 @@ use log::info;
 use crate::threading::channel::ChannelThreadBuilder;
 use crate::threading::eventhandling::{EventHandlerTrait, EventOrStopThread};
 use crate::threading::{eventhandling, Thread};
+use crate::threading::listener::{ListenerState, ListenerTrait};
 
 pub struct ThreadBuilder {
     name: Option<String>
@@ -30,8 +31,12 @@ impl ThreadBuilder {
         return self.build_channel_thread();
     }
 
-    pub fn spawn_event_handler<T: EventHandlerTrait>(self, event_handler: T) -> std::io::Result<eventhandling::JoinHandle<T>> {
+    pub fn spawn_event_handler<T: EventHandlerTrait>(self, event_handler: T) -> std::io::Result<eventhandling::JoinHandle<T::Event, T::ThreadReturn>> {
         return self.build_channel_for_event_handler::<T>().spawn_event_handler(event_handler);
+    }
+
+    pub fn spawn_listener<T: ListenerTrait>(self, listener: T) -> std::io::Result<eventhandling::JoinHandle<T::Event, T::ThreadReturn>> {
+        return self.build_channel_for_event_handler::<ListenerState<T>>().spawn_listener(listener);
     }
 
     pub(super) fn spawn_thread<T: Thread>(mut self, thread: T) -> std::io::Result<JoinHandle<T::ReturnType>> {
