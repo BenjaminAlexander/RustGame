@@ -1,9 +1,5 @@
-use std::ops::ControlFlow;
 use crate::threading::channel::ReceiveMetaData;
-use crate::threading::listener::{ListenedOrDidNotListen, ChannelEvent};
-
-pub type ListenResult<T> = ControlFlow<<T as ListenerTrait>::ThreadReturn, ListenedOrDidNotListen<T>>;
-pub type ListenerEventResult<T> = ControlFlow<<T as ListenerTrait>::ThreadReturn, T>;
+use crate::threading::listener::{ChannelEvent, ListenerEventResult, ListenResult};
 
 pub trait ListenerTrait: Send + Sized + 'static {
     type Event: Send + 'static;

@@ -11,7 +11,7 @@ use crate::gamemanager::{Manager, RenderReceiver, RenderReceiverMessage};
 use crate::messaging::{InputMessage, InitialInformation};
 use std::str::FromStr;
 use crate::server::udpinput::{UdpInput, UdpInputEvent};
-use crate::server::udpoutput::UdpOutput;
+use crate::server::udpoutput::{UdpOutput, UdpOutputEvent};
 use crate::server::clientaddress::ClientAddress;
 use crate::server::remoteudppeer::RemoteUdpPeer;
 use crate::server::servergametimerobserver::ServerGameTimerObserver;
@@ -21,13 +21,13 @@ pub struct ServerCore<Game: GameTrait> {
 
     game_is_started: bool,
     server_config: ServerConfig,
-    tcp_listener_join_handle_option: Option<eventhandling::JoinHandle<(), ()>>,
-    timer_join_handle_option: Option<eventhandling::JoinHandle<GameTimerEvent<ServerGameTimerObserver<Game>>, ()>>,
-    tcp_inputs: Vec<eventhandling::JoinHandle<(), ()>>,
+    tcp_listener_join_handle_option: Option<listener::JoinHandle<TcpListenerThread<Game>>>,
+    timer_join_handle_option: Option<eventhandling::JoinHandle<GameTimer<ServerGameTimerObserver<Game>>>>,
+    tcp_inputs: Vec<listener::JoinHandle<TcpInput>>,
     tcp_outputs: Vec<ChannelDrivenThreadSender<TcpOutput<Game>>>,
     udp_socket: Option<UdpSocket>,
-    udp_outputs: Vec<ChannelDrivenThreadSender<UdpOutput<Game>>>,
-    udp_input_join_handle_option: Option<eventhandling::JoinHandle<UdpInputEvent, ()>>,
+    udp_outputs: Vec<eventhandling::JoinHandle<UdpOutput<Game>>>,
+    udp_input_join_handle_option: Option<listener::JoinHandle<UdpInput<Game>>>,
     manager_sender: Option<ChannelDrivenThreadSender<Manager<ServerManagerObserver<Game>>>>,
     drop_steps_before: usize
 }
@@ -135,8 +135,8 @@ impl<Game: GameTrait> ChannelDrivenThreadSender<ServerCore<Game>> {
     pub fn on_remote_udp_peer(&self, remote_udp_peer: RemoteUdpPeer) {
         self.send(|core|{
 
-            if let Some(udp_output_sender) = core.udp_outputs.get(remote_udp_peer.get_player_index()) {
-                udp_output_sender.on_remote_peer(remote_udp_peer);
+            if let Some(udp_output_join_handle) = core.udp_outputs.get(remote_udp_peer.get_player_index()) {
+                udp_output_join_handle.get_sender().send_event(UdpOutputEvent::RemotePeer(remote_udp_peer)).unwrap();
             }
 
             return ThreadAction::Continue;
@@ -152,9 +152,15 @@ impl<Game: GameTrait> ChannelDrivenThreadSender<ServerCore<Game>> {
 
                 let initial_state = Game::get_initial_state(core.tcp_outputs.len());
 
+                let mut udp_output_senders: Vec<eventhandling::Sender<UdpOutputEvent<Game>>> = Vec::new();
+
+                for udp_output_join_handler in core.udp_outputs.iter() {
+                    udp_output_senders.push(udp_output_join_handler.get_sender().clone());
+                }
+
                 let server_manager_observer = ServerManagerObserver::new(
                     core_sender.clone(),
-                    core.udp_outputs.clone(),
+                    udp_output_senders.clone(),
                     render_receiver_sender.clone()
                 );
 
@@ -164,7 +170,7 @@ impl<Game: GameTrait> ChannelDrivenThreadSender<ServerCore<Game>> {
                 let server_game_timer_observer = ServerGameTimerObserver::new(
                     core_sender.clone(),
                     render_receiver_sender.clone(),
-                    core.udp_outputs.clone()
+                    udp_output_senders
                 );
 
                 let timer_builder = ThreadBuilder::new()
@@ -238,10 +244,13 @@ impl<Game: GameTrait> ChannelDrivenThreadSender<ServerCore<Game>> {
                     &tcp_stream
                 ).unwrap().build();
 
-                let (udp_out_sender, udp_out_builder) = UdpOutput::new(
-                    player_index,
-                    core.udp_socket.as_ref().unwrap()
-                ).unwrap().build();
+                let udp_out_join_handle = ThreadBuilder::new()
+                    .name("ServerUdpOutput")
+                    .spawn_event_handler(UdpOutput::new(
+                            player_index,
+                            core.udp_socket.as_ref().unwrap()
+                        ).unwrap())
+                    .unwrap();
 
                 core.udp_input_join_handle_option.as_ref()
                     .unwrap()
@@ -250,10 +259,9 @@ impl<Game: GameTrait> ChannelDrivenThreadSender<ServerCore<Game>> {
                     .unwrap();
 
                 tcp_out_builder.name("ServerTcpOutput").start().unwrap();
-                udp_out_builder.name("ServerUdpOutput").start().unwrap();
 
                 core.tcp_outputs.push(tcp_out_sender);
-                core.udp_outputs.push(udp_out_sender);
+                core.udp_outputs.push(udp_out_join_handle);
 
                 info!("TcpStream accepted: {:?}", tcp_stream);
 
@@ -268,9 +276,13 @@ impl<Game: GameTrait> ChannelDrivenThreadSender<ServerCore<Game>> {
     pub fn on_time_message(&self, time_message: TimeMessage) {
         self.send(move |core|{
 
+            /*
+            TODO: time is also sent directly fomr gametime observer, seems like this is a bug
+
             for udp_output in core.udp_outputs.iter() {
-                udp_output.on_time_message(time_message.clone());
+                udp_output.send_event(UdpOutputEvent::SendTimeMessage(time_message.clone()));
             }
+            */
 
             core.drop_steps_before = time_message.get_step_from_actual_time(time_message.get_scheduled_time().subtract(Game::GRACE_PERIOD)).ceil() as usize;
 
@@ -298,7 +310,7 @@ impl<Game: GameTrait> ChannelDrivenThreadSender<ServerCore<Game>> {
 
                 core.manager_sender.as_ref().unwrap().on_input_message(input_message.clone());
                 for udp_output in core.udp_outputs.iter() {
-                    udp_output.on_input_message(input_message.clone());
+                    udp_output.get_sender().send_event(UdpOutputEvent::SendInputMessage(input_message.clone()));
                 }
             }
 

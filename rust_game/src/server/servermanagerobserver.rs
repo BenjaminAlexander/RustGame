@@ -2,20 +2,20 @@ use crate::gamemanager::{ManagerObserverTrait, RenderReceiverMessage, StepMessag
 use crate::interface::GameTrait;
 use crate::messaging::{ServerInputMessage, StateMessage};
 use crate::server::ServerCore;
-use crate::server::udpoutput::UdpOutput;
-use crate::threading::{ChannelDrivenThreadSender};
+use crate::server::udpoutput::UdpOutputEvent;
+use crate::threading::{ChannelDrivenThreadSender, eventhandling};
 use crate::threading::channel::Sender;
 
 pub struct ServerManagerObserver<Game: GameTrait> {
     server_core_sender: ChannelDrivenThreadSender<ServerCore<Game>>,
-    udp_outputs: Vec<ChannelDrivenThreadSender<UdpOutput<Game>>>,
+    udp_outputs: Vec<eventhandling::Sender<UdpOutputEvent<Game>>>,
     render_receiver_sender: Sender<RenderReceiverMessage<Game>>
 }
 
 impl<Game: GameTrait> ServerManagerObserver<Game> {
 
     pub fn new(server_core_sender: ChannelDrivenThreadSender<ServerCore<Game>>,
-               udp_outputs: Vec<ChannelDrivenThreadSender<UdpOutput<Game>>>,
+               udp_outputs: Vec<eventhandling::Sender<UdpOutputEvent<Game>>>,
                render_receiver_sender: Sender<RenderReceiverMessage<Game>>) -> Self {
 
         Self {
@@ -40,14 +40,14 @@ impl<Game: GameTrait> ManagerObserverTrait for ServerManagerObserver<Game> {
     fn on_completed_step(&self, state_message: StateMessage<Game>) {
 
         for udp_output in self.udp_outputs.iter() {
-            udp_output.on_completed_step(state_message.clone());
+            udp_output.send_event(UdpOutputEvent::SendCompletedStep(state_message.clone()));
         }
     }
 
     fn on_server_input_message(&self, server_input_message: ServerInputMessage<Game>) {
 
         for udp_output in self.udp_outputs.iter() {
-            udp_output.on_server_input_message(server_input_message.clone());
+            udp_output.send_event(UdpOutputEvent::SendServerInputMessage(server_input_message.clone()));
         }
     }
 }

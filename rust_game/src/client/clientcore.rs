@@ -18,11 +18,11 @@ pub struct ClientCore<Game: GameTrait> {
     server_ip: String,
     input_event_handler: Game::ClientInputEventHandler,
     manager_sender: Option<ChannelDrivenThreadSender<Manager<ClientManagerObserver<Game>>>>,
-    timer_join_handle_option: Option<eventhandling::JoinHandle<GameTimerEvent<ClientGameTimerObserver<Game>>, ()>>,
-    udp_input_join_handle_option: Option<eventhandling::JoinHandle<(), ()>>,
-    udp_output_join_handle_option: Option<eventhandling::JoinHandle<UdpOutputEvent<Game>, ()>>,
-    tcp_input_join_handle_option: Option<eventhandling::JoinHandle<(), ()>>,
-    tcp_output_sender: Option<ChannelDrivenThreadSender<TcpOutput>>,
+    timer_join_handle_option: Option<eventhandling::JoinHandle<GameTimer<ClientGameTimerObserver<Game>>>>,
+    udp_input_join_handle_option: Option<listener::JoinHandle<UdpInput<Game>>>,
+    udp_output_join_handle_option: Option<eventhandling::JoinHandle<UdpOutput<Game>>>,
+    tcp_input_join_handle_option: Option<listener::JoinHandle<TcpInput<Game>>>,
+    tcp_output_join_handle_option: Option<eventhandling::JoinHandle<TcpOutput>>,
     initial_information: Option<InitialInformation<Game>>,
     last_time_message: Option<TimeMessage>
 }
@@ -38,7 +38,7 @@ impl<Game: GameTrait> ClientCore<Game> {
             udp_input_join_handle_option: None,
             udp_output_join_handle_option: None,
             tcp_input_join_handle_option: None,
-            tcp_output_sender: None,
+            tcp_output_join_handle_option: None,
             initial_information: None,
             last_time_message: None
         }
@@ -86,8 +86,6 @@ impl<Game: GameTrait> ChannelDrivenThreadSender<ClientCore<Game>> {
                 .name("ClientUdpOutput")
                 .build_channel_for_event_handler::<UdpOutput<Game>>();
 
-            let (tcp_output_sender, tcp_output_builder) = TcpOutput::new(&tcp_stream).unwrap().build();
-
             let _manager_join_handle = manager_builder.name("ClientManager").start().unwrap();
 
             let tcp_input_join_handle = ThreadBuilder::new()
@@ -101,7 +99,10 @@ impl<Game: GameTrait> ChannelDrivenThreadSender<ClientCore<Game>> {
                     &tcp_stream).unwrap())
                 .unwrap();
 
-            let _tcp_output_join_handle = tcp_output_builder.name("ClientTcpOutput").start().unwrap();
+            let tcp_output_join_handle = ThreadBuilder::new()
+                .name("ClientTcpOutput")
+                .spawn_event_handler(TcpOutput::new(&tcp_stream).unwrap())
+                .unwrap();
 
             let udp_output_join_handle = udp_output_builder.spawn_event_handler(
                 UdpOutput::<Game>::new(server_udp_socket_addr_v4, &udp_socket).unwrap()
@@ -124,7 +125,7 @@ impl<Game: GameTrait> ChannelDrivenThreadSender<ClientCore<Game>> {
 
             core.timer_join_handle_option = Some(game_timer_join_handle);
             core.manager_sender = Some(manager_sender);
-            core.tcp_output_sender = Some(tcp_output_sender);
+            core.tcp_output_join_handle_option = Some(tcp_output_join_handle);
             core.tcp_input_join_handle_option = Some(tcp_input_join_handle);
             core.udp_input_join_handle_option = Some(udp_input_join_handle);
             core.udp_output_join_handle_option = Some(udp_output_join_handle);
@@ -164,7 +165,7 @@ impl<Game: GameTrait> ChannelDrivenThreadSender<ClientCore<Game>> {
             //TODO: check if this tick is really the next tick?
             //TODO: log a warn if a tick is missed or out of order
             if core.last_time_message.is_some() &&
-                core.tcp_output_sender.is_some() &&
+                core.tcp_output_join_handle_option.is_some() &&
                 core.initial_information.is_some() &&
                 core.manager_sender.is_some() {
 

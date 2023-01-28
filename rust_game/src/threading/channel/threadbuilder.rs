@@ -1,24 +1,24 @@
-use crate::threading::channel::{Channel, Sender};
-use crate::threading::eventhandling::{EventHandlerTrait, EventOrStopThread, JoinHandle, EventHandlerThread};
+use crate::threading::channel::{Channel, JoinHandle, Sender};
+use crate::threading::eventhandling::{EventHandlerTrait, EventOrStopThread, EventHandlerThread};
 use crate::threading::listener::{ListenerState, ListenerTrait};
-use crate::threading::threadbuilder::ThreadBuilder;
+use crate::threading;
+use crate::threading::{eventhandling, listener};
 
-//TODO: rename?
-pub struct ChannelThreadBuilder<T: Send + 'static> {
-    thread_builder: ThreadBuilder,
+pub struct ThreadBuilder<T: Send + 'static> {
+    thread_builder: threading::ThreadBuilder,
     channel: Channel<T>
 }
 
-impl<T: Send + 'static> ChannelThreadBuilder<T> {
+impl<T: Send + 'static> ThreadBuilder<T> {
 
-    pub fn new(thread_builder: ThreadBuilder) -> Self {
+    pub fn new(thread_builder: threading::ThreadBuilder) -> Self {
         return Self {
             thread_builder,
             channel: Channel::new()
         };
     }
 
-    pub fn take(self) -> (ThreadBuilder, Channel<T>) {
+    pub fn take(self) -> (threading::ThreadBuilder, Channel<T>) {
         return (self.thread_builder, self.channel);
     }
 
@@ -35,9 +35,9 @@ impl<T: Send + 'static> ChannelThreadBuilder<T> {
     }
 }
 
-impl<T: Send + 'static> ChannelThreadBuilder<EventOrStopThread<T>> {
+impl<T: Send + 'static> ThreadBuilder<EventOrStopThread<T>> {
 
-    pub fn spawn_event_handler<U: EventHandlerTrait<Event=T>>(self, event_handler: U) -> std::io::Result<JoinHandle<U::Event, U::ThreadReturn>> {
+    pub fn spawn_event_handler<U: EventHandlerTrait<Event=T>>(self, event_handler: U) -> std::io::Result<eventhandling::JoinHandle<U>> {
 
         let (thread_builder, channel) = self.take();
 
@@ -56,7 +56,7 @@ impl<T: Send + 'static> ChannelThreadBuilder<EventOrStopThread<T>> {
         });
     }
 
-    pub fn spawn_listener<U: ListenerTrait<Event=T>>(self, listener: U) -> std::io::Result<JoinHandle<U::Event, U::ThreadReturn>> {
+    pub fn spawn_listener<U: ListenerTrait<Event=T>>(self, listener: U) -> std::io::Result<listener::JoinHandle<U>> {
         return self.spawn_event_handler(ListenerState::ReadyToListen(listener));
     }
 }

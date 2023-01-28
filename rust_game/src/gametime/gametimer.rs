@@ -2,7 +2,6 @@ use std::ops::ControlFlow::{Break, Continue};
 use crate::gametime::{TimeValue, TimeDuration, TimeMessage, TimeReceived};
 use chrono::Local;
 use timer::{Guard, Timer};
-use crate::threading::{ChannelDrivenThread, ChannelDrivenThreadSender, ThreadAction};
 use crate::util::RollingAverage;
 use log::{trace, info, warn, error};
 use crate::gametime::gametimer::GameTimerEvent::{InitialInformationEvent, SetSender, StartTickingEvent, TickEvent, TimeMessageEvent};
@@ -17,10 +16,13 @@ const TICK_LATENESS_WARN_DURATION: TimeDuration = TimeDuration(20);
 const CLIENT_ERROR_WARN_DURATION: TimeDuration = TimeDuration(20);
 
 pub enum GameTimerEvent<Observer: GameTimerObserverTrait> {
+
+    //TODO: pass initial information when constructing game timer
     InitialInformationEvent(InitialInformation<Observer::Game>),
 
     //TODO: pass the sender to the event handler in another way
     SetSender(Sender<GameTimerEvent<Observer>>),
+
     StartTickingEvent,
     //TODO: switch to sent value meta data
     TickEvent(TimeValue),
