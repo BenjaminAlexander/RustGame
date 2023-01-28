@@ -10,7 +10,6 @@ use crate::client::clientgametimeobserver::ClientGameTimerObserver;
 use crate::client::clientmanagerobserver::ClientManagerObserver;
 use crate::gamemanager::Manager;
 use crate::threading::channel::ReceiveMetaData;
-use crate::threading::eventhandling::EventSenderTrait;
 use crate::threading::listener::{ListenerEventResult, ListenerTrait, ListenMetaData, ListenResult};
 use crate::threading::listener::ListenedOrDidNotListen::{DidNotListen, Listened};
 

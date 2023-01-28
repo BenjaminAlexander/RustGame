@@ -13,7 +13,6 @@ use crate::client::udpoutput::{UdpOutput, UdpOutputEvent};
 use crate::client::udpinput::UdpInput;
 use crate::threading::{ThreadBuilder, ChannelThread, ChannelDrivenThreadSender, ChannelDrivenThread, ThreadAction, OldThreadBuilderTrait, listener};
 use crate::threading::eventhandling;
-use crate::threading::eventhandling::EventSenderTrait;
 
 pub struct ClientCore<Game: GameTrait> {
     server_ip: String,

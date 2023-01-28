@@ -10,7 +10,7 @@ use crate::gametime::gametimerobserver::GameTimerObserverTrait;
 use crate::server::ServerConfig;
 use crate::messaging::InitialInformation;
 use crate::threading::channel::ReceiveMetaData;
-use crate::threading::eventhandling::{ChannelEvent, ChannelEventResult, EventHandlerTrait, EventSenderTrait, Sender};
+use crate::threading::eventhandling::{ChannelEvent, ChannelEventResult, EventHandlerTrait, Sender};
 use crate::threading::eventhandling::WaitOrTryForNextEvent::WaitForNextEvent;
 
 const TICK_LATENESS_WARN_DURATION: TimeDuration = TimeDuration(20);

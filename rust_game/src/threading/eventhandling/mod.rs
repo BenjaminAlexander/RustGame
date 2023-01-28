@@ -1,28 +1,11 @@
 mod enums;
-mod eventsendertrait;
 mod eventhandlertrait;
-mod threadbuilder;
 mod joinhandle;
-mod thread;
+mod eventhandlerthread;
+mod types;
 
-use crate::threading::channel;
-
-pub(crate) use self::eventhandlertrait::{EventHandlerTrait, ChannelEventResult, build_thread};
+pub(crate) use self::eventhandlertrait::{EventHandlerTrait};
 pub(crate) use self::enums::{ChannelEvent, EventOrStopThread, WaitOrTryForNextEvent};
 pub(crate) use self::joinhandle::JoinHandle;
-pub(crate) use self::eventsendertrait::EventSenderTrait;
-pub(crate) use self::threadbuilder::ThreadBuilder;
-pub(super) use self::thread::Thread;
-
-pub(crate) type SendError<T> = channel::SendError<EventOrStopThread<T>>;
-
-pub(crate) type SendResult<T> = Result<(), SendError<T>>;
-
-pub(crate) type Sender<T> = channel::Sender<EventOrStopThread<T>>;
-
-
-
-
-
-
-
+pub(super) use self::eventhandlerthread::EventHandlerThread;
+pub(crate) use self::types::{ChannelEventResult, SendError, SendResult, Sender};

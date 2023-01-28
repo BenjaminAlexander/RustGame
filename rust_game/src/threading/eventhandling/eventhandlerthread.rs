@@ -9,12 +9,12 @@ use crate::threading::eventhandling::WaitOrTryForNextEvent::{TryForNextEvent, Wa
 
 type EventReceiver<T> = Receiver<EventOrStopThread<T>>;
 
-pub struct Thread<T: EventHandlerTrait> {
+pub struct EventHandlerThread<T: EventHandlerTrait> {
     receiver: EventReceiver<T::Event>,
     event_handler: T
 }
 
-impl<T: EventHandlerTrait> Thread<T> {
+impl<T: EventHandlerTrait> EventHandlerThread<T> {
 
     pub(in crate::threading) fn new(receiver: EventReceiver<T::Event>, event_handler: T) -> Self {
         return Self {
@@ -61,7 +61,7 @@ impl<T: EventHandlerTrait> Thread<T> {
     }
 }
 
-impl<T: EventHandlerTrait> threading::Thread for Thread<T> {
+impl<T: EventHandlerTrait> threading::Thread for EventHandlerThread<T> {
     type ReturnType = T::ThreadReturn;
 
     fn run(self) -> Self::ReturnType {

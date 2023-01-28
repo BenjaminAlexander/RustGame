@@ -12,7 +12,6 @@ use crate::client::udpoutput::{UdpOutput, UdpOutputEvent};
 use crate::gamemanager::{Manager, RenderReceiverMessage};
 use crate::interface::GameTrait;
 use crate::threading::channel::{ReceiveMetaData, Sender};
-use crate::threading::eventhandling::EventSenderTrait;
 use crate::threading::listener::{ChannelEvent, ListenerEventResult, ListenerTrait, ListenResult};
 use crate::threading::listener::ListenedOrDidNotListen::Listened;
 

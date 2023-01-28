@@ -1,16 +1,7 @@
-use std::thread;
-use crate::threading::eventhandling::Sender;
+use crate::threading::channel::ChannelThreadJoinHandle;
+use crate::threading::eventhandling::EventOrStopThread;
 
 //TODO: don't reference EventHandlerTrait
 //TODO: move this to channel
 //TODO: make event handling type alias
-pub struct JoinHandle<T, U> {
-    pub(crate) sender: Sender<T>,
-    pub(crate) join_handle: thread::JoinHandle<U>
-}
-
-impl<T, U> JoinHandle<T, U> {
-
-    pub fn get_sender(&self) -> &Sender<T> { &self.sender }
-
-}
+pub type JoinHandle<T, U> = ChannelThreadJoinHandle<EventOrStopThread<T>, U>;

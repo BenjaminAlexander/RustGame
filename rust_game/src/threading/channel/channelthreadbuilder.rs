@@ -1,8 +1,9 @@
 use crate::threading::channel::{Channel, Sender};
-use crate::threading::eventhandling::{EventHandlerTrait, EventOrStopThread, JoinHandle, Thread};
+use crate::threading::eventhandling::{EventHandlerTrait, EventOrStopThread, JoinHandle, EventHandlerThread};
 use crate::threading::listener::{ListenerState, ListenerTrait};
 use crate::threading::threadbuilder::ThreadBuilder;
 
+//TODO: rename?
 pub struct ChannelThreadBuilder<T: Send + 'static> {
     thread_builder: ThreadBuilder,
     channel: Channel<T>
@@ -42,7 +43,7 @@ impl<T: Send + 'static> ChannelThreadBuilder<EventOrStopThread<T>> {
 
         let (sender, receiver) = channel.take();
 
-        let thread = Thread::new(
+        let thread = EventHandlerThread::new(
             receiver,
             event_handler
         );

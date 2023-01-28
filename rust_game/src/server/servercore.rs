@@ -16,7 +16,6 @@ use crate::server::clientaddress::ClientAddress;
 use crate::server::remoteudppeer::RemoteUdpPeer;
 use crate::server::servergametimerobserver::ServerGameTimerObserver;
 use crate::server::servermanagerobserver::ServerManagerObserver;
-use crate::threading::eventhandling::EventSenderTrait;
 
 pub struct ServerCore<Game: GameTrait> {
 
