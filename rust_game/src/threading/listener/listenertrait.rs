@@ -1,10 +1,6 @@
 use std::ops::ControlFlow;
 use crate::threading::channel::ReceiveMetaData;
-use crate::threading::eventhandling;
 use crate::threading::listener::{ListenedOrDidNotListen, ChannelEvent};
-use crate::threading::listener::eventhandler::ListenerState;
-use crate::threading::listener::sender::Sender;
-use crate::threading::listener::threadbuilder::ThreadBuilder;
 
 pub type ListenResult<T> = ControlFlow<<T as ListenerTrait>::ThreadReturn, ListenedOrDidNotListen<T>>;
 pub type ListenerEventResult<T> = ControlFlow<<T as ListenerTrait>::ThreadReturn, T>;
