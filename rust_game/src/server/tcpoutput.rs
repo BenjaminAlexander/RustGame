@@ -1,12 +1,20 @@
 use log::{debug, info};
 use std::net::TcpStream;
-use crate::threading::{ChannelDrivenThreadSender, ChannelThread, OldReceiver, ThreadAction};
 use std::io;
 use crate::messaging::{ToClientMessageTCP, InitialInformation};
 use std::io::Write;
 use crate::interface::GameTrait;
 use std::marker::PhantomData;
+use std::ops::ControlFlow::{Break, Continue};
 use crate::server::ServerConfig;
+use crate::server::tcpoutput::TcpOutputEvent::SendInitialInformation;
+use crate::threading::channel::ReceiveMetaData;
+use crate::threading::eventhandling::{ChannelEvent, ChannelEventResult, EventHandlerTrait};
+use crate::threading::eventhandling::WaitOrTryForNextEvent::{TryForNextEvent, WaitForNextEvent};
+
+pub enum TcpOutputEvent<Game: GameTrait> {
+    SendInitialInformation(ServerConfig, usize, Game::State)
+}
 
 pub struct TcpOutput<Game: GameTrait> {
     player_index: usize,
@@ -25,45 +33,38 @@ impl<Game: GameTrait> TcpOutput<Game> {
             phantom: PhantomData
         })
     }
+
+    fn send_initial_information(mut self, server_config: ServerConfig, player_count: usize, initial_state: Game::State) -> ChannelEventResult<Self> {
+
+        let initial_information = InitialInformation::<Game>::new(
+            server_config,
+            player_count,
+            self.player_index,
+            initial_state
+        );
+
+        let message = ToClientMessageTCP::<Game>::InitialInformation(initial_information);
+        rmp_serde::encode::write(&mut self.tcp_stream, &message).unwrap();
+        self.tcp_stream.flush().unwrap();
+
+        debug!("Sent InitialInformation");
+
+        return Continue(TryForNextEvent(self));
+    }
 }
 
-impl<Game: GameTrait> ChannelThread<(), ThreadAction> for TcpOutput<Game> {
+impl<Game: GameTrait> EventHandlerTrait for TcpOutput<Game> {
+    type Event = TcpOutputEvent<Game>;
+    type ThreadReturn = ();
 
-    fn run(mut self, receiver: OldReceiver<Self, ThreadAction>) -> () {
-
-        loop {
-
-            match receiver.recv(&mut self) {
-                Err(error) => {
-
-                    info!("Channel closed: {:?}", error);
-                    return ();
-                }
-                _ => {}
-            }
+    fn on_channel_event(self, channel_event: ChannelEvent<Self::Event>) -> ChannelEventResult<Self> {
+        match channel_event {
+            ChannelEvent::ReceivedEvent(_, SendInitialInformation(server_config, player_count, initial_state)) =>
+                self.send_initial_information(server_config, player_count, initial_state),
+            ChannelEvent::ChannelEmpty => Continue(WaitForNextEvent(self)),
+            ChannelEvent::ChannelDisconnected => Break(())
         }
     }
-}
 
-impl<Game: GameTrait> ChannelDrivenThreadSender<TcpOutput<Game>> {
-
-    pub fn send_initial_information(&self, server_config: ServerConfig, player_count: usize, initial_state: Game::State) {
-        self.send(move |tcp_output|{
-
-            let initial_information = InitialInformation::<Game>::new(
-                server_config,
-                player_count,
-                tcp_output.player_index,
-                initial_state
-            );
-
-            let message = ToClientMessageTCP::<Game>::InitialInformation(initial_information);
-            rmp_serde::encode::write(&mut tcp_output.tcp_stream, &message).unwrap();
-            tcp_output.tcp_stream.flush().unwrap();
-
-            debug!("Sent InitialInformation");
-
-            return ThreadAction::Continue;
-        }).unwrap();
-    }
+    fn on_stop(self, _receive_meta_data: ReceiveMetaData) -> Self::ThreadReturn { () }
 }

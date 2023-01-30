@@ -16,6 +16,7 @@ use crate::server::clientaddress::ClientAddress;
 use crate::server::remoteudppeer::RemoteUdpPeer;
 use crate::server::servergametimerobserver::ServerGameTimerObserver;
 use crate::server::servermanagerobserver::ServerManagerObserver;
+use crate::server::tcpoutput::TcpOutputEvent::SendInitialInformation;
 
 pub struct ServerCore<Game: GameTrait> {
 
@@ -24,7 +25,7 @@ pub struct ServerCore<Game: GameTrait> {
     tcp_listener_join_handle_option: Option<listener::JoinHandle<TcpListenerThread<Game>>>,
     timer_join_handle_option: Option<eventhandling::JoinHandle<GameTimer<ServerGameTimerObserver<Game>>>>,
     tcp_inputs: Vec<listener::JoinHandle<TcpInput>>,
-    tcp_outputs: Vec<ChannelDrivenThreadSender<TcpOutput<Game>>>,
+    tcp_outputs: Vec<eventhandling::JoinHandle<TcpOutput<Game>>>,
     udp_socket: Option<UdpSocket>,
     udp_outputs: Vec<eventhandling::JoinHandle<UdpOutput<Game>>>,
     udp_input_join_handle_option: Option<listener::JoinHandle<UdpInput<Game>>>,
@@ -198,11 +199,11 @@ impl<Game: GameTrait> ChannelDrivenThreadSender<ServerCore<Game>> {
                 timer_builder.get_sender().send_event(GameTimerEvent::StartTickingEvent).unwrap();
 
                 for tcp_output in core.tcp_outputs.iter() {
-                    tcp_output.send_initial_information(
+                    tcp_output.get_sender().send_event(SendInitialInformation(
                         core.server_config.clone(),
                         core.tcp_outputs.len(),
                         initial_state.clone()
-                    );
+                    ));
                 }
 
                 core.timer_join_handle_option = Some(timer_builder.spawn_event_handler(GameTimer::new(
@@ -239,11 +240,6 @@ impl<Game: GameTrait> ChannelDrivenThreadSender<ServerCore<Game>> {
 
                 core.tcp_inputs.push(tcp_input_join_handle);
 
-                let (tcp_out_sender, tcp_out_builder) = TcpOutput::new(
-                    player_index,
-                    &tcp_stream
-                ).unwrap().build();
-
                 let udp_out_join_handle = ThreadBuilder::new()
                     .name("ServerUdpOutput")
                     .spawn_event_handler(UdpOutput::new(
@@ -258,9 +254,15 @@ impl<Game: GameTrait> ChannelDrivenThreadSender<ServerCore<Game>> {
                     .send_event(UdpInputEvent::ClientAddress(client_address))
                     .unwrap();
 
-                tcp_out_builder.name("ServerTcpOutput").start().unwrap();
+                let tcp_output_join_handle = ThreadBuilder::new()
+                    .name("ServerTcpOutput")
+                    .spawn_event_handler(TcpOutput::new(
+                            player_index,
+                            &tcp_stream
+                        ).unwrap())
+                    .unwrap();
 
-                core.tcp_outputs.push(tcp_out_sender);
+                core.tcp_outputs.push(tcp_output_join_handle);
                 core.udp_outputs.push(udp_out_join_handle);
 
                 info!("TcpStream accepted: {:?}", tcp_stream);
