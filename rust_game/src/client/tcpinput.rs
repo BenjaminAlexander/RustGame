@@ -6,6 +6,8 @@ use crate::messaging::ToClientMessageTCP;
 use std::io;
 use std::ops::ControlFlow::*;
 use crate::client::ClientCore;
+use crate::client::clientcore::ClientCoreEvent;
+use crate::client::ClientCoreEvent::OnInitialInformation;
 use crate::client::clientgametimeobserver::ClientGameTimerObserver;
 use crate::client::clientmanagerobserver::ClientManagerObserver;
 use crate::client::udpoutput::{UdpOutput, UdpOutputEvent};
@@ -20,7 +22,7 @@ pub struct TcpInput <Game: GameTrait> {
     tcp_stream: TcpStream,
     game_timer_sender: eventhandling::Sender<GameTimerEvent<ClientGameTimerObserver<Game>>>,
     manager_sender: ChannelDrivenThreadSender<Manager<ClientManagerObserver<Game>>>,
-    client_core_sender: ChannelDrivenThreadSender<ClientCore<Game>>,
+    client_core_sender: eventhandling::Sender<ClientCoreEvent<Game>>,
     udp_output_sender: eventhandling::Sender<UdpOutputEvent<Game>>,
     render_data_sender: Sender<RenderReceiverMessage<Game>>
 }
@@ -30,7 +32,7 @@ impl<Game: GameTrait> TcpInput<Game> {
     pub fn new(
         game_timer_sender: eventhandling::Sender<GameTimerEvent<ClientGameTimerObserver<Game>>>,
         manager_sender: ChannelDrivenThreadSender<Manager<ClientManagerObserver<Game>>>,
-        client_core_sender: ChannelDrivenThreadSender<ClientCore<Game>>,
+        client_core_sender: eventhandling::Sender<ClientCoreEvent<Game>>,
         udp_output_sender: eventhandling::Sender<UdpOutputEvent<Game>>,
         render_data_sender: Sender<RenderReceiverMessage<Game>>,
         tcp_stream: &TcpStream) -> io::Result<Self> {
@@ -90,7 +92,7 @@ impl<Game: GameTrait> TcpInput<Game> {
                 self.player_index = Some(initial_information_message.get_player_index());
                 self.game_timer_sender.send_event(GameTimerEvent::InitialInformationEvent(initial_information_message.clone())).unwrap();
                 self.manager_sender.on_initial_information(initial_information_message.clone());
-                self.client_core_sender.on_initial_information(initial_information_message.clone());
+                self.client_core_sender.send_event(OnInitialInformation(initial_information_message.clone())).unwrap();
                 self.udp_output_sender.send_event(UdpOutputEvent::InitialInformationEvent(initial_information_message.clone())).unwrap();
                 self.render_data_sender.send(RenderReceiverMessage::InitialInformation(initial_information_message)).unwrap();
             }

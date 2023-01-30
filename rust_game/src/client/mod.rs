@@ -1,5 +1,3 @@
-pub use self::clientcore::ClientCore;
-
 mod clientcore;
 mod tcpinput;
 mod tcpoutput;
@@ -8,3 +6,4 @@ mod udpinput;
 mod clientgametimeobserver;
 mod clientmanagerobserver;
 
+pub use self::clientcore::{ClientCore, ClientCoreEvent};
