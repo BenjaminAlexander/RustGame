@@ -116,7 +116,6 @@ pub fn main() {
         }
     }
 
-
     let client_window = SimpleWindow::new(window_name, render_receiver_option.unwrap(), client_core_join_handle_option);
     client_window.run();
 }
