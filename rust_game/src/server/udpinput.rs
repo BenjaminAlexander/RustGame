@@ -1,6 +1,5 @@
 use log::{info, warn};
 use crate::messaging::{MAX_UDP_DATAGRAM_SIZE, ToServerMessageUDP, FragmentAssembler, MessageFragment};
-use crate::threading::ChannelDrivenThreadSender;
 use crate::interface::GameTrait;
 use std::net::{UdpSocket, SocketAddr, IpAddr};
 use std::io;
@@ -8,8 +7,9 @@ use crate::server::remoteudppeer::RemoteUdpPeer;
 use std::collections::{HashMap, HashSet};
 use std::ops::ControlFlow::{Break, Continue};
 use crate::server::clientaddress::ClientAddress;
-use crate::server::ServerCore;
+use crate::server::servercore::ServerCoreEvent;
 use crate::threading::channel::ReceiveMetaData;
+use crate::threading::eventhandling::Sender;
 use crate::threading::listener::{ChannelEvent, ListenerEventResult, ListenerTrait, ListenResult};
 use crate::threading::listener::ListenedOrDidNotListen::{DidNotListen, Listened};
 
@@ -26,14 +26,14 @@ pub struct UdpInput<Game: GameTrait> {
     client_addresses: Vec<Option<ClientAddress>>,
     client_ip_set: HashSet<IpAddr>,
     fragment_assemblers: HashMap<SocketAddr, FragmentAssembler>,
-    core_sender: ChannelDrivenThreadSender<ServerCore<Game>>
+    core_sender: Sender<ServerCoreEvent<Game>>
 }
 
 impl<Game: GameTrait> UdpInput<Game> {
 
     pub fn new(
         socket: &UdpSocket,
-        core_sender: ChannelDrivenThreadSender<ServerCore<Game>>) -> io::Result<Self> {
+        core_sender: Sender<ServerCoreEvent<Game>>) -> io::Result<Self> {
         return Ok(Self {
             socket: socket.try_clone()?,
             remote_peers: Vec::new(),
@@ -102,7 +102,7 @@ impl<Game: GameTrait> UdpInput<Game> {
 
             }
             ToServerMessageUDP::Input(input_message) => {
-                self.core_sender.on_input_message(input_message);
+                self.core_sender.send_event(ServerCoreEvent::InputMessageEvent(input_message)).unwrap();
             }
         }
     }
@@ -117,14 +117,14 @@ impl<Game: GameTrait> UdpInput<Game> {
         match &self.remote_peers[player_index] {
             None => {
                 info!("First time UDP remote peer: {:?}", remote_peer);
-                self.core_sender.on_remote_udp_peer(remote_peer.clone());
+                self.core_sender.send_event(ServerCoreEvent::RemoteUdpPeerEvent(remote_peer.clone())).unwrap();
                 self.remote_peers[player_index] = Some(remote_peer);
             }
             Some(existing_remote_peer) => {
                 let existing_socket = existing_remote_peer.get_socket_addr();
                 if !existing_socket.eq(&remote_peer.get_socket_addr()) {
                     info!("Change of UDP remote peer: {:?}", remote_peer);
-                    self.core_sender.on_remote_udp_peer(remote_peer.clone());
+                    self.core_sender.send_event(ServerCoreEvent::RemoteUdpPeerEvent(remote_peer.clone())).unwrap();
                     self.remote_peers[player_index] = Some(remote_peer);
                     self.fragment_assemblers.remove(&existing_socket);
                 }

@@ -3,19 +3,20 @@ use std::net::{Ipv4Addr, SocketAddr, SocketAddrV4, TcpListener, TcpStream};
 use std::ops::ControlFlow::*;
 use log::{error, info, warn};
 use crate::interface::GameTrait;
-use crate::server::ServerCore;
+use crate::server::servercore::ServerCoreEvent;
+use crate::server::servercore::ServerCoreEvent::TcpConnectionEvent;
 use crate::threading::channel::ReceiveMetaData;
-use crate::threading::ChannelDrivenThreadSender;
+use crate::threading::eventhandling::Sender;
 use crate::threading::listener::{ListenedOrDidNotListen, ChannelEvent, ListenerEventResult, ListenerTrait, ListenResult};
 
 pub struct TcpListenerThread<Game: GameTrait> {
     tcp_listener_option: Option<TcpListener>,
-    server_core_sender: ChannelDrivenThreadSender<ServerCore<Game>>,
+    server_core_sender: Sender<ServerCoreEvent<Game>>,
     phantom: PhantomData<Game>
 }
 
 impl<Game: GameTrait> TcpListenerThread<Game> {
-    pub fn new(server_core_sender: ChannelDrivenThreadSender<ServerCore<Game>>) -> Self {
+    pub fn new(server_core_sender: Sender<ServerCoreEvent<Game>>) -> Self {
         Self{
             tcp_listener_option: None,
             server_core_sender,
@@ -47,7 +48,7 @@ impl<Game: GameTrait> TcpListenerThread<Game> {
             }
         };
 
-        match self.server_core_sender.on_tcp_connection(stream_clone) {
+        match self.server_core_sender.send_event(TcpConnectionEvent(stream_clone)) {
             Ok(()) => {
                 return Continue(self);
             }

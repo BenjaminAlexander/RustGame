@@ -1,25 +1,20 @@
 use crate::gamemanager::{ManagerObserverTrait, RenderReceiverMessage, StepMessage};
 use crate::interface::GameTrait;
 use crate::messaging::{ServerInputMessage, StateMessage};
-use crate::server::ServerCore;
 use crate::server::udpoutput::UdpOutputEvent;
-use crate::threading::{ChannelDrivenThreadSender, eventhandling};
-use crate::threading::channel::Sender;
+use crate::threading::{channel, eventhandling};
 
 pub struct ServerManagerObserver<Game: GameTrait> {
-    server_core_sender: ChannelDrivenThreadSender<ServerCore<Game>>,
     udp_outputs: Vec<eventhandling::Sender<UdpOutputEvent<Game>>>,
-    render_receiver_sender: Sender<RenderReceiverMessage<Game>>
+    render_receiver_sender: channel::Sender<RenderReceiverMessage<Game>>
 }
 
 impl<Game: GameTrait> ServerManagerObserver<Game> {
 
-    pub fn new(server_core_sender: ChannelDrivenThreadSender<ServerCore<Game>>,
-               udp_outputs: Vec<eventhandling::Sender<UdpOutputEvent<Game>>>,
-               render_receiver_sender: Sender<RenderReceiverMessage<Game>>) -> Self {
+    pub fn new(udp_outputs: Vec<eventhandling::Sender<UdpOutputEvent<Game>>>,
+               render_receiver_sender: channel::Sender<RenderReceiverMessage<Game>>) -> Self {
 
         Self {
-            server_core_sender,
             udp_outputs,
             render_receiver_sender
         }

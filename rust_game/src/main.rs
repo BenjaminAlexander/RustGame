@@ -6,6 +6,7 @@ use crate::gamemanager::RenderReceiver;
 use crate::simplegame::{SimpleInput, SimpleState, SimpleInputEvent, SimpleInputEventHandler, SimpleWindow, SimpleServerInput, SimpleGameImpl};
 use crate::threading::{ChannelThread, OldThreadBuilderTrait, ThreadBuilder};
 use crate::gametime::TimeDuration;
+use crate::server::ServerCoreEvent;
 
 mod simplegame;
 mod messaging;
@@ -55,18 +56,19 @@ pub fn main() {
     let mut client_core_join_handle_option = None;
 
     if run_server {
-        let server_core  = server::ServerCore::<SimpleGameImpl>::new();
 
-        let (server_core_sender, server_core_builder) = server_core.build();
+        let server_core_thread_builder = ThreadBuilder::new()
+            .name("ServerCore")
+            .build_channel_for_event_handler::<server::ServerCore<SimpleGameImpl>>();
 
-        if let Err(error) = server_core_sender.start_listener() {
+        let server_core  = server::ServerCore::<SimpleGameImpl>::new(server_core_thread_builder.get_sender().clone());
+
+        if let Err(error) = server_core_thread_builder.get_sender().send_event(ServerCoreEvent::StartListenerEvent) {
             error!("{:?}", error);
             return;
         }
 
-        server_core_builder.name("ServerCore").start().unwrap();
-
-        server_core_sender_option = Some(server_core_sender);
+        server_core_sender_option = Some(server_core_thread_builder.spawn_event_handler(server_core).unwrap());
     }
 
     if run_client {
@@ -107,7 +109,10 @@ pub fn main() {
             info!("line: {:?}", line);
         }
 
-        unused_render_receiver_option = Some(server_core_sender_option.as_ref().unwrap().start_game());
+        let (render_receiver_sender, render_receiver) = RenderReceiver::<SimpleGameImpl>::new();
+        unused_render_receiver_option = Some(render_receiver);
+
+        server_core_sender_option.as_ref().unwrap().get_sender().send_event(ServerCoreEvent::StartGameEvent(render_receiver_sender)).unwrap();
 
         if !run_client {
             let tmp = unused_render_receiver_option;
