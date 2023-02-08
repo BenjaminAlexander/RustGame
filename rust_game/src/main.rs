@@ -4,7 +4,7 @@ use log::{error, info};
 use crate::client::ClientCoreEvent::Connect;
 use crate::gamemanager::RenderReceiver;
 use crate::simplegame::{SimpleInput, SimpleState, SimpleInputEvent, SimpleInputEventHandler, SimpleWindow, SimpleServerInput, SimpleGameImpl};
-use crate::threading::{ChannelThread, OldThreadBuilderTrait, ThreadBuilder};
+use crate::threading::ThreadBuilder;
 use crate::gametime::TimeDuration;
 use crate::server::ServerCoreEvent;
 

@@ -1,4 +1,4 @@
-use log::{debug, info};
+use log::debug;
 use std::net::TcpStream;
 use std::io;
 use crate::messaging::{ToClientMessageTCP, InitialInformation};

@@ -1,4 +1,3 @@
-use std::io::Error;
 use std::thread::{Builder, JoinHandle};
 use log::info;
 use crate::threading::{channel, listener};

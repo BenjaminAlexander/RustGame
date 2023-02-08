@@ -24,8 +24,12 @@ use crate::threading::eventhandling::WaitOrTryForNextEvent::{TryForNextEvent, Wa
 use self::ServerCoreEvent::{StartListenerEvent, RemoteUdpPeerEvent, StartGameEvent, TcpConnectionEvent, TimeMessageEvent, InputMessageEvent};
 
 pub enum ServerCoreEvent<Game: GameTrait> {
+    //TODO: start listener before spawning event handler
     StartListenerEvent,
+
     RemoteUdpPeerEvent(RemoteUdpPeer),
+
+    //TODO: create render receiver sender before spawning event handler
     StartGameEvent(Sender<RenderReceiverMessage<Game>>),
     TcpConnectionEvent(TcpStream),
     TimeMessageEvent(TimeMessage),
