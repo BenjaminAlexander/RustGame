@@ -8,7 +8,7 @@ use std::ops::ControlFlow::{Break, Continue};
 use log::{debug, error, warn};
 use crate::client::clientgametimeobserver::ClientGameTimerObserver;
 use crate::client::clientmanagerobserver::ClientManagerObserver;
-use crate::gamemanager::Manager;
+use crate::gamemanager::{Manager, ManagerEvent};
 use crate::threading::channel::ReceiveMetaData;
 use crate::threading::listener::{ListenerEventResult, ListenerTrait, ListenMetaData, ListenResult};
 use crate::threading::listener::ListenedOrDidNotListen::{DidNotListen, Listened};
@@ -18,7 +18,7 @@ pub struct UdpInput<Game: GameTrait> {
     socket: UdpSocket,
     fragment_assembler: FragmentAssembler,
     game_timer_sender: eventhandling::Sender<GameTimerEvent<ClientGameTimerObserver<Game>>>,
-    manager_sender: ChannelDrivenThreadSender<Manager<ClientManagerObserver<Game>>>,
+    manager_sender: eventhandling::Sender<ManagerEvent<Game>>,
 
     //metrics
     time_of_last_state_receive: TimeValue,
@@ -32,7 +32,7 @@ impl<Game: GameTrait> UdpInput<Game> {
         server_socket_addr_v4: SocketAddrV4,
         socket: &UdpSocket,
         game_timer_sender: eventhandling::Sender<GameTimerEvent<ClientGameTimerObserver<Game>>>,
-        manager_sender: ChannelDrivenThreadSender<Manager<ClientManagerObserver<Game>>>) -> io::Result<Self> {
+        manager_sender: eventhandling::Sender<ManagerEvent<Game>>) -> io::Result<Self> {
 
         let server_socket_addr = SocketAddr::from(server_socket_addr_v4);
 
@@ -124,12 +124,12 @@ impl<Game: GameTrait> UdpInput<Game> {
                 //TODO: ignore input messages from this player
                 //info!("Input message: {:?}", input_message.get_step());
                 self.time_of_last_input_receive = time_received;
-                self.manager_sender.on_input_message(input_message.clone());
+                self.manager_sender.send_event(ManagerEvent::InputEvent(input_message.clone())).unwrap();
             }
             ToClientMessageUDP::ServerInputMessage(server_input_message) => {
                 //info!("Server Input message: {:?}", server_input_message.get_step());
                 self.time_of_last_server_input_receive = time_received;
-                self.manager_sender.on_server_input_message(server_input_message);
+                self.manager_sender.send_event(ManagerEvent::ServerInputEvent(server_input_message)).unwrap();
             }
             ToClientMessageUDP::StateMessage(state_message) => {
                 //info!("State message: {:?}", state_message.get_sequence());
@@ -143,7 +143,7 @@ impl<Game: GameTrait> UdpInput<Game> {
                 }
 
                 self.time_of_last_state_receive = time_received;
-                self.manager_sender.on_state_message(state_message);
+                self.manager_sender.send_event(ManagerEvent::StateEvent(state_message)).unwrap();
             }
         };
 

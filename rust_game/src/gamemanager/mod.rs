@@ -1,4 +1,4 @@
-pub use self::manager::Manager;
+pub use self::manager::{Manager, ManagerEvent};
 
 pub use self::renderreceiver::{
     RenderReceiver,

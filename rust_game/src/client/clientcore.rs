@@ -6,7 +6,7 @@ use crate::client::tcpinput::TcpInput;
 use crate::interface::GameTrait;
 use crate::client::tcpoutput::TcpOutput;
 use crate::messaging::{InitialInformation, InputMessage};
-use crate::gamemanager::{Manager, RenderReceiverMessage};
+use crate::gamemanager::{Manager, ManagerEvent, RenderReceiverMessage};
 use log::{trace};
 use crate::client::clientcore::ClientCoreEvent::{Connect, OnInitialInformation, OnInputEvent, OnTimeMessage};
 use crate::client::clientgametimeobserver::ClientGameTimerObserver;
@@ -31,7 +31,7 @@ pub struct ClientCore<Game: GameTrait> {
     sender: eventhandling::Sender<ClientCoreEvent<Game>>,
     server_ip: String,
     input_event_handler: Game::ClientInputEventHandler,
-    manager_sender: Option<ChannelDrivenThreadSender<Manager<ClientManagerObserver<Game>>>>,
+    manager_join_handle_option: Option<eventhandling::JoinHandle<Manager<ClientManagerObserver<Game>>>>,
     timer_join_handle_option: Option<eventhandling::JoinHandle<GameTimer<ClientGameTimerObserver<Game>>>>,
     udp_input_join_handle_option: Option<listener::JoinHandle<UdpInput<Game>>>,
     udp_output_join_handle_option: Option<eventhandling::JoinHandle<UdpOutput<Game>>>,
@@ -49,7 +49,7 @@ impl<Game: GameTrait> ClientCore<Game> {
             sender,
             server_ip: server_ip.to_string(),
             input_event_handler: Game::new_input_event_handler(),
-            manager_sender: None,
+            manager_join_handle_option: None,
             timer_join_handle_option: None,
             udp_input_join_handle_option: None,
             udp_output_join_handle_option: None,
@@ -71,9 +71,6 @@ impl<Game: GameTrait> ClientCore<Game> {
 
         let udp_socket = UdpSocket::bind("127.0.0.1:0").unwrap();
 
-        let (manager_sender, manager_builder) =
-            Manager::new(ClientManagerObserver::new(render_receiver_sender.clone())).build();
-
         let client_game_time_observer = ClientGameTimerObserver::new(
             self.sender.clone(),
             render_receiver_sender.clone());
@@ -89,13 +86,16 @@ impl<Game: GameTrait> ClientCore<Game> {
             .name("ClientUdpOutput")
             .build_channel_for_event_handler::<UdpOutput<Game>>();
 
-        let _manager_join_handle = manager_builder.name("ClientManager").start().unwrap();
+        let manager_join_handle = ThreadBuilder::new()
+            .name("ClientManager")
+            .spawn_event_handler(Manager::new(ClientManagerObserver::new(render_receiver_sender.clone())))
+            .unwrap();
 
         let tcp_input_join_handle = ThreadBuilder::new()
             .name("ClientTcpInput")
             .spawn_listener(TcpInput::new(
                 game_timer_builder.clone_sender(),
-                manager_sender.clone(),
+                manager_join_handle.get_sender().clone(),
                 self.sender.clone(),
                 udp_output_builder.clone_sender(),
                 render_receiver_sender.clone(),
@@ -117,7 +117,7 @@ impl<Game: GameTrait> ClientCore<Game> {
                 server_udp_socket_addr_v4,
                 &udp_socket,
                 game_timer_builder.clone_sender(),
-                manager_sender.clone()
+                manager_join_handle.get_sender().clone()
             ).unwrap())
             .unwrap();
 
@@ -127,7 +127,7 @@ impl<Game: GameTrait> ClientCore<Game> {
         )).unwrap();
 
         self.timer_join_handle_option = Some(game_timer_join_handle);
-        self.manager_sender = Some(manager_sender);
+        self.manager_join_handle_option = Some(manager_join_handle);
         self.tcp_output_join_handle_option = Some(tcp_output_join_handle);
         self.tcp_input_join_handle_option = Some(tcp_input_join_handle);
         self.udp_input_join_handle_option = Some(udp_input_join_handle);
@@ -138,7 +138,7 @@ impl<Game: GameTrait> ClientCore<Game> {
 
     fn on_input_event(mut self, input_event: Game::ClientInputEvent) -> ChannelEventResult<Self> {
 
-        if self.manager_sender.is_some() &&
+        if self.manager_join_handle_option.is_some() &&
             self.last_time_message.is_some() &&
             self.initial_information.is_some() {
 
@@ -163,9 +163,9 @@ impl<Game: GameTrait> ClientCore<Game> {
         if self.last_time_message.is_some() &&
             self.tcp_output_join_handle_option.is_some() &&
             self.initial_information.is_some() &&
-            self.manager_sender.is_some() {
+            self.manager_join_handle_option.is_some() {
 
-            let manager_sender = self.manager_sender.as_ref().unwrap();
+            let manager_sender = self.manager_join_handle_option.as_ref().unwrap().get_sender();
             let last_time_message = self.last_time_message.as_ref().unwrap();
             let initial_information = self.initial_information.as_ref().unwrap();
 
@@ -178,16 +178,16 @@ impl<Game: GameTrait> ClientCore<Game> {
                     Game::get_input(& mut self.input_event_handler)
                 );
 
-                manager_sender.on_input_message(message.clone());
+                manager_sender.send_event(ManagerEvent::InputEvent(message.clone())).unwrap();
                 self.udp_output_join_handle_option.as_ref().unwrap().get_sender().send_event(UdpOutputEvent::InputMessageEvent(message));
 
                 let client_drop_time = time_message.get_scheduled_time().subtract(Game::GRACE_PERIOD * 2);
                 let drop_step = time_message.get_step_from_actual_time(client_drop_time).ceil() as usize;
 
-                manager_sender.drop_steps_before(drop_step);
+                manager_sender.send_event(ManagerEvent::DropStepsBeforeEvent(drop_step)).unwrap();
                 //TODO: message or last message or next?
                 //TODO: define strict and consistent rules for how real time relates to ticks, input deadlines and display states
-                manager_sender.set_requested_step(time_message.get_step() + 1);
+                manager_sender.send_event(ManagerEvent::SetRequestedStepEvent(time_message.get_step() + 1)).unwrap();
             }
         }
 

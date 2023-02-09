@@ -8,7 +8,7 @@ use crate::threading::{ChannelThread, ChannelDrivenThreadSender, OldThreadBuilde
 use crate::server::{TcpListenerThread, ServerConfig};
 use crate::server::tcpoutput::TcpOutput;
 use crate::gametime::{GameTimer, GameTimerEvent, TimeMessage};
-use crate::gamemanager::{Manager, RenderReceiverMessage};
+use crate::gamemanager::{Manager, ManagerEvent, RenderReceiverMessage};
 use crate::messaging::{InputMessage, InitialInformation};
 use std::str::FromStr;
 use crate::server::udpinput::{UdpInput, UdpInputEvent};
@@ -47,7 +47,7 @@ pub struct ServerCore<Game: GameTrait> {
     udp_socket: Option<UdpSocket>,
     udp_outputs: Vec<eventhandling::JoinHandle<UdpOutput<Game>>>,
     udp_input_join_handle_option: Option<listener::JoinHandle<UdpInput<Game>>>,
-    manager_sender: Option<ChannelDrivenThreadSender<Manager<ServerManagerObserver<Game>>>>,
+    manager_join_handle_option: Option<eventhandling::JoinHandle<Manager<ServerManagerObserver<Game>>>>,
     drop_steps_before: usize
 }
 
@@ -91,7 +91,7 @@ impl<Game: GameTrait> ServerCore<Game> {
             drop_steps_before: 0,
             udp_socket: None,
             udp_input_join_handle_option: None,
-            manager_sender: None
+            manager_join_handle_option: None
         }
     }
 
@@ -185,8 +185,9 @@ impl<Game: GameTrait> ServerCore<Game> {
                 render_receiver_sender.clone()
             );
 
-            let (manager_sender, manager_builder) =
-                Manager::new(server_manager_observer).build();
+            let manager_builder = ThreadBuilder::new()
+                .name("ServerManager")
+                .build_channel_for_event_handler::<Manager<ServerManagerObserver<Game>>>();
 
             let server_game_timer_observer = ServerGameTimerObserver::new(
                 self.sender.clone(),
@@ -198,8 +199,7 @@ impl<Game: GameTrait> ServerCore<Game> {
                 .name("ServerTimer")
                 .build_channel_for_event_handler::<GameTimer<ServerGameTimerObserver<Game>>>();
 
-            self.manager_sender = Some(manager_sender.clone());
-            manager_sender.drop_steps_before(self.drop_steps_before);
+            manager_builder.get_sender().send_event(ManagerEvent::DropStepsBeforeEvent(self.drop_steps_before)).unwrap();
 
             let server_initial_information = InitialInformation::<Game>::new(
                 self.server_config.clone(),
@@ -208,7 +208,7 @@ impl<Game: GameTrait> ServerCore<Game> {
                 initial_state.clone()
             );
 
-            manager_sender.on_initial_information(server_initial_information.clone());
+            manager_builder.get_sender().send_event(ManagerEvent::InitialInformationEvent(server_initial_information.clone())).unwrap();
             render_receiver_sender.send(RenderReceiverMessage::InitialInformation(server_initial_information.clone())).unwrap();
 
             timer_builder.get_sender().send_event(GameTimerEvent::InitialInformationEvent(server_initial_information.clone())).unwrap();
@@ -231,7 +231,8 @@ impl<Game: GameTrait> ServerCore<Game> {
                 server_game_timer_observer
             )).unwrap());
 
-            manager_builder.name("ServerManager").start().unwrap();
+            self.manager_join_handle_option = Some(manager_builder.spawn_event_handler(Manager::new(server_manager_observer)).unwrap());
+
         }
 
         return Continue(TryForNextEvent(self));
@@ -301,14 +302,14 @@ impl<Game: GameTrait> ServerCore<Game> {
 
             self.drop_steps_before = time_message.get_step_from_actual_time(time_message.get_scheduled_time().subtract(Game::GRACE_PERIOD)).ceil() as usize;
 
-            if self.manager_sender.is_some() {
-                let manager_sender = self.manager_sender.as_ref().unwrap();
+            if self.manager_join_handle_option.is_some() {
+                let manager_sender = self.manager_join_handle_option.as_ref().unwrap().get_sender();
 
                 //the manager needs its lowest step to not have any new inputs
                 if self.drop_steps_before > 1 {
-                    manager_sender.drop_steps_before(self.drop_steps_before - 1);
+                    manager_sender.send_event(ManagerEvent::DropStepsBeforeEvent(self.drop_steps_before - 1)).unwrap();
                 }
-                manager_sender.set_requested_step(time_message.get_step() + 1);
+                manager_sender.send_event(ManagerEvent::SetRequestedStepEvent(time_message.get_step() + 1)).unwrap();
             }
 
             return Continue(TryForNextEvent(self));
@@ -319,9 +320,14 @@ impl<Game: GameTrait> ServerCore<Game> {
         //TODO: is game started?
 
         if self.drop_steps_before <= input_message.get_step() &&
-            self.manager_sender.is_some() {
+            self.manager_join_handle_option.is_some() {
 
-            self.manager_sender.as_ref().unwrap().on_input_message(input_message.clone());
+            self.manager_join_handle_option.as_ref()
+                .unwrap()
+                .get_sender()
+                .send_event(ManagerEvent::InputEvent(input_message.clone()))
+                .unwrap();
+
             for udp_output in self.udp_outputs.iter() {
                 udp_output.get_sender().send_event(UdpOutputEvent::SendInputMessage(input_message.clone()));
             }

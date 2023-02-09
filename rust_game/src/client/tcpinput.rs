@@ -1,7 +1,7 @@
 use log::{error, info, warn};
 use std::net::TcpStream;
 use crate::gametime::GameTimerEvent;
-use crate::threading::{ChannelDrivenThreadSender, eventhandling};
+use crate::threading::{channel, ChannelDrivenThreadSender, eventhandling};
 use crate::messaging::ToClientMessageTCP;
 use std::io;
 use std::ops::ControlFlow::*;
@@ -10,9 +10,9 @@ use crate::client::ClientCoreEvent::OnInitialInformation;
 use crate::client::clientgametimeobserver::ClientGameTimerObserver;
 use crate::client::clientmanagerobserver::ClientManagerObserver;
 use crate::client::udpoutput::UdpOutputEvent;
-use crate::gamemanager::{Manager, RenderReceiverMessage};
+use crate::gamemanager::{Manager, ManagerEvent, RenderReceiverMessage};
 use crate::interface::GameTrait;
-use crate::threading::channel::{ReceiveMetaData, Sender};
+use crate::threading::channel::ReceiveMetaData;
 use crate::threading::listener::{ChannelEvent, ListenerEventResult, ListenerTrait, ListenResult};
 use crate::threading::listener::ListenedOrDidNotListen::Listened;
 
@@ -20,20 +20,20 @@ pub struct TcpInput <Game: GameTrait> {
     player_index: Option<usize>,
     tcp_stream: TcpStream,
     game_timer_sender: eventhandling::Sender<GameTimerEvent<ClientGameTimerObserver<Game>>>,
-    manager_sender: ChannelDrivenThreadSender<Manager<ClientManagerObserver<Game>>>,
+    manager_sender: eventhandling::Sender<ManagerEvent<Game>>,
     client_core_sender: eventhandling::Sender<ClientCoreEvent<Game>>,
     udp_output_sender: eventhandling::Sender<UdpOutputEvent<Game>>,
-    render_data_sender: Sender<RenderReceiverMessage<Game>>
+    render_data_sender: channel::Sender<RenderReceiverMessage<Game>>
 }
 
 impl<Game: GameTrait> TcpInput<Game> {
 
     pub fn new(
         game_timer_sender: eventhandling::Sender<GameTimerEvent<ClientGameTimerObserver<Game>>>,
-        manager_sender: ChannelDrivenThreadSender<Manager<ClientManagerObserver<Game>>>,
+        manager_sender: eventhandling::Sender<ManagerEvent<Game>>,
         client_core_sender: eventhandling::Sender<ClientCoreEvent<Game>>,
         udp_output_sender: eventhandling::Sender<UdpOutputEvent<Game>>,
-        render_data_sender: Sender<RenderReceiverMessage<Game>>,
+        render_data_sender: channel::Sender<RenderReceiverMessage<Game>>,
         tcp_stream: &TcpStream) -> io::Result<Self> {
 
         Ok(Self {
@@ -90,7 +90,7 @@ impl<Game: GameTrait> TcpInput<Game> {
 
                 self.player_index = Some(initial_information_message.get_player_index());
                 self.game_timer_sender.send_event(GameTimerEvent::InitialInformationEvent(initial_information_message.clone())).unwrap();
-                self.manager_sender.on_initial_information(initial_information_message.clone());
+                self.manager_sender.send_event(ManagerEvent::InitialInformationEvent(initial_information_message.clone())).unwrap();
                 self.client_core_sender.send_event(OnInitialInformation(initial_information_message.clone())).unwrap();
                 self.udp_output_sender.send_event(UdpOutputEvent::InitialInformationEvent(initial_information_message.clone())).unwrap();
                 self.render_data_sender.send(RenderReceiverMessage::InitialInformation(initial_information_message)).unwrap();
