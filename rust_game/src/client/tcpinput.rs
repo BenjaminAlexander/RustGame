@@ -1,16 +1,15 @@
 use log::{error, info, warn};
 use std::net::TcpStream;
 use crate::gametime::GameTimerEvent;
-use crate::threading::{channel, ChannelDrivenThreadSender, eventhandling};
+use crate::threading::{channel, eventhandling};
 use crate::messaging::ToClientMessageTCP;
 use std::io;
 use std::ops::ControlFlow::*;
 use crate::client::clientcore::ClientCoreEvent;
 use crate::client::ClientCoreEvent::OnInitialInformation;
 use crate::client::clientgametimeobserver::ClientGameTimerObserver;
-use crate::client::clientmanagerobserver::ClientManagerObserver;
 use crate::client::udpoutput::UdpOutputEvent;
-use crate::gamemanager::{Manager, ManagerEvent, RenderReceiverMessage};
+use crate::gamemanager::{ManagerEvent, RenderReceiverMessage};
 use crate::interface::GameTrait;
 use crate::threading::channel::ReceiveMetaData;
 use crate::threading::listener::{ChannelEvent, ListenerEventResult, ListenerTrait, ListenResult};
