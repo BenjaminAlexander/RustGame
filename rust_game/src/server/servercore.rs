@@ -1,200 +1,241 @@
 use std::net::{TcpStream, Ipv4Addr, SocketAddrV4, UdpSocket};
+use std::ops::ControlFlow::{Continue, Break};
 
 use log::{error, info};
 use crate::interface::GameTrait;
 use crate::server::tcpinput::TcpInput;
-use crate::threading::{ChannelDrivenThread, ChannelThread, ChannelDrivenThreadSender as Sender, ChannelDrivenThreadSenderError as SendError, ThreadAction};
+use crate::threading::{listener, eventhandling, ThreadBuilder};
 use crate::server::{TcpListenerThread, ServerConfig};
 use crate::server::tcpoutput::TcpOutput;
-use crate::gametime::{GameTimer, TimeMessage};
-use crate::gamemanager::{Manager, RenderReceiver};
+use crate::gametime::{GameTimer, GameTimerEvent, TimeMessage};
+use crate::gamemanager::{Manager, ManagerEvent, RenderReceiverMessage};
 use crate::messaging::{InputMessage, InitialInformation};
 use std::str::FromStr;
-use crate::server::udpinput::UdpInput;
-use crate::server::udpoutput::UdpOutput;
+use crate::server::udpinput::{UdpInput, UdpInputEvent};
+use crate::server::udpoutput::{UdpOutput, UdpOutputEvent};
 use crate::server::clientaddress::ClientAddress;
 use crate::server::remoteudppeer::RemoteUdpPeer;
 use crate::server::servergametimerobserver::ServerGameTimerObserver;
 use crate::server::servermanagerobserver::ServerManagerObserver;
+use crate::server::tcpoutput::TcpOutputEvent::SendInitialInformation;
+use crate::threading::channel::{ReceiveMetaData, Sender};
+use crate::threading::eventhandling::{ChannelEvent, ChannelEventResult, EventHandlerTrait};
+use crate::threading::eventhandling::WaitOrTryForNextEvent::{TryForNextEvent, WaitForNextEvent};
+use self::ServerCoreEvent::{StartListenerEvent, RemoteUdpPeerEvent, StartGameEvent, TcpConnectionEvent, TimeMessageEvent, InputMessageEvent};
+
+pub enum ServerCoreEvent<Game: GameTrait> {
+    //TODO: start listener before spawning event handler
+    StartListenerEvent,
+
+    RemoteUdpPeerEvent(RemoteUdpPeer),
+
+    //TODO: create render receiver sender before spawning event handler
+    StartGameEvent(Sender<RenderReceiverMessage<Game>>),
+    TcpConnectionEvent(TcpStream),
+    TimeMessageEvent(TimeMessage),
+    InputMessageEvent(InputMessage<Game>)
+}
 
 pub struct ServerCore<Game: GameTrait> {
-
+    sender: eventhandling::Sender<ServerCoreEvent<Game>>,
     game_is_started: bool,
     server_config: ServerConfig,
-    tcp_listener_thread: Option<Sender<TcpListenerThread<Game>>>,
-    tcp_inputs: Vec<Sender<TcpInput>>,
-    tcp_outputs: Vec<Sender<TcpOutput<Game>>>,
+    tcp_listener_join_handle_option: Option<listener::JoinHandle<TcpListenerThread<Game>>>,
+    timer_join_handle_option: Option<eventhandling::JoinHandle<GameTimer<ServerGameTimerObserver<Game>>>>,
+    tcp_inputs: Vec<listener::JoinHandle<TcpInput>>,
+    tcp_outputs: Vec<eventhandling::JoinHandle<TcpOutput<Game>>>,
     udp_socket: Option<UdpSocket>,
-    udp_outputs: Vec<Sender<UdpOutput<Game>>>,
-    udp_input_sender: Option<Sender<UdpInput<Game>>>,
-    manager_sender: Option<Sender<Manager<ServerManagerObserver<Game>>>>,
+    udp_outputs: Vec<eventhandling::JoinHandle<UdpOutput<Game>>>,
+    udp_input_join_handle_option: Option<listener::JoinHandle<UdpInput<Game>>>,
+    manager_join_handle_option: Option<eventhandling::JoinHandle<Manager<ServerManagerObserver<Game>>>>,
     drop_steps_before: usize
 }
 
-impl<Game: GameTrait> ChannelDrivenThread<()> for ServerCore<Game> {
-    fn on_channel_disconnect(&mut self) -> () {
-        ()
+impl<Game: GameTrait> EventHandlerTrait for ServerCore<Game> {
+    type Event = ServerCoreEvent<Game>;
+    type ThreadReturn = ();
+
+    fn on_channel_event(self, channel_event: ChannelEvent<Self::Event>) -> ChannelEventResult<Self> {
+        match channel_event {
+            ChannelEvent::ReceivedEvent(_, StartListenerEvent) => self.start_listener(),
+            ChannelEvent::ReceivedEvent(_, RemoteUdpPeerEvent(remote_udp_peer)) => self.on_remote_udp_peer(remote_udp_peer),
+            ChannelEvent::ReceivedEvent(_, StartGameEvent(render_receiver_sender)) => self.start_game(render_receiver_sender),
+            ChannelEvent::ReceivedEvent(_, TcpConnectionEvent(tcp_stream)) => self.on_tcp_connection(tcp_stream),
+            ChannelEvent::ReceivedEvent(_, TimeMessageEvent(time_message)) => self.on_time_message(time_message),
+            ChannelEvent::ReceivedEvent(_, InputMessageEvent(input_message)) => self.on_input_message(input_message),
+            ChannelEvent::ChannelEmpty => Continue(WaitForNextEvent(self)),
+            ChannelEvent::ChannelDisconnected => Break(()),
+        }
     }
+
+    fn on_stop(self, _receive_meta_data: ReceiveMetaData) -> Self::ThreadReturn { () }
 }
 
 impl<Game: GameTrait> ServerCore<Game> {
 
-    pub fn new() -> Self {
+    pub fn new(sender: eventhandling::Sender<ServerCoreEvent<Game>>) -> Self {
 
         let server_config = ServerConfig::new(
             Game::STEP_PERIOD
         );
 
         Self {
+            sender,
             game_is_started: false,
             server_config,
-            tcp_listener_thread: None,
+            tcp_listener_join_handle_option: None,
+            timer_join_handle_option: None,
             tcp_inputs: Vec::new(),
             tcp_outputs: Vec::new(),
             udp_outputs: Vec::new(),
             drop_steps_before: 0,
             udp_socket: None,
-            udp_input_sender: None,
-            manager_sender: None
+            udp_input_join_handle_option: None,
+            manager_join_handle_option: None
         }
     }
 
-}
+    fn start_listener(mut self) -> ChannelEventResult<Self> {
 
-impl<Game: GameTrait> Sender<ServerCore<Game>> {
+        //TODO: on error, make sure other threads are closed
+        //TODO: could these other threads be started somewhere else?
 
-    pub fn start_listener(&self) -> Result<(), SendError<ServerCore<Game>>> {
-
-        let core_sender = self.clone();
-
-        self.send(|core| {
-
-            //TODO: on error, make sure other threads are closed
-            //TODO: could these other threads be started somewhere else?
-
-            let ip_addr_v4 = match Ipv4Addr::from_str("127.0.0.1") {
-                Ok(ip_addr_v4) => ip_addr_v4,
-                Err(error) => {
-                    error!("{:?}", error);
-                    return ThreadAction::Stop;
-                }
-            };
-
-            let socket_addr_v4 = SocketAddrV4::new(ip_addr_v4, Game::UDP_PORT);
-
-            core.udp_socket = match UdpSocket::bind(socket_addr_v4) {
-                Ok(udp_socket) => Some(udp_socket),
-                Err(error) => {
-                    error!("{:?}", error);
-                    return ThreadAction::Stop;
-                }
-            };
-
-            let udp_input = match UdpInput::<Game>::new(
-                core.udp_socket.as_ref().unwrap(),
-                core_sender.clone()
-            ) {
-                Ok(udp_input) => udp_input,
-                Err(error) => {
-                    error!("{:?}", error);
-                    return ThreadAction::Stop;
-                }
-            };
-
-            let (udp_input_sender, udp_input_builder) = udp_input.build();
-            core.udp_input_sender = Some(udp_input_sender);
-
-            //TODO: hold onto this join handle
-            if let Err(error) = udp_input_builder.name("ServerUdpInput").start() {
+        let ip_addr_v4 = match Ipv4Addr::from_str("127.0.0.1") {
+            Ok(ip_addr_v4) => ip_addr_v4,
+            Err(error) => {
                 error!("{:?}", error);
-                return ThreadAction::Stop;
+                return Break(());
             }
+        };
 
-            let (listener_sender, listener_builder) = TcpListenerThread::<Game>::new(core_sender).build();
-            core.tcp_listener_thread = Some(listener_sender);
+        let socket_addr_v4 = SocketAddrV4::new(ip_addr_v4, Game::UDP_PORT);
 
-            //TODO: hold onto this join handle
-            if let Err(error) = listener_builder.name("ServerTcpListener").start() {
+        self.udp_socket = match UdpSocket::bind(socket_addr_v4) {
+            Ok(udp_socket) => Some(udp_socket),
+            Err(error) => {
                 error!("{:?}", error);
-                return ThreadAction::Stop;
+                return Break(());
             }
+        };
 
-            return ThreadAction::Continue;
-        })
+        let udp_input = match UdpInput::<Game>::new(
+            self.udp_socket.as_ref().unwrap(),
+            self.sender.clone()
+        ) {
+            Ok(udp_input) => udp_input,
+            Err(error) => {
+                error!("{:?}", error);
+                return Break(());
+            }
+        };
+
+        let udp_input_builder = ThreadBuilder::new()
+            .name("ServerUdpInput")
+            .spawn_listener(udp_input);
+
+        self.udp_input_join_handle_option = Some(match udp_input_builder {
+            Ok(udp_input_join_handle) => udp_input_join_handle,
+            Err(error) => {
+                error!("{:?}", error);
+                return Break(());
+            }
+        });
+
+        let tcp_listener_join_handle_result = ThreadBuilder::new()
+            .name("ServerTcpListener")
+            .spawn_listener(TcpListenerThread::<Game>::new(self.sender.clone()));
+
+        match tcp_listener_join_handle_result {
+            Ok(tcp_listener_join_handle) => {
+                self.tcp_listener_join_handle_option = Some(tcp_listener_join_handle);
+                return Continue(TryForNextEvent(self));
+            }
+            Err(error) => {
+                error!("Error starting Tcp Listener Thread: {:?}", error);
+                return Break(());
+            }
+        }
     }
 
-    pub fn on_remote_udp_peer(&self, remote_udp_peer: RemoteUdpPeer) {
-        self.send(|core|{
+    fn on_remote_udp_peer(mut self, remote_udp_peer: RemoteUdpPeer) -> ChannelEventResult<Self> {
+        if let Some(udp_output_join_handle) = self.udp_outputs.get(remote_udp_peer.get_player_index()) {
+            udp_output_join_handle.get_sender().send_event(UdpOutputEvent::RemotePeer(remote_udp_peer)).unwrap();
+        }
 
-            if let Some(udp_output_sender) = core.udp_outputs.get(remote_udp_peer.get_player_index()) {
-                udp_output_sender.on_remote_peer(remote_udp_peer);
-            }
-
-            return ThreadAction::Continue;
-        }).unwrap();
+        return Continue(TryForNextEvent(self));
     }
 
-    pub fn start_game(&self) -> RenderReceiver<Game> {
-        let (render_receiver_sender, render_receiver) = RenderReceiver::<Game>::new();
-        let core_sender = self.clone();
-        self.send(move |core| {
-            if !core.game_is_started {
-                core.game_is_started = true;
+    fn start_game(mut self, render_receiver_sender: Sender<RenderReceiverMessage<Game>>) -> ChannelEventResult<Self> {
+        //TODO: remove this line
+        //let (render_receiver_sender, render_receiver) = RenderReceiver::<Game>::new();
 
-                let initial_state = Game::get_initial_state(core.tcp_outputs.len());
+        if !self.game_is_started {
+            self.game_is_started = true;
 
-                let server_manager_observer = ServerManagerObserver::new(
-                    core_sender.clone(),
-                    core.udp_outputs.clone(),
-                    render_receiver_sender.clone()
-                );
+            let initial_state = Game::get_initial_state(self.tcp_outputs.len());
 
-                let (manager_sender, manager_builder) =
-                    Manager::new(server_manager_observer).build();
+            let mut udp_output_senders: Vec<eventhandling::Sender<UdpOutputEvent<Game>>> = Vec::new();
 
-                let server_game_timer_observer = ServerGameTimerObserver::new(
-                    core_sender.clone(),
-                    render_receiver_sender.clone(),
-                    core.udp_outputs.clone()
-                );
+            for udp_output_join_handler in self.udp_outputs.iter() {
+                udp_output_senders.push(udp_output_join_handler.get_sender().clone());
+            }
 
-                let (timer_sender, timer_builder) = GameTimer::new(
-                    0,
-                    server_game_timer_observer
-                ).build();
+            let server_manager_observer = ServerManagerObserver::new(
+                udp_output_senders.clone(),
+                render_receiver_sender.clone()
+            );
 
-                core.manager_sender = Some(manager_sender.clone());
-                manager_sender.drop_steps_before(core.drop_steps_before);
+            let manager_builder = ThreadBuilder::new()
+                .name("ServerManager")
+                .build_channel_for_event_handler::<Manager<ServerManagerObserver<Game>>>();
 
-                let server_initial_information = InitialInformation::<Game>::new(
-                    core.server_config.clone(),
-                    core.tcp_outputs.len(),
-                    usize::MAX,
+            let server_game_timer_observer = ServerGameTimerObserver::new(
+                self.sender.clone(),
+                render_receiver_sender.clone(),
+                udp_output_senders
+            );
+
+            let timer_builder = ThreadBuilder::new()
+                .name("ServerTimer")
+                .build_channel_for_event_handler::<GameTimer<ServerGameTimerObserver<Game>>>();
+
+            manager_builder.get_sender().send_event(ManagerEvent::DropStepsBeforeEvent(self.drop_steps_before)).unwrap();
+
+            let server_initial_information = InitialInformation::<Game>::new(
+                self.server_config.clone(),
+                self.tcp_outputs.len(),
+                usize::MAX,
+                initial_state.clone()
+            );
+
+            manager_builder.get_sender().send_event(ManagerEvent::InitialInformationEvent(server_initial_information.clone())).unwrap();
+            render_receiver_sender.send(RenderReceiverMessage::InitialInformation(server_initial_information.clone())).unwrap();
+
+            timer_builder.get_sender().send_event(GameTimerEvent::InitialInformationEvent(server_initial_information.clone())).unwrap();
+
+            //TODO: fix this
+            timer_builder.get_sender().send_event(GameTimerEvent::SetSender(timer_builder.clone_sender())).unwrap();
+
+            timer_builder.get_sender().send_event(GameTimerEvent::StartTickingEvent).unwrap();
+
+            for tcp_output in self.tcp_outputs.iter() {
+                tcp_output.get_sender().send_event(SendInitialInformation(
+                    self.server_config.clone(),
+                    self.tcp_outputs.len(),
                     initial_state.clone()
-                );
-
-                manager_sender.on_initial_information(server_initial_information.clone());
-                render_receiver_sender.on_initial_information(server_initial_information.clone());
-                timer_sender.on_initial_information(server_initial_information.clone());
-
-                timer_sender.start().unwrap();
-
-                for tcp_output in core.tcp_outputs.iter() {
-                    tcp_output.send_initial_information(
-                        core.server_config.clone(),
-                        core.tcp_outputs.len(),
-                        initial_state.clone()
-                    );
-                }
-
-                timer_builder.name("ServerTimer").start().unwrap();
-                manager_builder.name("ServerManager").start().unwrap();
+                ));
             }
 
-            return ThreadAction::Continue;
-        }).unwrap();
+            self.timer_join_handle_option = Some(timer_builder.spawn_event_handler(GameTimer::new(
+                0,
+                server_game_timer_observer
+            )).unwrap());
 
-        return render_receiver;
+            self.manager_join_handle_option = Some(manager_builder.spawn_event_handler(Manager::new(server_manager_observer)).unwrap());
+
+        }
+
+        return Continue(TryForNextEvent(self));
     }
 
     /*
@@ -203,84 +244,95 @@ impl<Game: GameTrait> Sender<ServerCore<Game>> {
     Tcp Hello ->
         <- UdpHello
      */
-    pub fn on_tcp_connection(&self, tcp_stream: TcpStream) -> Result<(), SendError<ServerCore<Game>>> {
-        self.send(move |core|{
-            if !core.game_is_started {
-                let player_index = core.tcp_inputs.len();
+    fn on_tcp_connection(mut self, tcp_stream: TcpStream) -> ChannelEventResult<Self> {
+        if !self.game_is_started {
+            let player_index = self.tcp_inputs.len();
 
-                let client_address = ClientAddress::new(player_index, tcp_stream.peer_addr().unwrap().ip());
+            let client_address = ClientAddress::new(player_index, tcp_stream.peer_addr().unwrap().ip());
 
-                let (in_sender, in_thread_builder) = TcpInput::new(&tcp_stream).unwrap().build();
-                in_thread_builder.name("ServerTcpInput").start().unwrap();
-                core.tcp_inputs.push(in_sender);
+            let tcp_input_join_handle = ThreadBuilder::new()
+                .name("ServerTcpInput")
+                .spawn_listener(TcpInput::new(&tcp_stream).unwrap())
+                .unwrap();
 
-                let (tcp_out_sender, tcp_out_builder) = TcpOutput::new(
+            self.tcp_inputs.push(tcp_input_join_handle);
+
+            let udp_out_join_handle = ThreadBuilder::new()
+                .name("ServerUdpOutput")
+                .spawn_event_handler(UdpOutput::new(
+                    player_index,
+                    self.udp_socket.as_ref().unwrap()
+                ).unwrap())
+                .unwrap();
+
+            self.udp_input_join_handle_option.as_ref()
+                .unwrap()
+                .get_sender()
+                .send_event(UdpInputEvent::ClientAddress(client_address))
+                .unwrap();
+
+            let tcp_output_join_handle = ThreadBuilder::new()
+                .name("ServerTcpOutput")
+                .spawn_event_handler(TcpOutput::new(
                     player_index,
                     &tcp_stream
-                ).unwrap().build();
+                ).unwrap())
+                .unwrap();
 
-                let (udp_out_sender, udp_out_builder) = UdpOutput::new(
-                    player_index,
-                    core.udp_socket.as_ref().unwrap()
-                ).unwrap().build();
+            self.tcp_outputs.push(tcp_output_join_handle);
+            self.udp_outputs.push(udp_out_join_handle);
 
-                let input_sender = core.udp_input_sender.as_ref().unwrap();
-                input_sender.on_client_address(client_address);
+            info!("TcpStream accepted: {:?}", tcp_stream);
 
-                tcp_out_builder.name("ServerTcpOutput").start().unwrap();
-                udp_out_builder.name("ServerUdpOutput").start().unwrap();
+        } else {
+            info!("TcpStream connected after the core has stated and will be dropped. {:?}", tcp_stream);
+        }
 
-                core.tcp_outputs.push(tcp_out_sender);
-                core.udp_outputs.push(udp_out_sender);
-
-                info!("TcpStream accepted: {:?}", tcp_stream);
-
-            } else {
-                info!("TcpStream connected after the core has stated and will be dropped. {:?}", tcp_stream);
-            }
-
-            return ThreadAction::Continue;
-        })
+        return Continue(TryForNextEvent(self));
     }
 
-    pub fn on_time_message(&self, time_message: TimeMessage) {
-        self.send(move |core|{
+    fn on_time_message(mut self, time_message: TimeMessage) -> ChannelEventResult<Self> {
+            /*
+            TODO: time is also sent directly fomr gametime observer, seems like this is a bug
 
-            for udp_output in core.udp_outputs.iter() {
-                udp_output.on_time_message(time_message.clone());
+            for udp_output in self.udp_outputs.iter() {
+                udp_output.send_event(UdpOutputEvent::SendTimeMessage(time_message.clone()));
             }
+            */
 
-            core.drop_steps_before = time_message.get_step_from_actual_time(time_message.get_scheduled_time().subtract(Game::GRACE_PERIOD)).ceil() as usize;
+            self.drop_steps_before = time_message.get_step_from_actual_time(time_message.get_scheduled_time().subtract(Game::GRACE_PERIOD)).ceil() as usize;
 
-            if core.manager_sender.is_some() {
-                let manager_sender = core.manager_sender.as_ref().unwrap();
+            if self.manager_join_handle_option.is_some() {
+                let manager_sender = self.manager_join_handle_option.as_ref().unwrap().get_sender();
 
                 //the manager needs its lowest step to not have any new inputs
-                if core.drop_steps_before > 1 {
-                    manager_sender.drop_steps_before(core.drop_steps_before - 1);
+                if self.drop_steps_before > 1 {
+                    manager_sender.send_event(ManagerEvent::DropStepsBeforeEvent(self.drop_steps_before - 1)).unwrap();
                 }
-                manager_sender.set_requested_step(time_message.get_step() + 1);
+                manager_sender.send_event(ManagerEvent::SetRequestedStepEvent(time_message.get_step() + 1)).unwrap();
             }
 
-            return ThreadAction::Continue;
-        }).unwrap();
+            return Continue(TryForNextEvent(self));
     }
 
-    pub fn on_input_message(&self, input_message: InputMessage<Game>) {
-        self.send(move |core|{
+    fn on_input_message(mut self, input_message: InputMessage<Game>) -> ChannelEventResult<Self> {
 
-            //TODO: is game started?
+        //TODO: is game started?
 
-            if core.drop_steps_before <= input_message.get_step() &&
-                core.manager_sender.is_some() {
+        if self.drop_steps_before <= input_message.get_step() &&
+            self.manager_join_handle_option.is_some() {
 
-                core.manager_sender.as_ref().unwrap().on_input_message(input_message.clone());
-                for udp_output in core.udp_outputs.iter() {
-                    udp_output.on_input_message(input_message.clone());
-                }
+            self.manager_join_handle_option.as_ref()
+                .unwrap()
+                .get_sender()
+                .send_event(ManagerEvent::InputEvent(input_message.clone()))
+                .unwrap();
+
+            for udp_output in self.udp_outputs.iter() {
+                udp_output.get_sender().send_event(UdpOutputEvent::SendInputMessage(input_message.clone()));
             }
+        }
 
-            return ThreadAction::Continue;
-        }).unwrap();
+        return Continue(TryForNextEvent(self));
     }
 }

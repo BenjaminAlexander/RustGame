@@ -1,6 +1,6 @@
 pub use crate::server::tcplistenerthread::TcpListenerThread;
 pub use self::serverconfig::ServerConfig;
-pub use self::servercore::ServerCore;
+pub use self::servercore::{ServerCore, ServerCoreEvent};
 
 mod servercore;
 mod tcpinput;

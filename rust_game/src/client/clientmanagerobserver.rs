@@ -1,15 +1,15 @@
-use crate::gamemanager::{Data, ManagerObserverTrait, StepMessage};
+use crate::gamemanager::{ManagerObserverTrait, RenderReceiverMessage, StepMessage};
 use crate::interface::GameTrait;
 use crate::messaging::{ServerInputMessage, StateMessage};
-use crate::threading::ChannelDrivenThreadSender as Sender;
+use crate::threading::channel::Sender;
 
 pub struct ClientManagerObserver<Game: GameTrait> {
-    render_receiver_sender: Sender<Data<Game>>
+    render_receiver_sender: Sender<RenderReceiverMessage<Game>>
 }
 
 impl<Game: GameTrait> ClientManagerObserver<Game> {
 
-    pub fn new(render_receiver_sender: Sender<Data<Game>>) -> Self{
+    pub fn new(render_receiver_sender: Sender<RenderReceiverMessage<Game>>) -> Self{
         Self{render_receiver_sender}
     }
 
@@ -21,7 +21,7 @@ impl<Game: GameTrait> ManagerObserverTrait for ClientManagerObserver<Game> {
     const IS_SERVER: bool = false;
 
     fn on_step_message(&self, step_message: StepMessage<Game>) {
-        self.render_receiver_sender.on_step_message(step_message);
+        self.render_receiver_sender.send(RenderReceiverMessage::StepMessage(step_message)).unwrap();
     }
 
     fn on_completed_step(&self, _state_message: StateMessage<Game>) {

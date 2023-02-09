@@ -3,8 +3,16 @@ use crate::interface::GameTrait;
 use std::net::{UdpSocket, SocketAddrV4};
 use crate::messaging::{InputMessage, ToServerMessageUDP, InitialInformation, MAX_UDP_DATAGRAM_SIZE, Fragmenter};
 use std::io;
-use std::sync::mpsc::TryRecvError;
-use crate::threading::{ChannelThread, Receiver, ChannelDrivenThreadSender as Sender, ThreadAction};
+use std::ops::ControlFlow::{Continue, Break};
+use crate::threading::channel::ReceiveMetaData;
+use crate::threading::eventhandling::{ChannelEvent, ChannelEventResult, EventHandlerTrait};
+use crate::threading::eventhandling::WaitOrTryForNextEvent::{TryForNextEvent, WaitForNextEvent};
+
+//TODO: combine server/client and tcp/udp inputs/outputs to shared listener/eventhandler types
+pub enum UdpOutputEvent<Game: GameTrait> {
+    InitialInformationEvent(InitialInformation<Game>),
+    InputMessageEvent(InputMessage<Game>)
+}
 
 pub struct UdpOutput<Game: GameTrait> {
     server_address: SocketAddrV4,
@@ -31,6 +39,41 @@ impl<Game: GameTrait> UdpOutput<Game> {
         });
     }
 
+    fn on_initial_information(&mut self, initial_information: InitialInformation<Game>) {
+        debug!("InitialInformation Received.");
+        self.initial_information = Some(initial_information);
+
+        let message = ToServerMessageUDP::<Game>::Hello{player_index: self.initial_information.as_ref().unwrap().get_player_index()};
+        self.send_message(message);
+    }
+
+    pub fn on_input_message(&mut self, input_message: InputMessage<Game>) {
+        //insert in reverse sorted order
+        match self.input_queue.binary_search_by(|elem| { input_message.cmp(elem) }) {
+            Ok(pos) => self.input_queue[pos] = input_message,
+            Err(pos) => self.input_queue.insert(pos, input_message)
+        }
+    }
+
+    fn send_all_messages(&mut self) {
+        let mut send_another_message = true;
+        while send_another_message {
+
+            if self.input_queue.len() > self.max_observed_input_queue {
+                self.max_observed_input_queue = self.input_queue.len();
+                info!("Outbound input queue has hit a max size of {:?}", self.max_observed_input_queue);
+            }
+
+            match self.input_queue.pop() {
+                None => send_another_message = false,
+                Some(input_to_send) => {
+                    let message = ToServerMessageUDP::<Game>::Input(input_to_send);
+                    self.send_message(message);
+                }
+            }
+        }
+    }
+
     fn send_message(&mut self, message: ToServerMessageUDP<Game>) {
 
         let buf = rmp_serde::to_vec(&message).unwrap();
@@ -47,70 +90,29 @@ impl<Game: GameTrait> UdpOutput<Game> {
     }
 }
 
-impl<Game: GameTrait> ChannelThread<(), ThreadAction> for UdpOutput<Game> {
+impl<Game: GameTrait> EventHandlerTrait for UdpOutput<Game> {
+    type Event = UdpOutputEvent<Game>;
+    type ThreadReturn = ();
 
-    fn run(mut self, receiver: Receiver<Self, ThreadAction>) -> () {
+    fn on_channel_event(mut self, channel_event: ChannelEvent<Self::Event>) -> ChannelEventResult<Self> {
+        match channel_event {
+            ChannelEvent::ReceivedEvent(_, event) => {
+                match event {
+                    UdpOutputEvent::InitialInformationEvent(initial_information) => self.on_initial_information(initial_information),
+                    UdpOutputEvent::InputMessageEvent(input_message) => self.on_input_message(input_message)
+                };
 
-        loop {
-            loop {
-                match receiver.try_recv(&mut self) {
-                    Ok(ThreadAction::Continue) => {}
-                    Err(TryRecvError::Empty) => break,
-                    Ok(ThreadAction::Stop) => {
-                        info!("Thread commanded to stop.");
-                        return;
-                    }
-                    Err(TryRecvError::Disconnected) => {
-                        info!("Thread stopped due to disconnect");
-                        return;
-                    }
-                }
+                return Continue(TryForNextEvent(self));
             }
-
-            let mut send_another_message = true;
-            while send_another_message {
-
-                if self.input_queue.len() > self.max_observed_input_queue {
-                    self.max_observed_input_queue = self.input_queue.len();
-                    info!("Outbound input queue has hit a max size of {:?}", self.max_observed_input_queue);
-                }
-
-                match self.input_queue.pop() {
-                    None => send_another_message = false,
-                    Some(input_to_send) => {
-                        let message = ToServerMessageUDP::<Game>::Input(input_to_send);
-                        self.send_message(message);
-                    }
-                }
+            ChannelEvent::ChannelEmpty => {
+                self.send_all_messages();
+                return Continue(WaitForNextEvent(self));
+            }
+            ChannelEvent::ChannelDisconnected => {
+                return Break(());
             }
         }
     }
-}
 
-impl<Game: GameTrait> Sender<UdpOutput<Game>> {
-
-    pub fn on_initial_information(&self, initial_information: InitialInformation<Game>) {
-        self.send(move |udp_output|{
-            debug!("InitialInformation Received.");
-            udp_output.initial_information = Some(initial_information);
-
-            let message = ToServerMessageUDP::<Game>::Hello{player_index: udp_output.initial_information.as_ref().unwrap().get_player_index()};
-            udp_output.send_message(message);
-
-            return ThreadAction::Continue;
-        }).unwrap();
-    }
-
-    pub fn on_input_message(&self, input_message: InputMessage<Game>) {
-        self.send(move |udp_output|{
-
-            //insert in reverse sorted order
-            match udp_output.input_queue.binary_search_by(|elem| { input_message.cmp(elem) }) {
-                Ok(pos) => udp_output.input_queue[pos] = input_message,
-                Err(pos) => udp_output.input_queue.insert(pos, input_message)
-            }
-
-            return ThreadAction::Continue;
-        }).unwrap();
-    }
+    fn on_stop(self, _: ReceiveMetaData) -> Self::ThreadReturn { () }
 }

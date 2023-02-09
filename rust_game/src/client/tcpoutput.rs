@@ -1,10 +1,12 @@
-use log::info;
 use std::net::TcpStream;
-use crate::threading::{ChannelThread, Receiver, ThreadAction};
 use std::io;
+use std::ops::ControlFlow::{Break, Continue};
+use crate::threading::channel::ReceiveMetaData;
+use crate::threading::eventhandling::{ChannelEvent, ChannelEventResult, EventHandlerTrait};
+use crate::threading::eventhandling::ChannelEvent::{ReceivedEvent, ChannelEmpty, ChannelDisconnected};
+use crate::threading::eventhandling::WaitOrTryForNextEvent::{TryForNextEvent, WaitForNextEvent};
 
 //TODO: Send response to time messages to calculate ping
-//Should this e a channel driven thread?
 pub struct TcpOutput {
     tcp_stream: TcpStream
 }
@@ -18,21 +20,17 @@ impl TcpOutput {
     }
 }
 
-impl ChannelThread<(), ThreadAction> for TcpOutput {
+impl EventHandlerTrait for TcpOutput {
+    type Event = ();
+    type ThreadReturn = ();
 
-    fn run(mut self, receiver: Receiver<Self, ThreadAction>) -> () {
-        loop {
-            match receiver.recv(&mut self) {
-                Ok(ThreadAction::Continue) => {}
-                Ok(ThreadAction::Stop) => {
-                    info!("Thread commanded to stop.");
-                    return;
-                }
-                Err(error) => {
-                    info!("Thread stopped due to disconnect: {:?}", error);
-                    return;
-                }
-            }
+    fn on_channel_event(self, channel_event: ChannelEvent<Self::Event>) -> ChannelEventResult<Self> {
+        match channel_event {
+            ReceivedEvent(_, ()) => Continue(TryForNextEvent(self)),
+            ChannelEmpty => Continue(WaitForNextEvent(self)),
+            ChannelDisconnected => Break(())
         }
     }
+
+    fn on_stop(self, _receive_meta_data: ReceiveMetaData) -> Self::ThreadReturn { () }
 }

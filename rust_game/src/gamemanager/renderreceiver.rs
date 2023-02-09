@@ -1,18 +1,24 @@
-use std::sync::mpsc::TryRecvError;
 use log::{info, warn};
 use crate::interface::{InterpolationArg, GameTrait};
 use crate::gamemanager::stepmessage::StepMessage;
-use crate::threading::{ChannelDrivenThreadSender as Sender, ChannelDrivenThreadReceiver as Receiver, channel, ThreadAction};
 use crate::gametime::{TimeMessage, TimeValue, TimeDuration};
 use crate::messaging::InitialInformation;
+use crate::threading::channel::{Channel, TryRecvError, Receiver, Sender};
+
+pub enum RenderReceiverMessage<Game: GameTrait> {
+    InitialInformation(InitialInformation<Game>),
+    StepMessage(StepMessage<Game>),
+    TimeMessage(TimeMessage),
+    StopThread
+}
 
 //TODO: made the difference between the render receiver and the Data more clear
 pub struct RenderReceiver<Game: GameTrait> {
-    receiver: Receiver<Data<Game>>,
+    receiver: Receiver<RenderReceiverMessage<Game>>,
     data: Data<Game>
 }
 
-pub struct Data<Game: GameTrait> {
+struct Data<Game: GameTrait> {
 
     //TODO: use vec deque so that this is more efficient
     step_queue: Vec<StepMessage<Game>>,
@@ -22,8 +28,8 @@ pub struct Data<Game: GameTrait> {
 
 impl<Game: GameTrait> RenderReceiver<Game> {
 
-    pub fn new() -> (Sender<Data<Game>>, Self) {
-        let (sender, receiver) = channel::<Data<Game>, ThreadAction>();
+    pub fn new() -> (Sender<RenderReceiverMessage<Game>>, Self) {
+        let (sender, receiver) = Channel::<RenderReceiverMessage<Game>>::new().take();
 
         let data = Data::<Game> {
             step_queue: Vec::new(),
@@ -44,14 +50,26 @@ impl<Game: GameTrait> RenderReceiver<Game> {
     pub fn get_step_message(self: &mut Self) -> Option<(TimeDuration, Game::InterpolationResult)> {
 
         loop {
-            match self.receiver.try_recv(&mut self.data) {
-                Ok(ThreadAction::Continue) => {}
-                Err(TryRecvError::Empty) => break,
-                Ok(ThreadAction::Stop) => {
+
+            match self.receiver.try_recv() {
+
+                Ok(RenderReceiverMessage::InitialInformation(initial_information)) =>
+                    self.data.on_initial_information(initial_information),
+
+                Ok(RenderReceiverMessage::StepMessage(step_message)) =>
+                    self.data.on_step_message(step_message),
+
+                Ok(RenderReceiverMessage::TimeMessage(time_message)) =>
+                    self.data.on_time_message(time_message),
+
+                Ok(RenderReceiverMessage::StopThread) => {
                     info!("Thread commanded to stop, but not stopping...");
                     //TODO: notify the caller if the channel is disconnected
                     break;
                 }
+
+                Err(TryRecvError::Empty) => break,
+
                 Err(TryRecvError::Disconnected) => {
                     info!("Channel disconnected.");
                     //TODO: notify the caller if the channel is disconnected
@@ -130,61 +148,44 @@ impl<Game: GameTrait> Data<Game> {
             //info!("Dropped step: {:?}", dropped.get_step_index());
         }
     }
-}
 
-impl<Game: GameTrait> Sender<Data<Game>> {
-
-    pub fn on_initial_information(&self, initial_information: InitialInformation<Game>) {
-        self.send(|data|{
-            data.initial_information = Some(initial_information);
-
-            return ThreadAction::Continue;
-        }).unwrap();
+    fn on_initial_information(&mut self, initial_information: InitialInformation<Game>) {
+        self.initial_information = Some(initial_information);
     }
 
-    pub fn on_step_message(&self, step_message: StepMessage<Game>) {
+    fn on_step_message(&mut self, step_message: StepMessage<Game>) {
+
+        if !self.step_queue.is_empty() &&
+            self.step_queue[0].get_step_index() + 1 < step_message.get_step_index() {
+            warn!("Received steps out of order.  Waiting for {:?} but got {:?}.",
+                  self.step_queue[0].get_step_index() + 1, step_message.get_step_index());
+        }
 
         //info!("StepMessage: {:?}", step_message.get_step_index());
-        self.send(|data|{
+        //insert in reverse sorted order
+        match self.step_queue.binary_search_by(|elem| { step_message.cmp(elem) }) {
+            Ok(pos) => self.step_queue[pos] = step_message,
+            Err(pos) => self.step_queue.insert(pos, step_message)
+        }
 
-            if !data.step_queue.is_empty() &&
-                data.step_queue[0].get_step_index() + 1 < step_message.get_step_index() {
-                warn!("Received steps out of order.  Waiting for {:?} but got {:?}.",
-                      data.step_queue[0].get_step_index() + 1, step_message.get_step_index());
-            }
-
-            //info!("StepMessage: {:?}", step_message.get_step_index());
-            //insert in reverse sorted order
-            match data.step_queue.binary_search_by(|elem| { step_message.cmp(elem) }) {
-                Ok(pos) => data.step_queue[pos] = step_message,
-                Err(pos) => data.step_queue.insert(pos, step_message)
-            }
-
-            if let Some(time_message) = data.latest_time_message {
-                let now = TimeValue::now();
-
-                //TODO: put this in a method
-                let latest_step = time_message.get_step_from_actual_time(now).floor() as usize;
-
-                data.drop_steps_before(latest_step);
-            }
-
-            return ThreadAction::Continue;
-        }).unwrap();
-    }
-
-    pub fn on_time_message(&self, time_message: TimeMessage) {
-        self.send(move |data|{
+        if let Some(time_message) = self.latest_time_message {
+            let now = TimeValue::now();
 
             //TODO: put this in a method
-            let now = TimeValue::now();
             let latest_step = time_message.get_step_from_actual_time(now).floor() as usize;
 
-            data.latest_time_message = Some(time_message);
+            self.drop_steps_before(latest_step);
+        }
+    }
 
-            data.drop_steps_before(latest_step);
+    fn on_time_message(&mut self, time_message: TimeMessage) {
 
-            return ThreadAction::Continue;
-        }).unwrap();
+        //TODO: put this in a method
+        let now = TimeValue::now();
+        let latest_step = time_message.get_step_from_actual_time(now).floor() as usize;
+
+        self.latest_time_message = Some(time_message);
+
+        self.drop_steps_before(latest_step);
     }
 }

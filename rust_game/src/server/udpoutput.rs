@@ -1,13 +1,25 @@
-use log::{trace, info, warn, error, debug};
+use log::{info, warn, error, debug};
 use crate::interface::GameTrait;
 use std::net::UdpSocket;
 use crate::gametime::{TimeDuration, TimeMessage, TimeValue};
 use crate::messaging::{InputMessage, StateMessage, ToClientMessageUDP, Fragmenter, MAX_UDP_DATAGRAM_SIZE, ServerInputMessage};
 use std::io;
 use crate::server::remoteudppeer::RemoteUdpPeer;
-use crate::threading::{ChannelThread, Receiver, ChannelDrivenThreadSender as Sender, ThreadAction};
 use std::marker::PhantomData;
+use std::ops::ControlFlow::{Break, Continue};
+use crate::server::udpoutput::UdpOutputEvent::{RemotePeer, SendCompletedStep, SendInputMessage, SendServerInputMessage, SendTimeMessage};
+use crate::threading::channel::ReceiveMetaData;
+use crate::threading::eventhandling::{ChannelEvent, ChannelEventResult, EventHandlerTrait};
+use crate::threading::eventhandling::WaitOrTryForNextEvent::{TryForNextEvent, WaitForNextEvent};
 use crate::util::RollingAverage;
+
+pub enum UdpOutputEvent<Game: GameTrait> {
+    RemotePeer(RemoteUdpPeer),
+    SendTimeMessage(TimeMessage),
+    SendInputMessage(InputMessage<Game>),
+    SendServerInputMessage(ServerInputMessage<Game>),
+    SendCompletedStep(StateMessage<Game>)
+}
 
 pub struct UdpOutput<Game: GameTrait> {
     player_index: usize,
@@ -47,6 +59,111 @@ impl<Game: GameTrait> UdpOutput<Game> {
         })
     }
 
+    fn on_remote_peer(mut self, remote_peer: RemoteUdpPeer) -> ChannelEventResult<Self> {
+        //TODO: could this be checked before calling udpoutput?
+        if self.player_index == remote_peer.get_player_index() {
+            info!("Setting remote peer: {:?}", remote_peer);
+            self.remote_peer = Some(remote_peer);
+        }
+
+        return Continue(TryForNextEvent(self));
+    }
+
+    fn on_completed_step(mut self, receive_meta_data: ReceiveMetaData, state_message: StateMessage<Game>) -> ChannelEventResult<Self> {
+
+        let time_in_queue = receive_meta_data.get_send_meta_data().get_time_sent();
+
+        if self.last_state_sequence.is_none() ||
+            self.last_state_sequence.as_ref().unwrap() <= &state_message.get_sequence() {
+
+            self.last_state_sequence = Some(state_message.get_sequence());
+            self.time_of_last_state_send = TimeValue::now();
+
+            let message = ToClientMessageUDP::<Game>::StateMessage(state_message);
+            self.send_message(message);
+
+            //info!("state_message");
+            self.log_time_in_queue(*time_in_queue);
+
+        }
+
+        return Continue(TryForNextEvent(self));
+    }
+
+    pub fn on_time_message(mut self, receive_meta_data: ReceiveMetaData, time_message: TimeMessage) -> ChannelEventResult<Self> {
+
+        let time_in_queue = receive_meta_data.get_send_meta_data().get_time_sent();
+
+        let mut send_it = false;
+
+        if let Some(last_time_message) = &self.last_time_message {
+            if time_message.get_scheduled_time().is_after(&last_time_message.get_scheduled_time().add(Game::TIME_SYNC_MESSAGE_PERIOD)) {
+                send_it = true;
+            }
+        } else {
+            send_it = true;
+        }
+
+        if send_it {
+
+            self.last_time_message = Some(time_message.clone());
+
+            //TODO: timestamp when the time message is set, then use that info in client side time calc
+            let message = ToClientMessageUDP::<Game>::TimeMessage(time_message);
+
+            self.send_message(message);
+
+            //info!("time_message");
+            self.log_time_in_queue(*time_in_queue);
+        }
+
+        return Continue(TryForNextEvent(self));
+    }
+
+    fn on_input_message(mut self, receive_meta_data: ReceiveMetaData, input_message: InputMessage<Game>) -> ChannelEventResult<Self> {
+
+        let time_in_queue = receive_meta_data.get_send_meta_data().get_time_sent();
+
+        if self.player_index != input_message.get_player_index() &&
+            (self.last_state_sequence.is_none() ||
+                self.last_state_sequence.as_ref().unwrap() <= &input_message.get_step()) {
+
+            self.time_of_last_input_send = TimeValue::now();
+
+            let message = ToClientMessageUDP::<Game>::InputMessage(input_message);
+            self.send_message(message);
+
+            //info!("input_message");
+            self.log_time_in_queue(*time_in_queue);
+        } else {
+            //info!("InputMessage dropped. Last state: {:?}", tcp_output.last_state_sequence);
+        }
+
+        return Continue(TryForNextEvent(self));
+    }
+
+    pub fn on_server_input_message(mut self, receive_meta_data: ReceiveMetaData, server_input_message: ServerInputMessage<Game>) -> ChannelEventResult<Self> {
+
+        let time_in_queue = receive_meta_data.get_send_meta_data().get_time_sent();
+
+        if self.last_state_sequence.is_none() ||
+            self.last_state_sequence.as_ref().unwrap() <= &server_input_message.get_step() {
+
+            self.time_of_last_server_input_send = TimeValue::now();
+
+            let message = ToClientMessageUDP::<Game>::ServerInputMessage(server_input_message);
+            self.send_message(message);
+
+            //info!("server_input_message");
+            self.log_time_in_queue(*time_in_queue);
+        } else {
+            //info!("ServerInputMessage dropped. Last state: {:?}", tcp_output.last_state_sequence);
+        }
+
+        return Continue(TryForNextEvent(self));
+    }
+
+    //TODO: generalize this for all channels
     fn log_time_in_queue(&mut self, time_in_queue: TimeValue) {
         let now = TimeValue::now();
         let duration_in_queue = now.duration_since(time_in_queue);
@@ -77,160 +194,37 @@ impl<Game: GameTrait> UdpOutput<Game> {
     }
 }
 
-impl<Game: GameTrait> ChannelThread<(), ThreadAction> for UdpOutput<Game> {
+impl<Game: GameTrait> EventHandlerTrait for UdpOutput<Game> {
+    type Event = UdpOutputEvent<Game>;
+    type ThreadReturn = ();
 
-    fn run(mut self, receiver: Receiver<Self, ThreadAction>) -> () {
+    fn on_channel_event(self, channel_event: ChannelEvent<Self::Event>) -> ChannelEventResult<Self> {
 
-        loop {
-            trace!("Waiting.");
-            match receiver.recv(&mut self) {
-                Ok(ThreadAction::Continue) => {}
-                Ok(ThreadAction::Stop) => {
-                    info!("Thread commanded to stop.");
-                    return;
-                }
-                Err(error) => {
-                    info!("Thread stopping due to disconnect: {:?}", error);
-                    return;
-                }
-            }
+        let now = TimeValue::now();
 
-            let now = TimeValue::now();
+        // let duration_since_last_input = now.duration_since(self.time_of_last_input_send);
+        // if duration_since_last_input > TimeDuration::one_second() {
+        //     warn!("It has been {:?} since last input message was sent. Now: {:?}, Last: {:?}, Queue length: {:?}",
+        //           duration_since_last_input, now, self.time_of_last_input_send, self.input_queue.len());
+        // }
 
-            // let duration_since_last_input = now.duration_since(self.time_of_last_input_send);
-            // if duration_since_last_input > TimeDuration::one_second() {
-            //     warn!("It has been {:?} since last input message was sent. Now: {:?}, Last: {:?}, Queue length: {:?}",
-            //           duration_since_last_input, now, self.time_of_last_input_send, self.input_queue.len());
-            // }
-
-            let duration_since_last_state = now.duration_since(self.time_of_last_state_send);
-            if duration_since_last_state > TimeDuration::one_second() {
-                //TODO: this should probably be a warn when it happens less often
-                debug!("It has been {:?} since last state message was sent. Now: {:?}, Last: {:?}",
+        let duration_since_last_state = now.duration_since(self.time_of_last_state_send);
+        if duration_since_last_state > TimeDuration::one_second() {
+            //TODO: this should probably be a warn when it happens less often
+            debug!("It has been {:?} since last state message was sent. Now: {:?}, Last: {:?}",
                       duration_since_last_state, now, self.time_of_last_state_send);
-            }
+        }
+
+        match channel_event {
+            ChannelEvent::ReceivedEvent(_, RemotePeer(remote_udp_peer)) => self.on_remote_peer(remote_udp_peer),
+            ChannelEvent::ReceivedEvent(receive_meta_data, SendCompletedStep(state_message)) => self.on_completed_step(receive_meta_data, state_message),
+            ChannelEvent::ReceivedEvent(receive_meta_data, SendTimeMessage(time_message)) => self.on_time_message(receive_meta_data, time_message),
+            ChannelEvent::ReceivedEvent(receive_meta_data, SendInputMessage(input_message)) => self.on_input_message(receive_meta_data, input_message),
+            ChannelEvent::ReceivedEvent(receive_meta_data, SendServerInputMessage(server_input_message)) => self.on_server_input_message(receive_meta_data, server_input_message),
+            ChannelEvent::ChannelEmpty => Continue(WaitForNextEvent(self)),
+            ChannelEvent::ChannelDisconnected => Break(())
         }
     }
-}
 
-impl<Game: GameTrait> Sender<UdpOutput<Game>> {
-
-    pub fn on_remote_peer(&self, remote_peer: RemoteUdpPeer) {
-        self.send(|udp_output|{
-
-            if udp_output.player_index == remote_peer.get_player_index() {
-                info!("Setting remote peer: {:?}", remote_peer);
-                udp_output.remote_peer = Some(remote_peer);
-            }
-
-            return ThreadAction::Continue;
-        }).unwrap();
-    }
-
-    pub fn on_completed_step(&self, state_message: StateMessage<Game>) {
-
-        let time_in_queue = TimeValue::now();
-
-        //info!("state_message: {:?}", state_message.get_sequence());
-
-        self.send(move |udp_output|{
-
-            if udp_output.last_state_sequence.is_none() ||
-                udp_output.last_state_sequence.as_ref().unwrap() <= &state_message.get_sequence() {
-
-                udp_output.last_state_sequence = Some(state_message.get_sequence());
-                udp_output.time_of_last_state_send = TimeValue::now();
-
-                let message = ToClientMessageUDP::<Game>::StateMessage(state_message);
-                udp_output.send_message(message);
-
-                //info!("state_message");
-                udp_output.log_time_in_queue(time_in_queue);
-
-            }
-
-            return ThreadAction::Continue;
-        }).unwrap();
-    }
-
-    pub fn on_time_message(&self, time_message: TimeMessage) {
-
-        let time_in_queue = TimeValue::now();
-
-        self.send(move |udp_output|{
-
-            let mut send_it = false;
-
-            if let Some(last_time_message) = &udp_output.last_time_message {
-                if time_message.get_scheduled_time().is_after(&last_time_message.get_scheduled_time().add(Game::TIME_SYNC_MESSAGE_PERIOD)) {
-                    send_it = true;
-                }
-            } else {
-                send_it = true;
-            }
-
-            if send_it {
-
-                udp_output.last_time_message = Some(time_message.clone());
-
-                //TODO: timestamp when the time message is set, then use that info in client side time calc
-                let message = ToClientMessageUDP::<Game>::TimeMessage(time_message);
-                udp_output.send_message(message);
-
-                //info!("time_message");
-                udp_output.log_time_in_queue(time_in_queue);
-            }
-
-            return ThreadAction::Continue;
-        }).unwrap();
-    }
-
-    pub fn on_input_message(&self, input_message: InputMessage<Game>) {
-
-        let time_in_queue = TimeValue::now();
-
-        self.send(move |udp_output|{
-
-            if udp_output.player_index != input_message.get_player_index() &&
-                (udp_output.last_state_sequence.is_none() ||
-                    udp_output.last_state_sequence.as_ref().unwrap() <= &input_message.get_step()) {
-
-                udp_output.time_of_last_input_send = TimeValue::now();
-
-                let message = ToClientMessageUDP::<Game>::InputMessage(input_message);
-                udp_output.send_message(message);
-
-                //info!("input_message");
-                udp_output.log_time_in_queue(time_in_queue);
-            } else {
-                //info!("InputMessage dropped. Last state: {:?}", tcp_output.last_state_sequence);
-            }
-
-            return ThreadAction::Continue;
-        }).unwrap();
-    }
-
-    pub fn on_server_input_message(&self, server_input_message: ServerInputMessage<Game>) {
-
-        let time_in_queue = TimeValue::now();
-
-        self.send(move |udp_output|{
-
-            if udp_output.last_state_sequence.is_none() ||
-                udp_output.last_state_sequence.as_ref().unwrap() <= &server_input_message.get_step() {
-
-                udp_output.time_of_last_server_input_send = TimeValue::now();
-
-                let message = ToClientMessageUDP::<Game>::ServerInputMessage(server_input_message);
-                udp_output.send_message(message);
-
-                //info!("server_input_message");
-                udp_output.log_time_in_queue(time_in_queue);
-            } else {
-                //info!("ServerInputMessage dropped. Last state: {:?}", tcp_output.last_state_sequence);
-            }
-
-            return ThreadAction::Continue;
-        }).unwrap();
-    }
+    fn on_stop(self, _receive_meta_data: ReceiveMetaData) -> Self::ThreadReturn { () }
 }

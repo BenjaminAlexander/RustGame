@@ -1,6 +1,10 @@
-pub use self::manager::Manager;
-pub use self::renderreceiver::RenderReceiver;
-pub use self::renderreceiver::Data;
+pub use self::manager::{Manager, ManagerEvent};
+
+pub use self::renderreceiver::{
+    RenderReceiver,
+    RenderReceiverMessage
+};
+
 pub use self::managerobservertrait::ManagerObserverTrait;
 pub use self::stepmessage::StepMessage;
 

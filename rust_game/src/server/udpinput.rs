@@ -1,15 +1,24 @@
 use log::{info, warn};
 use crate::messaging::{MAX_UDP_DATAGRAM_SIZE, ToServerMessageUDP, FragmentAssembler, MessageFragment};
-use crate::threading::{ChannelThread, Receiver, ChannelDrivenThreadSender as Sender, ThreadAction};
 use crate::interface::GameTrait;
 use std::net::{UdpSocket, SocketAddr, IpAddr};
 use std::io;
-use rmp_serde::decode::Error;
 use crate::server::remoteudppeer::RemoteUdpPeer;
 use std::collections::{HashMap, HashSet};
-use std::sync::mpsc::TryRecvError;
+use std::ops::ControlFlow::{Break, Continue};
 use crate::server::clientaddress::ClientAddress;
-use crate::server::ServerCore;
+use crate::server::servercore::ServerCoreEvent;
+use crate::threading::channel::ReceiveMetaData;
+use crate::threading::eventhandling::Sender;
+use crate::threading::listener::{ChannelEvent, ListenerEventResult, ListenerTrait, ListenResult};
+use crate::threading::listener::ListenedOrDidNotListen::{DidNotListen, Listened};
+
+//TODO: timeout fragments or fragment assemblers
+
+#[derive(Debug)]
+pub enum UdpInputEvent {
+    ClientAddress(ClientAddress)
+}
 
 pub struct UdpInput<Game: GameTrait> {
     socket: UdpSocket,
@@ -17,16 +26,15 @@ pub struct UdpInput<Game: GameTrait> {
     client_addresses: Vec<Option<ClientAddress>>,
     client_ip_set: HashSet<IpAddr>,
     fragment_assemblers: HashMap<SocketAddr, FragmentAssembler>,
-    core_sender: Sender<ServerCore<Game>>
+    core_sender: Sender<ServerCoreEvent<Game>>
 }
 
 impl<Game: GameTrait> UdpInput<Game> {
 
     pub fn new(
         socket: &UdpSocket,
-        core_sender: Sender<ServerCore<Game>>) -> io::Result<Self> {
-
-        return Ok(Self{
+        core_sender: Sender<ServerCoreEvent<Game>>) -> io::Result<Self> {
+        return Ok(Self {
             socket: socket.try_clone()?,
             remote_peers: Vec::new(),
             client_addresses: Vec::new(),
@@ -37,23 +45,25 @@ impl<Game: GameTrait> UdpInput<Game> {
         });
     }
 
-    fn handle_receive(&mut self, buf: &mut [u8], source: SocketAddr) {
+    fn channel_empty_After_listen(&mut self, mut buf: [u8; MAX_UDP_DATAGRAM_SIZE], number_of_bytes: usize, source: SocketAddr) {
+        //TODO: check source against valid sources
+        let filled_buf = &mut buf[..number_of_bytes];
+
         if !self.client_ip_set.contains(&source.ip()) {
             warn!("Unexpected UDP packet received from {:?}", source);
             return;
         }
 
-        if let Some(assembled) = self.handle_fragment(source, buf) {
-            let result: Result<ToServerMessageUDP::<Game>, Error> = rmp_serde::from_read_ref(assembled.as_slice());
-
-            match result {
+        if let Some(assembled) = self.handle_fragment(source, filled_buf) {
+            match rmp_serde::from_read_ref(assembled.as_slice()) {
                 Ok(message) => {
                     self.handle_message(message, source);
                 }
                 Err(error) => {
+
+                    //TODO: is removing the fragement assembler on error right?
                     self.fragment_assemblers.remove(&source);
                     warn!("Failed to deserialize a ToServerMessageUDP: {:?}", error);
-                    return;
                 }
             }
         }
@@ -92,7 +102,7 @@ impl<Game: GameTrait> UdpInput<Game> {
 
             }
             ToServerMessageUDP::Input(input_message) => {
-                self.core_sender.on_input_message(input_message);
+                self.core_sender.send_event(ServerCoreEvent::InputMessageEvent(input_message)).unwrap();
             }
         }
     }
@@ -107,14 +117,14 @@ impl<Game: GameTrait> UdpInput<Game> {
         match &self.remote_peers[player_index] {
             None => {
                 info!("First time UDP remote peer: {:?}", remote_peer);
-                self.core_sender.on_remote_udp_peer(remote_peer.clone());
+                self.core_sender.send_event(ServerCoreEvent::RemoteUdpPeerEvent(remote_peer.clone())).unwrap();
                 self.remote_peers[player_index] = Some(remote_peer);
             }
             Some(existing_remote_peer) => {
                 let existing_socket = existing_remote_peer.get_socket_addr();
                 if !existing_socket.eq(&remote_peer.get_socket_addr()) {
                     info!("Change of UDP remote peer: {:?}", remote_peer);
-                    self.core_sender.on_remote_udp_peer(remote_peer.clone());
+                    self.core_sender.send_event(ServerCoreEvent::RemoteUdpPeerEvent(remote_peer.clone())).unwrap();
                     self.remote_peers[player_index] = Some(remote_peer);
                     self.fragment_assemblers.remove(&existing_socket);
                 }
@@ -123,66 +133,54 @@ impl<Game: GameTrait> UdpInput<Game> {
     }
 }
 
-impl<Game: GameTrait> ChannelThread<(), ThreadAction> for UdpInput<Game> {
+impl<Game: GameTrait> ListenerTrait for UdpInput<Game> {
+    type Event = UdpInputEvent;
+    type ThreadReturn = ();
+    type ListenFor = ([u8; MAX_UDP_DATAGRAM_SIZE], usize, SocketAddr);
 
-    fn run(mut self, receiver: Receiver<Self, ThreadAction>) -> () {
+    fn listen(mut self) -> ListenResult<Self> {
+        let mut buf = [0; MAX_UDP_DATAGRAM_SIZE];
 
-        info!("Starting.");
+        let recv_result = self.socket.recv_from(&mut buf);
 
-        loop {
-
-            let mut buf = [0; MAX_UDP_DATAGRAM_SIZE];
-
-            let recv_result = self.socket.recv_from(&mut buf);
-
-            loop {
-                match receiver.try_recv(&mut self) {
-                    Ok(ThreadAction::Continue) => {}
-                    Err(TryRecvError::Empty) => break,
-                    Ok(ThreadAction::Stop) => {
-                        info!("Thread commanded to stop.");
-                        return;
-                    }
-                    Err(TryRecvError::Disconnected) => {
-                        info!("Thread stopping due to disconnect.");
-                        return;
-                    }
-                }
+        match recv_result {
+            Ok((number_of_bytes, source)) => {
+                return Continue(Listened(self, (buf, number_of_bytes, source)));
             }
-
-            match recv_result {
-                Ok((number_of_bytes, source)) => {
-                    //TODO: check source against valid sources
-                    let filled_buf = &mut buf[..number_of_bytes];
-                    self.handle_receive(filled_buf, source);
-                }
-                Err(e) => {
-                    warn!("Error: {:?}", e);
-                }
+            Err(e) => {
+                warn!("Error: {:?}", e);
+                return Continue(DidNotListen(self));
             }
         }
     }
-}
 
-impl<Game: GameTrait> Sender<UdpInput<Game>> {
-
-    pub fn on_client_address(&self, client_address: ClientAddress) {
-        self.send(move |udp_input|{
-            udp_input.client_ip_set.insert(client_address.get_ip_address());
-
-            let index = client_address.get_player_index();
-            while udp_input.client_addresses.len() <= index {
-                udp_input.client_addresses.push(None);
+    fn on_channel_event(mut self, event: ChannelEvent<Self>) -> ListenerEventResult<Self> {
+        match event {
+            ChannelEvent::ChannelEmptyAfterListen(_, (buf, number_of_bytes, source)) => {
+                self.channel_empty_After_listen(buf, number_of_bytes, source);
+                return Continue(self);
             }
+            ChannelEvent::ReceivedEvent(_, event) => {
+                match event {
+                    UdpInputEvent::ClientAddress(client_address) => {
+                        self.client_ip_set.insert(client_address.get_ip_address());
 
-            udp_input.client_addresses[index] = Some(client_address);
+                        let index = client_address.get_player_index();
+                        while self.client_addresses.len() <= index {
+                            self.client_addresses.push(None);
+                        }
 
-            info!("Added Client: {:?}", udp_input.client_addresses[index].as_ref().unwrap());
+                        self.client_addresses[index] = Some(client_address);
 
-            return ThreadAction::Continue;
-        }).unwrap();
+                        info!("Added Client: {:?}", self.client_addresses[index].as_ref().unwrap());
+
+                        return Continue(self);
+                    }
+                }
+            }
+            ChannelEvent::ChannelDisconnected => Break(())
+        }
     }
+
+    fn on_stop(self, _: ReceiveMetaData) -> Self::ThreadReturn { () }
 }
-
-
-

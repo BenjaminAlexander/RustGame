@@ -1,12 +1,26 @@
 use std::collections::vec_deque::VecDeque;
+use std::ops::ControlFlow::{Break, Continue};
 use log::{warn, trace};
 use crate::messaging::{StateMessage, InputMessage, InitialInformation, ServerInputMessage};
-use crate::threading::{ChannelDrivenThread, ChannelDrivenThreadSender as Sender, ThreadAction};
 use crate::gamemanager::step::Step;
 use crate::gametime::{TimeDuration, TimeValue};
 use std::sync::Arc;
 use crate::gamemanager::{ManagerObserverTrait};
-use crate::threading::ThreadAction::Continue;
+use crate::gamemanager::manager::ManagerEvent::{DropStepsBeforeEvent, InitialInformationEvent, InputEvent, ServerInputEvent, SetRequestedStepEvent, StateEvent};
+use crate::interface::GameTrait;
+use crate::threading::channel::ReceiveMetaData;
+use crate::threading::eventhandling::{ChannelEvent, ChannelEventResult, EventHandlerTrait};
+use crate::threading::eventhandling::WaitOrTryForNextEvent::{TryForNextEvent, WaitForNextEvent};
+
+pub enum ManagerEvent<Game: GameTrait> {
+    DropStepsBeforeEvent(usize),
+    SetRequestedStepEvent(usize),
+    //TODO: get initial information before starting
+    InitialInformationEvent(InitialInformation<Game>),
+    InputEvent(InputMessage<Game>),
+    ServerInputEvent(ServerInputMessage<Game>),
+    StateEvent(StateMessage<Game>)
+}
 
 pub struct Manager<ManagerObserver: ManagerObserverTrait> {
     drop_steps_before: usize,
@@ -76,18 +90,21 @@ impl<ManagerObserver: ManagerObserverTrait> Manager<ManagerObserver> {
         }
     }
 
-    fn drop_steps_before(&mut self, step :usize) {
+    fn drop_steps_before(mut self, step :usize) -> ChannelEventResult<Self> {
         trace!("Setting drop_steps_before: {:?}", step);
         self.drop_steps_before = step;
         if self.requested_step < self.drop_steps_before {
             warn!("Requested step is earlier than drop step: {:?}", self.drop_steps_before);
-            self.set_requested_step(step);
+            return self.set_requested_step(step);
         }
+
+        return Continue(TryForNextEvent(self));
     }
 
-    fn set_requested_step(&mut self, step: usize) {
+    fn set_requested_step(mut self, step: usize) -> ChannelEventResult<Self> {
         trace!("Setting requested_step: {:?}", step);
         self.requested_step = step;
+        return Continue(TryForNextEvent(self));
     }
 
     fn send_messages(&mut self, step_index: usize) {
@@ -107,11 +124,8 @@ impl<ManagerObserver: ManagerObserverTrait> Manager<ManagerObserver> {
             }
         }
     }
-}
 
-impl<ManagerObserver: ManagerObserverTrait> ChannelDrivenThread<()> for Manager<ManagerObserver> {
-
-    fn on_none_pending(&mut self) -> ThreadAction {
+    fn on_none_pending(mut self) -> ChannelEventResult<Self> {
 
         let now = TimeValue::now();
         let duration_since_last_state = now.duration_since(self.time_of_last_state_receive);
@@ -122,11 +136,11 @@ impl<ManagerObserver: ManagerObserverTrait> ChannelDrivenThread<()> for Manager<
 
         if self.steps.is_empty() {
             trace!("Steps is empty");
-            return Continue;
+            return Continue(WaitForNextEvent(self));
         }
 
         if self.initial_information.is_none() {
-            return Continue;
+            return Continue(WaitForNextEvent(self));
         }
 
         let mut current: usize = 0;
@@ -134,7 +148,7 @@ impl<ManagerObserver: ManagerObserverTrait> ChannelDrivenThread<()> for Manager<
         self.send_messages(current);
 
         while self.steps[current].are_inputs_complete() ||
-                self.steps[current].get_step_index() < self.requested_step {
+            self.steps[current].get_step_index() < self.requested_step {
 
             let next = current + 1;
             let should_drop_current = current == 0 && self.steps[current].get_step_index() < self.drop_steps_before;
@@ -145,7 +159,7 @@ impl<ManagerObserver: ManagerObserverTrait> ChannelDrivenThread<()> for Manager<
 
             if (ManagerObserver::IS_SERVER || !self.steps[next].is_state_deserialized()) &&
                 (self.steps[current].need_to_compute_next_state() ||
-                (should_drop_current && self.steps[next].is_state_none())) {
+                    (should_drop_current && self.steps[next].is_state_none())) {
 
                 if ManagerObserver::IS_SERVER {
                     self.steps[current].calculate_server_input();
@@ -176,71 +190,61 @@ impl<ManagerObserver: ManagerObserverTrait> ChannelDrivenThread<()> for Manager<
 
         self.send_messages(current);
 
-        Continue
+        return Continue(WaitForNextEvent(self));
     }
 
-    fn on_channel_disconnect(&mut self) -> () {
-        ()
+    fn on_initial_information(mut self, initial_information: InitialInformation<ManagerObserver::Game>) -> ChannelEventResult<Self> {
+        //TODO: move Arc outside lambda
+        self.initial_information = Some(Arc::new(initial_information));
+        let state = self.initial_information.as_ref().unwrap().get_state().clone();
+        self.handle_state_message(StateMessage::new(
+            0,
+            state
+        ));
+        return Continue(TryForNextEvent(self));
+    }
+
+    fn on_input_message(mut self, input_message: InputMessage<ManagerObserver::Game>) -> ChannelEventResult<Self> {
+        if let Some(step) = self.get_state(input_message.get_step()) {
+            step.set_input(input_message);
+            self.time_of_last_input_receive = TimeValue::now();
+        }
+        return Continue(TryForNextEvent(self));
+    }
+
+    fn on_server_input_message(mut self, server_input_message: ServerInputMessage<ManagerObserver::Game>) -> ChannelEventResult<Self> {
+        //info!("Server Input received: {:?}", server_input_message.get_step());
+        if let Some(step) = self.get_state(server_input_message.get_step()) {
+            step.set_server_input(server_input_message.get_server_input());
+        }
+        return Continue(TryForNextEvent(self));
+    }
+
+    fn on_state_message(mut self, state_message: StateMessage<ManagerObserver::Game>) -> ChannelEventResult<Self> {
+        self.handle_state_message(state_message);
+
+        self.time_of_last_state_receive = TimeValue::now();
+
+        return Continue(TryForNextEvent(self));
     }
 }
 
-impl<ManagerObserver: ManagerObserverTrait> Sender<Manager<ManagerObserver>> {
+impl<ManagerObserver: ManagerObserverTrait> EventHandlerTrait for Manager<ManagerObserver> {
+    type Event = ManagerEvent<ManagerObserver::Game>;
+    type ThreadReturn = ();
 
-    pub fn drop_steps_before(&self, step :usize) {
-        self.send(move |manager|{
-            manager.drop_steps_before(step);
-            return ThreadAction::Continue;
-        }).unwrap();
+    fn on_channel_event(self, channel_event: ChannelEvent<Self::Event>) -> ChannelEventResult<Self> {
+        match channel_event {
+            ChannelEvent::ReceivedEvent(_, DropStepsBeforeEvent(step)) => self.drop_steps_before(step),
+            ChannelEvent::ReceivedEvent(_, SetRequestedStepEvent(step)) => self.set_requested_step(step),
+            ChannelEvent::ReceivedEvent(_, InitialInformationEvent(initial_information)) => self.on_initial_information(initial_information),
+            ChannelEvent::ReceivedEvent(_, InputEvent(input_message)) => self.on_input_message(input_message),
+            ChannelEvent::ReceivedEvent(_, ServerInputEvent(server_input_message)) => self.on_server_input_message(server_input_message),
+            ChannelEvent::ReceivedEvent(_, StateEvent(state_message)) => self.on_state_message(state_message),
+            ChannelEvent::ChannelEmpty => self.on_none_pending(),
+            ChannelEvent::ChannelDisconnected => Break(())
+        }
     }
 
-    pub fn set_requested_step(&self, step: usize) {
-        self.send(move |manager|{
-            manager.set_requested_step(step);
-            return ThreadAction::Continue;
-        }).unwrap();
-    }
-
-    pub fn on_initial_information(&self, initial_information: InitialInformation<ManagerObserver::Game>) {
-        self.send(move |manager|{
-            //TODO: move Arc outside lambda
-            manager.initial_information = Some(Arc::new(initial_information));
-            let state = manager.initial_information.as_ref().unwrap().get_state().clone();
-            manager.handle_state_message(StateMessage::new(
-                0,
-                state
-            ));
-            return ThreadAction::Continue;
-        }).unwrap();
-    }
-
-    pub fn on_input_message(&self, input_message: InputMessage<ManagerObserver::Game>) {
-        self.send(move |manager|{
-            if let Some(step) = manager.get_state(input_message.get_step()) {
-                step.set_input(input_message);
-                manager.time_of_last_input_receive = TimeValue::now();
-            }
-            return ThreadAction::Continue;
-        }).unwrap();
-    }
-
-    pub fn on_server_input_message(&self, server_input_message: ServerInputMessage<ManagerObserver::Game>) {
-        self.send(move |manager|{
-
-            //info!("Server Input received: {:?}", server_input_message.get_step());
-            if let Some(step) = manager.get_state(server_input_message.get_step()) {
-                step.set_server_input(server_input_message.get_server_input());
-            }
-            return ThreadAction::Continue;
-        }).unwrap();
-    }
-
-    pub fn on_state_message(&self, state_message: StateMessage<ManagerObserver::Game>) {
-        self.send(move |manager|{
-            manager.handle_state_message(state_message);
-
-            manager.time_of_last_state_receive = TimeValue::now();
-
-            return ThreadAction::Continue;
-        }).unwrap();
-    }
+    fn on_stop(self, _receive_meta_data: ReceiveMetaData) -> Self::ThreadReturn { () }
 }

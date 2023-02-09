@@ -1,36 +1,38 @@
-use log::{error, info};
+use log::{error, info, warn};
 use std::net::TcpStream;
-use crate::gametime::{GameTimer, TimeValue};
-use crate::threading::{ChannelThread, Receiver, ChannelDrivenThreadSender as Sender, ThreadAction};
+use crate::gametime::GameTimerEvent;
+use crate::threading::{channel, eventhandling};
 use crate::messaging::ToClientMessageTCP;
-use rmp_serde::decode::Error;
 use std::io;
-use std::sync::mpsc::TryRecvError;
-use crate::client::ClientCore;
+use std::ops::ControlFlow::*;
+use crate::client::clientcore::ClientCoreEvent;
+use crate::client::ClientCoreEvent::OnInitialInformation;
 use crate::client::clientgametimeobserver::ClientGameTimerObserver;
-use crate::client::clientmanagerobserver::ClientManagerObserver;
-use crate::client::udpoutput::UdpOutput;
-use crate::gamemanager::{Data, Manager};
+use crate::client::udpoutput::UdpOutputEvent;
+use crate::gamemanager::{ManagerEvent, RenderReceiverMessage};
 use crate::interface::GameTrait;
+use crate::threading::channel::ReceiveMetaData;
+use crate::threading::listener::{ChannelEvent, ListenerEventResult, ListenerTrait, ListenResult};
+use crate::threading::listener::ListenedOrDidNotListen::Listened;
 
 pub struct TcpInput <Game: GameTrait> {
     player_index: Option<usize>,
     tcp_stream: TcpStream,
-    game_timer_sender: Sender<GameTimer<ClientGameTimerObserver<Game>>>,
-    manager_sender: Sender<Manager<ClientManagerObserver<Game>>>,
-    client_core_sender: Sender<ClientCore<Game>>,
-    udp_output_sender: Sender<UdpOutput<Game>>,
-    render_data_sender: Sender<Data<Game>>
+    game_timer_sender: eventhandling::Sender<GameTimerEvent<ClientGameTimerObserver<Game>>>,
+    manager_sender: eventhandling::Sender<ManagerEvent<Game>>,
+    client_core_sender: eventhandling::Sender<ClientCoreEvent<Game>>,
+    udp_output_sender: eventhandling::Sender<UdpOutputEvent<Game>>,
+    render_data_sender: channel::Sender<RenderReceiverMessage<Game>>
 }
 
 impl<Game: GameTrait> TcpInput<Game> {
 
     pub fn new(
-        game_timer_sender: Sender<GameTimer<ClientGameTimerObserver<Game>>>,
-        manager_sender: Sender<Manager<ClientManagerObserver<Game>>>,
-        client_core_sender: Sender<ClientCore<Game>>,
-        udp_output_sender: Sender<UdpOutput<Game>>,
-        render_data_sender: Sender<Data<Game>>,
+        game_timer_sender: eventhandling::Sender<GameTimerEvent<ClientGameTimerObserver<Game>>>,
+        manager_sender: eventhandling::Sender<ManagerEvent<Game>>,
+        client_core_sender: eventhandling::Sender<ClientCoreEvent<Game>>,
+        udp_output_sender: eventhandling::Sender<UdpOutputEvent<Game>>,
+        render_data_sender: channel::Sender<RenderReceiverMessage<Game>>,
         tcp_stream: &TcpStream) -> io::Result<Self> {
 
         Ok(Self {
@@ -45,56 +47,52 @@ impl<Game: GameTrait> TcpInput<Game> {
     }
 }
 
-impl<Game: GameTrait> ChannelThread<(), ThreadAction> for TcpInput<Game> {
+impl<Game: GameTrait> ListenerTrait for TcpInput<Game> {
+    type Event = ();
+    type ThreadReturn = ();
+    type ListenFor = ToClientMessageTCP<Game>;
 
-    fn run(mut self, receiver: Receiver<Self, ThreadAction>) {
-        info!("Starting");
+    fn listen(self) -> ListenResult<Self> {
+        return match rmp_serde::from_read(&self.tcp_stream) {
+            Ok(message) => Continue(Listened(self, message)),
+            Err(error) => {
+                error!("Error: {:?}", error);
+                Break(())
+            }
+        }
+    }
 
-        let receiver = receiver;
+    fn on_channel_event(mut self, event: ChannelEvent<Self>) -> ListenerEventResult<Self> {
+        match event {
+            ChannelEvent::ChannelEmptyAfterListen(_, value) => {
+                self.handle_received_message(value);
+                Continue(self)
+            }
+            ChannelEvent::ReceivedEvent(_, ()) => {
+                warn!("This handler does not have any meaningful messages");
+                Continue(self)
+            }
+            ChannelEvent::ChannelDisconnected => Break(())
+        }
+    }
 
-        loop {
-            let result: Result<ToClientMessageTCP::<Game>, Error> = rmp_serde::from_read(&self.tcp_stream);
+    fn on_stop(self, _: ReceiveMetaData) -> Self::ThreadReturn { () }
+}
 
-            match result {
-                Ok(message) => {
+impl<Game: GameTrait> TcpInput<Game> {
 
-                    //Why does this crash the client?
-                    //info!("{:?}", message);
+    fn handle_received_message(&mut self, message: ToClientMessageTCP<Game>) {
 
-                    let _time_received = TimeValue::now();
+        match message {
+            ToClientMessageTCP::InitialInformation(initial_information_message) => {
+                info!("InitialInformation Received.  Player Index: {:?}", initial_information_message.get_player_index());
 
-                    loop {
-                        match receiver.try_recv(&mut self) {
-                            Ok(ThreadAction::Continue) => {}
-                            Err(TryRecvError::Empty) => break,
-                            Ok(ThreadAction::Stop) => {
-                                info!("Thread commanded to stop.");
-                                return;
-                            }
-                            Err(TryRecvError::Disconnected) => {
-                                info!("Thread stopping due to disconnect.");
-                                return;
-                            }
-                        }
-                    }
-
-                    info!("InitialInformation Received.");
-
-                    match message {
-                        ToClientMessageTCP::InitialInformation(initial_information_message) => {
-                            self.player_index = Some(initial_information_message.get_player_index());
-                            self.game_timer_sender.on_initial_information(initial_information_message.clone());
-                            self.manager_sender.on_initial_information(initial_information_message.clone());
-                            self.client_core_sender.on_initial_information(initial_information_message.clone());
-                            self.udp_output_sender.on_initial_information(initial_information_message.clone());
-                            self.render_data_sender.on_initial_information(initial_information_message.clone());
-                        }
-                    }
-                }
-                Err(error) => {
-                    error!("Error: {:?}", error);
-                    return;
-                }
+                self.player_index = Some(initial_information_message.get_player_index());
+                self.game_timer_sender.send_event(GameTimerEvent::InitialInformationEvent(initial_information_message.clone())).unwrap();
+                self.manager_sender.send_event(ManagerEvent::InitialInformationEvent(initial_information_message.clone())).unwrap();
+                self.client_core_sender.send_event(OnInitialInformation(initial_information_message.clone())).unwrap();
+                self.udp_output_sender.send_event(UdpOutputEvent::InitialInformationEvent(initial_information_message.clone())).unwrap();
+                self.render_data_sender.send(RenderReceiverMessage::InitialInformation(initial_information_message)).unwrap();
             }
         }
     }

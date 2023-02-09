@@ -1,9 +1,12 @@
 use std::{thread, time, io, process};
 use std::path::PathBuf;
 use log::{error, info};
+use crate::client::ClientCoreEvent::Connect;
+use crate::gamemanager::RenderReceiver;
 use crate::simplegame::{SimpleInput, SimpleState, SimpleInputEvent, SimpleInputEventHandler, SimpleWindow, SimpleServerInput, SimpleGameImpl};
-use crate::threading::ChannelThread;
+use crate::threading::ThreadBuilder;
 use crate::gametime::TimeDuration;
+use crate::server::ServerCoreEvent;
 
 mod simplegame;
 mod messaging;
@@ -50,32 +53,46 @@ pub fn main() {
 
     //This unused value keeps the render receiver alive
     let mut unused_render_receiver_option = None;
-    let mut client_core_sender_option = None;
+    let mut client_core_join_handle_option = None;
 
     if run_server {
-        let server_core  = server::ServerCore::<SimpleGameImpl>::new();
 
-        let (server_core_sender, server_core_builder) = server_core.build();
+        let server_core_thread_builder = ThreadBuilder::new()
+            .name("ServerCore")
+            .build_channel_for_event_handler::<server::ServerCore<SimpleGameImpl>>();
 
-        if let Err(error) = server_core_sender.start_listener() {
+        let server_core  = server::ServerCore::<SimpleGameImpl>::new(server_core_thread_builder.get_sender().clone());
+
+        if let Err(error) = server_core_thread_builder.get_sender().send_event(ServerCoreEvent::StartListenerEvent) {
             error!("{:?}", error);
             return;
         }
 
-        server_core_builder.name("ServerCore").start().unwrap();
-
-        server_core_sender_option = Some(server_core_sender);
+        server_core_sender_option = Some(server_core_thread_builder.spawn_event_handler(server_core).unwrap());
     }
 
     if run_client {
 
-        let client_core = client::ClientCore::<SimpleGameImpl>::new("127.0.0.1");
+        let client_core_thread_builder = ThreadBuilder::new()
+            .name("ClientCore")
+            .build_channel_for_event_handler::<client::ClientCore<SimpleGameImpl>>();
 
-        let (client_core_sender, client_core_builder) = client_core.build();
+        let (render_receiver_sender, render_receiver) = RenderReceiver::<SimpleGameImpl>::new();
 
-        render_receiver_option = Some(client_core_sender.connect());
-        client_core_sender_option = Some(client_core_sender);
-        client_core_builder.name("ClientCore").start().unwrap();
+        render_receiver_option = Some(render_receiver);
+
+        client_core_thread_builder.get_sender().send_event(Connect(render_receiver_sender)).unwrap();
+
+        let sender_clone = client_core_thread_builder.get_sender().clone();
+
+        client_core_join_handle_option = Some(
+            client_core_thread_builder.spawn_event_handler(
+                client::ClientCore::<SimpleGameImpl>::new(
+                    "127.0.0.1",
+                    sender_clone
+                )
+            ).unwrap()
+        );
 
         let millis = time::Duration::from_millis(1000);
         thread::sleep(millis);
@@ -92,7 +109,10 @@ pub fn main() {
             info!("line: {:?}", line);
         }
 
-        unused_render_receiver_option = Some(server_core_sender_option.as_ref().unwrap().start_game());
+        let (render_receiver_sender, render_receiver) = RenderReceiver::<SimpleGameImpl>::new();
+        unused_render_receiver_option = Some(render_receiver);
+
+        server_core_sender_option.as_ref().unwrap().get_sender().send_event(ServerCoreEvent::StartGameEvent(render_receiver_sender)).unwrap();
 
         if !run_client {
             let tmp = unused_render_receiver_option;
@@ -101,7 +121,6 @@ pub fn main() {
         }
     }
 
-
-    let client_window = SimpleWindow::new(window_name, render_receiver_option.unwrap(), client_core_sender_option);
+    let client_window = SimpleWindow::new(window_name, render_receiver_option.unwrap(), client_core_join_handle_option);
     client_window.run();
 }
