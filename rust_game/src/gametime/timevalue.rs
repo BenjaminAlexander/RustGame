@@ -45,7 +45,7 @@ impl TimeValue {
         UNIX_EPOCH.add(Duration::from_millis(self.millis_since_epoch as u64))
     }
 
-    pub fn duration_since(&self, time_before: TimeValue) -> TimeDuration {
+    pub fn duration_since(&self, time_before: &TimeValue) -> TimeDuration {
         TimeDuration::from_millis(self.millis_since_epoch - time_before.millis_since_epoch)
     }
 }

@@ -166,7 +166,7 @@ impl<Game: GameTrait> UdpOutput<Game> {
     //TODO: generalize this for all channels
     fn log_time_in_queue(&mut self, time_in_queue: TimeValue) {
         let now = TimeValue::now();
-        let duration_in_queue = now.duration_since(time_in_queue);
+        let duration_in_queue = now.duration_since(&time_in_queue);
 
         self.time_in_queue_rolling_average.add_value(duration_in_queue.get_millis() as u64);
         let average = self.time_in_queue_rolling_average.get_average();
@@ -208,7 +208,7 @@ impl<Game: GameTrait> EventHandlerTrait for UdpOutput<Game> {
         //           duration_since_last_input, now, self.time_of_last_input_send, self.input_queue.len());
         // }
 
-        let duration_since_last_state = now.duration_since(self.time_of_last_state_send);
+        let duration_since_last_state = now.duration_since(&self.time_of_last_state_send);
         if duration_since_last_state > TimeDuration::one_second() {
             //TODO: this should probably be a warn when it happens less often
             debug!("It has been {:?} since last state message was sent. Now: {:?}, Last: {:?}",

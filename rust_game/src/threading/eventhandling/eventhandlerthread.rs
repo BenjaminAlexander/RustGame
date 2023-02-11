@@ -23,7 +23,7 @@ impl<T: EventHandlerTrait> EventHandlerThread<T> {
         };
     }
 
-    fn wait_for_message(message_handler: T, receiver: &EventReceiver<T::Event>) -> ChannelEventResult<T> {
+    fn wait_for_message(message_handler: T, receiver: &mut EventReceiver<T::Event>) -> ChannelEventResult<T> {
 
         return match receiver.recv_meta_data() {
             Ok((receive_meta_data, Event(event))) => Self::on_message(message_handler, receive_meta_data, event),
@@ -32,7 +32,7 @@ impl<T: EventHandlerTrait> EventHandlerThread<T> {
         };
     }
 
-    fn try_for_message(message_handler: T, receiver: &EventReceiver<T::Event>) -> ChannelEventResult<T> {
+    fn try_for_message(message_handler: T, receiver: &mut EventReceiver<T::Event>) -> ChannelEventResult<T> {
 
         return match receiver.try_recv_meta_data() {
             Ok((receive_meta_data, Event(event))) => Self::on_message(message_handler, receive_meta_data, event),
@@ -64,15 +64,15 @@ impl<T: EventHandlerTrait> EventHandlerThread<T> {
 impl<T: EventHandlerTrait> threading::Thread for EventHandlerThread<T> {
     type ReturnType = T::ThreadReturn;
 
-    fn run(self) -> Self::ReturnType {
+    fn run(mut self) -> Self::ReturnType {
 
         let mut wait_or_try = TryForNextEvent(self.event_handler);
 
         loop {
 
             let result = match wait_or_try {
-                WaitForNextEvent(message_handler) => Self::wait_for_message(message_handler, &self.receiver),
-                TryForNextEvent(message_handler) => Self::try_for_message(message_handler, &self.receiver),
+                WaitForNextEvent(message_handler) => Self::wait_for_message(message_handler, &mut self.receiver),
+                TryForNextEvent(message_handler) => Self::try_for_message(message_handler, &mut self.receiver),
             };
 
             wait_or_try = match result {
