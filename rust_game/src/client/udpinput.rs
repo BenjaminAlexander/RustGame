@@ -133,7 +133,7 @@ impl<Game: GameTrait> UdpInput<Game> {
             ToClientMessageUDP::StateMessage(state_message) => {
                 //info!("State message: {:?}", state_message.get_sequence());
 
-                let duration_since_last_state = time_received.duration_since(self.time_of_last_state_receive);
+                let duration_since_last_state = time_received.duration_since(&self.time_of_last_state_receive);
                 if duration_since_last_state > TimeDuration::one_second() {
 
                     //TODO: this should probably be a warn
