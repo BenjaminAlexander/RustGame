@@ -1,6 +1,7 @@
 use std::ops::ControlFlow::{Break, Continue};
 use log::info;
-use crate::threading;
+use crate::gametime::TimeValue;
+use crate::{threading, TimeDuration};
 use crate::threading::channel::{TryRecvError, Receiver, ReceiveMetaData};
 use crate::threading::eventhandling::{ChannelEventResult, EventHandlerTrait, EventOrStopThread};
 use crate::threading::eventhandling::EventOrStopThread::{Event, StopThread};
@@ -8,6 +9,37 @@ use crate::threading::eventhandling::ChannelEvent::{ChannelDisconnected, Channel
 use crate::threading::eventhandling::WaitOrTryForNextEvent::{TryForNextEvent, WaitForNextEvent};
 
 type EventReceiver<T> = Receiver<EventOrStopThread<T>>;
+
+struct Stats {
+    busy_time: TimeValue,
+    longest_busy_duration: Option<TimeDuration>
+}
+
+impl Stats {
+    fn new() -> Self {
+        return Self {
+            busy_time: TimeValue::now(),
+            longest_busy_duration: None
+        }
+    }
+
+    fn before_wait(&mut self) {
+        let busy_duration = TimeValue::now().duration_since(&self.busy_time);
+
+        if let Some(current_longest) = self.longest_busy_duration.as_ref() {
+            if busy_duration > *current_longest {
+                info!("New longest busy duration: {:?}", busy_duration);
+                self.longest_busy_duration = Some(busy_duration);
+            }
+        } else {
+            self.longest_busy_duration = Some(busy_duration);
+        }
+    }
+
+    fn after_wait(&mut self) {
+        self.busy_time = TimeValue::now();
+    }
+}
 
 pub struct EventHandlerThread<T: EventHandlerTrait> {
     receiver: EventReceiver<T::Event>,
@@ -23,9 +55,15 @@ impl<T: EventHandlerTrait> EventHandlerThread<T> {
         };
     }
 
-    fn wait_for_message(message_handler: T, receiver: &mut EventReceiver<T::Event>) -> ChannelEventResult<T> {
+    fn wait_for_message(message_handler: T, receiver: &mut EventReceiver<T::Event>, stats: &mut Stats) -> ChannelEventResult<T> {
 
-        return match receiver.recv_meta_data() {
+        stats.before_wait();
+
+        let recv_result = receiver.recv_meta_data();
+
+        stats.after_wait();
+
+        return match recv_result {
             Ok((receive_meta_data, Event(event))) => Self::on_message(message_handler, receive_meta_data, event),
             Ok((receive_meta_data, StopThread)) => Break(Self::on_stop(message_handler, receive_meta_data)),
             Err(_) => Self::on_channel_disconnected(message_handler)
@@ -66,12 +104,14 @@ impl<T: EventHandlerTrait> threading::Thread for EventHandlerThread<T> {
 
     fn run(mut self) -> Self::ReturnType {
 
+        let mut stats = Stats::new();
+
         let mut wait_or_try = TryForNextEvent(self.event_handler);
 
         loop {
 
             let result = match wait_or_try {
-                WaitForNextEvent(message_handler) => Self::wait_for_message(message_handler, &mut self.receiver),
+                WaitForNextEvent(message_handler) => Self::wait_for_message(message_handler, &mut self.receiver, &mut stats),
                 TryForNextEvent(message_handler) => Self::try_for_message(message_handler, &mut self.receiver),
             };
 
@@ -84,3 +124,4 @@ impl<T: EventHandlerTrait> threading::Thread for EventHandlerThread<T> {
         }
     }
 }
+

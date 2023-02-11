@@ -32,7 +32,7 @@ impl<Game: GameTrait> GameTimerObserverTrait for ServerGameTimerObserver<Game> {
     fn on_time_message(&self, time_message: TimeMessage) {
 
         for udp_output in self.udp_outputs.iter() {
-            udp_output.send_event(UdpOutputEvent::SendTimeMessage(time_message.clone()));
+            udp_output.send_event(UdpOutputEvent::SendTimeMessage(time_message.clone())).unwrap();
         }
 
         self.core_sender.send_event(ServerCoreEvent::TimeMessageEvent(time_message.clone())).unwrap();

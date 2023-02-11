@@ -9,7 +9,7 @@ pub type RecvError = mpsc::RecvError;
 
 pub struct Receiver<T> {
     receiver: mpsc::Receiver<(SendMetaData, T)>,
-    max_duration_in_channel: Option<TimeDuration>
+    longest_duration_in_channel: Option<TimeDuration>
 }
 
 impl<T> Receiver<T> {
@@ -17,7 +17,7 @@ impl<T> Receiver<T> {
     pub fn new(receiver: mpsc::Receiver<(SendMetaData, T)>) -> Self {
         return Self{
             receiver,
-            max_duration_in_channel: None
+            longest_duration_in_channel: None
         }
     }
 
@@ -27,16 +27,16 @@ impl<T> Receiver<T> {
 
         let duration = receive_meta_data.get_time_in_channel();
 
-        if let Some(current_max_duration) = self.max_duration_in_channel.as_ref() {
+        if let Some(current_max_duration) = self.longest_duration_in_channel.as_ref() {
 
-            if duration.get_millis() > current_max_duration.get_millis() {
-                info!("New record for wait time in channel: {:?}", duration);
-                self.max_duration_in_channel = Some(duration);
+            if duration > *current_max_duration {
+                info!("New longest wait time in channel: {:?}", duration);
+                self.longest_duration_in_channel = Some(duration);
             }
 
         } else {
-            info!("New record for wait time in channel: {:?}", duration);
-            self.max_duration_in_channel = Some(duration);
+            info!("New longest wait time in channel: {:?}", duration);
+            self.longest_duration_in_channel = Some(duration);
         }
 
         return Ok((receive_meta_data, value));

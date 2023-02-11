@@ -4,7 +4,7 @@ use chrono::Local;
 use timer::{Guard, Timer};
 use crate::util::RollingAverage;
 use log::{trace, info, warn, error};
-use crate::gametime::gametimer::GameTimerEvent::{InitialInformationEvent, SetSender, StartTickingEvent, TickEvent, TimeMessageEvent};
+use crate::gametime::gametimer::GameTimerEvent::{InitialInformationEvent, StartTickingEvent, TickEvent, TimeMessageEvent};
 use crate::gametime::gametimerobserver::GameTimerObserverTrait;
 use crate::server::ServerConfig;
 use crate::messaging::InitialInformation;
@@ -15,13 +15,11 @@ use crate::threading::eventhandling::WaitOrTryForNextEvent::WaitForNextEvent;
 const TICK_LATENESS_WARN_DURATION: TimeDuration = TimeDuration(20);
 const CLIENT_ERROR_WARN_DURATION: TimeDuration = TimeDuration(20);
 
+//TODO: should the timer be a listener that sleeps?
 pub enum GameTimerEvent<Observer: GameTimerObserverTrait> {
 
     //TODO: pass initial information when constructing game timer
     InitialInformationEvent(InitialInformation<Observer::Game>),
-
-    //TODO: pass the sender to the event handler in another way
-    SetSender(Sender<GameTimerEvent<Observer>>),
 
     StartTickingEvent,
     //TODO: switch to sent value meta data
@@ -33,7 +31,7 @@ pub struct GameTimer<Observer: GameTimerObserverTrait> {
     timer: Timer,
     server_config: Option<ServerConfig>,
     start: Option<TimeValue>,
-    sender: Option<Sender<GameTimerEvent<Observer>>>,
+    sender: Sender<GameTimerEvent<Observer>>,
     guard: Option<Guard>,
     rolling_average: RollingAverage<u64>,
     observer: Observer
@@ -41,13 +39,16 @@ pub struct GameTimer<Observer: GameTimerObserverTrait> {
 
 impl<Observer: GameTimerObserverTrait> GameTimer<Observer> {
 
-    pub fn new(rolling_average_size: usize, observer: Observer) -> Self {
+    pub fn new(
+            rolling_average_size: usize,
+            observer: Observer,
+            sender: Sender<GameTimerEvent<Observer>>) -> Self {
 
         GameTimer{
             timer: Timer::new(),
             server_config: None,
             start: None,
-            sender: None,
+            sender,
             guard: None,
             rolling_average: RollingAverage::new(rolling_average_size),
             observer
@@ -66,10 +67,6 @@ impl<Observer: GameTimerObserverTrait> GameTimer<Observer> {
         self.server_config = Some(initial_information.move_server_config());
     }
 
-    fn set_sender(&mut self, sender: Sender<GameTimerEvent<Observer>>) {
-        self.sender = Some(sender);
-    }
-
     fn start_ticking(&mut self) {
 
         info!("Starting timer with duration {:?}", self.get_step_duration().unwrap());
@@ -78,8 +75,9 @@ impl<Observer: GameTimerObserverTrait> GameTimer<Observer> {
 
         self.start = Some(now.add(self.get_step_duration().unwrap()));
 
-        let sender_clone = self.sender.as_ref().unwrap().clone();
+        let sender_clone = self.sender.clone();
 
+        //TODO: does using this closure have bad performance?
         //Called from timer thread
         self.guard = Some(
             self.timer.schedule(
@@ -144,7 +142,7 @@ impl<Observer: GameTimerObserverTrait> GameTimer<Observer> {
                     .add(step_duration * ((TimeValue::now().duration_since(&self.start.unwrap()) / step_duration)
                         .floor() as i64 + 1));
 
-                let sender_clone = self.sender.as_ref().unwrap().clone();
+                let sender_clone = self.sender.clone();
 
                 //Called from timer thread
                 self.guard = Some(
@@ -174,7 +172,6 @@ impl<Observer: GameTimerObserverTrait> EventHandlerTrait for GameTimer<Observer>
             ChannelEvent::ReceivedEvent(_, event) => {
                 match event {
                     InitialInformationEvent(initial_information) => self.on_initial_information(initial_information),
-                    SetSender(sender) => self.set_sender(sender),
                     StartTickingEvent => self.start_ticking(),
                     TickEvent(tick_time_value) => self.tick(tick_time_value),
                     TimeMessageEvent(time_message) => self.on_time_message(time_message)

@@ -69,6 +69,7 @@ impl<Game: GameTrait> ClientCore<Game> {
 
         let server_udp_socket_addr_v4 = SocketAddrV4::new(ip_addr_v4, Game::UDP_PORT);
 
+        //TODO: pass in as a parameter
         let udp_socket = UdpSocket::bind("127.0.0.1:0").unwrap();
 
         let client_game_time_observer = ClientGameTimerObserver::new(
@@ -78,9 +79,6 @@ impl<Game: GameTrait> ClientCore<Game> {
         let game_timer_builder = ThreadBuilder::new()
             .name("ClientGameTimer")
             .build_channel_for_event_handler::<GameTimer<ClientGameTimerObserver<Game>>>();
-
-        //TODO: find a better way to send this sender
-        game_timer_builder.get_sender().send_event(GameTimerEvent::SetSender(game_timer_builder.clone_sender())).unwrap();
 
         let udp_output_builder = ThreadBuilder::new()
             .name("ClientUdpOutput")
@@ -121,10 +119,13 @@ impl<Game: GameTrait> ClientCore<Game> {
             ).unwrap())
             .unwrap();
 
-        let game_timer_join_handle =  game_timer_builder.spawn_event_handler(GameTimer::new(
+        let game_timer = GameTimer::new(
             Game::CLOCK_AVERAGE_SIZE,
-            client_game_time_observer
-        )).unwrap();
+            client_game_time_observer,
+            game_timer_builder.clone_sender()
+        );
+
+        let game_timer_join_handle =  game_timer_builder.spawn_event_handler(game_timer).unwrap();
 
         self.timer_join_handle_option = Some(game_timer_join_handle);
         self.manager_join_handle_option = Some(manager_join_handle);
@@ -179,7 +180,7 @@ impl<Game: GameTrait> ClientCore<Game> {
                 );
 
                 manager_sender.send_event(ManagerEvent::InputEvent(message.clone())).unwrap();
-                self.udp_output_join_handle_option.as_ref().unwrap().get_sender().send_event(UdpOutputEvent::InputMessageEvent(message));
+                self.udp_output_join_handle_option.as_ref().unwrap().get_sender().send_event(UdpOutputEvent::InputMessageEvent(message)).unwrap();
 
                 let client_drop_time = time_message.get_scheduled_time().subtract(Game::GRACE_PERIOD * 2);
                 let drop_step = time_message.get_step_from_actual_time(client_drop_time).ceil() as usize;
