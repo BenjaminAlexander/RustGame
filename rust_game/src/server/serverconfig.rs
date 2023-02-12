@@ -1,4 +1,4 @@
-use crate::gametime::TimeDuration;
+use commons::time::TimeDuration;
 use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize, Clone, Debug)]

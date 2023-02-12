@@ -5,7 +5,7 @@ use crate::client::ClientCoreEvent::Connect;
 use crate::gamemanager::RenderReceiver;
 use crate::simplegame::{SimpleInput, SimpleState, SimpleInputEvent, SimpleInputEventHandler, SimpleWindow, SimpleServerInput, SimpleGameImpl};
 use crate::threading::ThreadBuilder;
-use crate::gametime::TimeDuration;
+use commons::time::TimeDuration;
 use crate::server::ServerCoreEvent;
 
 mod simplegame;

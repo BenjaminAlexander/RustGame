@@ -1,5 +1,5 @@
 use serde::{Deserialize, Serialize};
-use crate::gametime::timevalue::TimeValue;
+use commons::time::TimeValue;
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct TimeReceived<T> {

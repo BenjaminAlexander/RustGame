@@ -1,5 +1,6 @@
 use std::net::{UdpSocket, SocketAddrV4, SocketAddr};
-use crate::gametime::{TimeReceived, TimeValue, TimeDuration, GameTimerEvent};
+use commons::time::{TimeDuration, TimeValue};
+use crate::gametime::{TimeReceived, GameTimerEvent};
 use crate::messaging::{ToClientMessageUDP, MAX_UDP_DATAGRAM_SIZE, MessageFragment, FragmentAssembler};
 use crate::threading::{eventhandling, listener};
 use crate::interface::GameTrait;

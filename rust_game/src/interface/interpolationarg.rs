@@ -1,4 +1,4 @@
-use crate::gametime::TimeDuration;
+use commons::time::TimeDuration;
 
 pub struct InterpolationArg {
     weight: f64,

@@ -3,7 +3,7 @@ use std::ops::ControlFlow::{Break, Continue};
 use log::{warn, trace};
 use crate::messaging::{StateMessage, InputMessage, InitialInformation, ServerInputMessage};
 use crate::gamemanager::step::Step;
-use crate::gametime::{TimeDuration, TimeValue};
+use commons::time::{TimeDuration, TimeValue};
 use std::sync::Arc;
 use crate::gamemanager::{ManagerObserverTrait};
 use crate::gamemanager::manager::ManagerEvent::{DropStepsBeforeEvent, InitialInformationEvent, InputEvent, ServerInputEvent, SetRequestedStepEvent, StateEvent};

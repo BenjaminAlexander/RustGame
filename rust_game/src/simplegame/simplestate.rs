@@ -6,7 +6,7 @@ use crate::simplegame::character::Character;
 use opengl_graphics::GlGraphics;
 use graphics::Context;
 use piston::RenderArgs;
-use crate::gametime::TimeDuration;
+use commons::time::TimeDuration;
 use crate::simplegame::bullet::Bullet;
 use crate::messaging::InitialInformation;
 use crate::simplegame::simpleserverinput::SimpleServerInput;

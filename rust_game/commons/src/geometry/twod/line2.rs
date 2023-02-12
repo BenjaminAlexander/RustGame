@@ -1,14 +1,8 @@
-use commons::geometry::twod::Vector2;
+use crate::geometry::twod::{Intersection, Vector2};
 
 pub enum Line2 {
     NonVertical{m: f64, b: f64},
     Vertical{x: f64}
-}
-
-pub enum Intersection {
-    All,
-    None,
-    Point(f64)
 }
 
 impl Line2 {

@@ -6,7 +6,7 @@ use graphics::{Context, rectangle};
 use graphics::*;
 use crate::simplegame::bullet::Bullet;
 use crate::interface::{ClientUpdateArg, GameTrait};
-use crate::gametime::TimeDuration;
+use commons::time::TimeDuration;
 use crate::simplegame::simplegameimpl::SimpleGameImpl;
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
