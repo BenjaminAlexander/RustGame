@@ -1,5 +1,4 @@
 use serde::{Deserialize, Serialize};
-
 use std::ops::{Sub, Add, Mul};
 use num::traits::Pow;
 use std::hash::{Hash, Hasher};

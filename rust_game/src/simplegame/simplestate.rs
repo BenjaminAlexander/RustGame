@@ -1,4 +1,5 @@
-use crate::simplegame::{Vector2, SimplServerInputEvent};
+use commons::geometry::twod::Vector2;
+use crate::simplegame::SimplServerInputEvent;
 use crate::interface::{ClientUpdateArg, InterpolationArg, ServerUpdateArg, GameTrait};
 use serde::{Deserialize, Serialize};
 use crate::simplegame::character::Character;

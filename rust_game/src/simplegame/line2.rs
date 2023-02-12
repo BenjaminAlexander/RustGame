@@ -1,4 +1,4 @@
-use crate::simplegame::Vector2;
+use commons::geometry::twod::Vector2;
 
 pub enum Line2 {
     NonVertical{m: f64, b: f64},

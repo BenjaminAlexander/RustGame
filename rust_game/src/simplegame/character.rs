@@ -1,4 +1,4 @@
-use crate::simplegame::Vector2;
+use commons::geometry::twod::Vector2;
 use serde::{Deserialize, Serialize};
 use piston::RenderArgs;
 use opengl_graphics::GlGraphics;

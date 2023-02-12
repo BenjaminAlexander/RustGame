@@ -1,6 +1,5 @@
+use commons::geometry::twod::Vector2;
 use serde::{Deserialize, Serialize};
-
-use crate::simplegame::Vector2;
 use crate::simplegame::line2::{Line2, Intersection};
 
 #[derive(Serialize, Deserialize, Debug, Clone, Copy)]

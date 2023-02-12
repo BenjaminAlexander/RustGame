@@ -6,8 +6,10 @@ edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
+
 [dependencies]
-serde = {version = "1",  features = ["derive"]}
+commons = { path = "commons" }
+serde = { version = "1", features = ["derive"] }
 rmp-serde = "0.15.0"
 log = { version = "0.4", features = ["std", "serde"] }
 log4rs = { version = "1.2.0"}
@@ -19,3 +21,8 @@ piston = "0.52.0"
 piston2d-graphics = "0.39.0"
 pistoncore-glutin_window = "0.68.0"
 piston2d-opengl_graphics = "0.77.0"
+
+[workspace]
+members = [
+    "commons"
+]

@@ -1,4 +1,3 @@
-pub use self::vector2::*;
 pub use self::simpleinputevent::SimpleInputEvent;
 pub use self::simpleinput::SimpleInput;
 pub use self::simpleinputeventhandler::SimpleInputEventHandler;
@@ -8,7 +7,6 @@ pub use self::simpleserverinput::SimpleServerInput;
 pub use self::simpleserverinput::SimplServerInputEvent;
 pub use self::simplegameimpl::SimpleGameImpl;
 
-mod vector2;
 mod simpleinputevent;
 mod simpleinput;
 mod simplestate;
