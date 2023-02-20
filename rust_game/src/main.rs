@@ -1,6 +1,7 @@
 use std::{thread, time, io, process};
 use std::path::PathBuf;
 use log::{error, info};
+use commons::stats::RollingStandardDeviation;
 use crate::client::ClientCoreEvent::Connect;
 use crate::gamemanager::RenderReceiver;
 use crate::simplegame::{SimpleInput, SimpleState, SimpleInputEvent, SimpleInputEventHandler, SimpleWindow, SimpleServerInput, SimpleGameImpl};
@@ -15,7 +16,6 @@ mod logging;
 mod threading;
 mod interface;
 mod gametime;
-mod util;
 mod client;
 mod gamemanager;
 
@@ -47,6 +47,39 @@ pub fn main() {
     logging::init_logging(log_file_path);
 
     info!("args: {:?}", args);
+
+    //TODO: remove
+    let mut r = RollingStandardDeviation::<i32>::new(4);
+    r.add_value(2);
+    r.add_value(4);
+    info!("Average: {:?}\nVariance: {:?}\nSD: {:?}", r.get_average(), r.get_variance(), r.get_standard_deviation());
+
+
+    r.add_value(8);
+    info!("Average: {:?}\nVariance: {:?}\nSD: {:?}", r.get_average(), r.get_variance(), r.get_standard_deviation());
+
+    r.add_value(2);
+    info!("Average: {:?}\nVariance: {:?}\nSD: {:?}", r.get_average(), r.get_variance(), r.get_standard_deviation());
+
+
+    r.add_value(4);
+    info!("Average: {:?}\nVariance: {:?}\nSD: {:?}", r.get_average(), r.get_variance(), r.get_standard_deviation());
+    r.add_value(4);
+    info!("Average: {:?}\nVariance: {:?}\nSD: {:?}", r.get_average(), r.get_variance(), r.get_standard_deviation());
+    r.add_value(4);
+    info!("Average: {:?}\nVariance: {:?}\nSD: {:?}", r.get_average(), r.get_variance(), r.get_standard_deviation());
+    r.add_value(4);
+    info!("Average: {:?}\nVariance: {:?}\nSD: {:?}", r.get_average(), r.get_variance(), r.get_standard_deviation());
+
+    r.add_value(2);
+    info!("Average: {:?}\nVariance: {:?}\nSD: {:?}", r.get_average(), r.get_variance(), r.get_standard_deviation());
+    r.add_value(4);
+    info!("Average: {:?}\nVariance: {:?}\nSD: {:?}", r.get_average(), r.get_variance(), r.get_standard_deviation());
+    r.add_value(8);
+    info!("Average: {:?}\nVariance: {:?}\nSD: {:?}", r.get_average(), r.get_variance(), r.get_standard_deviation());
+    r.add_value(2);
+    info!("Average: {:?}\nVariance: {:?}\nSD: {:?}", r.get_average(), r.get_variance(), r.get_standard_deviation());
+    //TODO: remove above
 
     let mut server_core_sender_option = None;
     let mut render_receiver_option = None;

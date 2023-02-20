@@ -1,3 +1,4 @@
+use commons::stats::RollingAverage;
 use commons::time::{TimeDuration, TimeValue};
 use log::{info, warn, error, debug};
 use std::net::UdpSocket;
@@ -12,7 +13,6 @@ use crate::server::udpoutput::UdpOutputEvent::{RemotePeer, SendCompletedStep, Se
 use crate::threading::channel::ReceiveMetaData;
 use crate::threading::eventhandling::{ChannelEvent, ChannelEventResult, EventHandlerTrait};
 use crate::threading::eventhandling::WaitOrTryForNextEvent::{TryForNextEvent, WaitForNextEvent};
-use crate::util::RollingAverage;
 
 pub enum UdpOutputEvent<Game: GameTrait> {
     RemotePeer(RemoteUdpPeer),
@@ -172,7 +172,7 @@ impl<Game: GameTrait> UdpOutput<Game> {
         self.time_in_queue_rolling_average.add_value(duration_in_queue.get_millis() as u64);
         let average = self.time_in_queue_rolling_average.get_average();
 
-        if average > 500 {
+        if average > 500.0 {
             warn!("High average duration in queue: {:?} in milliseconds", average);
         }
     }

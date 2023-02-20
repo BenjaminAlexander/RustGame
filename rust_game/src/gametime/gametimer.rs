@@ -1,9 +1,9 @@
 use std::ops::ControlFlow::{Break, Continue};
+use commons::stats::RollingAverage;
 use commons::time::{TimeValue, TimeDuration};
 use crate::gametime::{TimeMessage, TimeReceived};
 use chrono::Local;
 use timer::{Guard, Timer};
-use crate::util::RollingAverage;
 use log::{trace, info, warn, error};
 use crate::gametime::gametimer::GameTimerEvent::{InitialInformationEvent, SetSender, StartTickingEvent, TickEvent, TimeMessageEvent};
 use crate::gametime::gametimerobserver::GameTimerObserverTrait;
@@ -36,7 +36,7 @@ pub struct GameTimer<Observer: GameTimerObserverTrait> {
     start: Option<TimeValue>,
     sender: Option<Sender<GameTimerEvent<Observer>>>,
     guard: Option<Guard>,
-    rolling_average: RollingAverage<u64>,
+    rolling_average: RollingAverage<i64>,
     observer: Observer
 }
 
@@ -123,12 +123,12 @@ impl<Observer: GameTimerObserverTrait> GameTimer<Observer> {
                 .subtract(time_message.get().get_lateness())
                 .subtract(step_duration * time_message.get().get_step() as i64);
 
-            self.rolling_average.add_value(remote_start.get_millis_since_epoch() as u64);
+            self.rolling_average.add_value(remote_start.get_millis_since_epoch());
 
             let average = self.rolling_average.get_average();
 
             if self.start.is_none() ||
-                self.start.unwrap().get_millis_since_epoch() as u64 != average {
+                (self.start.unwrap().get_millis_since_epoch() as f64 - average).abs() > 1.0  {
 
                 if self.start.is_none() {
                     info!("Start client clock from signal from server clock.");
