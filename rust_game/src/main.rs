@@ -48,39 +48,6 @@ pub fn main() {
 
     info!("args: {:?}", args);
 
-    //TODO: remove
-    let mut r = RollingStandardDeviation::<i32>::new(4);
-    r.add_value(2);
-    r.add_value(4);
-    info!("Average: {:?}\nVariance: {:?}\nSD: {:?}", r.get_average(), r.get_variance(), r.get_standard_deviation());
-
-
-    r.add_value(8);
-    info!("Average: {:?}\nVariance: {:?}\nSD: {:?}", r.get_average(), r.get_variance(), r.get_standard_deviation());
-
-    r.add_value(2);
-    info!("Average: {:?}\nVariance: {:?}\nSD: {:?}", r.get_average(), r.get_variance(), r.get_standard_deviation());
-
-
-    r.add_value(4);
-    info!("Average: {:?}\nVariance: {:?}\nSD: {:?}", r.get_average(), r.get_variance(), r.get_standard_deviation());
-    r.add_value(4);
-    info!("Average: {:?}\nVariance: {:?}\nSD: {:?}", r.get_average(), r.get_variance(), r.get_standard_deviation());
-    r.add_value(4);
-    info!("Average: {:?}\nVariance: {:?}\nSD: {:?}", r.get_average(), r.get_variance(), r.get_standard_deviation());
-    r.add_value(4);
-    info!("Average: {:?}\nVariance: {:?}\nSD: {:?}", r.get_average(), r.get_variance(), r.get_standard_deviation());
-
-    r.add_value(2);
-    info!("Average: {:?}\nVariance: {:?}\nSD: {:?}", r.get_average(), r.get_variance(), r.get_standard_deviation());
-    r.add_value(4);
-    info!("Average: {:?}\nVariance: {:?}\nSD: {:?}", r.get_average(), r.get_variance(), r.get_standard_deviation());
-    r.add_value(8);
-    info!("Average: {:?}\nVariance: {:?}\nSD: {:?}", r.get_average(), r.get_variance(), r.get_standard_deviation());
-    r.add_value(2);
-    info!("Average: {:?}\nVariance: {:?}\nSD: {:?}", r.get_average(), r.get_variance(), r.get_standard_deviation());
-    //TODO: remove above
-
     let mut server_core_sender_option = None;
     let mut render_receiver_option = None;
 
