@@ -1,28 +1,12 @@
-use std::ops::{Add, Sub};
-use num::traits::AsPrimitive;
 use crate::stats::RollingAverage;
 
-pub struct RollingStandardDeviation<T>
-    where T:
-        Default +
-        Copy +
-        Sub<Output = T> +
-        Add<Output = T> +
-        AsPrimitive<f64> +
-        'static {
+pub struct RollingStandardDeviation {
 
-    rolling_average: RollingAverage<T>,
+    rolling_average: RollingAverage,
     sum_of_squares: f64
 }
 
-impl<T> RollingStandardDeviation<T>
-    where T:
-        Default +
-        Copy +
-        Sub<Output = T> +
-        Add<Output = T> +
-        AsPrimitive<f64> +
-        'static {
+impl RollingStandardDeviation {
 
     pub fn new(size: usize) -> Self {
         Self {
@@ -31,24 +15,22 @@ impl<T> RollingStandardDeviation<T>
         }
     }
 
-    pub fn add_value(&mut self, value: T) -> Option<T> {
+    pub fn add_value(&mut self, value: f64) -> Option<f64> {
 
         let old_average = self.rolling_average.get_average();
         let removed_value_option = self.rolling_average.add_value(value);
         let new_average = self.rolling_average.get_average();
-        let f64_value = <T as AsPrimitive<f64>>::as_(value);
 
         if let Some(removed_value) = removed_value_option.as_ref() {
 
             //Old and new counts are the same since a value is being removed
-            let f64_removed_value: f64 = <T as AsPrimitive<f64>>::as_(*removed_value);
             let old_variance = self.sum_of_squares / (self.count() as f64);
-            let new_variance = old_variance + (f64_value - f64_removed_value) * (f64_value - new_average + f64_removed_value - old_average) / (self.count() as f64);
+            let new_variance = old_variance + (value - removed_value) * (value - new_average + removed_value - old_average) / (self.count() as f64);
 
             self.sum_of_squares = new_variance * (self.count() as f64);
 
         } else {
-            self.sum_of_squares = self.sum_of_squares + (f64_value - old_average) * (f64_value - new_average);
+            self.sum_of_squares = self.sum_of_squares + (value - old_average) * (value - new_average);
         }
 
         return removed_value_option;
@@ -63,10 +45,14 @@ impl<T> RollingStandardDeviation<T>
     }
 
     pub fn get_standard_deviation(&self) -> f64 {
-        return (self.get_variance() as f64).sqrt();
+        return self.get_variance().sqrt();
     }
 
     pub fn count(&self) -> usize {
         return self.rolling_average.count();
+    }
+
+    pub fn is_full(&self) -> bool {
+        return self.rolling_average.is_full();
     }
 }

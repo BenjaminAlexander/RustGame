@@ -1,7 +1,8 @@
 use std::mem;
 use crate::stats::minmax::MinMax::{NoValues, MinAndMax, SingleValue};
-use crate::stats::minmax::MinMaxChange::{FirstMinAndMax, NewMax, NewMin, NoChange};
+use crate::stats::minmax::MinMaxChange::{FirstMinAndMax, NewMax, NewMin};
 
+#[derive(Debug)]
 pub enum MinMax<T> {
     NoValues,
     SingleValue(T),
@@ -11,11 +12,11 @@ pub enum MinMax<T> {
     }
 }
 
-pub enum MinMaxChange<'a, T> {
-    NoChange,
-    FirstMinAndMax(&'a T),
-    NewMin(&'a T),
-    NewMax(&'a T)
+#[derive(Debug)]
+pub enum MinMaxChange<T> {
+    FirstMinAndMax(T),
+    NewMin(T),
+    NewMax(T)
 }
 
 impl<T: PartialOrd<T>> MinMax<T> {
@@ -24,11 +25,11 @@ impl<T: PartialOrd<T>> MinMax<T> {
         return mem::replace(self, NoValues);
     }
 
-    pub fn add_value(&mut self, value: T) -> MinMaxChange<T> {
+    pub fn add_value(&mut self, value: T) -> Option<MinMaxChange<&T>> {
         match self.take() {
             NoValues => {
                 *self = SingleValue(value);
-                return FirstMinAndMax(self.get_min().unwrap());
+                return Some(FirstMinAndMax(self.get_min().unwrap()));
             }
             SingleValue(first_value) => {
                 if first_value < value {
@@ -37,14 +38,14 @@ impl<T: PartialOrd<T>> MinMax<T> {
                         max: value
                     };
 
-                    return NewMax(self.get_max().unwrap());
+                    return Some(NewMax(self.get_max().unwrap()));
                 } else {
                     *self = MinAndMax{
                         min: value,
                         max: first_value
                     };
 
-                    return NewMin(self.get_min().unwrap());
+                    return Some(NewMin(self.get_min().unwrap()));
                 }
             }
             MinAndMax { min, max } => {
@@ -54,16 +55,16 @@ impl<T: PartialOrd<T>> MinMax<T> {
                         max
                     };
 
-                    return NewMin(self.get_min().unwrap());
+                    return Some(NewMin(self.get_min().unwrap()));
                 } else if value > max {
                     *self = MinAndMax{
                         min,
                         max: value
                     };
 
-                    return NewMax(self.get_max().unwrap());
+                    return Some(NewMax(self.get_max().unwrap()));
                 } else {
-                    return NoChange;
+                    return None;
                 }
             }
         };

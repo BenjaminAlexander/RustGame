@@ -36,7 +36,7 @@ pub struct GameTimer<Observer: GameTimerObserverTrait> {
     start: Option<TimeValue>,
     sender: Option<Sender<GameTimerEvent<Observer>>>,
     guard: Option<Guard>,
-    rolling_average: RollingAverage<i64>,
+    rolling_average: RollingAverage,
     observer: Observer
 }
 
@@ -123,7 +123,7 @@ impl<Observer: GameTimerObserverTrait> GameTimer<Observer> {
                 .subtract(time_message.get().get_lateness())
                 .subtract(step_duration * time_message.get().get_step() as i64);
 
-            self.rolling_average.add_value(remote_start.get_millis_since_epoch());
+            self.rolling_average.add_value(remote_start.get_millis_since_epoch() as f64);
 
             let average = self.rolling_average.get_average();
 

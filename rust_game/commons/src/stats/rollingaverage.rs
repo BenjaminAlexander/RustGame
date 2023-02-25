@@ -1,26 +1,20 @@
-use std::ops::{Sub, Add};
-use num::traits::AsPrimitive;
-
-pub struct RollingAverage<T>
-    where T: Default + Copy + Sub<Output = T> + Add<Output = T> + AsPrimitive<f64> + 'static {
-
-    values: Vec<T>,
+pub struct RollingAverage {
+    values: Vec<f64>,
     next_index: usize,
-    sum: T
+    sum: f64
 }
 
-impl<T> RollingAverage<T>
-    where T: Default + Copy + Sub<Output = T> + Add<Output = T> + AsPrimitive<f64> + 'static {
+impl RollingAverage {
 
     pub fn new(size: usize) -> Self {
         Self {
             values: Vec::with_capacity(size),
             next_index: 0,
-            sum: T::default()
+            sum: 0.0
         }
     }
 
-    pub fn add_value(&mut self, value: T) -> Option<T> {
+    pub fn add_value(&mut self, value: f64) -> Option<f64> {
 
         let mut removed_value_option = None;
 
@@ -43,13 +37,17 @@ impl<T> RollingAverage<T>
 
     pub fn get_average(&self) -> f64 {
         return if self.values.is_empty() {
-            f64::default()
+            0.0
         } else {
-            <T as AsPrimitive<f64>>::as_(self.sum) / (self.values.len() as f64)
+            self.sum / (self.values.len() as f64)
         }
     }
 
     pub fn count(&self) -> usize {
         return self.values.len();
+    }
+
+    pub fn is_full(&self) -> bool {
+        return self.values.len() == self.values.capacity();
     }
 }
