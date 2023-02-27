@@ -45,7 +45,7 @@ impl<Game: GameTrait> UdpInput<Game> {
         });
     }
 
-    fn channel_empty_After_listen(&mut self, mut buf: [u8; MAX_UDP_DATAGRAM_SIZE], number_of_bytes: usize, source: SocketAddr) {
+    fn channel_empty_after_listen(&mut self, mut buf: [u8; MAX_UDP_DATAGRAM_SIZE], number_of_bytes: usize, source: SocketAddr) {
         //TODO: check source against valid sources
         let filled_buf = &mut buf[..number_of_bytes];
 
@@ -138,7 +138,7 @@ impl<Game: GameTrait> ListenerTrait for UdpInput<Game> {
     type ThreadReturn = ();
     type ListenFor = ([u8; MAX_UDP_DATAGRAM_SIZE], usize, SocketAddr);
 
-    fn listen(mut self) -> ListenResult<Self> {
+    fn listen(self) -> ListenResult<Self> {
         let mut buf = [0; MAX_UDP_DATAGRAM_SIZE];
 
         let recv_result = self.socket.recv_from(&mut buf);
@@ -157,7 +157,7 @@ impl<Game: GameTrait> ListenerTrait for UdpInput<Game> {
     fn on_channel_event(mut self, event: ChannelEvent<Self>) -> ListenerEventResult<Self> {
         match event {
             ChannelEvent::ChannelEmptyAfterListen(_, (buf, number_of_bytes, source)) => {
-                self.channel_empty_After_listen(buf, number_of_bytes, source);
+                self.channel_empty_after_listen(buf, number_of_bytes, source);
                 return Continue(self);
             }
             ChannelEvent::ReceivedEvent(_, event) => {

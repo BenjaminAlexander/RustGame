@@ -157,7 +157,7 @@ impl<Game: GameTrait> ServerCore<Game> {
         }
     }
 
-    fn on_remote_udp_peer(mut self, remote_udp_peer: RemoteUdpPeer) -> ChannelEventResult<Self> {
+    fn on_remote_udp_peer(self, remote_udp_peer: RemoteUdpPeer) -> ChannelEventResult<Self> {
         if let Some(udp_output_join_handle) = self.udp_outputs.get(remote_udp_peer.get_player_index()) {
             udp_output_join_handle.get_sender().send_event(UdpOutputEvent::RemotePeer(remote_udp_peer)).unwrap();
         }
@@ -213,9 +213,6 @@ impl<Game: GameTrait> ServerCore<Game> {
 
             timer_builder.get_sender().send_event(GameTimerEvent::InitialInformationEvent(server_initial_information.clone())).unwrap();
 
-            //TODO: fix this
-            timer_builder.get_sender().send_event(GameTimerEvent::SetSender(timer_builder.clone_sender())).unwrap();
-
             timer_builder.get_sender().send_event(GameTimerEvent::StartTickingEvent).unwrap();
 
             for tcp_output in self.tcp_outputs.iter() {
@@ -223,13 +220,16 @@ impl<Game: GameTrait> ServerCore<Game> {
                     self.server_config.clone(),
                     self.tcp_outputs.len(),
                     initial_state.clone()
-                ));
+                )).unwrap();
             }
 
-            self.timer_join_handle_option = Some(timer_builder.spawn_event_handler(GameTimer::new(
+            let game_timer = GameTimer::new(
                 0,
-                server_game_timer_observer
-            )).unwrap());
+                server_game_timer_observer,
+                timer_builder.clone_sender()
+            );
+
+            self.timer_join_handle_option = Some(timer_builder.spawn_event_handler(game_timer).unwrap());
 
             self.manager_join_handle_option = Some(manager_builder.spawn_event_handler(Manager::new(server_manager_observer)).unwrap());
 
@@ -315,7 +315,7 @@ impl<Game: GameTrait> ServerCore<Game> {
             return Continue(TryForNextEvent(self));
     }
 
-    fn on_input_message(mut self, input_message: InputMessage<Game>) -> ChannelEventResult<Self> {
+    fn on_input_message(self, input_message: InputMessage<Game>) -> ChannelEventResult<Self> {
 
         //TODO: is game started?
 
@@ -329,7 +329,7 @@ impl<Game: GameTrait> ServerCore<Game> {
                 .unwrap();
 
             for udp_output in self.udp_outputs.iter() {
-                udp_output.get_sender().send_event(UdpOutputEvent::SendInputMessage(input_message.clone()));
+                udp_output.get_sender().send_event(UdpOutputEvent::SendInputMessage(input_message.clone())).unwrap();
             }
         }
 

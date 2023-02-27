@@ -35,14 +35,14 @@ impl<Game: GameTrait> ManagerObserverTrait for ServerManagerObserver<Game> {
     fn on_completed_step(&self, state_message: StateMessage<Game>) {
 
         for udp_output in self.udp_outputs.iter() {
-            udp_output.send_event(UdpOutputEvent::SendCompletedStep(state_message.clone()));
+            udp_output.send_event(UdpOutputEvent::SendCompletedStep(state_message.clone())).unwrap();
         }
     }
 
     fn on_server_input_message(&self, server_input_message: ServerInputMessage<Game>) {
 
         for udp_output in self.udp_outputs.iter() {
-            udp_output.send_event(UdpOutputEvent::SendServerInputMessage(server_input_message.clone()));
+            udp_output.send_event(UdpOutputEvent::SendServerInputMessage(server_input_message.clone())).unwrap();
         }
     }
 }
