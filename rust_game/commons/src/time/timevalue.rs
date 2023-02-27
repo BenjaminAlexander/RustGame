@@ -6,6 +6,7 @@ use crate::time::TimeDuration;
 
 pub const EPOCH: TimeValue = TimeValue::from_millis(0);
 
+//TODO: use nanos
 #[derive(Serialize, Deserialize, Clone, Copy, Debug)]
 pub struct TimeValue {
     millis_since_epoch: i64
@@ -45,8 +46,19 @@ impl TimeValue {
         UNIX_EPOCH.add(Duration::from_millis(self.millis_since_epoch as u64))
     }
 
-    pub fn duration_since(&self, time_before: TimeValue) -> TimeDuration {
+    pub fn duration_since(&self, time_before: &TimeValue) -> TimeDuration {
         TimeDuration::from_millis(self.millis_since_epoch - time_before.millis_since_epoch)
     }
 }
 
+impl Into<f64> for TimeValue {
+    fn into(self) -> f64 {
+        return self.get_millis_since_epoch() as f64;
+    }
+}
+
+impl From<f64> for TimeValue {
+    fn from(value: f64) -> Self {
+        return TimeValue::from_millis(value as i64);
+    }
+}

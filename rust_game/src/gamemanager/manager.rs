@@ -128,7 +128,7 @@ impl<ManagerObserver: ManagerObserverTrait> Manager<ManagerObserver> {
     fn on_none_pending(mut self) -> ChannelEventResult<Self> {
 
         let now = TimeValue::now();
-        let duration_since_last_state = now.duration_since(self.time_of_last_state_receive);
+        let duration_since_last_state = now.duration_since(&self.time_of_last_state_receive);
         if duration_since_last_state > TimeDuration::one_second() {
             //warn!("It has been {:?} since last state message was received. Now: {:?}, Last: {:?}",
             //      duration_since_last_state, now, self.time_of_last_state_receive);

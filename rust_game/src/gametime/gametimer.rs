@@ -142,7 +142,7 @@ impl<Observer: GameTimerObserverTrait> GameTimer<Observer> {
                 self.start = Some(TimeValue::from_millis(average as i64));
 
                 let next_tick = self.start.unwrap()
-                    .add(step_duration * ((TimeValue::now().duration_since(self.start.unwrap()) / step_duration)
+                    .add(step_duration * ((TimeValue::now().duration_since(&self.start.unwrap()) / step_duration)
                         .floor() as i64 + 1));
 
                 let sender_clone = self.sender.as_ref().unwrap().clone();

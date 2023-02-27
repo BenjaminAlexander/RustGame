@@ -47,10 +47,10 @@ impl Add for TimeDuration {
     }
 }
 
-impl Div<TimeDuration> for TimeDuration {
+impl Div for TimeDuration {
     type Output = f64;
 
-    fn div(self, rhs: TimeDuration) -> Self::Output {
+    fn div(self, rhs: Self) -> Self::Output {
         self.0 as f64 / rhs.0 as f64
     }
 }
@@ -73,5 +73,17 @@ impl PartialEq<TimeDuration> for TimeDuration {
 impl PartialOrd<TimeDuration> for TimeDuration {
     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
         self.0.partial_cmp(&other.0)
+    }
+}
+
+impl Into<f64> for TimeDuration {
+    fn into(self) -> f64 {
+        return self.0 as f64;
+    }
+}
+
+impl From<f64> for TimeDuration {
+    fn from(value: f64) -> Self {
+        return TimeDuration(value as i64);
     }
 }

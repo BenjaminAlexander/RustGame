@@ -1,3 +1,4 @@
+use std::fmt::{Display, Formatter};
 use std::mem;
 use crate::stats::minmax::MinMax::{NoValues, MinAndMax, SingleValue};
 use crate::stats::minmax::MinMaxChange::{FirstMinAndMax, NewMax, NewMin};
@@ -19,6 +20,17 @@ pub enum MinMaxChange<T> {
     NewMax(T)
 }
 
+impl<T: Display> Display for MinMaxChange<T> {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        match self {
+            FirstMinAndMax(value) => write!(f, "FirstMinAndMax({})", value),
+            NewMin(value) => write!(f, "NewMin({})", value),
+            NewMax(value) => write!(f, "NewMax({})", value)
+        }
+
+    }
+}
+
 impl<T: PartialOrd<T>> MinMax<T> {
 
     fn take(&mut self) -> Self {
@@ -26,6 +38,7 @@ impl<T: PartialOrd<T>> MinMax<T> {
     }
 
     pub fn add_value(&mut self, value: T) -> Option<MinMaxChange<&T>> {
+
         match self.take() {
             NoValues => {
                 *self = SingleValue(value);
@@ -33,14 +46,14 @@ impl<T: PartialOrd<T>> MinMax<T> {
             }
             SingleValue(first_value) => {
                 if first_value < value {
-                    *self = MinAndMax{
+                    *self = MinAndMax {
                         min: first_value,
                         max: value
                     };
 
                     return Some(NewMax(self.get_max().unwrap()));
                 } else {
-                    *self = MinAndMax{
+                    *self = MinAndMax {
                         min: value,
                         max: first_value
                     };
@@ -50,20 +63,25 @@ impl<T: PartialOrd<T>> MinMax<T> {
             }
             MinAndMax { min, max } => {
                 if value < min {
-                    *self = MinAndMax{
+                    *self = MinAndMax {
                         min: value,
                         max
                     };
 
                     return Some(NewMin(self.get_min().unwrap()));
                 } else if value > max {
-                    *self = MinAndMax{
+                    *self = MinAndMax {
                         min,
                         max: value
                     };
 
                     return Some(NewMax(self.get_max().unwrap()));
                 } else {
+                    *self = MinAndMax {
+                        min,
+                        max
+                    };
+
                     return None;
                 }
             }

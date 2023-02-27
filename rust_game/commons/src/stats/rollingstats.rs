@@ -13,17 +13,25 @@ pub struct RollingStats {
 pub struct ValueOfInterest {
     rolling_average_min_max_change: Option<MinMaxChange<f64>>,
     individual_outlier: Option<f64>,
-    rolling_average_outlier: Option<f64>,
-    rolling_average_min: f64,
-    rolling_average_max: f64,
-    current_rolling_average: f64,
-    current_rolling_standard_deviation: f64,
-    average_of_rolling_averages: f64,
-    standard_deviation_of_rolling_averages: f64,
+    rolling_average_outlier: Option<f64>
+}
+
+impl ValueOfInterest {
+
+    pub fn get_rolling_average_min_max_change(&self) -> &Option<MinMaxChange<f64>> {
+        return &self.rolling_average_min_max_change;
+    }
+
+    pub fn get_individual_outlier(&self) -> &Option<f64> {
+        return &self.individual_outlier;
+    }
+
+    pub fn get_rolling_average_outlier(&self) -> &Option<f64> {
+        return &self.rolling_average_outlier;
+    }
 }
 
 impl RollingStats {
-
     pub fn new(size: usize, standard_deviation_ration: f64) -> Self {
         Self {
             standard_deviation_ration,
@@ -38,9 +46,10 @@ impl RollingStats {
         let rolling_average = self.roll_std_dev.get_average();
 
         if self.roll_std_dev.is_full() {
-
             let current_rolling_average = self.roll_std_dev.get_average();
             let current_rolling_standard_deviation = self.roll_std_dev.get_standard_deviation();
+
+            self.total_std_dev_of_roll_av.add_value(rolling_average);
 
             let individual_outlier;
             if (current_rolling_average - value).abs() > current_rolling_standard_deviation * self.standard_deviation_ration {
@@ -59,8 +68,6 @@ impl RollingStats {
                 rolling_average_outlier = None;
             }
 
-            self.total_std_dev_of_roll_av.add_value(rolling_average);
-
             let rolling_average_min_max_change = match self.roll_av_min_max.add_value(rolling_average) {
                 None => None,
                 Some(FirstMinAndMax(only_value)) => Some(FirstMinAndMax(*only_value)),
@@ -72,20 +79,40 @@ impl RollingStats {
                 rolling_average_outlier.is_some() ||
                 rolling_average_min_max_change.is_some() {
 
-                return Some(ValueOfInterest{
+                //error!("{:?}", self.roll_av_min_max);
+
+                return Some(ValueOfInterest {
                     rolling_average_min_max_change,
                     individual_outlier,
-                    rolling_average_outlier,
-                    rolling_average_min: *self.roll_av_min_max.get_min().unwrap(),
-                    rolling_average_max: *self.roll_av_min_max.get_max().unwrap(),
-                    current_rolling_average,
-                    current_rolling_standard_deviation,
-                    average_of_rolling_averages,
-                    standard_deviation_of_rolling_averages,
+                    rolling_average_outlier
                 });
             }
         }
 
         return None;
+    }
+
+    pub fn get_rolling_average_min(&self) -> Option<&f64> {
+        return self.roll_av_min_max.get_min();
+    }
+
+    pub fn get_rolling_average_max(&self) -> Option<&f64> {
+        return self.roll_av_min_max.get_max();
+    }
+
+    pub fn get_rolling_average(&self) -> f64 {
+        return self.roll_std_dev.get_average();
+    }
+
+    pub fn get_rolling_standard_deviation(&self) -> f64 {
+        return self.roll_std_dev.get_standard_deviation();
+    }
+
+    pub fn get_average_of_rolling_average(&self) -> f64 {
+        return self.total_std_dev_of_roll_av.get_average();
+    }
+
+    pub fn get_standard_deviation_of_rolling_average(&self) -> f64 {
+        return self.total_std_dev_of_roll_av.get_standard_deviation();
     }
 }
