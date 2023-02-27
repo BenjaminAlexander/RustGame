@@ -35,17 +35,17 @@ impl<T: Into<f64>> RollingStatsLogger<T> {
 
                 if let Some(individual_outlier) = value_of_interest.get_individual_outlier() {
                     //string.push_str(&format!("Individual Outlier: {}\n", individual_outlier));
-                    writeln!(string, "Individual Outlier: {}", individual_outlier).unwrap();
+                    writeln!(string, "Individual Outlier: {}", *individual_outlier).unwrap();
                 }
 
                 if let Some(rolling_average_outlier) = value_of_interest.get_rolling_average_outlier() {
                     //string.push_str(&format!("Rolling Average Outlier: {}\n", rolling_average_outlier));
-                    writeln!(string, "Rolling Average Outlier: {}", rolling_average_outlier).unwrap();
+                    writeln!(string, "Rolling Average Outlier: {}", *rolling_average_outlier).unwrap();
                 }
 
                 if let Some(rolling_average_min_max_change) = value_of_interest.get_rolling_average_min_max_change() {
                     //string.push_str(&format!("Rolling Average Min/Max Change: {}\n", rolling_average_min_max_change));
-                    writeln!(string, "Rolling Average Min/Max Change: {}", rolling_average_min_max_change).unwrap();
+                    writeln!(string, "Rolling Average Min/Max Change: {}", *rolling_average_min_max_change).unwrap();
                 }
 
                 self.get_stats_as_string(&mut string);
@@ -87,14 +87,14 @@ impl<T: Into<f64>> RollingStatsLogger<T> {
             Rolling Standard Deviation: {}\n\
             Rolling Average Min: {}\n\
             Rolling Average Max: {}\n\
-            Average Of Rolling Averages: {}\n\
-            Standard Deviation Of Rolling Averages: {}",
+            Average: {}\n\
+            Standard Deviation: {}",
             self.rolling_stats.get_rolling_average(),
             self.rolling_stats.get_rolling_standard_deviation(),
             rolling_average_min,
             rolling_average_max,
-            self.rolling_stats.get_average_of_rolling_average(),
-            self.rolling_stats.get_standard_deviation_of_rolling_average()
+            self.rolling_stats.get_average(),
+            self.rolling_stats.get_standard_deviation()
         ).unwrap();
     }
 }

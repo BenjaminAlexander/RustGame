@@ -9,15 +9,15 @@ pub type RecvError = mpsc::RecvError;
 
 pub struct Receiver<T> {
     receiver: mpsc::Receiver<(SendMetaData, T)>,
-    //duration_in_queue_logger: RollingStatsLogger<TimeDuration>
+    duration_in_queue_logger: RollingStatsLogger<TimeDuration>
 }
 
 impl<T> Receiver<T> {
 
     pub fn new(receiver: mpsc::Receiver<(SendMetaData, T)>) -> Self {
         return Self{
-            receiver
-            //duration_in_queue_logger: RollingStatsLogger::new(10, 3.0, TimeDuration::from_millis(100))
+            receiver,
+            duration_in_queue_logger: RollingStatsLogger::new(100, 3.5, TimeDuration::from_seconds(30.0))
         }
     }
 
@@ -43,7 +43,7 @@ impl<T> Receiver<T> {
 
     fn make_receive_meta_data(&mut self, send_meta_data: SendMetaData) -> ReceiveMetaData {
         let receive_meta_data = ReceiveMetaData::new(send_meta_data);
-        //self.duration_in_queue_logger.add_value(receive_meta_data.get_duration_in_queue());
+        self.duration_in_queue_logger.add_value(receive_meta_data.get_duration_in_queue());
         return receive_meta_data;
     }
 }

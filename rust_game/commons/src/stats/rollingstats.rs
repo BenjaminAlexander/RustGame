@@ -5,7 +5,7 @@ use crate::stats::totalstandarddeviation::TotalStandardDeviation;
 pub struct RollingStats {
     standard_deviation_ration: f64,
     roll_std_dev: RollingStandardDeviation,
-    total_std_dev_of_roll_av: TotalStandardDeviation,
+    total_std_dev: TotalStandardDeviation,
     roll_av_min_max: MinMax<f64>
 }
 
@@ -36,33 +36,31 @@ impl RollingStats {
         Self {
             standard_deviation_ration,
             roll_std_dev: RollingStandardDeviation::new(size),
-            total_std_dev_of_roll_av: TotalStandardDeviation::new(),
+            total_std_dev: TotalStandardDeviation::new(),
             roll_av_min_max: MinMax::NoValues
         }
     }
 
     pub fn add_value(&mut self, value: f64) -> Option<ValueOfInterest> {
         self.roll_std_dev.add_value(value);
-        let rolling_average = self.roll_std_dev.get_average();
+        self.total_std_dev.add_value(value);
 
         if self.roll_std_dev.is_full() {
-            let current_rolling_average = self.roll_std_dev.get_average();
-            let current_rolling_standard_deviation = self.roll_std_dev.get_standard_deviation();
 
-            self.total_std_dev_of_roll_av.add_value(rolling_average);
+            let average = self.total_std_dev.get_average();
+            let standard_deviation = self.total_std_dev.get_standard_deviation();
+            let rolling_average = self.roll_std_dev.get_average();
+            let rolling_standard_deviation = self.roll_std_dev.get_standard_deviation();
 
             let individual_outlier;
-            if (current_rolling_average - value).abs() > current_rolling_standard_deviation * self.standard_deviation_ration {
+            if (rolling_average - value).abs() > rolling_standard_deviation * self.standard_deviation_ration {
                 individual_outlier = Some(value);
             } else {
                 individual_outlier = None;
             }
 
-            let average_of_rolling_averages = self.total_std_dev_of_roll_av.get_average();
-            let standard_deviation_of_rolling_averages = self.total_std_dev_of_roll_av.get_standard_deviation();
-
             let rolling_average_outlier;
-            if (average_of_rolling_averages - current_rolling_average).abs() > standard_deviation_of_rolling_averages * self.standard_deviation_ration {
+            if (average - rolling_average).abs() > standard_deviation * self.standard_deviation_ration {
                 rolling_average_outlier = Some(value);
             } else {
                 rolling_average_outlier = None;
@@ -108,11 +106,11 @@ impl RollingStats {
         return self.roll_std_dev.get_standard_deviation();
     }
 
-    pub fn get_average_of_rolling_average(&self) -> f64 {
-        return self.total_std_dev_of_roll_av.get_average();
+    pub fn get_average(&self) -> f64 {
+        return self.total_std_dev.get_average();
     }
 
-    pub fn get_standard_deviation_of_rolling_average(&self) -> f64 {
-        return self.total_std_dev_of_roll_av.get_standard_deviation();
+    pub fn get_standard_deviation(&self) -> f64 {
+        return self.total_std_dev.get_standard_deviation();
     }
 }
