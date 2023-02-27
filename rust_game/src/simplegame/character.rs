@@ -60,7 +60,7 @@ impl Character {
             self.velocity = input.get_velocity();
         }
 
-        self.position = self.position + self.velocity * SimpleGameImpl::STEP_PERIOD.get_millis() as f64 * 0.5;
+        self.position = self.position + self.velocity * SimpleGameImpl::STEP_PERIOD.get_seconds() as f64 * 500.0;
     }
 
     pub fn get_fired_bullet(&self, arg: &ClientUpdateArg<SimpleGameImpl>) -> Option<Bullet> {

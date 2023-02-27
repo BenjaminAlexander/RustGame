@@ -13,8 +13,8 @@ use crate::threading::channel::ReceiveMetaData;
 use crate::threading::eventhandling::{ChannelEvent, ChannelEventResult, EventHandlerTrait, Sender};
 use crate::threading::eventhandling::WaitOrTryForNextEvent::WaitForNextEvent;
 
-const TICK_LATENESS_WARN_DURATION: TimeDuration = TimeDuration(20);
-const CLIENT_ERROR_WARN_DURATION: TimeDuration = TimeDuration(20);
+const TICK_LATENESS_WARN_DURATION: TimeDuration = TimeDuration::from_seconds(0.02);
+const CLIENT_ERROR_WARN_DURATION: TimeDuration = TimeDuration::from_seconds(0.02);
 
 //TODO: should the timer be a listener that sleeps?
 pub enum GameTimerEvent<Observer: GameTimerObserverTrait> {
@@ -119,29 +119,29 @@ impl<Observer: GameTimerObserverTrait> GameTimer<Observer> {
             //Calculate the start time of the remote clock in local time and add it to the rolling average
             let remote_start = time_message.get_time_received()
                 .subtract(time_message.get().get_lateness())
-                .subtract(step_duration * time_message.get().get_step() as i64);
+                .subtract(step_duration * time_message.get().get_step() as f64);
 
-            self.rolling_average.add_value(remote_start.get_millis_since_epoch() as f64);
+            self.rolling_average.add_value(remote_start.get_seconds_since_epoch());
 
             let average = self.rolling_average.get_average();
 
             if self.start.is_none() ||
-                (self.start.unwrap().get_millis_since_epoch() as f64 - average).abs() > 1.0  {
+                (self.start.unwrap().get_seconds_since_epoch() - average).abs() > 1.0  {
 
                 if self.start.is_none() {
                     info!("Start client clock from signal from server clock.");
                 } else {
-                    let error = self.start.unwrap().get_millis_since_epoch() - average as i64;
-                    if error > CLIENT_ERROR_WARN_DURATION.get_millis() {
+                    let error = self.start.unwrap().get_seconds_since_epoch() - average;
+                    if error > CLIENT_ERROR_WARN_DURATION.get_seconds() {
                         warn!("High client error (millis): {:?}", error);
                     }
                 }
 
-                self.start = Some(TimeValue::from_millis(average as i64));
+                self.start = Some(TimeValue::from_seconds_since_epoch(average));
 
                 let next_tick = self.start.unwrap()
                     .add(step_duration * ((TimeValue::now().duration_since(&self.start.unwrap()) / step_duration)
-                        .floor() as i64 + 1));
+                        .floor() as f64 + 1.0));
 
                 let sender_clone = self.sender.clone();
 

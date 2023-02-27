@@ -5,29 +5,37 @@ use std::cmp::Ordering;
 
 //Time In Milliseconds
 #[derive(Serialize, Deserialize, Clone, Copy, Debug)]
-pub struct TimeDuration(pub i64);
+pub struct TimeDuration {
+    seconds: f64
+}
 
 impl TimeDuration {
-    pub const fn from_millis(millis: i64) -> TimeDuration {
-        TimeDuration(millis)
+    pub const fn from_seconds(seconds: f64) -> TimeDuration {
+        return Self {
+            seconds
+        };
+    }
+
+    pub fn from_millis(millis: f64) -> TimeDuration {
+        return Self::from_seconds(millis / 1000.0);
     }
 
     pub const fn one_second() -> Self {
-        return Self::from_millis(1000);
+        return Self::from_seconds(1.0);
     }
 
-    pub fn get_millis(&self) -> i64 {
-        self.0
+    pub fn get_seconds(&self) -> f64 {
+        return self.seconds;
     }
 
     pub fn to_std(&self) -> Duration {
-        Duration::from_millis(self.0.abs() as u64)
+        return Duration::from_secs_f64(self.seconds);
     }
 }
 
 impl From<Duration> for TimeDuration {
     fn from(duration: Duration) -> Self {
-        Self::from_millis(duration.as_millis() as i64)
+        Self::from_seconds(duration.as_secs_f64())
     }
 }
 
@@ -35,7 +43,9 @@ impl Sub for TimeDuration {
     type Output = Self;
 
     fn sub(self, rhs: Self) -> Self::Output {
-        return Self (self.0 - rhs.0);
+        return Self {
+            seconds: self.seconds - rhs.seconds
+        };
     }
 }
 
@@ -43,7 +53,9 @@ impl Add for TimeDuration {
     type Output = Self;
 
     fn add(self, rhs: Self) -> Self::Output {
-        return Self (self.0 + rhs.0);
+        return Self {
+            seconds: self.seconds - rhs.seconds
+        };
     }
 }
 
@@ -51,39 +63,41 @@ impl Div for TimeDuration {
     type Output = f64;
 
     fn div(self, rhs: Self) -> Self::Output {
-        self.0 as f64 / rhs.0 as f64
+        return self.seconds / rhs.seconds;
     }
 }
 
 impl<T> Mul<T> for TimeDuration
-    where i64: Mul<T, Output = i64> {
+    where f64: Mul<T, Output = f64> {
     type Output = TimeDuration;
 
     fn mul(self, rhs: T) -> Self::Output {
-        TimeDuration(self.0.mul(rhs))
+        return Self {
+            seconds: self.seconds * rhs
+        };
     }
 }
 
 impl PartialEq<TimeDuration> for TimeDuration {
     fn eq(&self, other: &TimeDuration) -> bool {
-        self.0.eq(&other.0)
+        return self.seconds.eq(&other.seconds);
     }
 }
 
 impl PartialOrd<TimeDuration> for TimeDuration {
     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
-        self.0.partial_cmp(&other.0)
+        return self.seconds.partial_cmp(&other.seconds);
     }
 }
 
 impl Into<f64> for TimeDuration {
     fn into(self) -> f64 {
-        return self.0 as f64;
+        return self.seconds;
     }
 }
 
 impl From<f64> for TimeDuration {
     fn from(value: f64) -> Self {
-        return TimeDuration(value as i64);
+        return TimeDuration::from_seconds(value);
     }
 }

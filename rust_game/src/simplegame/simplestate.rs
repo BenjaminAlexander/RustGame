@@ -67,7 +67,7 @@ impl SimpleState {
             server_input.apply_to_state(self);
         }
 
-        let duration_of_start_to_current = SimpleGameImpl::STEP_PERIOD * arg.get_current_step() as i64;
+        let duration_of_start_to_current = SimpleGameImpl::STEP_PERIOD * arg.get_current_step() as f64;
 
         let mut i = 0;
         while i < self.bullets.len() {
