@@ -1,7 +1,5 @@
 use serde::{Deserialize, Serialize};
-
-use crate::simplegame::Vector2;
-use crate::simplegame::line2::{Line2, Intersection};
+use crate::geometry::twod::{Intersection, Line2, Vector2};
 
 #[derive(Serialize, Deserialize, Debug, Clone, Copy)]
 pub struct LineSegment2 {

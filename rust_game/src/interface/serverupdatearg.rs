@@ -1,5 +1,5 @@
 use crate::messaging::InitialInformation;
-use crate::gametime::TimeDuration;
+use commons::time::TimeDuration;
 use crate::interface::game::GameTrait;
 
 #[derive(Debug)]

@@ -1,4 +1,4 @@
-use crate::simplegame::Vector2;
+use commons::geometry::twod::Vector2;
 use serde::{Deserialize, Serialize};
 use piston::RenderArgs;
 use opengl_graphics::GlGraphics;
@@ -6,7 +6,7 @@ use graphics::{Context, rectangle};
 use graphics::*;
 use crate::simplegame::bullet::Bullet;
 use crate::interface::{ClientUpdateArg, GameTrait};
-use crate::gametime::TimeDuration;
+use commons::time::TimeDuration;
 use crate::simplegame::simplegameimpl::SimpleGameImpl;
 
 #[derive(Serialize, Deserialize, Debug, Clone)]

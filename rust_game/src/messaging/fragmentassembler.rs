@@ -1,6 +1,6 @@
 use crate::messaging::MessageFragment;
 use std::collections::HashMap;
-use crate::gametime::TimeValue;
+use commons::time::TimeValue;
 
 pub struct FragmentAssembler {
     max_messages: usize,

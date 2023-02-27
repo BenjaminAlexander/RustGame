@@ -1,4 +1,4 @@
-use crate::simplegame::Vector2;
+use commons::geometry::twod::Vector2;
 use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize, Debug, Clone)]

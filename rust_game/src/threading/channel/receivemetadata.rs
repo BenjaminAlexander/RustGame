@@ -1,6 +1,5 @@
-use crate::gametime::TimeValue;
+use commons::time::{TimeDuration, TimeValue};
 use crate::threading::channel::SendMetaData;
-use crate::TimeDuration;
 
 pub struct ReceiveMetaData {
     send_meta_data: SendMetaData,
@@ -24,7 +23,7 @@ impl ReceiveMetaData {
         return &self.time_received;
     }
 
-    pub fn get_time_in_channel(&self) -> TimeDuration {
+    pub fn get_duration_in_queue(&self) -> TimeDuration {
         return self.time_received.duration_since(self.send_meta_data.get_time_sent());
     }
 }

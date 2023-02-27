@@ -1,7 +1,7 @@
 use std::sync::mpsc;
-use log::info;
+use commons::stats::RollingStatsLogger;
+use commons::time::TimeDuration;
 use crate::threading::channel::{ReceiveMetaData, SendMetaData};
-use crate::TimeDuration;
 
 pub type TryRecvError = mpsc::TryRecvError;
 
@@ -9,41 +9,21 @@ pub type RecvError = mpsc::RecvError;
 
 pub struct Receiver<T> {
     receiver: mpsc::Receiver<(SendMetaData, T)>,
-    longest_duration_in_channel: Option<TimeDuration>
+    //duration_in_queue_logger: RollingStatsLogger<TimeDuration>
 }
 
 impl<T> Receiver<T> {
 
     pub fn new(receiver: mpsc::Receiver<(SendMetaData, T)>) -> Self {
         return Self{
-            receiver,
-            longest_duration_in_channel: None
+            receiver
+            //duration_in_queue_logger: RollingStatsLogger::new(10, 3.0, TimeDuration::from_millis(100))
         }
-    }
-
-    fn make_result<U>(&mut self, result: Result<(SendMetaData, T), U>) -> Result<(ReceiveMetaData, T), U> {
-        let (send_meta_data, value) = result?;
-        let receive_meta_data = ReceiveMetaData::new(send_meta_data);
-
-        let duration = receive_meta_data.get_time_in_channel();
-
-        if let Some(current_max_duration) = self.longest_duration_in_channel.as_ref() {
-
-            if duration > *current_max_duration {
-                info!("New longest wait time in channel: {:?}", duration);
-                self.longest_duration_in_channel = Some(duration);
-            }
-
-        } else {
-            info!("New longest wait time in channel: {:?}", duration);
-            self.longest_duration_in_channel = Some(duration);
-        }
-
-        return Ok((receive_meta_data, value));
     }
 
     pub fn try_recv_meta_data(&mut self) -> Result<(ReceiveMetaData, T), TryRecvError> {
-        return self.make_result(self.receiver.try_recv());
+        let (send_meta_data, value) = self.receiver.try_recv()?;
+        return Ok((self.make_receive_meta_data(send_meta_data), value));
     }
 
     pub fn try_recv(&mut self) -> Result<T, TryRecvError> {
@@ -52,11 +32,18 @@ impl<T> Receiver<T> {
     }
 
     pub fn recv_meta_data(&mut self) -> Result<(ReceiveMetaData, T), RecvError> {
-        return self.make_result(self.receiver.recv());
+        let (send_meta_data, value) = self.receiver.recv()?;
+        return Ok((self.make_receive_meta_data(send_meta_data), value));
     }
 
     pub fn recv(&mut self) -> Result<T, RecvError> {
         let (_, value) = self.recv_meta_data()?;
         return Ok(value);
+    }
+
+    fn make_receive_meta_data(&mut self, send_meta_data: SendMetaData) -> ReceiveMetaData {
+        let receive_meta_data = ReceiveMetaData::new(send_meta_data);
+        //self.duration_in_queue_logger.add_value(receive_meta_data.get_duration_in_queue());
+        return receive_meta_data;
     }
 }

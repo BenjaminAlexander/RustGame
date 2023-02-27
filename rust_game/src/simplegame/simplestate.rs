@@ -1,11 +1,12 @@
-use crate::simplegame::{Vector2, SimplServerInputEvent};
+use commons::geometry::twod::Vector2;
+use crate::simplegame::SimplServerInputEvent;
 use crate::interface::{ClientUpdateArg, InterpolationArg, ServerUpdateArg, GameTrait};
 use serde::{Deserialize, Serialize};
 use crate::simplegame::character::Character;
 use opengl_graphics::GlGraphics;
 use graphics::Context;
 use piston::RenderArgs;
-use crate::gametime::TimeDuration;
+use commons::time::TimeDuration;
 use crate::simplegame::bullet::Bullet;
 use crate::messaging::InitialInformation;
 use crate::simplegame::simpleserverinput::SimpleServerInput;

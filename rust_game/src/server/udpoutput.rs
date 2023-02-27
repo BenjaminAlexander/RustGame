@@ -1,17 +1,18 @@
+use commons::stats::RollingAverage;
+use commons::time::{TimeDuration, TimeValue};
 use log::{info, warn, error, debug};
-use crate::interface::GameTrait;
 use std::net::UdpSocket;
-use crate::gametime::{TimeDuration, TimeMessage, TimeValue};
-use crate::messaging::{InputMessage, StateMessage, ToClientMessageUDP, Fragmenter, MAX_UDP_DATAGRAM_SIZE, ServerInputMessage};
 use std::io;
-use crate::server::remoteudppeer::RemoteUdpPeer;
 use std::marker::PhantomData;
 use std::ops::ControlFlow::{Break, Continue};
+use crate::interface::GameTrait;
+use crate::gametime::TimeMessage;
+use crate::messaging::{InputMessage, StateMessage, ToClientMessageUDP, Fragmenter, MAX_UDP_DATAGRAM_SIZE, ServerInputMessage};
+use crate::server::remoteudppeer::RemoteUdpPeer;
 use crate::server::udpoutput::UdpOutputEvent::{RemotePeer, SendCompletedStep, SendInputMessage, SendServerInputMessage, SendTimeMessage};
 use crate::threading::channel::ReceiveMetaData;
 use crate::threading::eventhandling::{ChannelEvent, ChannelEventResult, EventHandlerTrait};
 use crate::threading::eventhandling::WaitOrTryForNextEvent::{TryForNextEvent, WaitForNextEvent};
-use crate::util::RollingAverage;
 
 pub enum UdpOutputEvent<Game: GameTrait> {
     RemotePeer(RemoteUdpPeer),
@@ -31,7 +32,7 @@ pub struct UdpOutput<Game: GameTrait> {
     phantom: PhantomData<Game>,
 
     //metrics
-    time_in_queue_rolling_average: RollingAverage<u64>,
+    time_in_queue_rolling_average: RollingAverage,
     time_of_last_state_send: TimeValue,
     time_of_last_input_send: TimeValue,
     time_of_last_server_input_send: TimeValue,
@@ -168,10 +169,10 @@ impl<Game: GameTrait> UdpOutput<Game> {
         let now = TimeValue::now();
         let duration_in_queue = now.duration_since(&time_in_queue);
 
-        self.time_in_queue_rolling_average.add_value(duration_in_queue.get_millis() as u64);
+        self.time_in_queue_rolling_average.add_value(duration_in_queue.get_millis() as f64);
         let average = self.time_in_queue_rolling_average.get_average();
 
-        if average > 500 {
+        if average > 500.0 {
             warn!("High average duration in queue: {:?} in milliseconds", average);
         }
     }

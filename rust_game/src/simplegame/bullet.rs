@@ -1,10 +1,10 @@
-use crate::simplegame::Vector2;
+use commons::geometry::twod::Vector2;
 use serde::{Deserialize, Serialize};
 use piston::RenderArgs;
 use opengl_graphics::GlGraphics;
 use graphics::{Context, rectangle};
 use graphics::*;
-use crate::gametime::TimeDuration;
+use commons::time::TimeDuration;
 use crate::interface::GameTrait;
 use crate::SimpleGameImpl;
 

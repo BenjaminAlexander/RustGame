@@ -1,7 +1,8 @@
 use log::{info, warn};
+use commons::time::{TimeValue, TimeDuration};
 use crate::interface::{InterpolationArg, GameTrait};
 use crate::gamemanager::stepmessage::StepMessage;
-use crate::gametime::{TimeMessage, TimeValue, TimeDuration};
+use crate::gametime::TimeMessage;
 use crate::messaging::InitialInformation;
 use crate::threading::channel::{Channel, TryRecvError, Receiver, Sender};
 
