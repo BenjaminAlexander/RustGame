@@ -34,17 +34,14 @@ impl<T: Into<f64>> RollingStatsLogger<T> {
                 let mut string = String::new();
 
                 if let Some(individual_outlier) = value_of_interest.get_individual_outlier() {
-                    //string.push_str(&format!("Individual Outlier: {}\n", individual_outlier));
                     writeln!(string, "Individual Outlier: {}", *individual_outlier).unwrap();
                 }
 
                 if let Some(rolling_average_outlier) = value_of_interest.get_rolling_average_outlier() {
-                    //string.push_str(&format!("Rolling Average Outlier: {}\n", rolling_average_outlier));
                     writeln!(string, "Rolling Average Outlier: {}", *rolling_average_outlier).unwrap();
                 }
 
                 if let Some(rolling_average_min_max_change) = value_of_interest.get_rolling_average_min_max_change() {
-                    //string.push_str(&format!("Rolling Average Min/Max Change: {}\n", rolling_average_min_max_change));
                     writeln!(string, "Rolling Average Min/Max Change: {}", *rolling_average_min_max_change).unwrap();
                 }
 

@@ -13,7 +13,7 @@ use crate::client::clientgametimeobserver::ClientGameTimerObserver;
 use crate::client::clientmanagerobserver::ClientManagerObserver;
 use crate::client::udpoutput::{UdpOutput, UdpOutputEvent};
 use crate::client::udpinput::UdpInput;
-use crate::threading::{ThreadBuilder, listener};
+use crate::threading::{ThreadBuilder, listener, AsyncJoin};
 use crate::threading::channel::{ReceiveMetaData, Sender};
 use crate::threading::eventhandling;
 use crate::threading::eventhandling::{ChannelEvent, ChannelEventResult, EventHandlerTrait};
@@ -86,7 +86,7 @@ impl<Game: GameTrait> ClientCore<Game> {
 
         let manager_join_handle = ThreadBuilder::new()
             .name("ClientManager")
-            .spawn_event_handler(Manager::new(ClientManagerObserver::new(render_receiver_sender.clone())))
+            .spawn_event_handler(Manager::new(ClientManagerObserver::new(render_receiver_sender.clone())), AsyncJoin::log_async_join)
             .unwrap();
 
         let tcp_input_join_handle = ThreadBuilder::new()
@@ -97,26 +97,29 @@ impl<Game: GameTrait> ClientCore<Game> {
                 self.sender.clone(),
                 udp_output_builder.clone_sender(),
                 render_receiver_sender.clone(),
-                &tcp_stream).unwrap())
+                &tcp_stream).unwrap(), AsyncJoin::log_async_join)
             .unwrap();
 
         let tcp_output_join_handle = ThreadBuilder::new()
             .name("ClientTcpOutput")
-            .spawn_event_handler(TcpOutput::new(&tcp_stream).unwrap())
+            .spawn_event_handler(TcpOutput::new(&tcp_stream).unwrap(), AsyncJoin::log_async_join)
             .unwrap();
 
         let udp_output_join_handle = udp_output_builder.spawn_event_handler(
-            UdpOutput::<Game>::new(server_udp_socket_addr_v4, &udp_socket).unwrap()
+            UdpOutput::<Game>::new(server_udp_socket_addr_v4, &udp_socket).unwrap(),
+            AsyncJoin::log_async_join
         ).unwrap();
 
         let udp_input_join_handle = ThreadBuilder::new()
             .name("ClientUdpInput")
-            .spawn_listener(UdpInput::new(
-                server_udp_socket_addr_v4,
-                &udp_socket,
-                game_timer_builder.clone_sender(),
-                manager_join_handle.get_sender().clone()
-            ).unwrap())
+            .spawn_listener(
+                UdpInput::new(
+                    server_udp_socket_addr_v4,
+                    &udp_socket,
+                    game_timer_builder.clone_sender(),
+                    manager_join_handle.get_sender().clone()
+                ).unwrap(),
+                AsyncJoin::log_async_join)
             .unwrap();
 
         let game_timer = GameTimer::new(
@@ -125,7 +128,7 @@ impl<Game: GameTrait> ClientCore<Game> {
             game_timer_builder.clone_sender()
         );
 
-        let game_timer_join_handle =  game_timer_builder.spawn_event_handler(game_timer).unwrap();
+        let game_timer_join_handle =  game_timer_builder.spawn_event_handler(game_timer, AsyncJoin::log_async_join).unwrap();
 
         self.timer_join_handle_option = Some(game_timer_join_handle);
         self.manager_join_handle_option = Some(manager_join_handle);

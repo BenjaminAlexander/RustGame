@@ -2,7 +2,7 @@ use crate::threading::channel::{Channel, JoinHandle, Sender};
 use crate::threading::eventhandling::{EventHandlerTrait, EventOrStopThread, EventHandlerThread};
 use crate::threading::listener::{ListenerState, ListenerTrait};
 use crate::threading;
-use crate::threading::{eventhandling, listener};
+use crate::threading::{AsyncJoin, eventhandling, listener};
 
 pub struct ThreadBuilder<T: Send + 'static> {
     thread_builder: threading::ThreadBuilder,
@@ -37,7 +37,7 @@ impl<T: Send + 'static> ThreadBuilder<T> {
 
 impl<T: Send + 'static> ThreadBuilder<EventOrStopThread<T>> {
 
-    pub fn spawn_event_handler<U: EventHandlerTrait<Event=T>>(self, event_handler: U) -> std::io::Result<eventhandling::JoinHandle<U>> {
+    pub fn spawn_event_handler<U: EventHandlerTrait<Event=T>>(self, event_handler: U, join_call_back: impl FnOnce(AsyncJoin<U::ThreadReturn>) + Send + 'static) -> std::io::Result<eventhandling::JoinHandle<U>> {
 
         let (thread_builder, channel) = self.take();
 
@@ -48,7 +48,7 @@ impl<T: Send + 'static> ThreadBuilder<EventOrStopThread<T>> {
             event_handler
         );
 
-        let join_handle = thread_builder.spawn_thread(thread)?;
+        let join_handle = thread_builder.spawn_thread(thread, join_call_back)?;
 
         return Result::Ok(JoinHandle {
             sender,
@@ -56,7 +56,7 @@ impl<T: Send + 'static> ThreadBuilder<EventOrStopThread<T>> {
         });
     }
 
-    pub fn spawn_listener<U: ListenerTrait<Event=T>>(self, listener: U) -> std::io::Result<listener::JoinHandle<U>> {
-        return self.spawn_event_handler(ListenerState::ReadyToListen(listener));
+    pub fn spawn_listener<U: ListenerTrait<Event=T>>(self, listener: U, join_call_back: impl FnOnce(AsyncJoin<U::ThreadReturn>) + Send + 'static) -> std::io::Result<listener::JoinHandle<U>> {
+        return self.spawn_event_handler(ListenerState::ReadyToListen(listener), join_call_back);
     }
 }

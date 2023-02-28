@@ -4,7 +4,7 @@ use log::{error, info};
 use crate::client::ClientCoreEvent::Connect;
 use crate::gamemanager::RenderReceiver;
 use crate::simplegame::{SimpleInput, SimpleState, SimpleInputEvent, SimpleInputEventHandler, SimpleWindow, SimpleServerInput, SimpleGameImpl};
-use crate::threading::ThreadBuilder;
+use crate::threading::{AsyncJoin, ThreadBuilder};
 use commons::time::TimeDuration;
 use crate::server::ServerCoreEvent;
 
@@ -67,7 +67,7 @@ pub fn main() {
             return;
         }
 
-        server_core_sender_option = Some(server_core_thread_builder.spawn_event_handler(server_core).unwrap());
+        server_core_sender_option = Some(server_core_thread_builder.spawn_event_handler(server_core, AsyncJoin::log_async_join).unwrap());
     }
 
     if run_client {
@@ -89,7 +89,8 @@ pub fn main() {
                 client::ClientCore::<SimpleGameImpl>::new(
                     "127.0.0.1",
                     sender_clone
-                )
+                ),
+                AsyncJoin::log_async_join
             ).unwrap()
         );
 
