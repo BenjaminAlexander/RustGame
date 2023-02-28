@@ -18,9 +18,9 @@ impl GameTrait for SimpleGameImpl {
 
     const TCP_PORT: u16 = 3456;
     const UDP_PORT: u16 = 3457;
-    const STEP_PERIOD: TimeDuration = TimeDuration::from_millis(100);
-    const GRACE_PERIOD: TimeDuration = TimeDuration::from_millis(1000);
-    const TIME_SYNC_MESSAGE_PERIOD: TimeDuration = TimeDuration::from_millis(1000);
+    const STEP_PERIOD: TimeDuration = TimeDuration::from_seconds(0.1);
+    const GRACE_PERIOD: TimeDuration = TimeDuration::from_seconds(1.0);
+    const TIME_SYNC_MESSAGE_PERIOD: TimeDuration = TimeDuration::from_seconds(1.0);
     const CLOCK_AVERAGE_SIZE: usize = 100;
 
     fn get_initial_state(player_count: usize) -> Self::State {

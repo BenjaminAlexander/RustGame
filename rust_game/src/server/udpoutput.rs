@@ -169,7 +169,7 @@ impl<Game: GameTrait> UdpOutput<Game> {
         let now = TimeValue::now();
         let duration_in_queue = now.duration_since(&time_in_queue);
 
-        self.time_in_queue_rolling_average.add_value(duration_in_queue.get_millis() as f64);
+        self.time_in_queue_rolling_average.add_value(duration_in_queue.get_seconds());
         let average = self.time_in_queue_rolling_average.get_average();
 
         if average > 500.0 {

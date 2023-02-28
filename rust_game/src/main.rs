@@ -1,7 +1,6 @@
 use std::{thread, time, io, process};
 use std::path::PathBuf;
 use log::{error, info};
-use commons::stats::RollingStandardDeviation;
 use crate::client::ClientCoreEvent::Connect;
 use crate::gamemanager::RenderReceiver;
 use crate::simplegame::{SimpleInput, SimpleState, SimpleInputEvent, SimpleInputEventHandler, SimpleWindow, SimpleServerInput, SimpleGameImpl};

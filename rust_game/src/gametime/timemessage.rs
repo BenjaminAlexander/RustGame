@@ -35,7 +35,7 @@ impl TimeMessage {
     }
 
     pub fn get_scheduled_time(&self) -> TimeValue {
-        self.start.add(self.step_duration * self.get_step() as i64)
+        self.start.add(self.step_duration * self.get_step() as f64)
     }
 
     pub fn get_lateness(&self) -> TimeDuration {

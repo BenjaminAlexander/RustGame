@@ -120,7 +120,7 @@ impl<Game: GameTrait> RenderReceiver<Game> {
             let interpolate = true;
             if !interpolate {
                 weight = 1 as f64;
-                duration_since_start = (latest_time_message.get_step_duration() * second_step.get_step_index() as i64).clone();
+                duration_since_start = (latest_time_message.get_step_duration() * second_step.get_step_index() as f64).clone();
             }
 
             let arg = InterpolationArg::new(weight, duration_since_start);

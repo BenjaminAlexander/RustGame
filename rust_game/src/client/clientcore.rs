@@ -182,7 +182,7 @@ impl<Game: GameTrait> ClientCore<Game> {
                 manager_sender.send_event(ManagerEvent::InputEvent(message.clone())).unwrap();
                 self.udp_output_join_handle_option.as_ref().unwrap().get_sender().send_event(UdpOutputEvent::InputMessageEvent(message)).unwrap();
 
-                let client_drop_time = time_message.get_scheduled_time().subtract(Game::GRACE_PERIOD * 2);
+                let client_drop_time = time_message.get_scheduled_time().subtract(Game::GRACE_PERIOD * 2.0);
                 let drop_step = time_message.get_step_from_actual_time(client_drop_time).ceil() as usize;
 
                 manager_sender.send_event(ManagerEvent::DropStepsBeforeEvent(drop_step)).unwrap();
