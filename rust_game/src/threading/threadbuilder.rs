@@ -1,6 +1,6 @@
-use std::thread::{Builder, JoinHandle};
+use std::thread::Builder;
 use log::info;
-use crate::threading::{channel, listener};
+use crate::threading::channel;
 use crate::threading::eventhandling::{EventHandlerTrait, EventOrStopThread};
 use crate::threading::{eventhandling, Thread};
 use crate::threading::asyncjoin::AsyncJoin;
@@ -35,22 +35,22 @@ impl ThreadBuilder {
         return self.build_channel_thread();
     }
 
-    pub fn spawn_event_handler<T: EventHandlerTrait>(self, event_handler: T, join_call_back: impl FnOnce(AsyncJoin<T::ThreadReturn>) + Send + 'static) -> std::io::Result<eventhandling::JoinHandle<T>> {
+    pub fn spawn_event_handler<T: EventHandlerTrait>(self, event_handler: T, join_call_back: impl FnOnce(AsyncJoin<T::ThreadReturn>) + Send + 'static) -> std::io::Result<eventhandling::Sender<T::Event>> {
         return self.build_channel_for_event_handler::<T>().spawn_event_handler(event_handler, join_call_back);
     }
 
-    pub fn spawn_listener<T: ListenerTrait>(self, listener: T, join_call_back: impl FnOnce(AsyncJoin<T::ThreadReturn>) + Send + 'static) -> std::io::Result<listener::JoinHandle<T>> {
+    pub fn spawn_listener<T: ListenerTrait>(self, listener: T, join_call_back: impl FnOnce(AsyncJoin<T::ThreadReturn>) + Send + 'static) -> std::io::Result<eventhandling::Sender<T::Event>> {
         return self.build_channel_for_event_handler::<ListenerState<T>>().spawn_listener(listener, join_call_back);
     }
 
-    pub(super) fn spawn_thread<T: Thread>(mut self, thread: T, join_call_back: impl FnOnce(AsyncJoin<T::ReturnType>) + Send + 'static) -> std::io::Result<JoinHandle<()>> {
+    pub(super) fn spawn_thread<T: Thread>(self, thread: T, join_call_back: impl FnOnce(AsyncJoin<T::ReturnType>) + Send + 'static) -> std::io::Result<()> {
         let mut builder = Builder::new();
 
         if let Some(name) = self.name.as_ref() {
             builder = builder.name(name.clone());
         }
 
-        return builder.spawn(||{
+        builder.spawn(||{
 
             info!("Thread Starting");
 
@@ -59,6 +59,8 @@ impl ThreadBuilder {
             join_call_back(async_join);
 
             info!("Thread Ending");
-        });
+        })?;
+
+        return Ok(());
     }
 }

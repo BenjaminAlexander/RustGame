@@ -1,7 +1,7 @@
 use opengl_graphics::{GlGraphics, OpenGL};
 use crate::gamemanager::RenderReceiver;
 use crate::simplegame::SimpleInputEvent;
-use crate::client::ClientCore;
+use crate::client::ClientCoreEvent;
 use crate::threading::eventhandling;
 use piston::{RenderArgs, WindowSettings, Events, EventSettings, RenderEvent, Event};
 use piston::input::Input as PistonInput;
@@ -15,14 +15,14 @@ pub struct SimpleWindow {
     window_name: String,
     render_receiver: RenderReceiver<SimpleGameImpl>,
     //TODO: don't expose eventhandling, sender or ClientCore, or ClientCoreEvent
-    client_core_sender_option: Option<eventhandling::JoinHandle<ClientCore<SimpleGameImpl>>>
+    client_core_sender_option: Option<eventhandling::Sender<ClientCoreEvent<SimpleGameImpl>>>
 }
 
 impl SimpleWindow {
 
     pub fn new(window_name: String,
                render_receiver: RenderReceiver<SimpleGameImpl>,
-               client_core_sender_option: Option<eventhandling::JoinHandle<ClientCore<SimpleGameImpl>>>) -> Self {
+               client_core_sender_option: Option<eventhandling::Sender<ClientCoreEvent<SimpleGameImpl>>>) -> Self {
 
         return Self{
             window_name,
@@ -94,8 +94,8 @@ impl SimpleWindow {
     }
 
     fn input(&mut self, input: PistonInput) {
-        if let Some(core_join_handle) = self.client_core_sender_option.as_ref() {
-            core_join_handle.get_sender().send_event(OnInputEvent(SimpleInputEvent::new(input))).unwrap();
+        if let Some(core_sender) = self.client_core_sender_option.as_ref() {
+            core_sender.send_event(OnInputEvent(SimpleInputEvent::new(input))).unwrap();
         }
     }
 }

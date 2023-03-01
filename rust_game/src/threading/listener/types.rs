@@ -1,8 +1,5 @@
 use std::ops::ControlFlow;
-use crate::threading::eventhandling;
-use crate::threading::listener::{ListenedOrDidNotListen, ListenerState, ListenerTrait};
-
-pub(crate) type JoinHandle<T> = eventhandling::JoinHandle<ListenerState<T>>;
+use crate::threading::listener::{ListenedOrDidNotListen, ListenerTrait};
 
 pub(crate) type ListenResult<T> = ControlFlow<<T as ListenerTrait>::ThreadReturn, ListenedOrDidNotListen<T>>;
 

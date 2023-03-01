@@ -4,8 +4,6 @@ use crate::threading::eventhandling::{EventHandlerTrait, EventOrStopThread, Wait
 
 pub(crate) type ChannelEventResult<T> = ControlFlow<<T as EventHandlerTrait>::ThreadReturn, WaitOrTryForNextEvent<T>>;
 
-pub(crate) type JoinHandle<T> = channel::JoinHandle<EventOrStopThread<<T as EventHandlerTrait>::Event>>;
-
 pub(crate) type SendError<T> = channel::SendError<EventOrStopThread<T>>;
 
 pub(crate) type SendResult<T> = Result<(), SendError<T>>;

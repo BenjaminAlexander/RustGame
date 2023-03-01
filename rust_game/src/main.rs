@@ -112,7 +112,7 @@ pub fn main() {
         let (render_receiver_sender, render_receiver) = RenderReceiver::<SimpleGameImpl>::new();
         unused_render_receiver_option = Some(render_receiver);
 
-        server_core_sender_option.as_ref().unwrap().get_sender().send_event(ServerCoreEvent::StartGameEvent(render_receiver_sender)).unwrap();
+        server_core_sender_option.as_ref().unwrap().send_event(ServerCoreEvent::StartGameEvent(render_receiver_sender)).unwrap();
 
         if !run_client {
             let tmp = unused_render_receiver_option;
