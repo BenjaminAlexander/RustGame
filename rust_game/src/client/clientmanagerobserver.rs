@@ -1,7 +1,7 @@
 use crate::gamemanager::{ManagerObserverTrait, RenderReceiverMessage, StepMessage};
 use crate::interface::GameTrait;
 use crate::messaging::{ServerInputMessage, StateMessage};
-use crate::threading::channel::Sender;
+use commons::threading::channel::Sender;
 
 pub struct ClientManagerObserver<Game: GameTrait> {
     render_receiver_sender: Sender<RenderReceiverMessage<Game>>

@@ -1,4 +1,4 @@
-use commons::time::TimeValue;
+use crate::time::TimeValue;
 
 pub struct SendMetaData {
     time_sent: TimeValue

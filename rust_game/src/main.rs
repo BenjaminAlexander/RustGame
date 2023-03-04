@@ -4,7 +4,7 @@ use log::{error, info};
 use crate::client::ClientCoreEvent::Connect;
 use crate::gamemanager::RenderReceiver;
 use crate::simplegame::{SimpleInput, SimpleState, SimpleInputEvent, SimpleInputEventHandler, SimpleWindow, SimpleServerInput, SimpleGameImpl};
-use crate::threading::{AsyncJoin, ThreadBuilder};
+use commons::threading::{AsyncJoin, ThreadBuilder};
 use commons::time::TimeDuration;
 use crate::server::ServerCoreEvent;
 
@@ -12,7 +12,6 @@ mod simplegame;
 mod messaging;
 mod server;
 mod logging;
-mod threading;
 mod interface;
 mod gametime;
 mod client;
