@@ -1,5 +1,5 @@
 use log::info;
-use crate::ThreadBuilder;
+use super::ThreadBuilder;
 
 pub struct AsyncJoin<T> {
     thread_builder: ThreadBuilder,
@@ -21,5 +21,9 @@ impl<T> AsyncJoin<T> {
 
     pub fn get_thread_name(&self) -> Option<&String> {
         return self.thread_builder.get_name();
+    }
+
+    pub fn get_result(&self) -> &T {
+        return &self.result;
     }
 }

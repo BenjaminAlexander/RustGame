@@ -2,16 +2,16 @@ use std::net::{UdpSocket, SocketAddrV4, SocketAddr};
 use commons::time::{TimeDuration, TimeValue};
 use crate::gametime::{TimeReceived, GameTimerEvent};
 use crate::messaging::{ToClientMessageUDP, MAX_UDP_DATAGRAM_SIZE, MessageFragment, FragmentAssembler};
-use crate::threading::{eventhandling, listener};
+use commons::threading::{eventhandling, listener};
 use crate::interface::GameTrait;
 use std::io;
 use std::ops::ControlFlow::{Break, Continue};
 use log::{debug, error, warn};
 use crate::client::clientgametimeobserver::ClientGameTimerObserver;
 use crate::gamemanager::ManagerEvent;
-use crate::threading::channel::ReceiveMetaData;
-use crate::threading::listener::{ListenerEventResult, ListenerTrait, ListenMetaData, ListenResult};
-use crate::threading::listener::ListenedOrDidNotListen::{DidNotListen, Listened};
+use commons::threading::channel::ReceiveMetaData;
+use commons::threading::listener::{ListenerEventResult, ListenerTrait, ListenMetaData, ListenResult};
+use commons::threading::listener::ListenedOrDidNotListen::{DidNotListen, Listened};
 
 pub struct UdpInput<Game: GameTrait> {
     server_socket_addr: SocketAddr,

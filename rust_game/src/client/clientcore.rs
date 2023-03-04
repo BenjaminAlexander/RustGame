@@ -13,12 +13,12 @@ use crate::client::clientgametimeobserver::ClientGameTimerObserver;
 use crate::client::clientmanagerobserver::ClientManagerObserver;
 use crate::client::udpoutput::{UdpOutput, UdpOutputEvent};
 use crate::client::udpinput::UdpInput;
-use crate::threading::{ThreadBuilder, AsyncJoin};
-use crate::threading::channel;
-use crate::threading::channel::ReceiveMetaData;
-use crate::threading::eventhandling;
-use crate::threading::eventhandling::{ChannelEvent, ChannelEventResult, EventHandlerTrait};
-use crate::threading::eventhandling::WaitOrTryForNextEvent::{TryForNextEvent, WaitForNextEvent};
+use commons::threading::{ThreadBuilder, AsyncJoin};
+use commons::threading::channel;
+use commons::threading::channel::ReceiveMetaData;
+use commons::threading::eventhandling;
+use commons::threading::eventhandling::{ChannelEvent, ChannelEventResult, EventHandlerTrait};
+use commons::threading::eventhandling::WaitOrTryForNextEvent::{TryForNextEvent, WaitForNextEvent};
 
 pub enum ClientCoreEvent<Game: GameTrait> {
     Connect(channel::Sender<RenderReceiverMessage<Game>>),

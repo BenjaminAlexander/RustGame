@@ -3,8 +3,8 @@ use crate::client::ClientCoreEvent::OnTimeMessage;
 use crate::gamemanager::RenderReceiverMessage;
 use crate::gametime::{GameTimerObserverTrait, TimeMessage};
 use crate::interface::GameTrait;
-use crate::threading::channel::Sender;
-use crate::threading::eventhandling;
+use commons::threading::channel::Sender;
+use commons::threading::eventhandling;
 
 pub struct ClientGameTimerObserver<Game: GameTrait> {
     core_sender: eventhandling::Sender<ClientCoreEvent<Game>>,

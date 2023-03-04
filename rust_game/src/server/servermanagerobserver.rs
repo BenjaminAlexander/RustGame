@@ -2,7 +2,7 @@ use crate::gamemanager::{ManagerObserverTrait, RenderReceiverMessage, StepMessag
 use crate::interface::GameTrait;
 use crate::messaging::{ServerInputMessage, StateMessage};
 use crate::server::udpoutput::UdpOutputEvent;
-use crate::threading::{channel, eventhandling};
+use commons::threading::{channel, eventhandling};
 
 pub struct ServerManagerObserver<Game: GameTrait> {
     udp_outputs: Vec<eventhandling::Sender<UdpOutputEvent<Game>>>,

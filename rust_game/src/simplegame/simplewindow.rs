@@ -2,7 +2,7 @@ use opengl_graphics::{GlGraphics, OpenGL};
 use crate::gamemanager::RenderReceiver;
 use crate::simplegame::SimpleInputEvent;
 use crate::client::ClientCoreEvent;
-use crate::threading::eventhandling;
+use commons::threading::eventhandling;
 use piston::{RenderArgs, WindowSettings, Events, EventSettings, RenderEvent, Event};
 use piston::input::Input as PistonInput;
 use graphics::*;
