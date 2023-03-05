@@ -65,6 +65,7 @@ impl<Game: GameTrait> EventHandlerTrait for ServerCore<Game> {
             ChannelEvent::ReceivedEvent(_, TcpConnectionEvent(tcp_stream)) => self.on_tcp_connection(tcp_stream),
             ChannelEvent::ReceivedEvent(_, TimeMessageEvent(time_message)) => self.on_time_message(time_message),
             ChannelEvent::ReceivedEvent(_, InputMessageEvent(input_message)) => self.on_input_message(input_message),
+            ChannelEvent::Timeout => Continue(WaitForNextEvent(self)),
             ChannelEvent::ChannelEmpty => Continue(WaitForNextEvent(self)),
             ChannelEvent::ChannelDisconnected => Break(()),
         }

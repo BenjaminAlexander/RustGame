@@ -29,6 +29,9 @@ impl<T: ListenerTrait> EventHandlerTrait for ListenerState<T> {
             eventhandling::ChannelEvent::ChannelEmpty => {
                 return Continue(TryForNextEvent(self.listen()?));
             }
+            eventhandling::ChannelEvent::Timeout => {
+                return Continue(TryForNextEvent(self));
+            }
             eventhandling::ChannelEvent::ChannelDisconnected => {
 
                 self = self.on_channel_event(ChannelDisconnected)?;

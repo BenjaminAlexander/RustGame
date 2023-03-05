@@ -11,7 +11,7 @@ use crate::server::ServerConfig;
 use crate::messaging::InitialInformation;
 use commons::threading::channel::ReceiveMetaData;
 use commons::threading::eventhandling::{ChannelEvent, ChannelEventResult, EventHandlerTrait, Sender};
-use commons::threading::eventhandling::WaitOrTryForNextEvent::WaitForNextEvent;
+use commons::threading::eventhandling::WaitOrTryForNextEvent::{TryForNextEvent, WaitForNextEvent};
 
 const TICK_LATENESS_WARN_DURATION: TimeDuration = TimeDuration::from_seconds(0.02);
 const CLIENT_ERROR_WARN_DURATION: TimeDuration = TimeDuration::from_seconds(0.02);
@@ -180,6 +180,7 @@ impl<Observer: GameTimerObserverTrait> EventHandlerTrait for GameTimer<Observer>
 
                 Continue(WaitForNextEvent(self))
             }
+            ChannelEvent::Timeout => Continue(WaitForNextEvent(self)),
             ChannelEvent::ChannelEmpty => Continue(WaitForNextEvent(self)),
             ChannelEvent::ChannelDisconnected => Break(())
         }

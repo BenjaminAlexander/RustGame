@@ -212,6 +212,7 @@ impl<Game: GameTrait> EventHandlerTrait for ClientCore<Game> {
             ChannelEvent::ReceivedEvent(_, OnInitialInformation(initial_information)) => self.on_initial_information(initial_information),
             ChannelEvent::ReceivedEvent(_, OnInputEvent(client_input_event)) => self.on_input_event(client_input_event),
             ChannelEvent::ReceivedEvent(_, OnTimeMessage(time_message)) => self.on_time_message(time_message),
+            ChannelEvent::Timeout => Continue(WaitForNextEvent(self)),
             ChannelEvent::ChannelEmpty => Continue(WaitForNextEvent(self)),
             ChannelEvent::ChannelDisconnected => Break(())
         }

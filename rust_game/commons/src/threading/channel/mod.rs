@@ -6,7 +6,7 @@ mod receivemetadata;
 mod threadbuilder;
 
 pub use self::sender::{Sender, SendError};
-pub use self::receiver::{Receiver, TryRecvError, RecvError};
+pub use self::receiver::{Receiver, TryRecvError, RecvError, RecvTimeoutError};
 pub use self::receivemetadata::ReceiveMetaData;
 pub use self::sendmetadata::SendMetaData;
 pub use self::channel::Channel;

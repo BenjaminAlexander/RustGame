@@ -104,6 +104,10 @@ impl<Game: GameTrait> EventHandlerTrait for UdpOutput<Game> {
 
                 return Continue(TryForNextEvent(self));
             }
+            ChannelEvent::Timeout => {
+                self.send_all_messages();
+                return Continue(WaitForNextEvent(self));
+            },
             ChannelEvent::ChannelEmpty => {
                 self.send_all_messages();
                 return Continue(WaitForNextEvent(self));
