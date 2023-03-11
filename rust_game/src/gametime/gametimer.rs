@@ -5,10 +5,9 @@ use crate::gametime::{TimeMessage, TimeReceived};
 use chrono::Local;
 use timer::{Guard, Timer};
 use log::{trace, info, warn, error};
-use crate::gametime::gametimer::GameTimerEvent::{InitialInformationEvent, StartTickingEvent, TickEvent, TimeMessageEvent};
+use crate::gametime::gametimer::GameTimerEvent::{StartTickingEvent, TickEvent, TimeMessageEvent};
 use crate::gametime::gametimerobserver::GameTimerObserverTrait;
 use crate::server::ServerConfig;
-use crate::messaging::InitialInformation;
 use commons::threading::channel::ReceiveMetaData;
 use commons::threading::eventhandling::{ChannelEvent, ChannelEventResult, EventHandlerTrait, Sender};
 use commons::threading::eventhandling::WaitOrTryForNextEvent::{TryForNextEvent, WaitForNextEvent};
@@ -17,11 +16,7 @@ const TICK_LATENESS_WARN_DURATION: TimeDuration = TimeDuration::from_seconds(0.0
 const CLIENT_ERROR_WARN_DURATION: TimeDuration = TimeDuration::from_seconds(0.02);
 
 //TODO: should the timer be a listener that sleeps?
-pub enum GameTimerEvent<Observer: GameTimerObserverTrait> {
-
-    //TODO: pass initial information when constructing game timer
-    InitialInformationEvent(InitialInformation<Observer::Game>),
-
+pub enum GameTimerEvent {
     StartTickingEvent,
     //TODO: switch to sent value meta data
     TickEvent(TimeValue),
@@ -30,9 +25,9 @@ pub enum GameTimerEvent<Observer: GameTimerObserverTrait> {
 
 pub struct GameTimer<Observer: GameTimerObserverTrait> {
     timer: Timer,
-    server_config: Option<ServerConfig>,
+    server_config: ServerConfig,
     start: Option<TimeValue>,
-    sender: Sender<GameTimerEvent<Observer>>,
+    sender: Sender<GameTimerEvent>,
     guard: Option<Guard>,
     rolling_average: RollingAverage,
     observer: Observer
@@ -41,13 +36,14 @@ pub struct GameTimer<Observer: GameTimerObserverTrait> {
 impl<Observer: GameTimerObserverTrait> GameTimer<Observer> {
 
     pub fn new(
+            server_config: ServerConfig,
             rolling_average_size: usize,
             observer: Observer,
-            sender: Sender<GameTimerEvent<Observer>>) -> Self {
+            sender: Sender<GameTimerEvent>) -> Self {
 
         GameTimer{
             timer: Timer::new(),
-            server_config: None,
+            server_config,
             start: None,
             sender,
             guard: None,
@@ -56,25 +52,13 @@ impl<Observer: GameTimerObserverTrait> GameTimer<Observer> {
         }
     }
 
-    pub fn get_step_duration(&self) -> Option<TimeDuration> {
-        if let Some(server_config) = &self.server_config {
-            return Some(server_config.get_step_duration());
-        } else {
-            return None;
-        }
-    }
-
-    fn on_initial_information(&mut self, initial_information: InitialInformation<Observer::Game>) {
-        self.server_config = Some(initial_information.move_server_config());
-    }
-
     fn start_ticking(&mut self) {
 
-        info!("Starting timer with duration {:?}", self.get_step_duration().unwrap());
+        info!("Starting timer with duration {:?}", self.server_config.get_step_duration());
 
         let now = TimeValue::now();
 
-        self.start = Some(now.add(self.get_step_duration().unwrap()));
+        self.start = Some(now.add(self.server_config.get_step_duration()));
 
         let sender_clone = self.sender.clone();
 
@@ -83,7 +67,7 @@ impl<Observer: GameTimerObserverTrait> GameTimer<Observer> {
         self.guard = Some(
             self.timer.schedule(
                 chrono::DateTime::<Local>::from(self.start.unwrap().to_system_time()),
-                Some(chrono::Duration::from_std(self.get_step_duration().unwrap().to_std()).unwrap()),
+                Some(chrono::Duration::from_std(self.server_config.get_step_duration().to_std()).unwrap()),
                 move || {
                     if let Some(error) = sender_clone.send_event(TickEvent(TimeValue::now())).err() {
                         error!("Error while trying to send tick: {:?}", error);
@@ -101,7 +85,7 @@ impl<Observer: GameTimerObserverTrait> GameTimer<Observer> {
         //TODO: How much of this can move into the other thread?
         let time_message = TimeMessage::new(
             self.start.clone().unwrap(),
-            self.get_step_duration().unwrap(),
+            self.server_config.get_step_duration(),
             tick_time_value);
 
         if time_message.get_lateness() > TICK_LATENESS_WARN_DURATION {
@@ -114,71 +98,67 @@ impl<Observer: GameTimerObserverTrait> GameTimer<Observer> {
     fn on_time_message(&mut self, time_message: TimeReceived<TimeMessage>) {
         trace!("Handling TimeMessage: {:?}", time_message);
 
-        if let Some(step_duration) = self.get_step_duration() {
+        let step_duration = self.server_config.get_step_duration();
 
-            //Calculate the start time of the remote clock in local time and add it to the rolling average
-            let remote_start = time_message.get_time_received()
-                .subtract(time_message.get().get_lateness())
-                .subtract(step_duration * time_message.get().get_step() as f64);
+        //Calculate the start time of the remote clock in local time and add it to the rolling average
+        let remote_start = time_message.get_time_received()
+            .subtract(time_message.get().get_lateness())
+            .subtract(step_duration * time_message.get().get_step() as f64);
 
-            self.rolling_average.add_value(remote_start.get_seconds_since_epoch());
+        self.rolling_average.add_value(remote_start.get_seconds_since_epoch());
 
-            let average = self.rolling_average.get_average();
+        let average = self.rolling_average.get_average();
 
-            if self.start.is_none() ||
-                (self.start.unwrap().get_seconds_since_epoch() - average).abs() > 1.0  {
+        if self.start.is_none() ||
+            (self.start.unwrap().get_seconds_since_epoch() - average).abs() > 1.0  {
 
-                if self.start.is_none() {
-                    info!("Start client clock from signal from server clock.");
-                } else {
-                    let error = self.start.unwrap().get_seconds_since_epoch() - average;
-                    if error > CLIENT_ERROR_WARN_DURATION.get_seconds() {
-                        warn!("High client error (millis): {:?}", error);
-                    }
+            if self.start.is_none() {
+                info!("Start client clock from signal from server clock.");
+            } else {
+                let error = self.start.unwrap().get_seconds_since_epoch() - average;
+                if error > CLIENT_ERROR_WARN_DURATION.get_seconds() {
+                    warn!("High client error (millis): {:?}", error);
                 }
-
-                self.start = Some(TimeValue::from_seconds_since_epoch(average));
-
-                let next_tick = self.start.unwrap()
-                    .add(step_duration * ((TimeValue::now().duration_since(&self.start.unwrap()) / step_duration)
-                        .floor() as f64 + 1.0));
-
-                let sender_clone = self.sender.clone();
-
-                //Called from timer thread
-                self.guard = Some(
-                    self.timer.schedule(
-                        chrono::DateTime::<Local>::from(next_tick.to_system_time()),
-                        Some(chrono::Duration::from_std(step_duration.to_std()).unwrap()),
-                        move || {
-                            if let Some(error) = sender_clone.send_event(TickEvent(TimeValue::now())).err() {
-                                error!("Error while trying to send tick: {:?}", error);
-                            }
-                        }
-                    )
-                );
             }
-        } else {
-            warn!("TimeMessage received but ignored because this timer does not yet have a ServerConfig: {:?}", time_message);
+
+            self.start = Some(TimeValue::from_seconds_since_epoch(average));
+
+            let next_tick = self.start.unwrap()
+                .add(step_duration * ((TimeValue::now().duration_since(&self.start.unwrap()) / step_duration)
+                    .floor() as f64 + 1.0));
+
+            let sender_clone = self.sender.clone();
+
+            //Called from timer thread
+            self.guard = Some(
+                self.timer.schedule(
+                    chrono::DateTime::<Local>::from(next_tick.to_system_time()),
+                    Some(chrono::Duration::from_std(step_duration.to_std()).unwrap()),
+                    move || {
+                        if let Some(error) = sender_clone.send_event(TickEvent(TimeValue::now())).err() {
+                            error!("Error while trying to send tick: {:?}", error);
+                        }
+                    }
+                )
+            );
         }
     }
 }
 
 impl<Observer: GameTimerObserverTrait> EventHandlerTrait for GameTimer<Observer> {
-    type Event = GameTimerEvent<Observer>;
+    type Event = GameTimerEvent;
     type ThreadReturn = ();
 
     fn on_channel_event(mut self, channel_event: ChannelEvent<Self::Event>) -> ChannelEventResult<Self> {
         match channel_event {
             ChannelEvent::ReceivedEvent(_, event) => {
                 match event {
-                    InitialInformationEvent(initial_information) => self.on_initial_information(initial_information),
                     StartTickingEvent => self.start_ticking(),
                     TickEvent(tick_time_value) => self.tick(tick_time_value),
                     TimeMessageEvent(time_message) => self.on_time_message(time_message)
                 };
 
-                Continue(WaitForNextEvent(self))
+                Continue(TryForNextEvent(self))
             }
             ChannelEvent::Timeout => Continue(WaitForNextEvent(self)),
             ChannelEvent::ChannelEmpty => Continue(WaitForNextEvent(self)),

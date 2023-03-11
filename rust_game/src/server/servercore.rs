@@ -43,7 +43,7 @@ pub struct ServerCore<Game: GameTrait> {
     game_is_started: bool,
     server_config: ServerConfig,
     tcp_listener_sender_option: Option<eventhandling::Sender<()>>,
-    timer_sender_option: Option<eventhandling::Sender<GameTimerEvent<ServerGameTimerObserver<Game>>>>,
+    timer_sender_option: Option<eventhandling::Sender<GameTimerEvent>>,
     tcp_inputs: Vec<eventhandling::Sender<()>>,
     tcp_outputs: Vec<eventhandling::Sender<TcpOutputEvent<Game>>>,
     udp_socket: Option<UdpSocket>,
@@ -214,8 +214,6 @@ impl<Game: GameTrait> ServerCore<Game> {
             manager_builder.get_sender().send_event(ManagerEvent::InitialInformationEvent(server_initial_information.clone())).unwrap();
             render_receiver_sender.send(RenderReceiverMessage::InitialInformation(server_initial_information.clone())).unwrap();
 
-            timer_builder.get_sender().send_event(GameTimerEvent::InitialInformationEvent(server_initial_information.clone())).unwrap();
-
             timer_builder.get_sender().send_event(GameTimerEvent::StartTickingEvent).unwrap();
 
             for tcp_output in self.tcp_outputs.iter() {
@@ -227,6 +225,7 @@ impl<Game: GameTrait> ServerCore<Game> {
             }
 
             let game_timer = GameTimer::new(
+                self.server_config,
                 0,
                 server_game_timer_observer,
                 timer_builder.clone_sender()

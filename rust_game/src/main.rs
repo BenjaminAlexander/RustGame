@@ -1,5 +1,7 @@
 use std::{thread, time, io, process};
+use std::net::Ipv4Addr;
 use std::path::PathBuf;
+use std::str::FromStr;
 use log::{error, info};
 use crate::client::ClientCoreEvent::Connect;
 use crate::gamemanager::RenderReceiver;
@@ -86,7 +88,7 @@ pub fn main() {
         client_core_join_handle_option = Some(
             client_core_thread_builder.spawn_event_handler(
                 client::ClientCore::<SimpleGameImpl>::new(
-                    "127.0.0.1",
+                    Ipv4Addr::from_str("127.0.0.1").unwrap(),
                     sender_clone
                 ),
                 AsyncJoin::log_async_join

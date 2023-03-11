@@ -17,7 +17,7 @@ pub struct UdpInput<Game: GameTrait> {
     server_socket_addr: SocketAddr,
     socket: UdpSocket,
     fragment_assembler: FragmentAssembler,
-    game_timer_sender: eventhandling::Sender<GameTimerEvent<ClientGameTimerObserver<Game>>>,
+    game_timer_sender: eventhandling::Sender<GameTimerEvent>,
     manager_sender: eventhandling::Sender<ManagerEvent<Game>>,
 
     //metrics
@@ -31,7 +31,7 @@ impl<Game: GameTrait> UdpInput<Game> {
     pub fn new(
         server_socket_addr_v4: SocketAddrV4,
         socket: &UdpSocket,
-        game_timer_sender: eventhandling::Sender<GameTimerEvent<ClientGameTimerObserver<Game>>>,
+        game_timer_sender: eventhandling::Sender<GameTimerEvent>,
         manager_sender: eventhandling::Sender<ManagerEvent<Game>>) -> io::Result<Self> {
 
         let server_socket_addr = SocketAddr::from(server_socket_addr_v4);

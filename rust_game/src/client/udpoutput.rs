@@ -10,7 +10,6 @@ use commons::threading::eventhandling::WaitOrTryForNextEvent::{TryForNextEvent, 
 
 //TODO: combine server/client and tcp/udp inputs/outputs to shared listener/eventhandler types
 pub enum UdpOutputEvent<Game: GameTrait> {
-    InitialInformationEvent(InitialInformation<Game>),
     InputMessageEvent(InputMessage<Game>)
 }
 
@@ -20,31 +19,29 @@ pub struct UdpOutput<Game: GameTrait> {
     fragmenter: Fragmenter,
     input_queue: Vec<InputMessage<Game>>,
     max_observed_input_queue: usize,
-    initial_information: Option<InitialInformation<Game>>
+    initial_information: InitialInformation<Game>
 }
 
 impl<Game: GameTrait> UdpOutput<Game> {
 
     pub fn new(server_socket_addr_v4: SocketAddrV4,
-               socket: &UdpSocket) -> io::Result<Self> {
+               socket: UdpSocket,
+               initial_information: InitialInformation<Game>) -> Self {
 
-        return Ok(Self{
+        let mut udp_output = Self {
             server_address: server_socket_addr_v4,
-            socket: socket.try_clone()?,
+            socket,
             //TODO: make max datagram size more configurable
             fragmenter: Fragmenter::new(MAX_UDP_DATAGRAM_SIZE),
             input_queue: Vec::new(),
             max_observed_input_queue: 0,
-            initial_information: None
-        });
-    }
+            initial_information
+        };
 
-    fn on_initial_information(&mut self, initial_information: InitialInformation<Game>) {
-        debug!("InitialInformation Received.");
-        self.initial_information = Some(initial_information);
+        let message = ToServerMessageUDP::<Game>::Hello{player_index: udp_output.initial_information.get_player_index()};
+        udp_output.send_message(message);
 
-        let message = ToServerMessageUDP::<Game>::Hello{player_index: self.initial_information.as_ref().unwrap().get_player_index()};
-        self.send_message(message);
+        return udp_output;
     }
 
     pub fn on_input_message(&mut self, input_message: InputMessage<Game>) {
@@ -98,7 +95,6 @@ impl<Game: GameTrait> EventHandlerTrait for UdpOutput<Game> {
         match channel_event {
             ChannelEvent::ReceivedEvent(_, event) => {
                 match event {
-                    UdpOutputEvent::InitialInformationEvent(initial_information) => self.on_initial_information(initial_information),
                     UdpOutputEvent::InputMessageEvent(input_message) => self.on_input_message(input_message)
                 };
 

@@ -10,3 +10,4 @@ pub use self::timerservice::TimeService;
 pub use self::timerserviceevent::TimerServiceEvent;
 pub use self::timercallback::TimerCallBack;
 pub use self::timercreationcallback::TimerCreationCallBack;
+pub use self::schedule::Schedule;
