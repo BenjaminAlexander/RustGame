@@ -12,8 +12,24 @@ pub struct Timer<T: TimerCallBack> {
 
 impl<T: TimerCallBack> Timer<T> {
 
+    pub fn new(id: &TimerId, schedule: Option<Schedule>, call_back: T) -> Self {
+        return Self {
+            id: *id,
+            schedule,
+            call_back
+        }
+    }
+
     pub fn get_id(&self) -> &TimerId {
         return &self.id;
+    }
+
+    pub fn set_schedule(&mut self, schedule: Option<Schedule>) {
+        self.schedule = schedule;
+    }
+
+    pub fn get_schedule(&self) -> Option<&Schedule> {
+        return self.schedule.as_ref();
     }
 
     pub fn get_trigger_time(&self) -> Option<&TimeValue> {
@@ -23,10 +39,10 @@ impl<T: TimerCallBack> Timer<T> {
         }
     }
 
-    pub fn should_trigger(&self) -> bool {
+    pub fn should_trigger(&self, now: &TimeValue) -> bool {
         return match &self.schedule {
             None => false,
-            Some(schedule) => schedule.should_trigger()
+            Some(schedule) => schedule.should_trigger(now)
         }
     }
 
