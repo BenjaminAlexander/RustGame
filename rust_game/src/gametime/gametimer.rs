@@ -30,7 +30,6 @@ pub struct GameTimer<Observer: GameTimerObserverTrait> {
     server_config: ServerConfig,
     start: Option<TimeValue>,
     sender: Sender<GameTimerEvent>,
-    guard: Option<Guard>,
     rolling_average: RollingAverage,
     observer: Observer,
     new_timer_id: TimerId,
@@ -62,7 +61,6 @@ impl<Observer: GameTimerObserverTrait> GameTimer<Observer> {
             server_config,
             start: None,
             sender,
-            guard: None,
             rolling_average: RollingAverage::new(rolling_average_size),
             observer,
             new_timer_id: timer_id,
@@ -79,20 +77,6 @@ impl<Observer: GameTimerObserverTrait> GameTimer<Observer> {
         self.start = Some(now.add(self.server_config.get_step_duration()));
 
         let sender_clone = self.sender.clone();
-
-        //TODO: does using this closure have bad performance?
-        //Called from timer thread
-        self.guard = Some(
-            self.timer.schedule(
-                chrono::DateTime::<Local>::from(self.start.unwrap().to_system_time()),
-                Some(chrono::Duration::from_std(self.server_config.get_step_duration().to_std()).unwrap()),
-                move || {
-                    if let Some(error) = sender_clone.send_event(TickEvent(TimeValue::now())).err() {
-                        error!("Error while trying to send tick: {:?}", error);
-                    }
-                }
-            )
-        );
 
         let schedule = Schedule::Repeating(self.start.unwrap(), self.server_config.get_step_duration());
         self.new_timer_sender.send_event(TimerServiceEvent::RescheduleTimer(self.new_timer_id, Some(schedule))).unwrap();
@@ -148,20 +132,8 @@ impl<Observer: GameTimerObserverTrait> GameTimer<Observer> {
                 .add(step_duration * ((TimeValue::now().duration_since(&self.start.unwrap()) / step_duration)
                     .floor() as f64 + 1.0));
 
-            let sender_clone = self.sender.clone();
-
-            //Called from timer thread
-            self.guard = Some(
-                self.timer.schedule(
-                    chrono::DateTime::<Local>::from(next_tick.to_system_time()),
-                    Some(chrono::Duration::from_std(step_duration.to_std()).unwrap()),
-                    move || {
-                        if let Some(error) = sender_clone.send_event(TickEvent(TimeValue::now())).err() {
-                            error!("Error while trying to send tick: {:?}", error);
-                        }
-                    }
-                )
-            );
+            let schedule = Schedule::Repeating(self.start.unwrap(), self.server_config.get_step_duration());
+            self.new_timer_sender.send_event(TimerServiceEvent::RescheduleTimer(self.new_timer_id, Some(schedule))).unwrap();
         }
     }
 }

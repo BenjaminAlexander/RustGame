@@ -94,7 +94,7 @@ impl<T: TimerCreationCallBack, U: TimerCallBack> TimeService<T, U> {
                 if duration_to_wait.is_positive() {
                     return ChannelEventResult::Continue(WaitOrTryForNextEvent::WaitForNextEventOrTimeout(self, duration_to_wait));
                 } else {
-                    warn!("Timers that should be triggered were left in the queue!");
+                    warn!("Timers that should be triggered were left in the queue!  TimerID: {:?} Duration Until Trigger: {:?}", timer.get_id(), duration_to_wait);
                     return self.trigger_timers();
                 }
 

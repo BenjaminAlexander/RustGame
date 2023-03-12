@@ -17,6 +17,6 @@ impl Schedule {
 
     pub fn should_trigger(&self, now: &TimeValue) -> bool {
         let trigger_time = self.get_trigger_time();
-        return trigger_time.is_after(now) || trigger_time == now;
+        return now.is_after(trigger_time) || trigger_time == now;
     }
 }
