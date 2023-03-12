@@ -6,6 +6,7 @@ mod timerservice;
 mod timerserviceevent;
 mod timercreationcallback;
 
+pub use self::timerid::TimerId;
 pub use self::timerservice::TimeService;
 pub use self::timerserviceevent::TimerServiceEvent;
 pub use self::timercallback::TimerCallBack;

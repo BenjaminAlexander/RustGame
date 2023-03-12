@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 use std::marker::PhantomData;
-use log::warn;
+use log::{info, warn};
 use crate::threading::channel::ReceiveMetaData;
 use crate::threading::eventhandling::{ChannelEvent, ChannelEventResult, EventHandlerTrait, WaitOrTryForNextEvent};
 use crate::threading::eventhandling::ChannelEvent::{Timeout, ChannelEmpty, ChannelDisconnected, ReceivedEvent};
@@ -32,6 +32,9 @@ impl<T: TimerCreationCallBack, U: TimerCallBack> TimeService<T, U> {
     }
 
     fn insert(&mut self, timer: Timer<U>) {
+
+        info!("Inserting Timer: {:?}", timer.get_id());
+
         if timer.get_schedule().is_some() {
             let index = self.timers.binary_search(&timer).unwrap_or_else(|e| e);
             self.timers.insert(index, timer);
@@ -41,6 +44,7 @@ impl<T: TimerCreationCallBack, U: TimerCallBack> TimeService<T, U> {
     }
 
     fn move_timer(&mut self, timer_id: &TimerId) -> Option<Timer<U>> {
+        info!("Moving Timer: {:?}", timer_id);
         if let Some(timer) = self.unscheduled_timers.remove(timer_id) {
             return Some(timer);
         } else {
@@ -57,10 +61,12 @@ impl<T: TimerCreationCallBack, U: TimerCallBack> TimeService<T, U> {
 
     fn trigger_timers(mut self) -> ChannelEventResult<Self> {
 
-        loop {
-            if let Some(timer) = self.timers.get(0) {
+        info!("Trigger timers...");
 
-                let now = TimeValue::now();
+        loop {
+            let now = TimeValue::now();
+
+            if let Some(timer) = self.timers.get(0) {
 
                 if timer.should_trigger(&now) {
                     let mut timer = self.timers.remove(0);
@@ -74,6 +80,8 @@ impl<T: TimerCreationCallBack, U: TimerCallBack> TimeService<T, U> {
                 } else {
                     return self.wait_for_next_trigger(now);
                 }
+            } else {
+                return self.wait_for_next_trigger(now);
             }
         }
     }
@@ -103,6 +111,7 @@ impl<T: TimerCreationCallBack, U: TimerCallBack> TimeService<T, U> {
 
     pub fn create_timer(&mut self, tick_call_back: U, schedule: Option<Schedule>) -> TimerId {
         let timer_id = TimerId::new(self.next_timer_id);
+        info!("Creating Timer: {:?}", timer_id);
         self.next_timer_id = self.next_timer_id + 1;
         let timer = Timer::new(&timer_id, schedule, tick_call_back);
         self.insert(timer);
@@ -110,6 +119,8 @@ impl<T: TimerCreationCallBack, U: TimerCallBack> TimeService<T, U> {
     }
 
     pub fn reschedule_timer(&mut self, timer_id: &TimerId, schedule: Option<Schedule>) {
+
+        info!("Rescheduling Timer {:?} to {:?}", timer_id, schedule);
         if let Some(mut timer) = self.move_timer(timer_id) {
             timer.set_schedule(schedule);
             self.insert(timer);
@@ -119,6 +130,7 @@ impl<T: TimerCreationCallBack, U: TimerCallBack> TimeService<T, U> {
     }
 
     pub fn cancel_timer(&mut self, timer_id: TimerId) {
+        info!("Canceling Timer {:?}", timer_id);
         if self.move_timer(&timer_id).is_none() {
             warn!("TimerID {:?} does not exist.", timer_id)
         }

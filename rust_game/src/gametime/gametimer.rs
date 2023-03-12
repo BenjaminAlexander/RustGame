@@ -11,6 +11,8 @@ use crate::server::ServerConfig;
 use commons::threading::channel::ReceiveMetaData;
 use commons::threading::eventhandling::{ChannelEvent, ChannelEventResult, EventHandlerTrait, Sender};
 use commons::threading::eventhandling::WaitOrTryForNextEvent::{TryForNextEvent, WaitForNextEvent};
+use commons::threading::{AsyncJoin, ThreadBuilder};
+use commons::time::timerservice::{Schedule, TimerCallBack, TimerCreationCallBack, TimerId, TimerServiceEvent, TimeService};
 
 const TICK_LATENESS_WARN_DURATION: TimeDuration = TimeDuration::from_seconds(0.02);
 const CLIENT_ERROR_WARN_DURATION: TimeDuration = TimeDuration::from_seconds(0.02);
@@ -30,7 +32,9 @@ pub struct GameTimer<Observer: GameTimerObserverTrait> {
     sender: Sender<GameTimerEvent>,
     guard: Option<Guard>,
     rolling_average: RollingAverage,
-    observer: Observer
+    observer: Observer,
+    new_timer_id: TimerId,
+    new_timer_sender: Sender<TimerServiceEvent<GameTimerCreationCallBack, GameTimerCallBack>>
 }
 
 impl<Observer: GameTimerObserverTrait> GameTimer<Observer> {
@@ -41,6 +45,18 @@ impl<Observer: GameTimerObserverTrait> GameTimer<Observer> {
             observer: Observer,
             sender: Sender<GameTimerEvent>) -> Self {
 
+        let mut timerService = TimeService::<GameTimerCreationCallBack, GameTimerCallBack>::new();
+        let call_back = GameTimerCallBack {
+            sender: sender.clone()
+        };
+
+        let timer_id = timerService.create_timer(call_back, None);
+
+        let new_timer_sender = ThreadBuilder::new()
+            .name("NewTimerThread")
+            .spawn_event_handler(timerService, AsyncJoin::log_async_join)
+            .unwrap();
+
         GameTimer{
             timer: Timer::new(),
             server_config,
@@ -48,7 +64,9 @@ impl<Observer: GameTimerObserverTrait> GameTimer<Observer> {
             sender,
             guard: None,
             rolling_average: RollingAverage::new(rolling_average_size),
-            observer
+            observer,
+            new_timer_id: timer_id,
+            new_timer_sender
         }
     }
 
@@ -75,6 +93,9 @@ impl<Observer: GameTimerObserverTrait> GameTimer<Observer> {
                 }
             )
         );
+
+        let schedule = Schedule::Repeating(self.start.unwrap(), self.server_config.get_step_duration());
+        self.new_timer_sender.send_event(TimerServiceEvent::RescheduleTimer(self.new_timer_id, Some(schedule))).unwrap();
     }
 
     fn tick(&self, tick_time_value: TimeValue) {
@@ -167,4 +188,25 @@ impl<Observer: GameTimerObserverTrait> EventHandlerTrait for GameTimer<Observer>
     }
 
     fn on_stop(self, _: ReceiveMetaData) -> Self::ThreadReturn { () }
+}
+
+//TODO: move to its own file
+struct GameTimerCallBack {
+    sender: Sender<GameTimerEvent>
+}
+
+impl TimerCallBack for GameTimerCallBack {
+    fn tick(&mut self) {
+        info!("new timer yo");
+        self.sender.send_event(TickEvent(TimeValue::now())).unwrap();
+    }
+}
+
+struct GameTimerCreationCallBack {
+}
+
+impl TimerCreationCallBack for GameTimerCreationCallBack {
+    fn timer_created(self, timer_id: &TimerId) {
+        warn!("Timer Created: {:?}", timer_id);
+    }
 }

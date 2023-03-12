@@ -1,5 +1,6 @@
 use crate::time::{TimeDuration, TimeValue};
 
+#[derive(Debug)]
 pub enum Schedule {
     Once(TimeValue),
     Repeating(TimeValue, TimeDuration)

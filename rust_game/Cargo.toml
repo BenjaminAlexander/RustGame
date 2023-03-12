@@ -10,17 +10,17 @@ edition = "2021"
 [dependencies]
 commons = { path = "commons" }
 serde = { version = "1", features = ["derive"] }
-rmp-serde = "0.15.0"
+rmp-serde = "1.1.1"
 log = { version = "0.4", features = ["std", "serde"] }
 log4rs = { version = "1.2.0"}
 timer = "0.2.0"
 chrono = "0.4.19"
-num = "0.3.1"
+num = "0.4.0"
 
-piston = "0.52.0"
-piston2d-graphics = "0.39.0"
-pistoncore-glutin_window = "0.68.0"
-piston2d-opengl_graphics = "0.77.0"
+piston = "0.53.2"
+piston2d-graphics = "0.43.0"
+pistoncore-glutin_window = "0.71.0"
+piston2d-opengl_graphics = "0.82.0"
 
 [workspace]
 members = [
