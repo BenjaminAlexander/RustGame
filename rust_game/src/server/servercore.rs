@@ -7,7 +7,7 @@ use crate::server::tcpinput::TcpInput;
 use commons::threading::{eventhandling, ThreadBuilder};
 use crate::server::{TcpListenerThread, ServerConfig};
 use crate::server::tcpoutput::{TcpOutput, TcpOutputEvent};
-use crate::gametime::{GameTimer, GameTimerEvent, TimeMessage};
+use crate::gametime::{GameTimer, TimeMessage};
 use crate::gamemanager::{Manager, ManagerEvent, RenderReceiverMessage};
 use crate::messaging::{InputMessage, InitialInformation};
 use std::str::FromStr;
@@ -23,7 +23,7 @@ use commons::threading::channel;
 use commons::threading::channel::ReceiveMetaData;
 use commons::threading::eventhandling::{ChannelEvent, ChannelEventResult, EventHandlerTrait};
 use commons::threading::eventhandling::WaitOrTryForNextEvent::{TryForNextEvent, WaitForNextEvent};
-use self::ServerCoreEvent::{StartListenerEvent, RemoteUdpPeerEvent, StartGameEvent, TcpConnectionEvent, TimeMessageEvent, InputMessageEvent};
+use self::ServerCoreEvent::{StartListenerEvent, RemoteUdpPeerEvent, StartGameEvent, TcpConnectionEvent, GameTimerTick, InputMessageEvent};
 
 pub enum ServerCoreEvent<Game: GameTrait> {
     //TODO: start listener before spawning event handler
@@ -34,7 +34,7 @@ pub enum ServerCoreEvent<Game: GameTrait> {
     //TODO: create render receiver sender before spawning event handler
     StartGameEvent(channel::Sender<RenderReceiverMessage<Game>>),
     TcpConnectionEvent(TcpStream),
-    TimeMessageEvent(TimeMessage),
+    GameTimerTick,
     InputMessageEvent(InputMessage<Game>)
 }
 
@@ -43,13 +43,14 @@ pub struct ServerCore<Game: GameTrait> {
     game_is_started: bool,
     server_config: ServerConfig,
     tcp_listener_sender_option: Option<eventhandling::Sender<()>>,
-    timer_sender_option: Option<eventhandling::Sender<GameTimerEvent>>,
+    game_timer: Option<GameTimer<ServerGameTimerObserver<Game>>>,
     tcp_inputs: Vec<eventhandling::Sender<()>>,
     tcp_outputs: Vec<eventhandling::Sender<TcpOutputEvent<Game>>>,
     udp_socket: Option<UdpSocket>,
     udp_outputs: Vec<eventhandling::Sender<UdpOutputEvent<Game>>>,
     udp_input_sender_option: Option<eventhandling::Sender<UdpInputEvent>>,
     manager_sender_option: Option<eventhandling::Sender<ManagerEvent<Game>>>,
+    render_receiver_sender: Option<channel::Sender<RenderReceiverMessage<Game>>>,
     drop_steps_before: usize
 }
 
@@ -63,7 +64,7 @@ impl<Game: GameTrait> EventHandlerTrait for ServerCore<Game> {
             ChannelEvent::ReceivedEvent(_, RemoteUdpPeerEvent(remote_udp_peer)) => self.on_remote_udp_peer(remote_udp_peer),
             ChannelEvent::ReceivedEvent(_, StartGameEvent(render_receiver_sender)) => self.start_game(render_receiver_sender),
             ChannelEvent::ReceivedEvent(_, TcpConnectionEvent(tcp_stream)) => self.on_tcp_connection(tcp_stream),
-            ChannelEvent::ReceivedEvent(_, TimeMessageEvent(time_message)) => self.on_time_message(time_message),
+            ChannelEvent::ReceivedEvent(_, GameTimerTick) => self.on_game_timer_tick(),
             ChannelEvent::ReceivedEvent(_, InputMessageEvent(input_message)) => self.on_input_message(input_message),
             ChannelEvent::Timeout => Continue(WaitForNextEvent(self)),
             ChannelEvent::ChannelEmpty => Continue(WaitForNextEvent(self)),
@@ -87,14 +88,15 @@ impl<Game: GameTrait> ServerCore<Game> {
             game_is_started: false,
             server_config,
             tcp_listener_sender_option: None,
-            timer_sender_option: None,
+            game_timer: None,
             tcp_inputs: Vec::new(),
             tcp_outputs: Vec::new(),
             udp_outputs: Vec::new(),
             drop_steps_before: 0,
             udp_socket: None,
             udp_input_sender_option: None,
-            manager_sender_option: None
+            manager_sender_option: None,
+            render_receiver_sender: None
         }
     }
 
@@ -193,14 +195,14 @@ impl<Game: GameTrait> ServerCore<Game> {
                 .build_channel_for_event_handler::<Manager<ServerManagerObserver<Game>>>();
 
             let server_game_timer_observer = ServerGameTimerObserver::new(
-                self.sender.clone(),
-                render_receiver_sender.clone(),
-                udp_output_senders
+                self.sender.clone()
             );
 
-            let timer_builder = ThreadBuilder::new()
-                .name("ServerTimer")
-                .build_channel_for_event_handler::<GameTimer<ServerGameTimerObserver<Game>>>();
+            let mut game_timer = GameTimer::new(
+                self.server_config,
+                0,
+                server_game_timer_observer
+            );
 
             manager_builder.get_sender().send_event(ManagerEvent::DropStepsBeforeEvent(self.drop_steps_before)).unwrap();
 
@@ -214,8 +216,6 @@ impl<Game: GameTrait> ServerCore<Game> {
             manager_builder.get_sender().send_event(ManagerEvent::InitialInformationEvent(server_initial_information.clone())).unwrap();
             render_receiver_sender.send(RenderReceiverMessage::InitialInformation(server_initial_information.clone())).unwrap();
 
-            timer_builder.get_sender().send_event(GameTimerEvent::StartTickingEvent).unwrap();
-
             for tcp_output in self.tcp_outputs.iter() {
                 tcp_output.send_event(SendInitialInformation(
                     self.server_config.clone(),
@@ -224,17 +224,12 @@ impl<Game: GameTrait> ServerCore<Game> {
                 )).unwrap();
             }
 
-            let game_timer = GameTimer::new(
-                self.server_config,
-                0,
-                server_game_timer_observer,
-                timer_builder.clone_sender()
-            );
+            game_timer.start_ticking();
 
-            self.timer_sender_option = Some(timer_builder.spawn_event_handler(game_timer, AsyncJoin::log_async_join).unwrap());
+            self.game_timer = Some(game_timer);
 
             self.manager_sender_option = Some(manager_builder.spawn_event_handler(Manager::new(server_manager_observer), AsyncJoin::log_async_join).unwrap());
-
+            self.render_receiver_sender = Some(render_receiver_sender);
         }
 
         return Continue(TryForNextEvent(self));
@@ -242,7 +237,7 @@ impl<Game: GameTrait> ServerCore<Game> {
 
     /*
     TODO:
-    Server      Cliend
+    Server      Client
     Tcp Hello ->
         <- UdpHello
      */
@@ -291,27 +286,36 @@ impl<Game: GameTrait> ServerCore<Game> {
         return Continue(TryForNextEvent(self));
     }
 
-    fn on_time_message(mut self, time_message: TimeMessage) -> ChannelEventResult<Self> {
-            /*
-            TODO: time is also sent directly fomr gametime observer, seems like this is a bug
+    fn on_game_timer_tick(mut self) -> ChannelEventResult<Self> {
 
-            for udp_output in self.udp_outputs.iter() {
-                udp_output.send_event(UdpOutputEvent::SendTimeMessage(time_message.clone()));
+        let time_message = self.game_timer.as_ref().unwrap().create_timer_message();
+
+        /*
+        TODO: time is also sent directly fomr gametime observer, seems like this is a bug
+
+        for udp_output in self.udp_outputs.iter() {
+            udp_output.send_event(UdpOutputEvent::SendTimeMessage(time_message.clone()));
+        }
+        */
+
+        self.drop_steps_before = time_message.get_step_from_actual_time(time_message.get_scheduled_time().subtract(Game::GRACE_PERIOD)).ceil() as usize;
+
+        if let Some(manager_sender) = self.manager_sender_option.as_ref() {
+
+            //the manager needs its lowest step to not have any new inputs
+            if self.drop_steps_before > 1 {
+                manager_sender.send_event(ManagerEvent::DropStepsBeforeEvent(self.drop_steps_before - 1)).unwrap();
             }
-            */
+            manager_sender.send_event(ManagerEvent::SetRequestedStepEvent(time_message.get_step() + 1)).unwrap();
+        }
 
-            self.drop_steps_before = time_message.get_step_from_actual_time(time_message.get_scheduled_time().subtract(Game::GRACE_PERIOD)).ceil() as usize;
+        for udp_output in self.udp_outputs.iter() {
+            udp_output.send_event(UdpOutputEvent::SendTimeMessage(time_message.clone())).unwrap();
+        }
 
-            if let Some(manager_sender) = self.manager_sender_option.as_ref() {
+        self.render_receiver_sender.as_ref().unwrap().send(RenderReceiverMessage::TimeMessage(time_message.clone())).unwrap();
 
-                //the manager needs its lowest step to not have any new inputs
-                if self.drop_steps_before > 1 {
-                    manager_sender.send_event(ManagerEvent::DropStepsBeforeEvent(self.drop_steps_before - 1)).unwrap();
-                }
-                manager_sender.send_event(ManagerEvent::SetRequestedStepEvent(time_message.get_step() + 1)).unwrap();
-            }
-
-            return Continue(TryForNextEvent(self));
+        return Continue(TryForNextEvent(self));
     }
 
     fn on_input_message(self, input_message: InputMessage<Game>) -> ChannelEventResult<Self> {

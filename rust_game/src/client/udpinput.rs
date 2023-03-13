@@ -1,6 +1,6 @@
 use std::net::{UdpSocket, SocketAddrV4, SocketAddr};
 use commons::time::{TimeDuration, TimeValue};
-use crate::gametime::{TimeReceived, GameTimerEvent};
+use crate::gametime::TimeReceived;
 use crate::messaging::{ToClientMessageUDP, MAX_UDP_DATAGRAM_SIZE, MessageFragment, FragmentAssembler};
 use commons::threading::{eventhandling, listener};
 use crate::interface::GameTrait;
@@ -12,12 +12,13 @@ use crate::gamemanager::ManagerEvent;
 use commons::threading::channel::ReceiveMetaData;
 use commons::threading::listener::{ListenerEventResult, ListenerTrait, ListenMetaData, ListenResult};
 use commons::threading::listener::ListenedOrDidNotListen::{DidNotListen, Listened};
+use crate::client::ClientCoreEvent;
 
 pub struct UdpInput<Game: GameTrait> {
     server_socket_addr: SocketAddr,
     socket: UdpSocket,
     fragment_assembler: FragmentAssembler,
-    game_timer_sender: eventhandling::Sender<GameTimerEvent>,
+    core_sender: eventhandling::Sender<ClientCoreEvent<Game>>,
     manager_sender: eventhandling::Sender<ManagerEvent<Game>>,
 
     //metrics
@@ -31,7 +32,7 @@ impl<Game: GameTrait> UdpInput<Game> {
     pub fn new(
         server_socket_addr_v4: SocketAddrV4,
         socket: &UdpSocket,
-        game_timer_sender: eventhandling::Sender<GameTimerEvent>,
+        core_sender: eventhandling::Sender<ClientCoreEvent<Game>>,
         manager_sender: eventhandling::Sender<ManagerEvent<Game>>) -> io::Result<Self> {
 
         let server_socket_addr = SocketAddr::from(server_socket_addr_v4);
@@ -41,7 +42,7 @@ impl<Game: GameTrait> UdpInput<Game> {
             socket: socket.try_clone()?,
             //TODO: make this more configurable
             fragment_assembler: FragmentAssembler::new(5),
-            game_timer_sender,
+            core_sender,
             manager_sender,
 
             //metrics
@@ -118,7 +119,7 @@ impl<Game: GameTrait> UdpInput<Game> {
         match value {
             ToClientMessageUDP::TimeMessage(time_message) => {
                 //info!("Time message: {:?}", time_message.get_step());
-                self.game_timer_sender.send_event(GameTimerEvent::TimeMessageEvent(TimeReceived::new(time_received, time_message))).unwrap();
+                self.core_sender.send_event(ClientCoreEvent::RemoteTimeMessageEvent(TimeReceived::new(time_received, time_message))).unwrap();
             }
             ToClientMessageUDP::InputMessage(input_message) => {
                 //TODO: ignore input messages from this player

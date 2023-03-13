@@ -5,7 +5,6 @@ use crate::gametime::{TimeMessage, TimeReceived};
 use chrono::Local;
 use timer::{Guard, Timer};
 use log::{trace, info, warn, error};
-use crate::gametime::gametimer::GameTimerEvent::{StartTickingEvent, TickEvent, TimeMessageEvent};
 use crate::gametime::gametimerobserver::GameTimerObserverTrait;
 use crate::server::ServerConfig;
 use commons::threading::channel::ReceiveMetaData;
@@ -17,37 +16,23 @@ use commons::time::timerservice::{Schedule, TimerCallBack, TimerCreationCallBack
 const TICK_LATENESS_WARN_DURATION: TimeDuration = TimeDuration::from_seconds(0.02);
 const CLIENT_ERROR_WARN_DURATION: TimeDuration = TimeDuration::from_seconds(0.02);
 
-//TODO: should the timer be a listener that sleeps?
-pub enum GameTimerEvent {
-    StartTickingEvent,
-    //TODO: switch to sent value meta data
-    TickEvent(TimeValue),
-    TimeMessageEvent(TimeReceived<TimeMessage>)
-}
-
-pub struct GameTimer<Observer: GameTimerObserverTrait> {
+pub struct GameTimer<T: TimerCallBack> {
     timer: Timer,
     server_config: ServerConfig,
     start: Option<TimeValue>,
-    sender: Sender<GameTimerEvent>,
     rolling_average: RollingAverage,
-    observer: Observer,
     new_timer_id: TimerId,
-    new_timer_sender: Sender<TimerServiceEvent<GameTimerCreationCallBack, GameTimerCallBack>>
+    new_timer_sender: Sender<TimerServiceEvent<GameTimerCreationCallBack, T>>
 }
 
-impl<Observer: GameTimerObserverTrait> GameTimer<Observer> {
+impl<T: TimerCallBack> GameTimer<T> {
 
     pub fn new(
             server_config: ServerConfig,
             rolling_average_size: usize,
-            observer: Observer,
-            sender: Sender<GameTimerEvent>) -> Self {
+            call_back: T) -> Self {
 
-        let mut timerService = TimeService::<GameTimerCreationCallBack, GameTimerCallBack>::new();
-        let call_back = GameTimerCallBack {
-            sender: sender.clone()
-        };
+        let mut timerService = TimeService::<GameTimerCreationCallBack, T>::new();
 
         let timer_id = timerService.create_timer(call_back, None);
 
@@ -60,15 +45,13 @@ impl<Observer: GameTimerObserverTrait> GameTimer<Observer> {
             timer: Timer::new(),
             server_config,
             start: None,
-            sender,
             rolling_average: RollingAverage::new(rolling_average_size),
-            observer,
             new_timer_id: timer_id,
             new_timer_sender
         }
     }
 
-    fn start_ticking(&mut self) {
+    pub fn start_ticking(&mut self) {
 
         info!("Starting timer with duration {:?}", self.server_config.get_step_duration());
 
@@ -76,31 +59,11 @@ impl<Observer: GameTimerObserverTrait> GameTimer<Observer> {
 
         self.start = Some(now.add(self.server_config.get_step_duration()));
 
-        let sender_clone = self.sender.clone();
-
         let schedule = Schedule::Repeating(self.start.unwrap(), self.server_config.get_step_duration());
         self.new_timer_sender.send_event(TimerServiceEvent::RescheduleTimer(self.new_timer_id, Some(schedule))).unwrap();
     }
 
-    fn tick(&self, tick_time_value: TimeValue) {
-
-        trace!("Handling Tick from {:?}", tick_time_value);
-
-        //TODO: tick_time_value is the value from the remote thread, this value gets older and older as the event makes its way through the queue
-        //TODO: How much of this can move into the other thread?
-        let time_message = TimeMessage::new(
-            self.start.clone().unwrap(),
-            self.server_config.get_step_duration(),
-            tick_time_value);
-
-        if time_message.get_lateness() > TICK_LATENESS_WARN_DURATION {
-            warn!("High tick Lateness: {:?}", time_message.get_lateness());
-        }
-
-        self.observer.on_time_message(time_message.clone());
-    }
-
-    fn on_time_message(&mut self, time_message: TimeReceived<TimeMessage>) {
+    pub fn on_time_message(&mut self, time_message: TimeReceived<TimeMessage>) {
         trace!("Handling TimeMessage: {:?}", time_message);
 
         let step_duration = self.server_config.get_step_duration();
@@ -136,41 +99,22 @@ impl<Observer: GameTimerObserverTrait> GameTimer<Observer> {
             self.new_timer_sender.send_event(TimerServiceEvent::RescheduleTimer(self.new_timer_id, Some(schedule))).unwrap();
         }
     }
-}
 
-impl<Observer: GameTimerObserverTrait> EventHandlerTrait for GameTimer<Observer> {
-    type Event = GameTimerEvent;
-    type ThreadReturn = ();
+    pub fn create_timer_message(&self) -> TimeMessage {
+        let now = TimeValue::now();
 
-    fn on_channel_event(mut self, channel_event: ChannelEvent<Self::Event>) -> ChannelEventResult<Self> {
-        match channel_event {
-            ChannelEvent::ReceivedEvent(_, event) => {
-                match event {
-                    StartTickingEvent => self.start_ticking(),
-                    TickEvent(tick_time_value) => self.tick(tick_time_value),
-                    TimeMessageEvent(time_message) => self.on_time_message(time_message)
-                };
+        //TODO: tick_time_value is the value from the remote thread, this value gets older and older as the event makes its way through the queue
+        //TODO: How much of this can move into the other thread?
+        let time_message = TimeMessage::new(
+            self.start.clone().unwrap(),
+            self.server_config.get_step_duration(),
+            now);
 
-                Continue(TryForNextEvent(self))
-            }
-            ChannelEvent::Timeout => Continue(WaitForNextEvent(self)),
-            ChannelEvent::ChannelEmpty => Continue(WaitForNextEvent(self)),
-            ChannelEvent::ChannelDisconnected => Break(())
+        if time_message.get_lateness() > TICK_LATENESS_WARN_DURATION {
+            warn!("High tick Lateness: {:?}", time_message.get_lateness());
         }
-    }
 
-    fn on_stop(self, _: ReceiveMetaData) -> Self::ThreadReturn { () }
-}
-
-//TODO: move to its own file
-struct GameTimerCallBack {
-    sender: Sender<GameTimerEvent>
-}
-
-impl TimerCallBack for GameTimerCallBack {
-    fn tick(&mut self) {
-        info!("new timer yo");
-        self.sender.send_event(TickEvent(TimeValue::now())).unwrap();
+        return time_message;
     }
 }
 

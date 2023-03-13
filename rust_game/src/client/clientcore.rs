@@ -1,13 +1,13 @@
 use std::net::{Ipv4Addr, SocketAddrV4, SocketAddr, TcpStream, UdpSocket};
 use std::ops::ControlFlow::{Break, Continue};
-use crate::gametime::{GameTimer, GameTimerEvent, TimeMessage};
+use crate::gametime::{GameTimer, TimeMessage, TimeReceived};
 use crate::client::tcpinput::TcpInput;
 use crate::interface::GameTrait;
 use crate::client::tcpoutput::TcpOutput;
 use crate::messaging::{InitialInformation, InputMessage};
 use crate::gamemanager::{Manager, ManagerEvent, RenderReceiverMessage};
 use log::{trace};
-use crate::client::clientcore::ClientCoreEvent::{Connect, OnInitialInformation, OnInputEvent, OnTimeMessage};
+use crate::client::clientcore::ClientCoreEvent::{Connect, OnInitialInformation, OnInputEvent, GameTimerTick, RemoteTimeMessageEvent};
 use crate::client::clientgametimeobserver::ClientGameTimerObserver;
 use crate::client::clientmanagerobserver::ClientManagerObserver;
 use crate::client::udpoutput::{UdpOutput, UdpOutputEvent};
@@ -23,7 +23,8 @@ pub enum ClientCoreEvent<Game: GameTrait> {
     Connect(channel::Sender<RenderReceiverMessage<Game>>),
     OnInitialInformation(InitialInformation<Game>),
     OnInputEvent(Game::ClientInputEvent),
-    OnTimeMessage(TimeMessage)
+    GameTimerTick,
+    RemoteTimeMessageEvent(TimeReceived<TimeMessage>)
 }
 
 //TODO: make this an enum, get rid of all the options
@@ -32,7 +33,7 @@ pub struct ClientCore<Game: GameTrait> {
     server_ip: Ipv4Addr,
     input_event_handler: Game::ClientInputEventHandler,
     manager_sender_option: Option<eventhandling::Sender<ManagerEvent<Game>>>,
-    timer_sender_option: Option<eventhandling::Sender<GameTimerEvent>>,
+    game_timer: Option<GameTimer<ClientGameTimerObserver<Game>>>,
     udp_input_sender_option: Option<eventhandling::Sender<()>>,
     udp_output_sender_option: Option<eventhandling::Sender<UdpOutputEvent<Game>>>,
     tcp_input_sender_option: Option<eventhandling::Sender<()>>,
@@ -51,7 +52,7 @@ impl<Game: GameTrait> ClientCore<Game> {
             server_ip,
             input_event_handler: Game::new_input_event_handler(),
             manager_sender_option: None,
-            timer_sender_option: None,
+            game_timer: None,
             udp_input_sender_option: None,
             udp_output_sender_option: None,
             tcp_input_sender_option: None,
@@ -109,19 +110,12 @@ impl<Game: GameTrait> ClientCore<Game> {
 
     fn on_initial_information(mut self, initial_information: InitialInformation<Game>) -> ChannelEventResult<Self> {
 
-        let game_timer_builder = ThreadBuilder::new()
-            .name("ClientGameTimer")
-            .build_channel_for_event_handler::<GameTimer<ClientGameTimerObserver<Game>>>();
-
-        let client_game_time_observer = ClientGameTimerObserver::new(
-            self.sender.clone(),
-            self.render_receiver_sender.as_ref().unwrap().clone());
+        let client_game_time_observer = ClientGameTimerObserver::new(self.sender.clone());
 
         let game_timer = GameTimer::new(
             *initial_information.get_server_config(),
             Game::CLOCK_AVERAGE_SIZE,
-            client_game_time_observer,
-            game_timer_builder.clone_sender()
+            client_game_time_observer
         );
 
         let server_udp_socket_addr_v4 = SocketAddrV4::new(self.server_ip, Game::UDP_PORT);
@@ -135,7 +129,7 @@ impl<Game: GameTrait> ClientCore<Game> {
                 UdpInput::new(
                     server_udp_socket_addr_v4,
                     &udp_socket,
-                    game_timer_builder.clone_sender(),
+                    self.sender.clone(),
                     self.manager_sender_option.as_ref().unwrap().clone()
                 ).unwrap(),
                 AsyncJoin::log_async_join)
@@ -151,17 +145,17 @@ impl<Game: GameTrait> ClientCore<Game> {
             AsyncJoin::log_async_join
         ).unwrap();
 
-        let game_timer_join_handle =  game_timer_builder.spawn_event_handler(game_timer, AsyncJoin::log_async_join).unwrap();
-
         self.initial_information = Some(initial_information);
-        self.timer_sender_option = Some(game_timer_join_handle);
+        self.game_timer = Some(game_timer);
         self.udp_input_sender_option = Some(udp_input_join_handle);
         self.udp_output_sender_option = Some(udp_output_join_handle);
 
         return Continue(TryForNextEvent(self));
     }
 
-    fn on_time_message(mut self, time_message: TimeMessage) -> ChannelEventResult<Self> {
+    fn on_game_timer_tick(mut self) -> ChannelEventResult<Self> {
+
+        let time_message = self.game_timer.as_ref().unwrap().create_timer_message();;
 
         trace!("TimeMessage step_index: {:?}", time_message.get_step());
 
@@ -198,8 +192,16 @@ impl<Game: GameTrait> ClientCore<Game> {
             }
         }
 
+
+        self.render_receiver_sender.as_ref().unwrap().send(RenderReceiverMessage::TimeMessage(time_message.clone())).unwrap();
+
         self.last_time_message = Some(time_message);
 
+        return Continue(TryForNextEvent(self));
+    }
+
+    fn on_remote_timer_message(mut self, time_message: TimeReceived<TimeMessage>) -> ChannelEventResult<Self> {
+        self.game_timer.as_mut().unwrap().on_time_message(time_message);
         return Continue(TryForNextEvent(self));
     }
 }
@@ -213,7 +215,8 @@ impl<Game: GameTrait> EventHandlerTrait for ClientCore<Game> {
             ChannelEvent::ReceivedEvent(_, Connect(render_receiver_sender)) => self.connect(render_receiver_sender),
             ChannelEvent::ReceivedEvent(_, OnInitialInformation(initial_information)) => self.on_initial_information(initial_information),
             ChannelEvent::ReceivedEvent(_, OnInputEvent(client_input_event)) => self.on_input_event(client_input_event),
-            ChannelEvent::ReceivedEvent(_, OnTimeMessage(time_message)) => self.on_time_message(time_message),
+            ChannelEvent::ReceivedEvent(_, GameTimerTick) => self.on_game_timer_tick(),
+            ChannelEvent::ReceivedEvent(_, RemoteTimeMessageEvent(time_message)) => self.on_remote_timer_message(time_message),
             ChannelEvent::Timeout => Continue(WaitForNextEvent(self)),
             ChannelEvent::ChannelEmpty => Continue(WaitForNextEvent(self)),
             ChannelEvent::ChannelDisconnected => Break(())
