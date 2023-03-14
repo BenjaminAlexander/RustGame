@@ -24,5 +24,6 @@ piston2d-opengl_graphics = "0.82.0"
 
 [workspace]
 members = [
-    "commons"
+    "commons",
+    "test-utils"
 ]
