@@ -2,6 +2,7 @@ use serde::{Deserialize, Serialize};
 use std::time::{UNIX_EPOCH, SystemTime};
 use std::ops::Add;
 use core::time::Duration;
+use std::cmp::Ordering;
 use crate::time::TimeDuration;
 
 pub const EPOCH: TimeValue = TimeValue::from_seconds_since_epoch(0.0);
@@ -28,11 +29,11 @@ impl TimeValue {
     }
 
     pub fn is_after(&self, other: &TimeValue) -> bool {
-        self.seconds_since_epoch > other.seconds_since_epoch
+        return self > other;
     }
 
     pub fn is_before(&self, other: &TimeValue) -> bool {
-        self.seconds_since_epoch < other.seconds_since_epoch
+        return self < other;
     }
 
     pub fn add(&self, time_duration: TimeDuration) -> Self {
@@ -65,5 +66,33 @@ impl Into<f64> for TimeValue {
 impl From<f64> for TimeValue {
     fn from(value: f64) -> Self {
         return TimeValue::from_seconds_since_epoch(value);
+    }
+}
+
+impl PartialEq<Self> for TimeValue {
+    fn eq(&self, other: &Self) -> bool {
+        return self.seconds_since_epoch.eq(&other.seconds_since_epoch);
+    }
+}
+
+impl Eq for TimeValue {
+
+}
+
+impl PartialOrd<Self> for TimeValue {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        return self.seconds_since_epoch.partial_cmp(&other.seconds_since_epoch);
+    }
+}
+
+impl Ord for TimeValue {
+    fn cmp(&self, other: &Self) -> Ordering {
+        if self.seconds_since_epoch < other.seconds_since_epoch {
+            return Ordering::Less;
+        } else if self.seconds_since_epoch > other.seconds_since_epoch {
+            return Ordering::Greater;
+        } else {
+            return Ordering::Equal;
+        }
     }
 }

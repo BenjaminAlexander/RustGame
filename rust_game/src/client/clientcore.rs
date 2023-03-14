@@ -1,14 +1,13 @@
 use std::net::{Ipv4Addr, SocketAddrV4, SocketAddr, TcpStream, UdpSocket};
 use std::ops::ControlFlow::{Break, Continue};
-use std::str::FromStr;
-use crate::gametime::{GameTimer, GameTimerEvent, TimeMessage};
+use crate::gametime::{GameTimer, TimeMessage, TimeReceived};
 use crate::client::tcpinput::TcpInput;
 use crate::interface::GameTrait;
 use crate::client::tcpoutput::TcpOutput;
 use crate::messaging::{InitialInformation, InputMessage};
 use crate::gamemanager::{Manager, ManagerEvent, RenderReceiverMessage};
 use log::{trace};
-use crate::client::clientcore::ClientCoreEvent::{Connect, OnInitialInformation, OnInputEvent, OnTimeMessage};
+use crate::client::clientcore::ClientCoreEvent::{Connect, OnInitialInformation, OnInputEvent, GameTimerTick, RemoteTimeMessageEvent};
 use crate::client::clientgametimeobserver::ClientGameTimerObserver;
 use crate::client::clientmanagerobserver::ClientManagerObserver;
 use crate::client::udpoutput::{UdpOutput, UdpOutputEvent};
@@ -24,38 +23,41 @@ pub enum ClientCoreEvent<Game: GameTrait> {
     Connect(channel::Sender<RenderReceiverMessage<Game>>),
     OnInitialInformation(InitialInformation<Game>),
     OnInputEvent(Game::ClientInputEvent),
-    OnTimeMessage(TimeMessage)
+    GameTimerTick,
+    RemoteTimeMessageEvent(TimeReceived<TimeMessage>)
 }
 
 //TODO: make this an enum, get rid of all the options
 pub struct ClientCore<Game: GameTrait> {
     sender: eventhandling::Sender<ClientCoreEvent<Game>>,
-    server_ip: String,
+    server_ip: Ipv4Addr,
     input_event_handler: Game::ClientInputEventHandler,
     manager_sender_option: Option<eventhandling::Sender<ManagerEvent<Game>>>,
-    timer_sender_option: Option<eventhandling::Sender<GameTimerEvent<ClientGameTimerObserver<Game>>>>,
+    game_timer: Option<GameTimer<ClientGameTimerObserver<Game>>>,
     udp_input_sender_option: Option<eventhandling::Sender<()>>,
     udp_output_sender_option: Option<eventhandling::Sender<UdpOutputEvent<Game>>>,
     tcp_input_sender_option: Option<eventhandling::Sender<()>>,
     tcp_output_sender_option: Option<eventhandling::Sender<()>>,
+    render_receiver_sender: Option<channel::Sender<RenderReceiverMessage<Game>>>,
     initial_information: Option<InitialInformation<Game>>,
     last_time_message: Option<TimeMessage>
 }
 
 impl<Game: GameTrait> ClientCore<Game> {
 
-    pub fn new(server_ip: &str, sender: eventhandling::Sender<ClientCoreEvent<Game>>) -> Self {
+    pub fn new(server_ip: Ipv4Addr, sender: eventhandling::Sender<ClientCoreEvent<Game>>) -> Self {
 
         ClientCore {
             sender,
-            server_ip: server_ip.to_string(),
+            server_ip,
             input_event_handler: Game::new_input_event_handler(),
             manager_sender_option: None,
-            timer_sender_option: None,
+            game_timer: None,
             udp_input_sender_option: None,
             udp_output_sender_option: None,
             tcp_input_sender_option: None,
             tcp_output_sender_option: None,
+            render_receiver_sender: None,
             initial_information: None,
             last_time_message: None
         }
@@ -63,27 +65,9 @@ impl<Game: GameTrait> ClientCore<Game> {
 
     fn connect(mut self, render_receiver_sender: channel::Sender<RenderReceiverMessage<Game>>) -> ChannelEventResult<Self> {
 
-        let ip_addr_v4 = Ipv4Addr::from_str(self.server_ip.as_str()).unwrap();
-        let socket_addr_v4 = SocketAddrV4::new(ip_addr_v4, Game::TCP_PORT);
-        let socket_addr:SocketAddr = SocketAddr::from(socket_addr_v4);
+        let socket_addr_v4 = SocketAddrV4::new(self.server_ip, Game::TCP_PORT);
+        let socket_addr = SocketAddr::from(socket_addr_v4);
         let tcp_stream = TcpStream::connect(socket_addr).unwrap();
-
-        let server_udp_socket_addr_v4 = SocketAddrV4::new(ip_addr_v4, Game::UDP_PORT);
-
-        //TODO: pass in as a parameter
-        let udp_socket = UdpSocket::bind("127.0.0.1:0").unwrap();
-
-        let client_game_time_observer = ClientGameTimerObserver::new(
-            self.sender.clone(),
-            render_receiver_sender.clone());
-
-        let game_timer_builder = ThreadBuilder::new()
-            .name("ClientGameTimer")
-            .build_channel_for_event_handler::<GameTimer<ClientGameTimerObserver<Game>>>();
-
-        let udp_output_builder = ThreadBuilder::new()
-            .name("ClientUdpOutput")
-            .build_channel_for_event_handler::<UdpOutput<Game>>();
 
         let manager_sender = ThreadBuilder::new()
             .name("ClientManager")
@@ -93,10 +77,8 @@ impl<Game: GameTrait> ClientCore<Game> {
         let tcp_input_sender = ThreadBuilder::new()
             .name("ClientTcpInput")
             .spawn_listener(TcpInput::new(
-                game_timer_builder.clone_sender(),
                 manager_sender.clone(),
                 self.sender.clone(),
-                udp_output_builder.clone_sender(),
                 render_receiver_sender.clone(),
                 &tcp_stream).unwrap(), AsyncJoin::log_async_join)
             .unwrap();
@@ -106,37 +88,10 @@ impl<Game: GameTrait> ClientCore<Game> {
             .spawn_event_handler(TcpOutput::new(&tcp_stream).unwrap(), AsyncJoin::log_async_join)
             .unwrap();
 
-        let udp_output_join_handle = udp_output_builder.spawn_event_handler(
-            UdpOutput::<Game>::new(server_udp_socket_addr_v4, &udp_socket).unwrap(),
-            AsyncJoin::log_async_join
-        ).unwrap();
-
-        let udp_input_join_handle = ThreadBuilder::new()
-            .name("ClientUdpInput")
-            .spawn_listener(
-                UdpInput::new(
-                    server_udp_socket_addr_v4,
-                    &udp_socket,
-                    game_timer_builder.clone_sender(),
-                    manager_sender.clone()
-                ).unwrap(),
-                AsyncJoin::log_async_join)
-            .unwrap();
-
-        let game_timer = GameTimer::new(
-            Game::CLOCK_AVERAGE_SIZE,
-            client_game_time_observer,
-            game_timer_builder.clone_sender()
-        );
-
-        let game_timer_join_handle =  game_timer_builder.spawn_event_handler(game_timer, AsyncJoin::log_async_join).unwrap();
-
-        self.timer_sender_option = Some(game_timer_join_handle);
+        self.render_receiver_sender = Some(render_receiver_sender);
         self.manager_sender_option = Some(manager_sender);
         self.tcp_output_sender_option = Some(tcp_output_join_handle);
         self.tcp_input_sender_option = Some(tcp_input_sender);
-        self.udp_input_sender_option = Some(udp_input_join_handle);
-        self.udp_output_sender_option = Some(udp_output_join_handle);
 
         return Continue(TryForNextEvent(self));
     }
@@ -154,12 +109,53 @@ impl<Game: GameTrait> ClientCore<Game> {
     }
 
     fn on_initial_information(mut self, initial_information: InitialInformation<Game>) -> ChannelEventResult<Self> {
+
+        let client_game_time_observer = ClientGameTimerObserver::new(self.sender.clone());
+
+        let game_timer = GameTimer::new(
+            *initial_information.get_server_config(),
+            Game::CLOCK_AVERAGE_SIZE,
+            client_game_time_observer
+        );
+
+        let server_udp_socket_addr_v4 = SocketAddrV4::new(self.server_ip, Game::UDP_PORT);
+
+        //TODO: pass in as a parameter
+        let udp_socket = UdpSocket::bind("127.0.0.1:0").unwrap();
+
+        let udp_input_join_handle = ThreadBuilder::new()
+            .name("ClientUdpInput")
+            .spawn_listener(
+                UdpInput::new(
+                    server_udp_socket_addr_v4,
+                    &udp_socket,
+                    self.sender.clone(),
+                    self.manager_sender_option.as_ref().unwrap().clone()
+                ).unwrap(),
+                AsyncJoin::log_async_join)
+            .unwrap();
+
+        let udp_output_builder = ThreadBuilder::new()
+            .name("ClientUdpOutput")
+            .build_channel_for_event_handler::<UdpOutput<Game>>();
+
+        //TODO: unwrap after try_clone is not good
+        let udp_output_join_handle = udp_output_builder.spawn_event_handler(
+            UdpOutput::<Game>::new(server_udp_socket_addr_v4, udp_socket.try_clone().unwrap(), initial_information.clone()),
+            AsyncJoin::log_async_join
+        ).unwrap();
+
         self.initial_information = Some(initial_information);
+        self.game_timer = Some(game_timer);
+        self.udp_input_sender_option = Some(udp_input_join_handle);
+        self.udp_output_sender_option = Some(udp_output_join_handle);
 
         return Continue(TryForNextEvent(self));
     }
 
-    fn on_time_message(mut self, time_message: TimeMessage) -> ChannelEventResult<Self> {
+    fn on_game_timer_tick(mut self) -> ChannelEventResult<Self> {
+
+        let time_message = self.game_timer.as_ref().unwrap().create_timer_message();;
 
         trace!("TimeMessage step_index: {:?}", time_message.get_step());
 
@@ -196,8 +192,16 @@ impl<Game: GameTrait> ClientCore<Game> {
             }
         }
 
+
+        self.render_receiver_sender.as_ref().unwrap().send(RenderReceiverMessage::TimeMessage(time_message.clone())).unwrap();
+
         self.last_time_message = Some(time_message);
 
+        return Continue(TryForNextEvent(self));
+    }
+
+    fn on_remote_timer_message(mut self, time_message: TimeReceived<TimeMessage>) -> ChannelEventResult<Self> {
+        self.game_timer.as_mut().unwrap().on_time_message(time_message);
         return Continue(TryForNextEvent(self));
     }
 }
@@ -211,7 +215,9 @@ impl<Game: GameTrait> EventHandlerTrait for ClientCore<Game> {
             ChannelEvent::ReceivedEvent(_, Connect(render_receiver_sender)) => self.connect(render_receiver_sender),
             ChannelEvent::ReceivedEvent(_, OnInitialInformation(initial_information)) => self.on_initial_information(initial_information),
             ChannelEvent::ReceivedEvent(_, OnInputEvent(client_input_event)) => self.on_input_event(client_input_event),
-            ChannelEvent::ReceivedEvent(_, OnTimeMessage(time_message)) => self.on_time_message(time_message),
+            ChannelEvent::ReceivedEvent(_, GameTimerTick) => self.on_game_timer_tick(),
+            ChannelEvent::ReceivedEvent(_, RemoteTimeMessageEvent(time_message)) => self.on_remote_timer_message(time_message),
+            ChannelEvent::Timeout => Continue(WaitForNextEvent(self)),
             ChannelEvent::ChannelEmpty => Continue(WaitForNextEvent(self)),
             ChannelEvent::ChannelDisconnected => Break(())
         }

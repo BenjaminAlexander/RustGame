@@ -222,6 +222,7 @@ impl<Game: GameTrait> EventHandlerTrait for UdpOutput<Game> {
             ChannelEvent::ReceivedEvent(receive_meta_data, SendTimeMessage(time_message)) => self.on_time_message(receive_meta_data, time_message),
             ChannelEvent::ReceivedEvent(receive_meta_data, SendInputMessage(input_message)) => self.on_input_message(receive_meta_data, input_message),
             ChannelEvent::ReceivedEvent(receive_meta_data, SendServerInputMessage(server_input_message)) => self.on_server_input_message(receive_meta_data, server_input_message),
+            ChannelEvent::Timeout => Continue(WaitForNextEvent(self)),
             ChannelEvent::ChannelEmpty => Continue(WaitForNextEvent(self)),
             ChannelEvent::ChannelDisconnected => Break(())
         }

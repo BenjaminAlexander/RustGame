@@ -1,9 +1,12 @@
 use std::sync::mpsc;
 use crate::threading::channel::{ReceiveMetaData, SendMetaData};
+use crate::time::TimeDuration;
 
 pub type TryRecvError = mpsc::TryRecvError;
 
 pub type RecvError = mpsc::RecvError;
+
+pub type RecvTimeoutError = mpsc::RecvTimeoutError;
 
 pub struct Receiver<T> {
     receiver: mpsc::Receiver<(SendMetaData, T)>
@@ -36,6 +39,16 @@ impl<T> Receiver<T> {
 
     pub fn recv(&mut self) -> Result<T, RecvError> {
         let (_, value) = self.recv_meta_data()?;
+        return Ok(value);
+    }
+
+    pub fn recv_timeout_meta_data(&mut self, duration: TimeDuration) -> Result<(ReceiveMetaData, T), RecvTimeoutError> {
+        let (send_meta_data, value) = self.receiver.recv_timeout(duration.to_std())?;
+        return Ok((self.make_receive_meta_data(send_meta_data), value));
+    }
+
+    pub fn recv_timeout(&mut self, duration: TimeDuration) -> Result<T, RecvTimeoutError> {
+        let (_, value) = self.recv_timeout_meta_data(duration)?;
         return Ok(value);
     }
 

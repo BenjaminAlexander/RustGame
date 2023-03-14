@@ -61,6 +61,7 @@ impl<Game: GameTrait> EventHandlerTrait for TcpOutput<Game> {
         match channel_event {
             ChannelEvent::ReceivedEvent(_, SendInitialInformation(server_config, player_count, initial_state)) =>
                 self.send_initial_information(server_config, player_count, initial_state),
+            ChannelEvent::Timeout => Continue(WaitForNextEvent(self)),
             ChannelEvent::ChannelEmpty => Continue(WaitForNextEvent(self)),
             ChannelEvent::ChannelDisconnected => Break(())
         }

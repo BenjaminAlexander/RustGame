@@ -1,7 +1,7 @@
 use commons::time::TimeDuration;
 use serde::{Deserialize, Serialize};
 
-#[derive(Serialize, Deserialize, Clone, Debug)]
+#[derive(Serialize, Deserialize, Clone, Debug, Copy)]
 pub struct ServerConfig {
     step_duration: TimeDuration,
 }

@@ -241,6 +241,7 @@ impl<ManagerObserver: ManagerObserverTrait> EventHandlerTrait for Manager<Manage
             ChannelEvent::ReceivedEvent(_, InputEvent(input_message)) => self.on_input_message(input_message),
             ChannelEvent::ReceivedEvent(_, ServerInputEvent(server_input_message)) => self.on_server_input_message(server_input_message),
             ChannelEvent::ReceivedEvent(_, StateEvent(state_message)) => self.on_state_message(state_message),
+            ChannelEvent::Timeout => self.on_none_pending(),
             ChannelEvent::ChannelEmpty => self.on_none_pending(),
             ChannelEvent::ChannelDisconnected => Break(())
         }

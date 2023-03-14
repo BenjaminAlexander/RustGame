@@ -31,6 +31,14 @@ impl TimeDuration {
     pub fn to_std(&self) -> Duration {
         return Duration::from_secs_f64(self.seconds);
     }
+
+    pub fn is_positive(&self) -> bool {
+        return self.seconds > 0.0;
+    }
+
+    pub fn is_negetive(&self) -> bool {
+        return self.seconds < 0.0;
+    }
 }
 
 impl From<Duration> for TimeDuration {

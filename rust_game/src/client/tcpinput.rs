@@ -1,13 +1,11 @@
 use log::{error, info, warn};
 use std::net::TcpStream;
-use crate::gametime::GameTimerEvent;
 use commons::threading::{channel, eventhandling};
 use crate::messaging::ToClientMessageTCP;
 use std::io;
 use std::ops::ControlFlow::*;
 use crate::client::clientcore::ClientCoreEvent;
 use crate::client::ClientCoreEvent::OnInitialInformation;
-use crate::client::clientgametimeobserver::ClientGameTimerObserver;
 use crate::client::udpoutput::UdpOutputEvent;
 use crate::gamemanager::{ManagerEvent, RenderReceiverMessage};
 use crate::interface::GameTrait;
@@ -18,30 +16,24 @@ use commons::threading::listener::ListenedOrDidNotListen::Listened;
 pub struct TcpInput <Game: GameTrait> {
     player_index: Option<usize>,
     tcp_stream: TcpStream,
-    game_timer_sender: eventhandling::Sender<GameTimerEvent<ClientGameTimerObserver<Game>>>,
     manager_sender: eventhandling::Sender<ManagerEvent<Game>>,
     client_core_sender: eventhandling::Sender<ClientCoreEvent<Game>>,
-    udp_output_sender: eventhandling::Sender<UdpOutputEvent<Game>>,
     render_data_sender: channel::Sender<RenderReceiverMessage<Game>>
 }
 
 impl<Game: GameTrait> TcpInput<Game> {
 
     pub fn new(
-        game_timer_sender: eventhandling::Sender<GameTimerEvent<ClientGameTimerObserver<Game>>>,
         manager_sender: eventhandling::Sender<ManagerEvent<Game>>,
         client_core_sender: eventhandling::Sender<ClientCoreEvent<Game>>,
-        udp_output_sender: eventhandling::Sender<UdpOutputEvent<Game>>,
         render_data_sender: channel::Sender<RenderReceiverMessage<Game>>,
         tcp_stream: &TcpStream) -> io::Result<Self> {
 
         Ok(Self {
             player_index: None,
             tcp_stream: tcp_stream.try_clone()?,
-            game_timer_sender,
             manager_sender,
             client_core_sender,
-            udp_output_sender,
             render_data_sender
         })
     }
@@ -88,10 +80,8 @@ impl<Game: GameTrait> TcpInput<Game> {
                 info!("InitialInformation Received.  Player Index: {:?}", initial_information_message.get_player_index());
 
                 self.player_index = Some(initial_information_message.get_player_index());
-                self.game_timer_sender.send_event(GameTimerEvent::InitialInformationEvent(initial_information_message.clone())).unwrap();
                 self.manager_sender.send_event(ManagerEvent::InitialInformationEvent(initial_information_message.clone())).unwrap();
                 self.client_core_sender.send_event(OnInitialInformation(initial_information_message.clone())).unwrap();
-                self.udp_output_sender.send_event(UdpOutputEvent::InitialInformationEvent(initial_information_message.clone())).unwrap();
                 self.render_data_sender.send(RenderReceiverMessage::InitialInformation(initial_information_message)).unwrap();
             }
         }
