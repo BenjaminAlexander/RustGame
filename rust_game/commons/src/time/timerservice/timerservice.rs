@@ -15,6 +15,8 @@ use crate::time::TimeValue;
 
 pub struct TimeService<T: TimerCreationCallBack, U: TimerCallBack> {
     next_timer_id: usize,
+
+    //TODO: make this a vec deque
     timers: Vec<Timer<U>>,
     unscheduled_timers: HashMap<TimerId, Timer<U>>,
     phantom: PhantomData<T>

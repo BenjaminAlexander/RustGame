@@ -14,6 +14,7 @@ pub struct TimeValue {
 }
 
 impl TimeValue {
+
     pub fn now() -> Self {
         return Self {
             seconds_since_epoch: SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs_f64()

@@ -7,3 +7,5 @@ edition = "2021"
 
 [dependencies]
 commons = { path = "../commons" }
+log = { version = "0.4", features = ["std", "serde"] }
+log4rs = { version = "1.2.0"}
