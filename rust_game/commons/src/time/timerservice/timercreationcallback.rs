@@ -1,4 +1,4 @@
-use std::ops::Deref;
+use std::ops::{Deref, DerefMut};
 use crate::time::timerservice::timerid::TimerId;
 
 pub trait TimerCreationCallBack: Send + 'static {
@@ -13,6 +13,6 @@ impl<T: Fn(&TimerId) + Send + 'static> TimerCreationCallBack for T {
 
 impl TimerCreationCallBack for Box<dyn TimerCreationCallBack> {
     fn timer_created(&self, timer_id: &TimerId) {
-        (*self).timer_created(timer_id);
+        (*self).deref().timer_created(timer_id);
     }
 }

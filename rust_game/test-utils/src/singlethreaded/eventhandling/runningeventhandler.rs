@@ -94,17 +94,17 @@ impl <T: EventHandlerTrait, U: FnOnce(AsyncJoin<T::ThreadReturn>) + 'static> Run
             match x.event_handler.on_channel_event(event) {
                 Continue(WaitOrTryForNextEvent::WaitForNextEvent(event_handler)) => {
                     x.event_handler = event_handler;
-                    *running_handler.borrow_mut() = Some(x);
+                    running_handler.replace(Some(x));
                 }
                 Continue(WaitOrTryForNextEvent::WaitForNextEventOrTimeout(event_handler, timeout_duration)) => {
                     x.event_handler = event_handler;
                     x.set_to_waiting_with_timeout(running_handler, queue, timeout_duration);
-                    *running_handler.borrow_mut() = Some(x);
+                    running_handler.replace(Some(x));
                 }
                 Continue(WaitOrTryForNextEvent::TryForNextEvent(event_handler)) => {
                     x.event_handler = event_handler;
                     x.set_to_trying(running_handler, queue);
-                    *running_handler.borrow_mut() = Some(x);
+                    running_handler.replace(Some(x));
                 }
                 Break(result) => {
                     (x.join_call_back)(AsyncJoin::new(x.thread_builder, result));

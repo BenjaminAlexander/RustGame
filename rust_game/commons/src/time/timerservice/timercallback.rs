@@ -1,3 +1,5 @@
+use std::ops::{Deref, DerefMut};
+
 pub trait TimerCallBack: Send + 'static {
     fn tick(&mut self);
 }
@@ -10,6 +12,6 @@ impl<T: Fn() + Send + 'static> TimerCallBack for T {
 
 impl TimerCallBack for Box<dyn TimerCallBack> {
     fn tick(&mut self) {
-        (*self).tick();
+        self.deref_mut().tick();
     }
 }

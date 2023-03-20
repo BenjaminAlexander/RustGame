@@ -67,10 +67,10 @@ impl Queue {
         }
     }
 
-    pub fn run_events(queue: &Rc<RefCell<Self>>, time_value: TimeValue) {
+    pub fn run_events(queue: &Rc<RefCell<Self>>) {
         loop {
             if let Some(event) = queue.borrow_mut().queue.get(0) {
-                if event.get_time().is_after(&time_value) {
+                if event.get_time().is_after(&SimulatedTimeProvider::now()) {
                     return;
                 }
             }
@@ -98,7 +98,7 @@ impl Queue {
                 break;
             }
 
-            Self::run_events(queue, SimulatedTimeProvider::now());
+            Self::run_events(queue);
         }
 
         SimulatedTimeProvider::set_simulated_time(time_value);
