@@ -1,4 +1,4 @@
-use std::ops::{Deref, DerefMut};
+use std::ops::DerefMut;
 
 pub trait TimerCallBack: Send + 'static {
     fn tick(&mut self);

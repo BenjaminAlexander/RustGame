@@ -16,16 +16,16 @@ fn test_simulated_time_provider() {
 
     let cell_clone = cell.clone();
     let queue_clone = queue.clone();
-    TimeQueue::add_event_duration_from_now(&queue, five_seconds * 2.0, move || {
+    TimeQueue::add_event_at_duration_from_now(&queue, five_seconds * 2.0, move || {
         cell_clone.set(1);
 
-        TimeQueue::add_event_duration_from_now(&queue_clone, five_seconds, move || {
+        TimeQueue::add_event_at_duration_from_now(&queue_clone, five_seconds, move || {
             cell_clone.set(2);
         });
     });
 
     let cell_clone = cell.clone();
-    let id_to_remove = TimeQueue::add_event_duration_from_now(&queue, five_seconds * 4.0, move || {
+    let id_to_remove = TimeQueue::add_event_at_duration_from_now(&queue, five_seconds * 4.0, move || {
         cell_clone.set(3);
     });
 

@@ -39,7 +39,7 @@ fn timer_service_test() {
 
     let time_value = time_source.now().add(five_seconds);
 
-    event_handler_holder.send(TimerServiceEvent::CreateTimer(timer_creation_call_back, timer_tick_call_back, Some(Schedule::Once(time_value))));
+    event_handler_holder.send_event(TimerServiceEvent::CreateTimer(timer_creation_call_back, timer_tick_call_back, Some(Schedule::Once(time_value))));
 
     assert_eq!(None, *timer_id_cell.lock().unwrap());
 

@@ -1,4 +1,4 @@
-use std::ops::{Deref, DerefMut};
+use std::ops::Deref;
 use crate::time::timerservice::timerid::TimerId;
 
 pub trait TimerCreationCallBack: Send + 'static {
