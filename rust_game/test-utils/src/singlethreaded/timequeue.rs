@@ -4,18 +4,20 @@ use std::collections::VecDeque;
 use std::rc::Rc;
 use commons::time::{TimeDuration, TimeSource, TimeValue};
 use crate::singlethreaded::event::Event;
-use crate::time::SimulatedTimeProvider;
+use crate::time::SimulatedTimeSource;
 
-pub struct Queue {
+pub struct TimeQueue {
     next_event_id: usize,
+    time_source: SimulatedTimeSource,
     queue: VecDeque<Event>,
 }
 
-impl Queue {
+impl TimeQueue {
 
-    pub fn new() -> Rc<RefCell<Self>> {
+    pub fn new(time_source: SimulatedTimeSource) -> Rc<RefCell<Self>> {
         return Rc::new(RefCell::new(Self {
             next_event_id: 0,
+            time_source,
             queue: VecDeque::new()
         }));
     }
@@ -40,11 +42,13 @@ impl Queue {
     }
 
     pub fn add_event_now(queue: &Rc<RefCell<Self>>, function: impl FnOnce() + 'static) -> usize {
-        return Self::add_event_at_time(queue, SimulatedTimeProvider::now(), function);
+        let time = queue.borrow().time_source.now();
+        return Self::add_event_at_time(queue, time, function);
     }
 
     pub fn add_event_duration_from_now(queue: &Rc<RefCell<Self>>, duration: TimeDuration, function: impl FnOnce() + 'static) -> usize {
-        return Self::add_event_at_time(queue, SimulatedTimeProvider::now().add(duration), function);
+        let time = queue.borrow().time_source.now().add(duration);
+        return Self::add_event_at_time(queue, time, function);
     }
 
     pub fn remove_event(queue: &Rc<RefCell<Self>>, id: usize) {
@@ -69,8 +73,11 @@ impl Queue {
 
     pub fn run_events(queue: &Rc<RefCell<Self>>) {
         loop {
+
+            let now = queue.borrow().time_source.now();
+
             if let Some(event) = queue.borrow_mut().queue.get(0) {
-                if event.get_time().is_after(&SimulatedTimeProvider::now()) {
+                if event.get_time().is_after(&now) {
                     return;
                 }
             }
@@ -88,23 +95,27 @@ impl Queue {
 
         loop {
 
+            let time_value_to_run_events_at;
+
             if let Some(event) = queue.borrow_mut().queue.get(0) {
                 if event.get_time().is_after(&time_value) {
                     break;
                 } else {
-                    SimulatedTimeProvider::set_simulated_time(*event.get_time());
+                    time_value_to_run_events_at = *event.get_time();
                 }
             } else {
                 break;
             }
 
+            queue.borrow_mut().time_source.set_simulated_time(time_value_to_run_events_at);
             Self::run_events(queue);
         }
 
-        SimulatedTimeProvider::set_simulated_time(time_value);
+        queue.borrow_mut().time_source.set_simulated_time(time_value);
     }
 
     pub fn advance_time_for_duration(queue: &Rc<RefCell<Self>>, time_duration: TimeDuration) {
-        Self::advance_time(queue, SimulatedTimeProvider::now().add(time_duration));
+        let time = queue.borrow().time_source.now().add(time_duration);
+        Self::advance_time(queue, time);
     }
 }

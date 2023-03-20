@@ -1,3 +1,3 @@
-mod simulatedtimeprovider;
+mod simulatedtimesource;
 
-pub use self::simulatedtimeprovider::SimulatedTimeProvider;
+pub use self::simulatedtimesource::SimulatedTimeSource;

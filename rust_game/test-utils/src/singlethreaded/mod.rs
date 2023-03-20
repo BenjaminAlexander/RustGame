@@ -1,5 +1,5 @@
-mod queue;
+mod timequeue;
 mod event;
 pub mod eventhandling;
 
-pub use self::queue::Queue;
+pub use self::timequeue::TimeQueue;

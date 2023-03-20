@@ -4,17 +4,17 @@ use commons::threading::{AsyncJoin, ThreadBuilder};
 use commons::threading::channel::{ReceiveMetaData, SendMetaData};
 use commons::threading::eventhandling::{ChannelEvent, EventHandlerTrait};
 use crate::singlethreaded::eventhandling::runningeventhandler::RunningEventHandler;
-use crate::singlethreaded::Queue;
+use crate::singlethreaded::TimeQueue;
 
 #[derive(Clone)]
 pub struct EventHandlerHolder<T: EventHandlerTrait, U: FnOnce(AsyncJoin<T::ThreadReturn>) + 'static> {
     r: Rc<RefCell<Option<RunningEventHandler<T, U>>>>,
-    queue: Rc<RefCell<Queue>>,
+    queue: Rc<RefCell<TimeQueue>>,
 }
 
 impl <T: EventHandlerTrait, U: FnOnce(AsyncJoin<T::ThreadReturn>) + 'static> EventHandlerHolder<T, U> {
 
-    pub fn new(queue: Rc<RefCell<Queue>>, thread_builder: ThreadBuilder, event_handler: T, join_call_back: U) -> Self {
+    pub fn new(queue: Rc<RefCell<TimeQueue>>, thread_builder: ThreadBuilder, event_handler: T, join_call_back: U) -> Self {
         return Self {
             r: RunningEventHandler::new(&queue, thread_builder, event_handler, join_call_back),
             queue
@@ -30,7 +30,7 @@ impl <T: EventHandlerTrait, U: FnOnce(AsyncJoin<T::ThreadReturn>) + 'static> Eve
         let rc_clone = self.r.clone();
         let queue_clone = self.queue.clone();
 
-        Queue::add_event_now(&self.queue, move || {
+        TimeQueue::add_event_now(&self.queue, move || {
             let receive_meta_data = ReceiveMetaData::new(send_meta_data);
             RunningEventHandler::on_channel_event(&rc_clone, &queue_clone, ChannelEvent::ReceivedEvent(receive_meta_data, event));
         });

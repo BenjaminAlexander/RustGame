@@ -5,7 +5,7 @@ use std::rc::Rc;
 use commons::threading::{AsyncJoin, ThreadBuilder};
 use commons::threading::eventhandling::{ChannelEvent, ChannelEventResult, EventHandlerTrait, WaitOrTryForNextEvent};
 use commons::time::TimeDuration;
-use crate::singlethreaded::Queue;
+use crate::singlethreaded::TimeQueue;
 
 enum State {
     Waiting,
@@ -23,7 +23,7 @@ pub struct RunningEventHandler<T: EventHandlerTrait, U: FnOnce(AsyncJoin<T::Thre
 
 impl <T: EventHandlerTrait, U: FnOnce(AsyncJoin<T::ThreadReturn>) + 'static> RunningEventHandler<T, U> {
 
-    pub fn new(queue: &Rc<RefCell<Queue>>, thread_builder: ThreadBuilder, event_handler: T, join_call_back: U) -> Rc<RefCell<Option<Self>>> {
+    pub fn new(queue: &Rc<RefCell<TimeQueue>>, thread_builder: ThreadBuilder, event_handler: T, join_call_back: U) -> Rc<RefCell<Option<Self>>> {
 
         let new = Self {
             event_handler,
@@ -42,48 +42,48 @@ impl <T: EventHandlerTrait, U: FnOnce(AsyncJoin<T::ThreadReturn>) + 'static> Run
         return rc;
     }
 
-    fn set_to_waiting(&mut self, queue: &Rc<RefCell<Queue>>) {
+    fn set_to_waiting(&mut self, queue: &Rc<RefCell<TimeQueue>>) {
 
         match self.state {
             State::Waiting => {
                 //NO_OP
             }
             State::WaitingOrTimeout(queue_event) => {
-                Queue::remove_event(&queue, queue_event);
+                TimeQueue::remove_event(&queue, queue_event);
             }
             State::Trying(queue_event) => {
-                Queue::remove_event(&queue, queue_event);
+                TimeQueue::remove_event(&queue, queue_event);
             }
         }
 
         self.state = State::Waiting;
     }
 
-    fn set_to_trying(&mut self, self_rc: &Rc<RefCell<Option<Self>>>, queue: &Rc<RefCell<Queue>>) {
+    fn set_to_trying(&mut self, self_rc: &Rc<RefCell<Option<Self>>>, queue: &Rc<RefCell<TimeQueue>>) {
         self.set_to_waiting(queue);
 
         let self_rc_clone = self_rc.clone();
         let queue_clone = queue.clone();
-        let queue_event = Queue::add_event_now(&queue, move || {
+        let queue_event = TimeQueue::add_event_now(&queue, move || {
             RunningEventHandler::on_channel_event(&self_rc_clone, &queue_clone, ChannelEvent::ChannelEmpty);
         });
 
         self.state = State::Trying(queue_event);
     }
 
-    fn set_to_waiting_with_timeout(&mut self, self_rc: &Rc<RefCell<Option<Self>>>, queue: &Rc<RefCell<Queue>>, timeout_duration: TimeDuration) {
+    fn set_to_waiting_with_timeout(&mut self, self_rc: &Rc<RefCell<Option<Self>>>, queue: &Rc<RefCell<TimeQueue>>, timeout_duration: TimeDuration) {
         self.set_to_waiting(queue);
 
         let self_rc_clone = self_rc.clone();
         let queue_clone = queue.clone();
-        let queue_event = Queue::add_event_duration_from_now(&queue, timeout_duration, move ||{
+        let queue_event = TimeQueue::add_event_duration_from_now(&queue, timeout_duration, move ||{
             RunningEventHandler::on_channel_event(&self_rc_clone, &queue_clone, ChannelEvent::Timeout);
         });
 
         self.state = State::WaitingOrTimeout(queue_event);
     }
 
-    pub fn on_channel_event(running_handler: &Rc<RefCell<Option<Self>>>, queue: &Rc<RefCell<Queue>>, event: ChannelEvent<T::Event>) {
+    pub fn on_channel_event(running_handler: &Rc<RefCell<Option<Self>>>, queue: &Rc<RefCell<TimeQueue>>, event: ChannelEvent<T::Event>) {
 
         //TODO: rename x
         let taken = running_handler.take();
