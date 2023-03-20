@@ -122,7 +122,7 @@ struct GameTimerCreationCallBack {
 }
 
 impl TimerCreationCallBack for GameTimerCreationCallBack {
-    fn timer_created(self, timer_id: &TimerId) {
+    fn timer_created(&self, timer_id: &TimerId) {
         warn!("Timer Created: {:?}", timer_id);
     }
 }

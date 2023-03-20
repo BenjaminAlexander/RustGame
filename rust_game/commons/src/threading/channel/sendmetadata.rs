@@ -6,6 +6,7 @@ pub struct SendMetaData {
 
 impl SendMetaData {
 
+    //TODO: add time source
     pub fn new() -> Self {
         return SendMetaData {
             time_sent: TimeValue::now()
