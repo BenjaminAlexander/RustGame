@@ -7,7 +7,7 @@ use crate::server::tcpinput::TcpInput;
 use commons::threading::{eventhandling, ThreadBuilder};
 use crate::server::{TcpListenerThread, ServerConfig};
 use crate::server::tcpoutput::{TcpOutput, TcpOutputEvent};
-use crate::gametime::{GameTimer, TimeMessage};
+use crate::gametime::GameTimer;
 use crate::gamemanager::{Manager, ManagerEvent, RenderReceiverMessage};
 use crate::messaging::{InputMessage, InitialInformation};
 use std::str::FromStr;

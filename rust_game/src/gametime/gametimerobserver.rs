@@ -1,5 +1,4 @@
 use crate::gametime::TimeMessage;
-use crate::interface::GameTrait;
 
 pub trait GameTimerObserverTrait : 'static + Send {
 

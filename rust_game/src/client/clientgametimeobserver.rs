@@ -1,9 +1,6 @@
 use crate::client::ClientCoreEvent;
 use crate::client::ClientCoreEvent::GameTimerTick;
-use crate::gamemanager::RenderReceiverMessage;
-use crate::gametime::{GameTimerObserverTrait, TimeMessage};
 use crate::interface::GameTrait;
-use commons::threading::channel::Sender;
 use commons::threading::eventhandling;
 use commons::time::timerservice::TimerCallBack;
 

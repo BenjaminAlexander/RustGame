@@ -1,15 +1,10 @@
-use std::ops::ControlFlow::{Break, Continue};
 use commons::stats::RollingAverage;
 use commons::time::{TimeValue, TimeDuration};
 use crate::gametime::{TimeMessage, TimeReceived};
-use chrono::Local;
-use timer::{Guard, Timer};
-use log::{trace, info, warn, error};
-use crate::gametime::gametimerobserver::GameTimerObserverTrait;
+use timer::Timer;
+use log::{trace, info, warn};
 use crate::server::ServerConfig;
-use commons::threading::channel::ReceiveMetaData;
-use commons::threading::eventhandling::{ChannelEvent, ChannelEventResult, EventHandlerTrait, Sender};
-use commons::threading::eventhandling::WaitOrTryForNextEvent::{TryForNextEvent, WaitForNextEvent};
+use commons::threading::eventhandling::Sender;
 use commons::threading::{AsyncJoin, ThreadBuilder};
 use commons::time::timerservice::{Schedule, TimerCallBack, TimerCreationCallBack, TimerId, TimerServiceEvent, TimeService};
 
@@ -17,6 +12,7 @@ const TICK_LATENESS_WARN_DURATION: TimeDuration = TimeDuration::from_seconds(0.0
 const CLIENT_ERROR_WARN_DURATION: TimeDuration = TimeDuration::from_seconds(0.02);
 
 pub struct GameTimer<T: TimerCallBack> {
+    //TODO: remove timer
     timer: Timer,
     server_config: ServerConfig,
     start: Option<TimeValue>,

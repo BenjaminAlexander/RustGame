@@ -6,7 +6,6 @@ use std::io;
 use std::ops::ControlFlow::*;
 use crate::client::clientcore::ClientCoreEvent;
 use crate::client::ClientCoreEvent::OnInitialInformation;
-use crate::client::udpoutput::UdpOutputEvent;
 use crate::gamemanager::{ManagerEvent, RenderReceiverMessage};
 use crate::interface::GameTrait;
 use commons::threading::channel::ReceiveMetaData;

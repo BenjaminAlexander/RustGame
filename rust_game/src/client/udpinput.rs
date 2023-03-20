@@ -7,7 +7,6 @@ use crate::interface::GameTrait;
 use std::io;
 use std::ops::ControlFlow::{Break, Continue};
 use log::{debug, error, warn};
-use crate::client::clientgametimeobserver::ClientGameTimerObserver;
 use crate::gamemanager::ManagerEvent;
 use commons::threading::channel::ReceiveMetaData;
 use commons::threading::listener::{ListenerEventResult, ListenerTrait, ListenMetaData, ListenResult};

@@ -1,6 +1,6 @@
 use std::cell::Cell;
 use std::rc::Rc;
-use commons::time::{TimeDuration, TimeSource};
+use commons::time::TimeDuration;
 use test_utils::singlethreaded::TimeQueue;
 use test_utils::time::SimulatedTimeSource;
 

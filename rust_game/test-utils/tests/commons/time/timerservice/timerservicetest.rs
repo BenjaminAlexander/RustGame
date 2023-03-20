@@ -1,5 +1,3 @@
-use std::cell::Cell;
-use std::rc::Rc;
 use std::sync::{Arc, Mutex};
 use commons::threading::{AsyncJoin, ThreadBuilder};
 use commons::time::{TimeDuration, TimeSource};

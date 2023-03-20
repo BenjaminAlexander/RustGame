@@ -155,7 +155,7 @@ impl<Game: GameTrait> ClientCore<Game> {
 
     fn on_game_timer_tick(mut self) -> ChannelEventResult<Self> {
 
-        let time_message = self.game_timer.as_ref().unwrap().create_timer_message();;
+        let time_message = self.game_timer.as_ref().unwrap().create_timer_message();
 
         trace!("TimeMessage step_index: {:?}", time_message.get_step());
 
