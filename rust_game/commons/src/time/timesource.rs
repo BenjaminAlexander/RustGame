@@ -1,6 +1,6 @@
 use crate::time::TimeValue;
 
-pub trait TimeSource: Clone + Send {
+pub trait TimeSource: Default + Clone + Send {
 
     fn now(&self) -> TimeValue;
 

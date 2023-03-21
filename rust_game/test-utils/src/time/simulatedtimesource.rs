@@ -21,6 +21,12 @@ impl SimulatedTimeSource {
     }
 }
 
+impl Default for SimulatedTimeSource {
+    fn default() -> Self {
+        return Self::new();
+    }
+}
+
 impl TimeSource for SimulatedTimeSource {
     fn now(&self) -> TimeValue {
         return *self.simulated_time.lock().unwrap();
