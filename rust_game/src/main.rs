@@ -2,7 +2,8 @@ use std::{thread, time, io, process};
 use std::net::Ipv4Addr;
 use std::path::PathBuf;
 use std::str::FromStr;
-use log::{error, info};
+use log::{error, info, LevelFilter};
+use commons::logging::LoggingConfigBuilder;
 use crate::client::ClientCoreEvent::Connect;
 use crate::gamemanager::RenderReceiver;
 use crate::simplegame::{SimpleInput, SimpleState, SimpleInputEvent, SimpleInputEventHandler, SimpleWindow, SimpleServerInput, SimpleGameImpl};
@@ -13,7 +14,6 @@ use crate::server::ServerCoreEvent;
 mod simplegame;
 mod messaging;
 mod server;
-mod logging;
 mod interface;
 mod gametime;
 mod client;
@@ -44,7 +44,10 @@ pub fn main() {
     log_file_path.push("log");
     log_file_path.push(format!("{}-{}.log", window_name, process::id()));
 
-    logging::init_logging(log_file_path);
+    LoggingConfigBuilder::new()
+        .add_console_appender()
+        .add_file_appender(log_file_path)
+        .init(LevelFilter::Info);
 
     info!("args: {:?}", args);
 
