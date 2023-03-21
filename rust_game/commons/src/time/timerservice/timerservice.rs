@@ -1,6 +1,7 @@
 use std::collections::HashMap;
 use std::marker::PhantomData;
 use log::{info, warn};
+use crate::factory::FactoryTrait;
 use crate::threading::channel::ReceiveMetaData;
 use crate::threading::eventhandling::{ChannelEvent, ChannelEventResult, EventHandlerTrait, WaitOrTryForNextEvent};
 use crate::threading::eventhandling::ChannelEvent::{Timeout, ChannelEmpty, ChannelDisconnected, ReceivedEvent};
@@ -13,7 +14,8 @@ use crate::time::timerservice::timerserviceevent::TimerServiceEvent;
 use crate::time::timerservice::timerserviceevent::TimerServiceEvent::{CancelTimer, CreateTimer, RescheduleTimer};
 use crate::time::TimeValue;
 
-pub struct TimeService<T: TimerCreationCallBack, U: TimerCallBack> {
+pub struct TimeService<Factory: FactoryTrait, T: TimerCreationCallBack, U: TimerCallBack> {
+    factory: Factory,
     next_timer_id: usize,
 
     //TODO: make this a vec deque
@@ -22,10 +24,11 @@ pub struct TimeService<T: TimerCreationCallBack, U: TimerCallBack> {
     phantom: PhantomData<T>
 }
 
-impl<T: TimerCreationCallBack, U: TimerCallBack> TimeService<T, U> {
+impl<Factory: FactoryTrait, T: TimerCreationCallBack, U: TimerCallBack> TimeService<Factory, T, U> {
 
-    pub fn new() -> Self {
+    pub fn new(factory: Factory,) -> Self {
         return Self {
+            factory,
             next_timer_id: 0,
             timers: Vec::new(),
             unscheduled_timers: HashMap::new(),
@@ -66,7 +69,7 @@ impl<T: TimerCreationCallBack, U: TimerCallBack> TimeService<T, U> {
         info!("Trigger timers...");
 
         loop {
-            let now = TimeValue::now();
+            let now = self.factory.now();
 
             if let Some(timer) = self.timers.get(0) {
 
@@ -155,7 +158,7 @@ impl<T: TimerCreationCallBack, U: TimerCallBack> TimeService<T, U> {
     }
 }
 
-impl<T: TimerCreationCallBack, U: TimerCallBack> EventHandlerTrait for TimeService<T, U> {
+impl<Factory: FactoryTrait, T: TimerCreationCallBack, U: TimerCallBack> EventHandlerTrait for TimeService<Factory, T, U> {
     type Event = TimerServiceEvent<T, U>;
     type ThreadReturn = ();
 

@@ -1,3 +1,4 @@
-mod factory;
+mod factorytrait;
+mod realfactory;
 
-pub use self::factory::Factory;
+pub use self::factorytrait::FactoryTrait;

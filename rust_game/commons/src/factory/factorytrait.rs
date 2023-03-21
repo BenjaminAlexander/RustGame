@@ -1,7 +1,5 @@
 use crate::time::TimeValue;
 
-pub trait TimeSource: Default + Clone + Send {
-
+pub trait FactoryTrait: Clone + Send + 'static {
     fn now(&self) -> TimeValue;
-
 }

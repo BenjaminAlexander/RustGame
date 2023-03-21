@@ -1,24 +1,27 @@
 use std::sync::mpsc;
+use crate::factory::FactoryTrait;
 use crate::threading::channel::SendMetaData;
 use crate::threading::eventhandling;
 use crate::threading::eventhandling::EventOrStopThread::{Event, StopThread};
 
 pub type SendError<T> = mpsc::SendError<(SendMetaData, T)>;
 
-pub struct Sender<T> {
-    sender: mpsc::Sender<(SendMetaData, T)>
+pub struct Sender<Factory: FactoryTrait, T> {
+    sender: mpsc::Sender<(SendMetaData, T)>,
+    factory: Factory
 }
 
-impl<T> Sender<T> {
+impl<Factory: FactoryTrait, T> Sender<Factory, T> {
 
-    pub fn new(sender: mpsc::Sender<(SendMetaData, T)>) -> Self {
+    pub fn new(factory: Factory, sender: mpsc::Sender<(SendMetaData, T)>) -> Self {
         return Self{
-            sender
+            sender,
+            factory
         }
     }
 
     pub fn send(&self, value: T) -> Result<(), SendError<T>> {
-        return self.sender.send((SendMetaData::new(), value));
+        return self.sender.send((SendMetaData::new(&self.factory), value));
     }
 
 }
@@ -34,8 +37,11 @@ impl<T> eventhandling::Sender<T> {
     }
 }
 
-impl<T> Clone for Sender<T> {
+impl<Factory: FactoryTrait, T> Clone for Sender<Factory, T> {
     fn clone(&self) -> Self {
-        Self { sender: self.sender.clone() }
+        return Self {
+            sender: self.sender.clone(),
+            factory: self.factory.clone(),
+        };
     }
 }

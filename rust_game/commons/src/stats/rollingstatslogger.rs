@@ -1,10 +1,12 @@
 use std::fmt::Write;
 use std::marker::PhantomData;
 use log::info;
+use crate::factory::FactoryTrait;
 use crate::stats::RollingStats;
 use crate::time::{TimeDuration, TimeValue};
 
-pub struct RollingStatsLogger<T: Into<f64>> {
+pub struct RollingStatsLogger<T: Into<f64>, U: FactoryTrait> {
+    time_source: U,
     min_log_interval: TimeDuration,
     last_log: TimeValue,
     need_to_log: bool,
@@ -12,12 +14,16 @@ pub struct RollingStatsLogger<T: Into<f64>> {
     phantom: PhantomData<T>
 }
 
-impl<T: Into<f64>> RollingStatsLogger<T> {
+impl<T: Into<f64>, U: FactoryTrait> RollingStatsLogger<T, U> {
 
-    pub fn new(size: usize, standard_deviation_ration: f64, min_log_interval: TimeDuration) -> Self {
+    pub fn new(size: usize, standard_deviation_ration: f64, min_log_interval: TimeDuration, time_source: U) -> Self {
+
+        let last_log = time_source.now();
+
         Self {
+            time_source,
             min_log_interval,
-            last_log: TimeValue::now(),
+            last_log,
             need_to_log: false,
             rolling_stats: RollingStats::new(size, standard_deviation_ration),
             phantom: PhantomData::default()
@@ -25,7 +31,7 @@ impl<T: Into<f64>> RollingStatsLogger<T> {
     }
 
     pub fn add_value(&mut self, value: T) {
-        let now = TimeValue::now();
+        let now = self.time_source.now();
 
         if let Some(value_of_interest) = self.rolling_stats.add_value(value.into()) {
             if now.duration_since(&self.last_log) > self.min_log_interval {

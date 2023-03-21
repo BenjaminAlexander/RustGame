@@ -1,3 +1,4 @@
+use crate::factory::FactoryTrait;
 use crate::time::TimeValue;
 
 pub struct SendMetaData {
@@ -6,10 +7,9 @@ pub struct SendMetaData {
 
 impl SendMetaData {
 
-    //TODO: add time source
-    pub fn new() -> Self {
+    pub fn new(factory: &impl FactoryTrait) -> Self {
         return SendMetaData {
-            time_sent: TimeValue::now()
+            time_sent: factory.now()
         };
     }
 
