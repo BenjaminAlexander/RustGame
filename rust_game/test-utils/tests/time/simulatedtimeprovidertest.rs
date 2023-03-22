@@ -1,4 +1,4 @@
-use commons::time::{TimeSource, TimeValue};
+use commons::time::TimeValue;
 use test_utils::time::SimulatedTimeSource;
 
 #[test]

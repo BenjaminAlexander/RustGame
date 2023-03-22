@@ -26,7 +26,7 @@ pub struct TimeService<Factory: FactoryTrait, T: TimerCreationCallBack, U: Timer
 
 impl<Factory: FactoryTrait, T: TimerCreationCallBack, U: TimerCallBack> TimeService<Factory, T, U> {
 
-    pub fn new(factory: Factory,) -> Self {
+    pub fn new(factory: Factory) -> Self {
         return Self {
             factory,
             next_timer_id: 0,

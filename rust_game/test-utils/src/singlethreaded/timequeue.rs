@@ -2,13 +2,14 @@ use std::cell::RefCell;
 use log::warn;
 use std::collections::VecDeque;
 use std::rc::Rc;
-use commons::time::{TimeDuration, TimeSource, TimeValue};
+use commons::factory::FactoryTrait;
+use commons::time::{TimeDuration, TimeValue};
 use crate::singlethreaded::event::Event;
-use crate::time::SimulatedTimeSource;
+use crate::singlethreaded::singlethreadedfactory::SingleThreadedFactory;
 
 #[derive(Clone)]
 pub struct TimeQueue {
-    time_source: SimulatedTimeSource,
+    factory: SingleThreadedFactory,
     internal: Rc<RefCell<TimeQueueInternal>>
 }
 
@@ -19,7 +20,7 @@ struct TimeQueueInternal {
 
 impl TimeQueue {
 
-    pub fn new(time_source: SimulatedTimeSource) -> Self {
+    pub fn new(factory: SingleThreadedFactory) -> Self {
 
         let internal = TimeQueueInternal {
             next_event_id: 0,
@@ -27,13 +28,13 @@ impl TimeQueue {
         };
 
         return Self {
-            time_source,
+            factory,
             internal: Rc::new(RefCell::new(internal))
         };
     }
 
-    pub fn get_time_source(&self) -> &SimulatedTimeSource {
-        return &self.time_source;
+    pub fn get_factory(&self) -> &SingleThreadedFactory {
+        return &self.factory;
     }
 
     pub fn add_event_at_time(&self, time: TimeValue, function: impl FnOnce() + 'static) -> usize {
@@ -41,12 +42,12 @@ impl TimeQueue {
     }
 
     pub fn add_event_now(&self, function: impl FnOnce() + 'static) -> usize {
-        let time = self.time_source.now();
+        let time = self.factory.now();
         return self.add_event_at_time(time, function);
     }
 
     pub fn add_event_at_duration_from_now(&self, duration: TimeDuration, function: impl FnOnce() + 'static) -> usize {
-        let time = self.time_source.now().add(duration);
+        let time = self.factory.now().add(duration);
         return self.add_event_at_time(time, function);
     }
 
@@ -55,7 +56,7 @@ impl TimeQueue {
     }
 
     pub fn run_events(&self) {
-        let now = self.time_source.now();
+        let now = self.factory.now();
         self.advance_time_until(now);
     }
 
@@ -67,7 +68,7 @@ impl TimeQueue {
 
             match event {
                 Some(event) => {
-                    self.time_source.set_simulated_time(*event.get_time());
+                    self.factory.get_simulated_time_source().set_simulated_time(*event.get_time());
                     event.run();
                 },
                 None => {
@@ -76,11 +77,11 @@ impl TimeQueue {
             }
         }
 
-        self.time_source.set_simulated_time(time_value);
+        self.factory.get_simulated_time_source().set_simulated_time(time_value);
     }
 
     pub fn advance_time_for_duration(&self, time_duration: TimeDuration) {
-        let time = self.time_source.now().add(time_duration);
+        let time = self.factory.now().add(time_duration);
         self.advance_time_until(time);
     }
 }

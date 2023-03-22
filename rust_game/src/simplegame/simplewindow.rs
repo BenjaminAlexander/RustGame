@@ -8,23 +8,27 @@ use piston::input::Input as PistonInput;
 use graphics::*;
 use glutin_window::GlutinWindow as Window;
 use log::info;
+use commons::factory::FactoryTrait;
 use crate::client::ClientCoreEvent::OnInputEvent;
 use crate::simplegame::simplegameimpl::SimpleGameImpl;
 
-pub struct SimpleWindow {
+pub struct SimpleWindow<Factory: FactoryTrait> {
+    factory: Factory,
     window_name: String,
-    render_receiver: RenderReceiver<SimpleGameImpl>,
-    //TODO: don't expose eventhandling, sender or ClientCore, or ClientCoreEvent
+    render_receiver: RenderReceiver<Factory, SimpleGameImpl>,
+    //TODO: don't expose eventhandling, sender or ClientCore, or ClientCoreEvent, or GameFactoryTrait
     client_core_sender_option: Option<eventhandling::Sender<ClientCoreEvent<SimpleGameImpl>>>
 }
 
-impl SimpleWindow {
+impl<Factory: FactoryTrait> SimpleWindow<Factory> {
 
-    pub fn new(window_name: String,
-               render_receiver: RenderReceiver<SimpleGameImpl>,
+    pub fn new(factory: Factory,
+               window_name: String,
+               render_receiver: RenderReceiver<Factory, SimpleGameImpl>,
                client_core_sender_option: Option<eventhandling::Sender<ClientCoreEvent<SimpleGameImpl>>>) -> Self {
 
         return Self{
+            factory,
             window_name,
             render_receiver,
             client_core_sender_option
@@ -46,7 +50,9 @@ impl SimpleWindow {
 
         let mut gl = GlGraphics::new(opengl);
 
-        let mut simple_window = SimpleWindow{
+        //TODO: why this?
+        let mut simple_window = SimpleWindow {
+            factory: self.factory,
             window_name: self.window_name,
             render_receiver: self.render_receiver,
             client_core_sender_option: self.client_core_sender_option
@@ -95,7 +101,7 @@ impl SimpleWindow {
 
     fn input(&mut self, input: PistonInput) {
         if let Some(core_sender) = self.client_core_sender_option.as_ref() {
-            core_sender.send_event(OnInputEvent(SimpleInputEvent::new(input))).unwrap();
+            core_sender.send_event(&self.factory, OnInputEvent(SimpleInputEvent::new(input))).unwrap();
         }
     }
 }

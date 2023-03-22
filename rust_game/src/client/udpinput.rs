@@ -3,22 +3,24 @@ use commons::time::{TimeDuration, TimeValue};
 use crate::gametime::TimeReceived;
 use crate::messaging::{ToClientMessageUDP, MAX_UDP_DATAGRAM_SIZE, MessageFragment, FragmentAssembler};
 use commons::threading::{eventhandling, listener};
-use crate::interface::GameTrait;
+use crate::interface::GameFactoryTrait;
 use std::io;
 use std::ops::ControlFlow::{Break, Continue};
 use log::{debug, error, warn};
+use commons::factory::FactoryTrait;
 use crate::gamemanager::ManagerEvent;
 use commons::threading::channel::ReceiveMetaData;
 use commons::threading::listener::{ListenerEventResult, ListenerTrait, ListenMetaData, ListenResult};
 use commons::threading::listener::ListenedOrDidNotListen::{DidNotListen, Listened};
 use crate::client::ClientCoreEvent;
 
-pub struct UdpInput<Game: GameTrait> {
+pub struct UdpInput<GameFactory: GameFactoryTrait> {
+    factory: GameFactory::Factory,
     server_socket_addr: SocketAddr,
     socket: UdpSocket,
     fragment_assembler: FragmentAssembler,
-    core_sender: eventhandling::Sender<ClientCoreEvent<Game>>,
-    manager_sender: eventhandling::Sender<ManagerEvent<Game>>,
+    core_sender: eventhandling::Sender<ClientCoreEvent<GameFactory::Game>>,
+    manager_sender: eventhandling::Sender<ManagerEvent<GameFactory::Game>>,
 
     //metrics
     time_of_last_state_receive: TimeValue,
@@ -26,13 +28,14 @@ pub struct UdpInput<Game: GameTrait> {
     time_of_last_server_input_receive: TimeValue,
 }
 
-impl<Game: GameTrait> UdpInput<Game> {
+impl<GameFactory: GameFactoryTrait> UdpInput<GameFactory> {
 
     pub fn new(
+        factory: GameFactory::Factory,
         server_socket_addr_v4: SocketAddrV4,
         socket: &UdpSocket,
-        core_sender: eventhandling::Sender<ClientCoreEvent<Game>>,
-        manager_sender: eventhandling::Sender<ManagerEvent<Game>>) -> io::Result<Self> {
+        core_sender: eventhandling::Sender<ClientCoreEvent<GameFactory::Game>>,
+        manager_sender: eventhandling::Sender<ManagerEvent<GameFactory::Game>>) -> io::Result<Self> {
 
         let server_socket_addr = SocketAddr::from(server_socket_addr_v4);
 
@@ -45,17 +48,18 @@ impl<Game: GameTrait> UdpInput<Game> {
             manager_sender,
 
             //metrics
-            time_of_last_state_receive: TimeValue::now(),
-            time_of_last_input_receive: TimeValue::now(),
-            time_of_last_server_input_receive: TimeValue::now(),
+            time_of_last_state_receive: factory.now(),
+            time_of_last_input_receive: factory.now(),
+            time_of_last_server_input_receive: factory.now(),
+            factory,
         });
     }
 }
 
-impl<Game: GameTrait> ListenerTrait for UdpInput<Game> {
+impl<GameFactory: GameFactoryTrait> ListenerTrait for UdpInput<GameFactory> {
     type Event = ();
     type ThreadReturn = ();
-    type ListenFor = ToClientMessageUDP<Game>;
+    type ListenFor = ToClientMessageUDP<GameFactory::Game>;
 
     fn listen(mut self) -> ListenResult<Self> {
         let mut buf = [0; MAX_UDP_DATAGRAM_SIZE];
@@ -76,7 +80,7 @@ impl<Game: GameTrait> ListenerTrait for UdpInput<Game> {
         let filled_buf = &mut buf[..number_of_bytes];
         let fragment = MessageFragment::from_vec(filled_buf.to_vec());
 
-        if let Some(message_buf) = self.fragment_assembler.add_fragment(fragment) {
+        if let Some(message_buf) = self.fragment_assembler.add_fragment(&self.factory, fragment) {
 
             match rmp_serde::from_read_ref(&message_buf) {
                 Ok(message) => {
@@ -109,27 +113,27 @@ impl<Game: GameTrait> ListenerTrait for UdpInput<Game> {
     fn on_stop(self, _: ReceiveMetaData) -> Self::ThreadReturn { () }
 }
 
-impl<Game: GameTrait> UdpInput<Game> {
+impl<GameFactory: GameFactoryTrait> UdpInput<GameFactory> {
 
-    fn handle_received_message(mut self, listen_meta_data: ListenMetaData, value: ToClientMessageUDP<Game>) -> ListenerEventResult<Self> {
+    fn handle_received_message(mut self, listen_meta_data: ListenMetaData, value: ToClientMessageUDP<GameFactory::Game>) -> ListenerEventResult<Self> {
 
         let time_received = listen_meta_data.get_time_received();
 
         match value {
             ToClientMessageUDP::TimeMessage(time_message) => {
                 //info!("Time message: {:?}", time_message.get_step());
-                self.core_sender.send_event(ClientCoreEvent::RemoteTimeMessageEvent(TimeReceived::new(time_received, time_message))).unwrap();
+                self.core_sender.send_event(&self.factory, ClientCoreEvent::RemoteTimeMessageEvent(TimeReceived::new(time_received, time_message))).unwrap();
             }
             ToClientMessageUDP::InputMessage(input_message) => {
                 //TODO: ignore input messages from this player
                 //info!("Input message: {:?}", input_message.get_step());
                 self.time_of_last_input_receive = time_received;
-                self.manager_sender.send_event(ManagerEvent::InputEvent(input_message.clone())).unwrap();
+                self.manager_sender.send_event(&self.factory, ManagerEvent::InputEvent(input_message.clone())).unwrap();
             }
             ToClientMessageUDP::ServerInputMessage(server_input_message) => {
                 //info!("Server Input message: {:?}", server_input_message.get_step());
                 self.time_of_last_server_input_receive = time_received;
-                self.manager_sender.send_event(ManagerEvent::ServerInputEvent(server_input_message)).unwrap();
+                self.manager_sender.send_event(&self.factory, ManagerEvent::ServerInputEvent(server_input_message)).unwrap();
             }
             ToClientMessageUDP::StateMessage(state_message) => {
                 //info!("State message: {:?}", state_message.get_sequence());
@@ -143,7 +147,7 @@ impl<Game: GameTrait> UdpInput<Game> {
                 }
 
                 self.time_of_last_state_receive = time_received;
-                self.manager_sender.send_event(ManagerEvent::StateEvent(state_message)).unwrap();
+                self.manager_sender.send_event(&self.factory, ManagerEvent::StateEvent(state_message)).unwrap();
             }
         };
 

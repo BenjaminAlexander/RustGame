@@ -1,5 +1,6 @@
 use crate::messaging::MessageFragment;
 use std::collections::HashMap;
+use commons::factory::FactoryTrait;
 use commons::time::TimeValue;
 
 pub struct FragmentAssembler {
@@ -15,7 +16,7 @@ impl FragmentAssembler {
         };
     }
 
-    pub fn add_fragment(&mut self, fragment: MessageFragment) -> Option<Vec<u8>> {
+    pub fn add_fragment(&mut self, factory: &impl FactoryTrait, fragment: MessageFragment) -> Option<Vec<u8>> {
 
         if fragment.get_count() == 1 {
             return Some(fragment.move_buf());
@@ -48,7 +49,7 @@ impl FragmentAssembler {
                     }
                 }
 
-                self.messages.insert(id, PartiallyAssembledFragment::new(fragment));
+                self.messages.insert(id, PartiallyAssembledFragment::new(factory, fragment));
                 self.messages.get_mut(&id).unwrap()
             },
             Some(partial) => {
@@ -77,7 +78,7 @@ struct PartiallyAssembledFragment {
 
 impl PartiallyAssembledFragment {
 
-    pub fn new(fragment: MessageFragment) -> Self {
+    pub fn new(factory: &impl FactoryTrait, fragment: MessageFragment) -> Self {
         let mut vec = Vec::with_capacity(fragment.get_count() as usize);
 
         for _i in 0..fragment.get_count() {
@@ -89,7 +90,7 @@ impl PartiallyAssembledFragment {
             count: fragment.get_count(),
             outstanding_fragments: fragment.get_count(),
             fragments: vec,
-            time_of_first_fragment: TimeValue::now()
+            time_of_first_fragment: factory.now()
         };
 
         new.add_fragment(fragment);

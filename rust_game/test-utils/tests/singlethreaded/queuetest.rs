@@ -1,17 +1,16 @@
 use std::cell::Cell;
 use std::rc::Rc;
 use commons::time::TimeDuration;
-use test_utils::singlethreaded::TimeQueue;
-use test_utils::time::SimulatedTimeSource;
+use test_utils::singlethreaded::{SingleThreadedFactory, TimeQueue};
 
 #[test]
 fn test_simulated_time_provider() {
 
-    let time_source = SimulatedTimeSource::new();
+    let factory = SingleThreadedFactory::new();
 
     let cell = Rc::new(Cell::new(0));
 
-    let queue = TimeQueue::new(time_source);
+    let queue = TimeQueue::new(factory);
     let five_seconds = TimeDuration::from_seconds(5.0);
 
     let cell_clone = cell.clone();

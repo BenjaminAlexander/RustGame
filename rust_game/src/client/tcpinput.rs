@@ -7,28 +7,31 @@ use std::ops::ControlFlow::*;
 use crate::client::clientcore::ClientCoreEvent;
 use crate::client::ClientCoreEvent::OnInitialInformation;
 use crate::gamemanager::{ManagerEvent, RenderReceiverMessage};
-use crate::interface::GameTrait;
+use crate::interface::{GameFactoryTrait, GameTrait};
 use commons::threading::channel::ReceiveMetaData;
 use commons::threading::listener::{ChannelEvent, ListenerEventResult, ListenerTrait, ListenResult};
 use commons::threading::listener::ListenedOrDidNotListen::Listened;
 
-pub struct TcpInput <Game: GameTrait> {
+pub struct TcpInput <GameFactory: GameFactoryTrait> {
+    factory: GameFactory::Factory,
     player_index: Option<usize>,
     tcp_stream: TcpStream,
-    manager_sender: eventhandling::Sender<ManagerEvent<Game>>,
-    client_core_sender: eventhandling::Sender<ClientCoreEvent<Game>>,
-    render_data_sender: channel::Sender<RenderReceiverMessage<Game>>
+    manager_sender: eventhandling::Sender<ManagerEvent<GameFactory::Game>>,
+    client_core_sender: eventhandling::Sender<ClientCoreEvent<GameFactory::Game>>,
+    render_data_sender: channel::Sender<RenderReceiverMessage<GameFactory::Game>>
 }
 
-impl<Game: GameTrait> TcpInput<Game> {
+impl<GameFactory: GameFactoryTrait> TcpInput<GameFactory> {
 
     pub fn new(
-        manager_sender: eventhandling::Sender<ManagerEvent<Game>>,
-        client_core_sender: eventhandling::Sender<ClientCoreEvent<Game>>,
-        render_data_sender: channel::Sender<RenderReceiverMessage<Game>>,
+        factory: GameFactory::Factory,
+        manager_sender: eventhandling::Sender<ManagerEvent<GameFactory::Game>>,
+        client_core_sender: eventhandling::Sender<ClientCoreEvent<GameFactory::Game>>,
+        render_data_sender: channel::Sender<RenderReceiverMessage<GameFactory::Game>>,
         tcp_stream: &TcpStream) -> io::Result<Self> {
 
         Ok(Self {
+            factory,
             player_index: None,
             tcp_stream: tcp_stream.try_clone()?,
             manager_sender,
@@ -38,10 +41,10 @@ impl<Game: GameTrait> TcpInput<Game> {
     }
 }
 
-impl<Game: GameTrait> ListenerTrait for TcpInput<Game> {
+impl<GameFactory: GameFactoryTrait> ListenerTrait for TcpInput<GameFactory> {
     type Event = ();
     type ThreadReturn = ();
-    type ListenFor = ToClientMessageTCP<Game>;
+    type ListenFor = ToClientMessageTCP<GameFactory::Game>;
 
     fn listen(self) -> ListenResult<Self> {
         return match rmp_serde::from_read(&self.tcp_stream) {
@@ -70,18 +73,18 @@ impl<Game: GameTrait> ListenerTrait for TcpInput<Game> {
     fn on_stop(self, _: ReceiveMetaData) -> Self::ThreadReturn { () }
 }
 
-impl<Game: GameTrait> TcpInput<Game> {
+impl<GameFactory: GameFactoryTrait> TcpInput<GameFactory> {
 
-    fn handle_received_message(&mut self, message: ToClientMessageTCP<Game>) {
+    fn handle_received_message(&mut self, message: ToClientMessageTCP<GameFactory::Game>) {
 
         match message {
             ToClientMessageTCP::InitialInformation(initial_information_message) => {
                 info!("InitialInformation Received.  Player Index: {:?}", initial_information_message.get_player_index());
 
                 self.player_index = Some(initial_information_message.get_player_index());
-                self.manager_sender.send_event(ManagerEvent::InitialInformationEvent(initial_information_message.clone())).unwrap();
-                self.client_core_sender.send_event(OnInitialInformation(initial_information_message.clone())).unwrap();
-                self.render_data_sender.send(RenderReceiverMessage::InitialInformation(initial_information_message)).unwrap();
+                self.manager_sender.send_event(&self.factory, ManagerEvent::InitialInformationEvent(initial_information_message.clone())).unwrap();
+                self.client_core_sender.send_event(&self.factory, OnInitialInformation(initial_information_message.clone())).unwrap();
+                self.render_data_sender.send(&self.factory, RenderReceiverMessage::InitialInformation(initial_information_message)).unwrap();
             }
         }
     }

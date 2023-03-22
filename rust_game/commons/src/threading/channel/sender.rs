@@ -6,42 +6,40 @@ use crate::threading::eventhandling::EventOrStopThread::{Event, StopThread};
 
 pub type SendError<T> = mpsc::SendError<(SendMetaData, T)>;
 
-pub struct Sender<Factory: FactoryTrait, T> {
+pub struct Sender<T> {
     sender: mpsc::Sender<(SendMetaData, T)>,
-    factory: Factory
+
 }
 
-impl<Factory: FactoryTrait, T> Sender<Factory, T> {
+impl<T> Sender<T> {
 
-    pub fn new(factory: Factory, sender: mpsc::Sender<(SendMetaData, T)>) -> Self {
+    pub fn new(sender: mpsc::Sender<(SendMetaData, T)>) -> Self {
         return Self{
-            sender,
-            factory
+            sender
         }
     }
 
-    pub fn send(&self, value: T) -> Result<(), SendError<T>> {
-        return self.sender.send((SendMetaData::new(&self.factory), value));
+    pub fn send(&self, factory: &impl FactoryTrait, value: T) -> Result<(), SendError<T>> {
+        return self.sender.send((SendMetaData::new(factory), value));
     }
 
 }
 
 impl<T> eventhandling::Sender<T> {
 
-    pub fn send_event(&self, event: T) -> eventhandling::SendResult<T> {
-        return self.send(Event(event));
+    pub fn send_event(&self, factory: &impl FactoryTrait, event: T) -> eventhandling::SendResult<T> {
+        return self.send(factory, Event(event));
     }
 
-    pub fn send_stop_thread(&self) -> eventhandling::SendResult<T> {
-        return self.send(StopThread);
+    pub fn send_stop_thread(&self, factory: &impl FactoryTrait) -> eventhandling::SendResult<T> {
+        return self.send(factory, StopThread);
     }
 }
 
-impl<Factory: FactoryTrait, T> Clone for Sender<Factory, T> {
+impl<T> Clone for Sender<T> {
     fn clone(&self) -> Self {
         return Self {
-            sender: self.sender.clone(),
-            factory: self.factory.clone(),
+            sender: self.sender.clone()
         };
     }
 }

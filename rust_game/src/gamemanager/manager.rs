@@ -5,6 +5,7 @@ use crate::messaging::{StateMessage, InputMessage, InitialInformation, ServerInp
 use crate::gamemanager::step::Step;
 use commons::time::{TimeDuration, TimeValue};
 use std::sync::Arc;
+use commons::factory::FactoryTrait;
 use crate::gamemanager::{ManagerObserverTrait};
 use crate::gamemanager::manager::ManagerEvent::{DropStepsBeforeEvent, InitialInformationEvent, InputEvent, ServerInputEvent, SetRequestedStepEvent, StateEvent};
 use crate::interface::GameTrait;
@@ -23,6 +24,7 @@ pub enum ManagerEvent<Game: GameTrait> {
 }
 
 pub struct Manager<ManagerObserver: ManagerObserverTrait> {
+    factory: ManagerObserver::Factory,
     drop_steps_before: usize,
     //TODO: send requested state immediately if available
     requested_step: usize,
@@ -38,9 +40,9 @@ pub struct Manager<ManagerObserver: ManagerObserverTrait> {
 
 impl<ManagerObserver: ManagerObserverTrait> Manager<ManagerObserver> {
 
-    pub fn new(manager_observer: ManagerObserver) -> Self {
+    pub fn new(factory: ManagerObserver::Factory, manager_observer: ManagerObserver) -> Self {
 
-        Self{
+        Self {
             initial_information: None,
             steps: VecDeque::new(),
             requested_step: 0,
@@ -48,8 +50,10 @@ impl<ManagerObserver: ManagerObserverTrait> Manager<ManagerObserver> {
             manager_observer,
 
             //metrics
-            time_of_last_state_receive: TimeValue::now(),
-            time_of_last_input_receive: TimeValue::now(),
+            time_of_last_state_receive: factory.now(),
+            time_of_last_input_receive: factory.now(),
+
+            factory
         }
     }
 
@@ -127,7 +131,7 @@ impl<ManagerObserver: ManagerObserverTrait> Manager<ManagerObserver> {
 
     fn on_none_pending(mut self) -> ChannelEventResult<Self> {
 
-        let now = TimeValue::now();
+        let now = self.factory.now();
         let duration_since_last_state = now.duration_since(&self.time_of_last_state_receive);
         if duration_since_last_state > TimeDuration::one_second() {
             //warn!("It has been {:?} since last state message was received. Now: {:?}, Last: {:?}",
@@ -207,7 +211,7 @@ impl<ManagerObserver: ManagerObserverTrait> Manager<ManagerObserver> {
     fn on_input_message(mut self, input_message: InputMessage<ManagerObserver::Game>) -> ChannelEventResult<Self> {
         if let Some(step) = self.get_state(input_message.get_step()) {
             step.set_input(input_message);
-            self.time_of_last_input_receive = TimeValue::now();
+            self.time_of_last_input_receive = self.factory.now();
         }
         return Continue(TryForNextEvent(self));
     }
@@ -223,7 +227,7 @@ impl<ManagerObserver: ManagerObserverTrait> Manager<ManagerObserver> {
     fn on_state_message(mut self, state_message: StateMessage<ManagerObserver::Game>) -> ChannelEventResult<Self> {
         self.handle_state_message(state_message);
 
-        self.time_of_last_state_receive = TimeValue::now();
+        self.time_of_last_state_receive = self.factory.now();
 
         return Continue(TryForNextEvent(self));
     }

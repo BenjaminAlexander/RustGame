@@ -1,20 +1,20 @@
 use std::sync::{Arc, Mutex};
+use commons::factory::FactoryTrait;
 use commons::threading::{AsyncJoin, ThreadBuilder};
-use commons::time::{TimeDuration, TimeSource};
+use commons::time::TimeDuration;
 use commons::time::timerservice::{Schedule, TimerCallBack, TimerCreationCallBack, TimerId, TimerServiceEvent, TimeService};
 use test_utils::singlethreaded::eventhandling::EventHandlerHolder;
-use test_utils::singlethreaded::TimeQueue;
-use test_utils::time::SimulatedTimeSource;
+use test_utils::singlethreaded::{SingleThreadedFactory, TimeQueue};
 
 #[test]
 fn timer_service_test() {
 
     let five_seconds = TimeDuration::from_seconds(5.0);
 
-    let time_source = SimulatedTimeSource::new();
-    let queue = TimeQueue::new(time_source.clone());
+    let factory = SingleThreadedFactory::new();
+    let queue = TimeQueue::new(factory.clone());
 
-    let timer_service = TimeService::<Box<dyn TimerCreationCallBack>, Box<dyn TimerCallBack>>::new();
+    let timer_service = TimeService::<SingleThreadedFactory, Box<dyn TimerCreationCallBack>, Box<dyn TimerCallBack>>::new(factory.clone());
 
     let thread_builder = ThreadBuilder::new();
 
@@ -35,7 +35,7 @@ fn timer_service_test() {
         //panic!();
     });
 
-    let time_value = time_source.now().add(five_seconds);
+    let time_value = factory.now().add(five_seconds);
 
     event_handler_holder.send_event(TimerServiceEvent::CreateTimer(timer_creation_call_back, timer_tick_call_back, Some(Schedule::Once(time_value))));
 

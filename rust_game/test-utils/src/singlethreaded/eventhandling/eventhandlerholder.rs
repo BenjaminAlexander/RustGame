@@ -1,10 +1,11 @@
 use std::cell::RefCell;
 use std::ops::ControlFlow::{Break, Continue};
 use std::rc::Rc;
+use commons::factory::FactoryTrait;
 use commons::threading::{AsyncJoin, ThreadBuilder};
 use commons::threading::channel::{ReceiveMetaData, SendMetaData};
 use commons::threading::eventhandling::{ChannelEvent, EventHandlerTrait, WaitOrTryForNextEvent};
-use commons::time::{TimeDuration, TimeSource, TimeValue};
+use commons::time::{TimeDuration, TimeValue};
 use crate::singlethreaded::TimeQueue;
 
 pub struct EventHandlerHolder<T: EventHandlerTrait, U: FnOnce(AsyncJoin<T::ThreadReturn>) + 'static> {
@@ -50,12 +51,12 @@ impl<T: EventHandlerTrait, U: FnOnce(AsyncJoin<T::ThreadReturn>) + 'static> Even
     }
 
     pub fn send_channel_event_now(&self, event: ChannelEvent<T::Event>) -> usize {
-        let now = self.queue.get_time_source().now();
+        let now = self.queue.get_factory().now();
         return self.send_channel_event_at_time(now, event);
     }
 
     pub fn send_channel_event_at_duration_from_now(&self, time_duration: TimeDuration, event: ChannelEvent<T::Event>) -> usize {
-        let time_value = self.queue.get_time_source().now().add(time_duration);
+        let time_value = self.queue.get_factory().now().add(time_duration);
         return self.send_channel_event_at_time(time_value, event);
     }
 
@@ -100,15 +101,15 @@ impl<T: EventHandlerTrait, U: FnOnce(AsyncJoin<T::ThreadReturn>) + 'static> Even
     }
 
     pub fn send_event(&self, event: T::Event) {
-        let send_meta_data = SendMetaData::new();
-        let receive_meta_data = ReceiveMetaData::new(send_meta_data);
+        let send_meta_data = SendMetaData::new(self.queue.get_factory());
+        let receive_meta_data = ReceiveMetaData::new(self.queue.get_factory(), send_meta_data);
         self.send_channel_event_now(ChannelEvent::ReceivedEvent(receive_meta_data, event));
     }
 
     pub fn send_stop(&self) {
         let self_clone = self.clone();
-        let send_meta_data = SendMetaData::new();
-        let receive_meta_data = ReceiveMetaData::new(send_meta_data);
+        let send_meta_data = SendMetaData::new(self.queue.get_factory());
+        let receive_meta_data = ReceiveMetaData::new(self.queue.get_factory(), send_meta_data);
         self.queue.add_event_now(move || {
             if let Some(internal) = self_clone.internal.take() {
                 let result = internal.event_handler.on_stop(receive_meta_data);

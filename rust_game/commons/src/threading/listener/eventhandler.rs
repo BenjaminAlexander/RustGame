@@ -14,6 +14,8 @@ type EventResult<Factory, T> = ControlFlow<<T as ListenerTrait>::ThreadReturn, L
 
 pub struct ListenerState<Factory: FactoryTrait, T: ListenerTrait> {
     listener: T,
+
+    //TODO: maybe get rid of this factory and use the one from event handler thread
     factory: Factory,
     state: InternalState<T>
 }
@@ -56,6 +58,14 @@ impl<Factory: FactoryTrait, T: ListenerTrait> EventHandlerTrait for ListenerStat
 }
 
 impl<Factory: FactoryTrait, T: ListenerTrait> ListenerState<Factory, T> {
+
+    pub fn new(factory: Factory, listener: T) -> Self {
+        return Self {
+            factory,
+            listener,
+            state: ReadyToListen
+        };
+    }
 
     fn listen(mut self) -> EventResult<Factory, T> {
         return Continue(match

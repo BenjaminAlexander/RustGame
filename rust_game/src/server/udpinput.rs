@@ -1,6 +1,6 @@
 use log::{info, warn};
 use crate::messaging::{MAX_UDP_DATAGRAM_SIZE, ToServerMessageUDP, FragmentAssembler, MessageFragment};
-use crate::interface::GameTrait;
+use crate::interface::GameFactoryTrait;
 use std::net::{UdpSocket, SocketAddr, IpAddr};
 use std::io;
 use crate::server::remoteudppeer::RemoteUdpPeer;
@@ -20,21 +20,25 @@ pub enum UdpInputEvent {
     ClientAddress(ClientAddress)
 }
 
-pub struct UdpInput<Game: GameTrait> {
+pub struct UdpInput<GameFactory: GameFactoryTrait> {
+    factory: GameFactory::Factory,
     socket: UdpSocket,
     remote_peers: Vec<Option<RemoteUdpPeer>>,
     client_addresses: Vec<Option<ClientAddress>>,
     client_ip_set: HashSet<IpAddr>,
     fragment_assemblers: HashMap<SocketAddr, FragmentAssembler>,
-    core_sender: Sender<ServerCoreEvent<Game>>
+    core_sender: Sender<ServerCoreEvent<GameFactory::Game>>
 }
 
-impl<Game: GameTrait> UdpInput<Game> {
+impl<GameFactory: GameFactoryTrait> UdpInput<GameFactory> {
 
     pub fn new(
+        factory: GameFactory::Factory,
         socket: &UdpSocket,
-        core_sender: Sender<ServerCoreEvent<Game>>) -> io::Result<Self> {
+        core_sender: Sender<ServerCoreEvent<GameFactory::Game>>) -> io::Result<Self> {
+
         return Ok(Self {
+            factory,
             socket: socket.try_clone()?,
             remote_peers: Vec::new(),
             client_addresses: Vec::new(),
@@ -79,10 +83,10 @@ impl<Game: GameTrait> UdpInput<Game> {
             Some(assembler) => assembler
         };
 
-        return assembler.add_fragment(MessageFragment::from_vec(fragment.to_vec()));
+        return assembler.add_fragment(&self.factory, MessageFragment::from_vec(fragment.to_vec()));
     }
 
-    fn handle_message(&mut self, message: ToServerMessageUDP<Game>, source: SocketAddr) {
+    fn handle_message(&mut self, message: ToServerMessageUDP<GameFactory::Game>, source: SocketAddr) {
 
         let player_index = message.get_player_index();
 
@@ -102,7 +106,7 @@ impl<Game: GameTrait> UdpInput<Game> {
 
             }
             ToServerMessageUDP::Input(input_message) => {
-                self.core_sender.send_event(ServerCoreEvent::InputMessageEvent(input_message)).unwrap();
+                self.core_sender.send_event(&self.factory, ServerCoreEvent::InputMessageEvent(input_message)).unwrap();
             }
         }
     }
@@ -117,14 +121,14 @@ impl<Game: GameTrait> UdpInput<Game> {
         match &self.remote_peers[player_index] {
             None => {
                 info!("First time UDP remote peer: {:?}", remote_peer);
-                self.core_sender.send_event(ServerCoreEvent::RemoteUdpPeerEvent(remote_peer.clone())).unwrap();
+                self.core_sender.send_event(&self.factory, ServerCoreEvent::RemoteUdpPeerEvent(remote_peer.clone())).unwrap();
                 self.remote_peers[player_index] = Some(remote_peer);
             }
             Some(existing_remote_peer) => {
                 let existing_socket = existing_remote_peer.get_socket_addr();
                 if !existing_socket.eq(&remote_peer.get_socket_addr()) {
                     info!("Change of UDP remote peer: {:?}", remote_peer);
-                    self.core_sender.send_event(ServerCoreEvent::RemoteUdpPeerEvent(remote_peer.clone())).unwrap();
+                    self.core_sender.send_event(&self.factory, ServerCoreEvent::RemoteUdpPeerEvent(remote_peer.clone())).unwrap();
                     self.remote_peers[player_index] = Some(remote_peer);
                     self.fragment_assemblers.remove(&existing_socket);
                 }
@@ -133,7 +137,7 @@ impl<Game: GameTrait> UdpInput<Game> {
     }
 }
 
-impl<Game: GameTrait> ListenerTrait for UdpInput<Game> {
+impl<Game: GameFactoryTrait> ListenerTrait for UdpInput<Game> {
     type Event = UdpInputEvent;
     type ThreadReturn = ();
     type ListenFor = ([u8; MAX_UDP_DATAGRAM_SIZE], usize, SocketAddr);
