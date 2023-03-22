@@ -1,5 +1,8 @@
+use std::ops::Add;
 use std::sync::{Arc, Mutex};
+use log::{LevelFilter, trace};
 use commons::factory::FactoryTrait;
+use commons::logging::LoggingConfigBuilder;
 use commons::threading::{AsyncJoin, ThreadBuilder};
 use commons::time::TimeDuration;
 use commons::time::timerservice::{Schedule, TimerCallBack, TimerCreationCallBack, TimerId, TimerServiceEvent, TimeService};
@@ -9,7 +12,11 @@ use test_utils::singlethreaded::{SingleThreadedFactory, TimeQueue};
 #[test]
 fn timer_service_test() {
 
+    LoggingConfigBuilder::new().add_console_appender().init(LevelFilter::Trace);
+
+    let two_seconds = TimeDuration::from_seconds(2.0);
     let five_seconds = TimeDuration::from_seconds(5.0);
+    let seven_seconds = two_seconds.add(five_seconds);
 
     let factory = SingleThreadedFactory::new();
     let queue = TimeQueue::new(factory.clone());
@@ -41,9 +48,30 @@ fn timer_service_test() {
 
     assert_eq!(None, *timer_id_cell.lock().unwrap());
 
-    TimeQueue::run_events(&queue);
+    queue.run_events();
 
     assert_ne!(None, *timer_id_cell.lock().unwrap());
+    assert_eq!(0, *tick_count_cell.lock().unwrap());
 
-    //assert_eq!(0, *tick_count_cell.lock().unwrap());
+    queue.advance_time_until(time_value);
+    assert_eq!(1, *tick_count_cell.lock().unwrap());
+
+    queue.advance_time_for_duration(five_seconds);
+    queue.advance_time_for_duration(five_seconds);
+    assert_eq!(1, *tick_count_cell.lock().unwrap());
+
+
+    let new_schedule = Schedule::Repeating(factory.now().add(seven_seconds), five_seconds);
+    event_handler_holder.send_event(TimerServiceEvent::RescheduleTimer(timer_id_cell.lock().unwrap().unwrap(), Some(new_schedule)));
+    queue.run_events();
+    assert_eq!(1, *tick_count_cell.lock().unwrap());
+
+    queue.advance_time_for_duration(five_seconds);
+    assert_eq!(1, *tick_count_cell.lock().unwrap());
+
+    queue.advance_time_for_duration(two_seconds);
+    assert_eq!(2, *tick_count_cell.lock().unwrap());
+
+    queue.advance_time_for_duration(five_seconds);
+    assert_eq!(3, *tick_count_cell.lock().unwrap());
 }

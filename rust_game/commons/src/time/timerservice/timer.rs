@@ -1,4 +1,6 @@
 use std::cmp::Ordering;
+use log::trace;
+use crate::factory::FactoryTrait;
 use crate::time::timerservice::schedule::Schedule;
 use crate::time::timerservice::timercallback::TimerCallBack;
 use crate::time::timerservice::timerid::TimerId;
@@ -46,7 +48,8 @@ impl<T: TimerCallBack> Timer<T> {
         }
     }
 
-    pub fn trigger(&mut self) {
+    pub fn trigger(&mut self, factory: &impl FactoryTrait) {
+        trace!("Time is: {:?}\nTrigging Timer: {:?}", factory.now(), self.id);
         self.call_back.tick();
         self.schedule = match self.schedule {
             None => None,
