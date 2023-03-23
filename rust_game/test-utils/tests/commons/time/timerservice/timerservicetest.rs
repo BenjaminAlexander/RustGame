@@ -39,7 +39,6 @@ fn timer_service_test() {
     let timer_tick_call_back = Box::new(move || {
         let mut tick_count = tick_count_cell_clone.lock().unwrap();
         *tick_count = *tick_count + 1;
-        //panic!();
     });
 
     let time_value = factory.now().add(five_seconds);
