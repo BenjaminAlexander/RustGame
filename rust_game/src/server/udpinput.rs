@@ -9,7 +9,7 @@ use std::ops::ControlFlow::{Break, Continue};
 use crate::server::clientaddress::ClientAddress;
 use crate::server::servercore::ServerCoreEvent;
 use commons::threading::channel::ReceiveMetaData;
-use commons::threading::eventhandling::Sender;
+use commons::threading::eventhandling::{Sender, EventSenderTrait};
 use commons::threading::listener::{ChannelEvent, ListenerEventResult, ListenerTrait, ListenResult};
 use commons::threading::listener::ListenedOrDidNotListen::{DidNotListen, Listened};
 
@@ -27,7 +27,7 @@ pub struct UdpInput<GameFactory: GameFactoryTrait> {
     client_addresses: Vec<Option<ClientAddress>>,
     client_ip_set: HashSet<IpAddr>,
     fragment_assemblers: HashMap<SocketAddr, FragmentAssembler>,
-    core_sender: Sender<ServerCoreEvent<GameFactory::Game>>
+    core_sender: Sender<GameFactory::Factory, ServerCoreEvent<GameFactory::Game>>
 }
 
 impl<GameFactory: GameFactoryTrait> UdpInput<GameFactory> {
@@ -35,7 +35,7 @@ impl<GameFactory: GameFactoryTrait> UdpInput<GameFactory> {
     pub fn new(
         factory: GameFactory::Factory,
         socket: &UdpSocket,
-        core_sender: Sender<ServerCoreEvent<GameFactory::Game>>) -> io::Result<Self> {
+        core_sender: Sender<GameFactory::Factory, ServerCoreEvent<GameFactory::Game>>) -> io::Result<Self> {
 
         return Ok(Self {
             factory,

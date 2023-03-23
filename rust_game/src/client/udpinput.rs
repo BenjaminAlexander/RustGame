@@ -10,6 +10,7 @@ use log::{debug, error, warn};
 use commons::factory::FactoryTrait;
 use crate::gamemanager::ManagerEvent;
 use commons::threading::channel::ReceiveMetaData;
+use commons::threading::eventhandling::EventSenderTrait;
 use commons::threading::listener::{ListenerEventResult, ListenerTrait, ListenMetaData, ListenResult};
 use commons::threading::listener::ListenedOrDidNotListen::{DidNotListen, Listened};
 use crate::client::ClientCoreEvent;
@@ -19,8 +20,8 @@ pub struct UdpInput<GameFactory: GameFactoryTrait> {
     server_socket_addr: SocketAddr,
     socket: UdpSocket,
     fragment_assembler: FragmentAssembler,
-    core_sender: eventhandling::Sender<ClientCoreEvent<GameFactory::Game>>,
-    manager_sender: eventhandling::Sender<ManagerEvent<GameFactory::Game>>,
+    core_sender: eventhandling::Sender<GameFactory::Factory, ClientCoreEvent<GameFactory::Game>>,
+    manager_sender: eventhandling::Sender<GameFactory::Factory, ManagerEvent<GameFactory::Game>>,
 
     //metrics
     time_of_last_state_receive: TimeValue,
@@ -34,8 +35,8 @@ impl<GameFactory: GameFactoryTrait> UdpInput<GameFactory> {
         factory: GameFactory::Factory,
         server_socket_addr_v4: SocketAddrV4,
         socket: &UdpSocket,
-        core_sender: eventhandling::Sender<ClientCoreEvent<GameFactory::Game>>,
-        manager_sender: eventhandling::Sender<ManagerEvent<GameFactory::Game>>) -> io::Result<Self> {
+        core_sender: eventhandling::Sender<GameFactory::Factory, ClientCoreEvent<GameFactory::Game>>,
+        manager_sender: eventhandling::Sender<GameFactory::Factory, ManagerEvent<GameFactory::Game>>) -> io::Result<Self> {
 
         let server_socket_addr = SocketAddr::from(server_socket_addr_v4);
 

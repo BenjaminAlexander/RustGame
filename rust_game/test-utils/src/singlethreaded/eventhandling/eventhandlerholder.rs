@@ -6,21 +6,21 @@ use commons::threading::{AsyncJoin, ThreadBuilder};
 use commons::threading::channel::{ReceiveMetaData, SendMetaData};
 use commons::threading::eventhandling::{ChannelEvent, EventHandlerTrait, WaitOrTryForNextEvent};
 use commons::time::{TimeDuration, TimeValue};
-use crate::singlethreaded::TimeQueue;
+use crate::singlethreaded::{SingleThreadedFactory, TimeQueue};
 
-pub struct EventHandlerHolder<T: EventHandlerTrait, U: FnOnce(AsyncJoin<T::ThreadReturn>) + 'static> {
+pub struct EventHandlerHolder<T: EventHandlerTrait, U: FnOnce(AsyncJoin<SingleThreadedFactory, T::ThreadReturn>) + 'static> {
     internal: Rc<RefCell<Option<EventHandlerHolderInternal<T, U>>>>,
     queue: TimeQueue,
 }
 
-struct EventHandlerHolderInternal<T: EventHandlerTrait, U: FnOnce(AsyncJoin<T::ThreadReturn>) + 'static> {
+struct EventHandlerHolderInternal<T: EventHandlerTrait, U: FnOnce(AsyncJoin<SingleThreadedFactory, T::ThreadReturn>) + 'static> {
     event_handler: T,
     join_call_back: U,
-    thread_builder: ThreadBuilder,
+    thread_builder: ThreadBuilder<SingleThreadedFactory>,
     pending_channel_event: Option<usize>
 }
 
-impl<T: EventHandlerTrait, U: FnOnce(AsyncJoin<T::ThreadReturn>) + 'static> Clone for EventHandlerHolder<T, U> {
+impl<T: EventHandlerTrait, U: FnOnce(AsyncJoin<SingleThreadedFactory, T::ThreadReturn>) + 'static> Clone for EventHandlerHolder<T, U> {
     fn clone(&self) -> Self {
         return Self {
             internal: self.internal.clone(),
@@ -29,9 +29,9 @@ impl<T: EventHandlerTrait, U: FnOnce(AsyncJoin<T::ThreadReturn>) + 'static> Clon
     }
 }
 
-impl<T: EventHandlerTrait, U: FnOnce(AsyncJoin<T::ThreadReturn>) + 'static> EventHandlerHolder<T, U> {
+impl<T: EventHandlerTrait, U: FnOnce(AsyncJoin<SingleThreadedFactory, T::ThreadReturn>) + 'static> EventHandlerHolder<T, U> {
 
-    pub fn new(queue: TimeQueue, thread_builder: ThreadBuilder, event_handler: T, join_call_back: U) -> Self {
+    pub fn new(queue: TimeQueue, thread_builder: ThreadBuilder<SingleThreadedFactory>, event_handler: T, join_call_back: U) -> Self {
 
         let internal = EventHandlerHolderInternal {
             event_handler,

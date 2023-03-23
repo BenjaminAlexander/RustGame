@@ -3,17 +3,19 @@ use crate::interface::GameFactoryTrait;
 use crate::messaging::{ServerInputMessage, StateMessage};
 use crate::server::udpoutput::UdpOutputEvent;
 use commons::threading::{channel, eventhandling};
+use commons::threading::channel::SenderTrait;
+use commons::threading::eventhandling::EventSenderTrait;
 
 pub struct ServerManagerObserver<GameFactory: GameFactoryTrait> {
     factory: GameFactory::Factory,
-    udp_outputs: Vec<eventhandling::Sender<UdpOutputEvent<GameFactory::Game>>>,
+    udp_outputs: Vec<eventhandling::Sender<GameFactory::Factory, UdpOutputEvent<GameFactory::Game>>>,
     render_receiver_sender: channel::Sender<RenderReceiverMessage<GameFactory::Game>>
 }
 
 impl<GameFactory: GameFactoryTrait> ServerManagerObserver<GameFactory> {
 
     pub fn new(factory: GameFactory::Factory,
-               udp_outputs: Vec<eventhandling::Sender<UdpOutputEvent<GameFactory::Game>>>,
+               udp_outputs: Vec<eventhandling::Sender<GameFactory::Factory, UdpOutputEvent<GameFactory::Game>>>,
                render_receiver_sender: channel::Sender<RenderReceiverMessage<GameFactory::Game>>) -> Self {
 
         return Self {

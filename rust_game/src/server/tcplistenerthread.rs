@@ -5,17 +5,17 @@ use crate::interface::{GameFactoryTrait, GameTrait};
 use crate::server::servercore::ServerCoreEvent;
 use crate::server::servercore::ServerCoreEvent::TcpConnectionEvent;
 use commons::threading::channel::ReceiveMetaData;
-use commons::threading::eventhandling::Sender;
+use commons::threading::eventhandling::{Sender, EventSenderTrait};
 use commons::threading::listener::{ListenedOrDidNotListen, ChannelEvent, ListenerEventResult, ListenerTrait, ListenResult};
 
 pub struct TcpListenerThread<GameFactory: GameFactoryTrait> {
     factory: GameFactory::Factory,
     tcp_listener_option: Option<TcpListener>,
-    server_core_sender: Sender<ServerCoreEvent<GameFactory::Game>>
+    server_core_sender: Sender<GameFactory::Factory, ServerCoreEvent<GameFactory::Game>>
 }
 
 impl<GameFactory: GameFactoryTrait> TcpListenerThread<GameFactory> {
-    pub fn new(factory: GameFactory::Factory, server_core_sender: Sender<ServerCoreEvent<GameFactory::Game>>) -> Self {
+    pub fn new(factory: GameFactory::Factory, server_core_sender: Sender<GameFactory::Factory, ServerCoreEvent<GameFactory::Game>>) -> Self {
         Self{
             factory,
             tcp_listener_option: None,

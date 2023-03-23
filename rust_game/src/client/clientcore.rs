@@ -14,9 +14,9 @@ use crate::client::udpoutput::{UdpOutput, UdpOutputEvent};
 use crate::client::udpinput::UdpInput;
 use commons::threading::{ThreadBuilder, AsyncJoin};
 use commons::threading::channel;
-use commons::threading::channel::ReceiveMetaData;
+use commons::threading::channel::{ReceiveMetaData, SenderTrait};
 use commons::threading::eventhandling;
-use commons::threading::eventhandling::{ChannelEvent, ChannelEventResult, EventHandlerTrait};
+use commons::threading::eventhandling::{ChannelEvent, ChannelEventResult, EventHandlerTrait, EventSenderTrait};
 use commons::threading::eventhandling::WaitOrTryForNextEvent::{TryForNextEvent, WaitForNextEvent};
 
 pub enum ClientCoreEvent<Game: GameTrait> {
@@ -30,15 +30,15 @@ pub enum ClientCoreEvent<Game: GameTrait> {
 //TODO: make this an enum, get rid of all the options
 pub struct ClientCore<GameFactory: GameFactoryTrait> {
     factory: GameFactory::Factory,
-    sender: eventhandling::Sender<ClientCoreEvent<GameFactory::Game>>,
+    sender: eventhandling::Sender<GameFactory::Factory, ClientCoreEvent<GameFactory::Game>>,
     server_ip: Ipv4Addr,
     input_event_handler: <GameFactory::Game as GameTrait>::ClientInputEventHandler,
-    manager_sender_option: Option<eventhandling::Sender<ManagerEvent<GameFactory::Game>>>,
+    manager_sender_option: Option<eventhandling::Sender<GameFactory::Factory, ManagerEvent<GameFactory::Game>>>,
     game_timer: Option<GameTimer<GameFactory::Factory, ClientGameTimerObserver<GameFactory>>>,
-    udp_input_sender_option: Option<eventhandling::Sender<()>>,
-    udp_output_sender_option: Option<eventhandling::Sender<UdpOutputEvent<GameFactory::Game>>>,
-    tcp_input_sender_option: Option<eventhandling::Sender<()>>,
-    tcp_output_sender_option: Option<eventhandling::Sender<()>>,
+    udp_input_sender_option: Option<eventhandling::Sender<GameFactory::Factory, ()>>,
+    udp_output_sender_option: Option<eventhandling::Sender<GameFactory::Factory, UdpOutputEvent<GameFactory::Game>>>,
+    tcp_input_sender_option: Option<eventhandling::Sender<GameFactory::Factory, ()>>,
+    tcp_output_sender_option: Option<eventhandling::Sender<GameFactory::Factory, ()>>,
     render_receiver_sender: Option<channel::Sender<RenderReceiverMessage<GameFactory::Game>>>,
     initial_information: Option<InitialInformation<GameFactory::Game>>,
     last_time_message: Option<TimeMessage>
@@ -46,7 +46,7 @@ pub struct ClientCore<GameFactory: GameFactoryTrait> {
 
 impl<GameFactory: GameFactoryTrait> ClientCore<GameFactory> {
 
-    pub fn new(factory: GameFactory::Factory, server_ip: Ipv4Addr, sender: eventhandling::Sender<ClientCoreEvent<GameFactory::Game>>) -> Self {
+    pub fn new(factory: GameFactory::Factory, server_ip: Ipv4Addr, sender: eventhandling::Sender<GameFactory::Factory, ClientCoreEvent<GameFactory::Game>>) -> Self {
 
         ClientCore {
             factory,
@@ -71,14 +71,14 @@ impl<GameFactory: GameFactoryTrait> ClientCore<GameFactory> {
         let socket_addr = SocketAddr::from(socket_addr_v4);
         let tcp_stream = TcpStream::connect(socket_addr).unwrap();
 
-        let manager_sender = ThreadBuilder::new()
+        let manager_sender = ThreadBuilder::new(self.factory.clone())
             .name("ClientManager")
-            .spawn_event_handler(self.factory.clone(), Manager::new(self.factory.clone(), ClientManagerObserver::<GameFactory>::new(self.factory.clone(), render_receiver_sender.clone())), AsyncJoin::log_async_join)
+            .spawn_event_handler(Manager::new(self.factory.clone(), ClientManagerObserver::<GameFactory>::new(self.factory.clone(), render_receiver_sender.clone())), AsyncJoin::log_async_join)
             .unwrap();
 
-        let tcp_input_sender = ThreadBuilder::new()
+        let tcp_input_sender = ThreadBuilder::new(self.factory.clone())
             .name("ClientTcpInput")
-            .spawn_listener(self.factory.clone(), TcpInput::<GameFactory>::new(
+            .spawn_listener(TcpInput::<GameFactory>::new(
                 self.factory.clone(),
                 manager_sender.clone(),
                 self.sender.clone(),
@@ -86,9 +86,9 @@ impl<GameFactory: GameFactoryTrait> ClientCore<GameFactory> {
                 &tcp_stream).unwrap(), AsyncJoin::log_async_join)
             .unwrap();
 
-        let tcp_output_join_handle = ThreadBuilder::new()
+        let tcp_output_join_handle = ThreadBuilder::new(self.factory.clone())
             .name("ClientTcpOutput")
-            .spawn_event_handler(self.factory.clone(), TcpOutput::new(&tcp_stream).unwrap(), AsyncJoin::log_async_join)
+            .spawn_event_handler(TcpOutput::new(&tcp_stream).unwrap(), AsyncJoin::log_async_join)
             .unwrap();
 
         self.render_receiver_sender = Some(render_receiver_sender);
@@ -127,10 +127,9 @@ impl<GameFactory: GameFactoryTrait> ClientCore<GameFactory> {
         //TODO: pass in as a parameter
         let udp_socket = UdpSocket::bind("127.0.0.1:0").unwrap();
 
-        let udp_input_join_handle = ThreadBuilder::new()
+        let udp_input_join_handle = ThreadBuilder::new(self.factory.clone())
             .name("ClientUdpInput")
             .spawn_listener(
-                self.factory.clone(),
                 UdpInput::<GameFactory>::new(
                     self.factory.clone(),
                     server_udp_socket_addr_v4,
@@ -141,13 +140,12 @@ impl<GameFactory: GameFactoryTrait> ClientCore<GameFactory> {
                 AsyncJoin::log_async_join)
             .unwrap();
 
-        let udp_output_builder = ThreadBuilder::new()
+        let udp_output_builder = ThreadBuilder::new(self.factory.clone())
             .name("ClientUdpOutput")
             .build_channel_for_event_handler::<UdpOutput<GameFactory::Game>>();
 
         //TODO: unwrap after try_clone is not good
         let udp_output_join_handle = udp_output_builder.spawn_event_handler(
-            self.factory.clone(),
             UdpOutput::<GameFactory::Game>::new(server_udp_socket_addr_v4, udp_socket.try_clone().unwrap(), initial_information.clone()),
             AsyncJoin::log_async_join
         ).unwrap();

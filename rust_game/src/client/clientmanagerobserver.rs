@@ -1,7 +1,7 @@
 use crate::gamemanager::{ManagerObserverTrait, RenderReceiverMessage, StepMessage};
 use crate::interface::GameFactoryTrait;
 use crate::messaging::{ServerInputMessage, StateMessage};
-use commons::threading::channel::Sender;
+use commons::threading::channel::{Sender, SenderTrait};
 
 pub struct ClientManagerObserver<GameFactory: GameFactoryTrait> {
     factory: GameFactory::Factory,

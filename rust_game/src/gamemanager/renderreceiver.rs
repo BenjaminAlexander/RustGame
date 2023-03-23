@@ -31,8 +31,8 @@ struct Data<Factory: FactoryTrait, Game: GameTrait> {
 
 impl<Factory: FactoryTrait, Game: GameTrait> RenderReceiver<Factory, Game> {
 
-    pub fn new(factory: Factory) -> (Sender<RenderReceiverMessage<Game>>, Self) {
-        let (sender, receiver) = Channel::<RenderReceiverMessage<Game>>::new().take();
+    pub fn new(factory: Factory) -> (Factory::Sender<RenderReceiverMessage<Game>>, Self) {
+        let (sender, receiver) = Channel::<Factory, RenderReceiverMessage<Game>>::new(&factory).take();
 
         let data = Data::<Factory, Game> {
             factory: factory.clone(),

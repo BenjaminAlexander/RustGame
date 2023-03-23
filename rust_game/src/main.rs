@@ -3,13 +3,13 @@ use std::net::Ipv4Addr;
 use std::path::PathBuf;
 use std::str::FromStr;
 use log::{error, info, LevelFilter};
-use commons::factory;
 use commons::factory::RealFactory;
 use commons::logging::LoggingConfigBuilder;
 use crate::client::ClientCoreEvent::Connect;
 use crate::gamemanager::RenderReceiver;
 use crate::simplegame::{SimpleInput, SimpleState, SimpleInputEvent, SimpleInputEventHandler, SimpleWindow, SimpleServerInput, SimpleGameImpl};
 use commons::threading::{AsyncJoin, ThreadBuilder};
+use commons::threading::eventhandling::EventSenderTrait;
 use commons::time::TimeDuration;
 use crate::interface::RealGameFactory;
 use crate::server::ServerCoreEvent;
@@ -67,7 +67,7 @@ pub fn main() {
 
     if run_server {
 
-        let server_core_thread_builder = ThreadBuilder::new()
+        let server_core_thread_builder = ThreadBuilder::new(factory.clone())
             .name("ServerCore")
             .build_channel_for_event_handler::<server::ServerCore<RealGameFactory<SimpleGameImpl>>>();
 
@@ -78,12 +78,12 @@ pub fn main() {
             return;
         }
 
-        server_core_sender_option = Some(server_core_thread_builder.spawn_event_handler(factory.clone(), server_core, AsyncJoin::log_async_join).unwrap());
+        server_core_sender_option = Some(server_core_thread_builder.spawn_event_handler(server_core, AsyncJoin::log_async_join).unwrap());
     }
 
     if run_client {
 
-        let client_core_thread_builder = ThreadBuilder::new()
+        let client_core_thread_builder = ThreadBuilder::new(factory.clone())
             .name("ClientCore")
             .build_channel_for_event_handler::<client::ClientCore<RealGameFactory<SimpleGameImpl>>>();
 
@@ -97,7 +97,6 @@ pub fn main() {
 
         client_core_join_handle_option = Some(
             client_core_thread_builder.spawn_event_handler(
-                factory.clone(),
                 client::ClientCore::<RealGameFactory<SimpleGameImpl>>::new(
                     factory.clone(),
                     Ipv4Addr::from_str("127.0.0.1").unwrap(),

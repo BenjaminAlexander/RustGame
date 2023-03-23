@@ -7,8 +7,9 @@ use std::ops::ControlFlow::*;
 use crate::client::clientcore::ClientCoreEvent;
 use crate::client::ClientCoreEvent::OnInitialInformation;
 use crate::gamemanager::{ManagerEvent, RenderReceiverMessage};
-use crate::interface::{GameFactoryTrait, GameTrait};
-use commons::threading::channel::ReceiveMetaData;
+use crate::interface::GameFactoryTrait;
+use commons::threading::channel::{ReceiveMetaData, SenderTrait};
+use commons::threading::eventhandling::EventSenderTrait;
 use commons::threading::listener::{ChannelEvent, ListenerEventResult, ListenerTrait, ListenResult};
 use commons::threading::listener::ListenedOrDidNotListen::Listened;
 
@@ -16,8 +17,8 @@ pub struct TcpInput <GameFactory: GameFactoryTrait> {
     factory: GameFactory::Factory,
     player_index: Option<usize>,
     tcp_stream: TcpStream,
-    manager_sender: eventhandling::Sender<ManagerEvent<GameFactory::Game>>,
-    client_core_sender: eventhandling::Sender<ClientCoreEvent<GameFactory::Game>>,
+    manager_sender: eventhandling::Sender<GameFactory::Factory, ManagerEvent<GameFactory::Game>>,
+    client_core_sender: eventhandling::Sender<GameFactory::Factory, ClientCoreEvent<GameFactory::Game>>,
     render_data_sender: channel::Sender<RenderReceiverMessage<GameFactory::Game>>
 }
 
@@ -25,8 +26,8 @@ impl<GameFactory: GameFactoryTrait> TcpInput<GameFactory> {
 
     pub fn new(
         factory: GameFactory::Factory,
-        manager_sender: eventhandling::Sender<ManagerEvent<GameFactory::Game>>,
-        client_core_sender: eventhandling::Sender<ClientCoreEvent<GameFactory::Game>>,
+        manager_sender: eventhandling::Sender<GameFactory::Factory, ManagerEvent<GameFactory::Game>>,
+        client_core_sender: eventhandling::Sender<GameFactory::Factory, ClientCoreEvent<GameFactory::Game>>,
         render_data_sender: channel::Sender<RenderReceiverMessage<GameFactory::Game>>,
         tcp_stream: &TcpStream) -> io::Result<Self> {
 

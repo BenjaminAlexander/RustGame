@@ -1,6 +1,6 @@
 use std::ops::Add;
 use std::sync::{Arc, Mutex};
-use log::{LevelFilter, trace};
+use log::LevelFilter;
 use commons::factory::FactoryTrait;
 use commons::logging::LoggingConfigBuilder;
 use commons::threading::{AsyncJoin, ThreadBuilder};
@@ -23,7 +23,7 @@ fn timer_service_test() {
 
     let timer_service = TimeService::<SingleThreadedFactory, Box<dyn TimerCreationCallBack>, Box<dyn TimerCallBack>>::new(factory.clone());
 
-    let thread_builder = ThreadBuilder::new();
+    let thread_builder = ThreadBuilder::new(factory.clone());
 
     let timer_id_cell = Arc::new(Mutex::new(None::<TimerId>));
     let tick_count_cell = Arc::new(Mutex::new(0));

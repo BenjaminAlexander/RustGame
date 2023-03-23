@@ -9,6 +9,7 @@ use graphics::*;
 use glutin_window::GlutinWindow as Window;
 use log::info;
 use commons::factory::FactoryTrait;
+use commons::threading::eventhandling::EventSenderTrait;
 use crate::client::ClientCoreEvent::OnInputEvent;
 use crate::simplegame::simplegameimpl::SimpleGameImpl;
 
@@ -17,7 +18,7 @@ pub struct SimpleWindow<Factory: FactoryTrait> {
     window_name: String,
     render_receiver: RenderReceiver<Factory, SimpleGameImpl>,
     //TODO: don't expose eventhandling, sender or ClientCore, or ClientCoreEvent, or GameFactoryTrait
-    client_core_sender_option: Option<eventhandling::Sender<ClientCoreEvent<SimpleGameImpl>>>
+    client_core_sender_option: Option<eventhandling::Sender<Factory, ClientCoreEvent<SimpleGameImpl>>>
 }
 
 impl<Factory: FactoryTrait> SimpleWindow<Factory> {
@@ -25,7 +26,7 @@ impl<Factory: FactoryTrait> SimpleWindow<Factory> {
     pub fn new(factory: Factory,
                window_name: String,
                render_receiver: RenderReceiver<Factory, SimpleGameImpl>,
-               client_core_sender_option: Option<eventhandling::Sender<ClientCoreEvent<SimpleGameImpl>>>) -> Self {
+               client_core_sender_option: Option<eventhandling::Sender<Factory, ClientCoreEvent<SimpleGameImpl>>>) -> Self {
 
         return Self{
             factory,
