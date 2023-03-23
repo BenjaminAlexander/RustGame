@@ -1,29 +1,26 @@
 use crate::client::ClientCoreEvent;
 use crate::client::ClientCoreEvent::GameTimerTick;
-use crate::gamemanager::RenderReceiverMessage;
-use crate::gametime::{GameTimerObserverTrait, TimeMessage};
-use crate::interface::GameTrait;
-use commons::threading::channel::Sender;
+use crate::interface::GameFactoryTrait;
 use commons::threading::eventhandling;
 use commons::time::timerservice::TimerCallBack;
 
-pub struct ClientGameTimerObserver<Game: GameTrait> {
-    core_sender: eventhandling::Sender<ClientCoreEvent<Game>>
+pub struct ClientGameTimerObserver<GameFactory: GameFactoryTrait> {
+    factory: GameFactory::Factory,
+    core_sender: eventhandling::Sender<ClientCoreEvent<GameFactory::Game>>
 }
 
-impl<Game: GameTrait> ClientGameTimerObserver<Game> {
+impl<GameFactory: GameFactoryTrait> ClientGameTimerObserver<GameFactory> {
 
-    pub fn new(core_sender: eventhandling::Sender<ClientCoreEvent<Game>>) -> Self {
-
-        Self {
+    pub fn new(factory: GameFactory::Factory, core_sender: eventhandling::Sender<ClientCoreEvent<GameFactory::Game>>) -> Self {
+        return Self {
+            factory,
             core_sender
-        }
-
+        };
     }
 }
 
-impl<Game: GameTrait> TimerCallBack for ClientGameTimerObserver<Game> {
+impl<GameFactory: GameFactoryTrait> TimerCallBack for ClientGameTimerObserver<GameFactory> {
     fn tick(&mut self) {
-        self.core_sender.send_event(GameTimerTick).unwrap();
+        self.core_sender.send_event(&self.factory, GameTimerTick).unwrap();
     }
 }

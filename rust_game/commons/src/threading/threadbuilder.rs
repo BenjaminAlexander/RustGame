@@ -1,5 +1,6 @@
 use std::thread::Builder;
 use log::info;
+use crate::factory::FactoryTrait;
 use crate::threading::channel;
 use crate::threading::eventhandling::{EventHandlerTrait, EventOrStopThread};
 use crate::threading::{eventhandling, Thread};
@@ -35,12 +36,12 @@ impl ThreadBuilder {
         return self.build_channel_thread();
     }
 
-    pub fn spawn_event_handler<T: EventHandlerTrait>(self, event_handler: T, join_call_back: impl FnOnce(AsyncJoin<T::ThreadReturn>) + Send + 'static) -> std::io::Result<eventhandling::Sender<T::Event>> {
-        return self.build_channel_for_event_handler::<T>().spawn_event_handler(event_handler, join_call_back);
+    pub fn spawn_event_handler<Factory: FactoryTrait, T: EventHandlerTrait>(self, factory: Factory, event_handler: T, join_call_back: impl FnOnce(AsyncJoin<T::ThreadReturn>) + Send + 'static) -> std::io::Result<eventhandling::Sender<T::Event>> {
+        return self.build_channel_for_event_handler::<T>().spawn_event_handler(factory, event_handler, join_call_back);
     }
 
-    pub fn spawn_listener<T: ListenerTrait>(self, listener: T, join_call_back: impl FnOnce(AsyncJoin<T::ThreadReturn>) + Send + 'static) -> std::io::Result<eventhandling::Sender<T::Event>> {
-        return self.build_channel_for_event_handler::<ListenerState<T>>().spawn_listener(listener, join_call_back);
+    pub fn spawn_listener<Factory: FactoryTrait, T: ListenerTrait>(self, factory: Factory, listener: T, join_call_back: impl FnOnce(AsyncJoin<T::ThreadReturn>) + Send + 'static) -> std::io::Result<eventhandling::Sender<T::Event>> {
+        return self.build_channel_for_event_handler::<ListenerState<Factory, T>>().spawn_listener(factory, listener, join_call_back);
     }
 
     pub(super) fn spawn_thread<T: Thread>(self, thread: T, join_call_back: impl FnOnce(AsyncJoin<T::ReturnType>) + Send + 'static) -> std::io::Result<()> {

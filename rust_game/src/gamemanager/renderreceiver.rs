@@ -1,5 +1,6 @@
 use log::{info, warn};
-use commons::time::{TimeValue, TimeDuration};
+use commons::factory::FactoryTrait;
+use commons::time::TimeDuration;
 use crate::interface::{InterpolationArg, GameTrait};
 use crate::gamemanager::stepmessage::StepMessage;
 use crate::gametime::TimeMessage;
@@ -13,32 +14,35 @@ pub enum RenderReceiverMessage<Game: GameTrait> {
     StopThread
 }
 
-//TODO: made the difference between the render receiver and the Data more clear
-pub struct RenderReceiver<Game: GameTrait> {
+//TODO: make the difference between the render receiver and the Data more clear
+pub struct RenderReceiver<Factory: FactoryTrait, Game: GameTrait> {
+    factory: Factory,
     receiver: Receiver<RenderReceiverMessage<Game>>,
-    data: Data<Game>
+    data: Data<Factory, Game>
 }
 
-struct Data<Game: GameTrait> {
-
+struct Data<Factory: FactoryTrait, Game: GameTrait> {
+    factory: Factory,
     //TODO: use vec deque so that this is more efficient
     step_queue: Vec<StepMessage<Game>>,
     latest_time_message: Option<TimeMessage>,
     initial_information: Option<InitialInformation<Game>>,
 }
 
-impl<Game: GameTrait> RenderReceiver<Game> {
+impl<Factory: FactoryTrait, Game: GameTrait> RenderReceiver<Factory, Game> {
 
-    pub fn new() -> (Sender<RenderReceiverMessage<Game>>, Self) {
+    pub fn new(factory: Factory) -> (Sender<RenderReceiverMessage<Game>>, Self) {
         let (sender, receiver) = Channel::<RenderReceiverMessage<Game>>::new().take();
 
-        let data = Data::<Game> {
+        let data = Data::<Factory, Game> {
+            factory: factory.clone(),
             step_queue: Vec::new(),
             latest_time_message: None,
             initial_information: None
         };
 
-        let render_receiver = Self{
+        let render_receiver = Self {
+            factory,
             receiver,
             data
         };
@@ -52,7 +56,7 @@ impl<Game: GameTrait> RenderReceiver<Game> {
 
         loop {
 
-            match self.receiver.try_recv() {
+            match self.receiver.try_recv(&self.factory) {
 
                 Ok(RenderReceiverMessage::InitialInformation(initial_information)) =>
                     self.data.on_initial_information(initial_information),
@@ -87,7 +91,7 @@ impl<Game: GameTrait> RenderReceiver<Game> {
 
         } else if self.data.latest_time_message.is_some() {
 
-            let now = TimeValue::now();
+            let now = self.factory.now();
             let latest_time_message = self.data.latest_time_message.as_ref().unwrap();
             let mut duration_since_start = latest_time_message.get_duration_since_start(now);
             //used to be floor
@@ -139,7 +143,7 @@ impl<Game: GameTrait> RenderReceiver<Game> {
 
 }
 
-impl<Game: GameTrait> Data<Game> {
+impl<Factory: FactoryTrait, Game: GameTrait> Data<Factory, Game> {
 
     fn drop_steps_before(&mut self, drop_before: usize) {
         while self.step_queue.len() > 2 &&
@@ -170,7 +174,7 @@ impl<Game: GameTrait> Data<Game> {
         }
 
         if let Some(time_message) = self.latest_time_message {
-            let now = TimeValue::now();
+            let now = self.factory.now();
 
             //TODO: put this in a method
             let latest_step = time_message.get_step_from_actual_time(now).floor() as usize;
@@ -182,7 +186,7 @@ impl<Game: GameTrait> Data<Game> {
     fn on_time_message(&mut self, time_message: TimeMessage) {
 
         //TODO: put this in a method
-        let now = TimeValue::now();
+        let now = self.factory.now();
         let latest_step = time_message.get_step_from_actual_time(now).floor() as usize;
 
         self.latest_time_message = Some(time_message);

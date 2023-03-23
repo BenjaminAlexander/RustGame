@@ -62,7 +62,7 @@ impl Add for TimeDuration {
 
     fn add(self, rhs: Self) -> Self::Output {
         return Self {
-            seconds: self.seconds - rhs.seconds
+            seconds: self.seconds + rhs.seconds
         };
     }
 }

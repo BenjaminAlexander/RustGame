@@ -1,3 +1,4 @@
+use crate::factory::FactoryTrait;
 use crate::time::TimeValue;
 
 pub struct ListenMetaData {
@@ -6,9 +7,9 @@ pub struct ListenMetaData {
 
 impl ListenMetaData {
 
-    pub fn new() -> Self {
+    pub fn new(factory: &impl FactoryTrait) -> Self {
         Self {
-            time_received: TimeValue::now()
+            time_received: factory.now()
         }
     }
 

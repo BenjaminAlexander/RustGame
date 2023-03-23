@@ -1,22 +1,31 @@
 use std::ops::ControlFlow;
 use std::ops::ControlFlow::Continue;
+use crate::factory::FactoryTrait;
 use crate::threading::channel::ReceiveMetaData;
 use crate::threading::eventhandling;
 use crate::threading::eventhandling::{ChannelEventResult, EventHandlerTrait};
 use crate::threading::eventhandling::WaitOrTryForNextEvent::TryForNextEvent;
 use crate::threading::listener::{ChannelEvent, ListenerTrait, ListenMetaData};
 use crate::threading::listener::ChannelEvent::{ChannelDisconnected, ChannelEmptyAfterListen, ReceivedEvent};
-use crate::threading::listener::eventhandler::ListenerState::{ReadyToListen, WaitingForChannelEmptyAfterListen};
+use crate::threading::listener::eventhandler::InternalState::{ReadyToListen, WaitingForChannelEmptyAfterListen};
 use crate::threading::listener::ListenedOrDidNotListen::{DidNotListen, Listened};
 
-type EventResult<T> = ControlFlow<<T as ListenerTrait>::ThreadReturn, ListenerState<T>>;
+type EventResult<Factory, T> = ControlFlow<<T as ListenerTrait>::ThreadReturn, ListenerState<Factory, T>>;
 
-pub enum ListenerState<T: ListenerTrait> {
-    WaitingForChannelEmptyAfterListen(T, ListenMetaData, T::ListenFor),
-    ReadyToListen(T),
+pub struct ListenerState<Factory: FactoryTrait, T: ListenerTrait> {
+    listener: T,
+
+    //TODO: maybe get rid of this factory and use the one from event handler thread
+    factory: Factory,
+    state: InternalState<T>
 }
 
-impl<T: ListenerTrait> EventHandlerTrait for ListenerState<T> {
+enum InternalState<T: ListenerTrait> {
+    WaitingForChannelEmptyAfterListen(ListenMetaData, T::ListenFor),
+    ReadyToListen,
+}
+
+impl<Factory: FactoryTrait, T: ListenerTrait> EventHandlerTrait for ListenerState<Factory, T> {
     type Event = T::Event;
     type ThreadReturn = T::ThreadReturn;
 
@@ -44,33 +53,43 @@ impl<T: ListenerTrait> EventHandlerTrait for ListenerState<T> {
     }
 
     fn on_stop(self, receive_meta_data: ReceiveMetaData) -> Self::ThreadReturn {
-        match self {
-            WaitingForChannelEmptyAfterListen(listener, _, _) => listener.on_stop(receive_meta_data),
-            ReadyToListen(listener) => listener.on_stop(receive_meta_data)
-        }
+        return self.listener.on_stop(receive_meta_data);
     }
 }
 
-impl<T: ListenerTrait> ListenerState<T> {
+impl<Factory: FactoryTrait, T: ListenerTrait> ListenerState<Factory, T> {
 
-    fn listen(self) -> EventResult<T> {
+    pub fn new(factory: Factory, listener: T) -> Self {
+        return Self {
+            factory,
+            listener,
+            state: ReadyToListen
+        };
+    }
+
+    fn listen(mut self) -> EventResult<Factory, T> {
         return Continue(match
-            match self {
-                WaitingForChannelEmptyAfterListen(listener, listen_meta_data, value) =>
-                    listener.on_channel_event(ChannelEmptyAfterListen(listen_meta_data, value))?,
-                ReadyToListen(listener) => listener
+            match self.state {
+                WaitingForChannelEmptyAfterListen(listen_meta_data, value) =>
+                    self.listener.on_channel_event(ChannelEmptyAfterListen(listen_meta_data, value))?,
+                ReadyToListen => self.listener
             }.listen()?
         {
-            Listened(listener, value) => WaitingForChannelEmptyAfterListen(listener, ListenMetaData::new(), value),
-            DidNotListen(listener) => ReadyToListen(listener)
+            Listened(listener, value) => {
+                self.listener = listener;
+                self.state = WaitingForChannelEmptyAfterListen(ListenMetaData::new(&self.factory), value);
+                self
+            },
+            DidNotListen(listener) => {
+                self.listener = listener;
+                self.state = ReadyToListen;
+                self
+            }
         });
     }
 
-    fn on_channel_event(self, event: ChannelEvent<T>) -> EventResult<T> {
-        return Continue(match self {
-            WaitingForChannelEmptyAfterListen(listener, listen_meta_data, value) =>
-                WaitingForChannelEmptyAfterListen(listener.on_channel_event(event)?, listen_meta_data, value),
-            ReadyToListen(listener) => ReadyToListen(listener.on_channel_event(event)?)
-        });
+    fn on_channel_event(mut self, event: ChannelEvent<T>) -> EventResult<Factory, T> {
+        self.listener = self.listener.on_channel_event(event)?;
+        return Continue(self);
     }
 }

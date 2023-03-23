@@ -2,18 +2,21 @@ use std::{thread, time, io, process};
 use std::net::Ipv4Addr;
 use std::path::PathBuf;
 use std::str::FromStr;
-use log::{error, info};
+use log::{error, info, LevelFilter};
+use commons::factory;
+use commons::factory::RealFactory;
+use commons::logging::LoggingConfigBuilder;
 use crate::client::ClientCoreEvent::Connect;
 use crate::gamemanager::RenderReceiver;
 use crate::simplegame::{SimpleInput, SimpleState, SimpleInputEvent, SimpleInputEventHandler, SimpleWindow, SimpleServerInput, SimpleGameImpl};
 use commons::threading::{AsyncJoin, ThreadBuilder};
 use commons::time::TimeDuration;
+use crate::interface::RealGameFactory;
 use crate::server::ServerCoreEvent;
 
 mod simplegame;
 mod messaging;
 mod server;
-mod logging;
 mod interface;
 mod gametime;
 mod client;
@@ -44,7 +47,10 @@ pub fn main() {
     log_file_path.push("log");
     log_file_path.push(format!("{}-{}.log", window_name, process::id()));
 
-    logging::init_logging(log_file_path);
+    LoggingConfigBuilder::new()
+        .add_console_appender()
+        .add_file_appender(log_file_path)
+        .init(LevelFilter::Info);
 
     info!("args: {:?}", args);
 
@@ -55,39 +61,45 @@ pub fn main() {
     let mut unused_render_receiver_option = None;
     let mut client_core_join_handle_option = None;
 
+    let factory = RealFactory::new();
+
+    //TODO: clean this up
+
     if run_server {
 
         let server_core_thread_builder = ThreadBuilder::new()
             .name("ServerCore")
-            .build_channel_for_event_handler::<server::ServerCore<SimpleGameImpl>>();
+            .build_channel_for_event_handler::<server::ServerCore<RealGameFactory<SimpleGameImpl>>>();
 
-        let server_core  = server::ServerCore::<SimpleGameImpl>::new(server_core_thread_builder.get_sender().clone());
+        let server_core  = server::ServerCore::<RealGameFactory<SimpleGameImpl>>::new(factory.clone(), server_core_thread_builder.get_sender().clone());
 
-        if let Err(error) = server_core_thread_builder.get_sender().send_event(ServerCoreEvent::StartListenerEvent) {
+        if let Err(error) = server_core_thread_builder.get_sender().send_event(&factory, ServerCoreEvent::StartListenerEvent) {
             error!("{:?}", error);
             return;
         }
 
-        server_core_sender_option = Some(server_core_thread_builder.spawn_event_handler(server_core, AsyncJoin::log_async_join).unwrap());
+        server_core_sender_option = Some(server_core_thread_builder.spawn_event_handler(factory.clone(), server_core, AsyncJoin::log_async_join).unwrap());
     }
 
     if run_client {
 
         let client_core_thread_builder = ThreadBuilder::new()
             .name("ClientCore")
-            .build_channel_for_event_handler::<client::ClientCore<SimpleGameImpl>>();
+            .build_channel_for_event_handler::<client::ClientCore<RealGameFactory<SimpleGameImpl>>>();
 
-        let (render_receiver_sender, render_receiver) = RenderReceiver::<SimpleGameImpl>::new();
+        let (render_receiver_sender, render_receiver) = RenderReceiver::<RealFactory, SimpleGameImpl>::new(factory.clone());
 
         render_receiver_option = Some(render_receiver);
 
-        client_core_thread_builder.get_sender().send_event(Connect(render_receiver_sender)).unwrap();
+        client_core_thread_builder.get_sender().send_event(&factory, Connect(render_receiver_sender)).unwrap();
 
         let sender_clone = client_core_thread_builder.get_sender().clone();
 
         client_core_join_handle_option = Some(
             client_core_thread_builder.spawn_event_handler(
-                client::ClientCore::<SimpleGameImpl>::new(
+                factory.clone(),
+                client::ClientCore::<RealGameFactory<SimpleGameImpl>>::new(
+                    factory.clone(),
                     Ipv4Addr::from_str("127.0.0.1").unwrap(),
                     sender_clone
                 ),
@@ -110,10 +122,10 @@ pub fn main() {
             info!("line: {:?}", line);
         }
 
-        let (render_receiver_sender, render_receiver) = RenderReceiver::<SimpleGameImpl>::new();
+        let (render_receiver_sender, render_receiver) = RenderReceiver::<RealFactory, SimpleGameImpl>::new(factory.clone());
         unused_render_receiver_option = Some(render_receiver);
 
-        server_core_sender_option.as_ref().unwrap().send_event(ServerCoreEvent::StartGameEvent(render_receiver_sender)).unwrap();
+        server_core_sender_option.as_ref().unwrap().send_event(&factory, ServerCoreEvent::StartGameEvent(render_receiver_sender)).unwrap();
 
         if !run_client {
             let tmp = unused_render_receiver_option;
@@ -122,6 +134,6 @@ pub fn main() {
         }
     }
 
-    let client_window = SimpleWindow::new(window_name, render_receiver_option.unwrap(), client_core_join_handle_option);
+    let client_window = SimpleWindow::new(factory.clone(), window_name, render_receiver_option.unwrap(), client_core_join_handle_option);
     client_window.run();
 }

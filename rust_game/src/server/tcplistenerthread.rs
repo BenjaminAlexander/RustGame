@@ -1,26 +1,25 @@
-use std::marker::PhantomData;
 use std::net::{Ipv4Addr, SocketAddr, SocketAddrV4, TcpListener, TcpStream};
 use std::ops::ControlFlow::*;
 use log::{error, info, warn};
-use crate::interface::GameTrait;
+use crate::interface::{GameFactoryTrait, GameTrait};
 use crate::server::servercore::ServerCoreEvent;
 use crate::server::servercore::ServerCoreEvent::TcpConnectionEvent;
 use commons::threading::channel::ReceiveMetaData;
 use commons::threading::eventhandling::Sender;
 use commons::threading::listener::{ListenedOrDidNotListen, ChannelEvent, ListenerEventResult, ListenerTrait, ListenResult};
 
-pub struct TcpListenerThread<Game: GameTrait> {
+pub struct TcpListenerThread<GameFactory: GameFactoryTrait> {
+    factory: GameFactory::Factory,
     tcp_listener_option: Option<TcpListener>,
-    server_core_sender: Sender<ServerCoreEvent<Game>>,
-    phantom: PhantomData<Game>
+    server_core_sender: Sender<ServerCoreEvent<GameFactory::Game>>
 }
 
-impl<Game: GameTrait> TcpListenerThread<Game> {
-    pub fn new(server_core_sender: Sender<ServerCoreEvent<Game>>) -> Self {
+impl<GameFactory: GameFactoryTrait> TcpListenerThread<GameFactory> {
+    pub fn new(factory: GameFactory::Factory, server_core_sender: Sender<ServerCoreEvent<GameFactory::Game>>) -> Self {
         Self{
+            factory,
             tcp_listener_option: None,
-            server_core_sender,
-            phantom: PhantomData
+            server_core_sender
         }
     }
 
@@ -48,7 +47,7 @@ impl<Game: GameTrait> TcpListenerThread<Game> {
             }
         };
 
-        match self.server_core_sender.send_event(TcpConnectionEvent(stream_clone)) {
+        match self.server_core_sender.send_event(&self.factory, TcpConnectionEvent(stream_clone)) {
             Ok(()) => {
                 return Continue(self);
             }
@@ -60,7 +59,7 @@ impl<Game: GameTrait> TcpListenerThread<Game> {
     }
 }
 
-impl<Game: GameTrait> ListenerTrait for TcpListenerThread<Game> {
+impl<GameFactory: GameFactoryTrait> ListenerTrait for TcpListenerThread<GameFactory> {
     type Event = ();
     type ThreadReturn = ();
     type ListenFor = (TcpStream, SocketAddr);
@@ -69,7 +68,7 @@ impl<Game: GameTrait> ListenerTrait for TcpListenerThread<Game> {
 
         let tcp_listner = match self.tcp_listener_option.as_ref() {
             None => {
-                let socket_addr_v4:SocketAddrV4 = SocketAddrV4::new(Ipv4Addr::new(127, 0, 0, 1), Game::TCP_PORT);
+                let socket_addr_v4:SocketAddrV4 = SocketAddrV4::new(Ipv4Addr::new(127, 0, 0, 1), GameFactory::Game::TCP_PORT);
                 let socket_addr:SocketAddr = SocketAddr::from(socket_addr_v4);
 
                 self.tcp_listener_option = Some(match TcpListener::bind(socket_addr) {

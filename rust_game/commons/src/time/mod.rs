@@ -3,4 +3,4 @@ mod timevalue;
 pub mod timerservice;
 
 pub use self::timeduration::TimeDuration;
-pub use self::timevalue::{TimeValue, EPOCH};
+pub use self::timevalue::{EPOCH, TimeValue};

@@ -3,9 +3,9 @@ use commons::time::{TimeDuration, TimeValue};
 use log::{info, warn, error, debug};
 use std::net::UdpSocket;
 use std::io;
-use std::marker::PhantomData;
 use std::ops::ControlFlow::{Break, Continue};
-use crate::interface::GameTrait;
+use commons::factory::FactoryTrait;
+use crate::interface::{GameFactoryTrait, GameTrait};
 use crate::gametime::TimeMessage;
 use crate::messaging::{InputMessage, StateMessage, ToClientMessageUDP, Fragmenter, MAX_UDP_DATAGRAM_SIZE, ServerInputMessage};
 use crate::server::remoteudppeer::RemoteUdpPeer;
@@ -22,14 +22,14 @@ pub enum UdpOutputEvent<Game: GameTrait> {
     SendCompletedStep(StateMessage<Game>)
 }
 
-pub struct UdpOutput<Game: GameTrait> {
+pub struct UdpOutput<GameFactory: GameFactoryTrait> {
+    factory: GameFactory::Factory,
     player_index: usize,
     socket: UdpSocket,
     remote_peer: Option<RemoteUdpPeer>,
     fragmenter: Fragmenter,
     last_time_message: Option<TimeMessage>,
     last_state_sequence: Option<usize>,
-    phantom: PhantomData<Game>,
 
     //metrics
     time_in_queue_rolling_average: RollingAverage,
@@ -38,11 +38,11 @@ pub struct UdpOutput<Game: GameTrait> {
     time_of_last_server_input_send: TimeValue,
 }
 
-impl<Game: GameTrait> UdpOutput<Game> {
+impl<GameFactory: GameFactoryTrait> UdpOutput<GameFactory> {
 
-    pub fn new(player_index: usize, socket: &UdpSocket) -> io::Result<Self> {
+    pub fn new(factory: GameFactory::Factory, player_index: usize, socket: &UdpSocket) -> io::Result<Self> {
 
-        Ok(UdpOutput{
+        Ok(UdpOutput {
             player_index,
             remote_peer: None,
             socket: socket.try_clone()?,
@@ -50,13 +50,14 @@ impl<Game: GameTrait> UdpOutput<Game> {
             fragmenter: Fragmenter::new(MAX_UDP_DATAGRAM_SIZE),
             last_time_message: None,
             last_state_sequence: None,
-            phantom: PhantomData,
 
             //metrics
             time_in_queue_rolling_average: RollingAverage::new(100),
-            time_of_last_state_send: TimeValue::now(),
-            time_of_last_input_send: TimeValue::now(),
-            time_of_last_server_input_send: TimeValue::now(),
+            time_of_last_state_send: factory.now(),
+            time_of_last_input_send: factory.now(),
+            time_of_last_server_input_send: factory.now(),
+
+            factory
         })
     }
 
@@ -70,7 +71,7 @@ impl<Game: GameTrait> UdpOutput<Game> {
         return Continue(TryForNextEvent(self));
     }
 
-    fn on_completed_step(mut self, receive_meta_data: ReceiveMetaData, state_message: StateMessage<Game>) -> ChannelEventResult<Self> {
+    fn on_completed_step(mut self, receive_meta_data: ReceiveMetaData, state_message: StateMessage<GameFactory::Game>) -> ChannelEventResult<Self> {
 
         let time_in_queue = receive_meta_data.get_send_meta_data().get_time_sent();
 
@@ -78,9 +79,9 @@ impl<Game: GameTrait> UdpOutput<Game> {
             self.last_state_sequence.as_ref().unwrap() <= &state_message.get_sequence() {
 
             self.last_state_sequence = Some(state_message.get_sequence());
-            self.time_of_last_state_send = TimeValue::now();
+            self.time_of_last_state_send = self.factory.now();
 
-            let message = ToClientMessageUDP::<Game>::StateMessage(state_message);
+            let message = ToClientMessageUDP::<GameFactory::Game>::StateMessage(state_message);
             self.send_message(message);
 
             //info!("state_message");
@@ -98,7 +99,7 @@ impl<Game: GameTrait> UdpOutput<Game> {
         let mut send_it = false;
 
         if let Some(last_time_message) = &self.last_time_message {
-            if time_message.get_scheduled_time().is_after(&last_time_message.get_scheduled_time().add(Game::TIME_SYNC_MESSAGE_PERIOD)) {
+            if time_message.get_scheduled_time().is_after(&last_time_message.get_scheduled_time().add(GameFactory::Game::TIME_SYNC_MESSAGE_PERIOD)) {
                 send_it = true;
             }
         } else {
@@ -110,7 +111,7 @@ impl<Game: GameTrait> UdpOutput<Game> {
             self.last_time_message = Some(time_message.clone());
 
             //TODO: timestamp when the time message is set, then use that info in client side time calc
-            let message = ToClientMessageUDP::<Game>::TimeMessage(time_message);
+            let message = ToClientMessageUDP::<GameFactory::Game>::TimeMessage(time_message);
 
             self.send_message(message);
 
@@ -121,7 +122,7 @@ impl<Game: GameTrait> UdpOutput<Game> {
         return Continue(TryForNextEvent(self));
     }
 
-    fn on_input_message(mut self, receive_meta_data: ReceiveMetaData, input_message: InputMessage<Game>) -> ChannelEventResult<Self> {
+    fn on_input_message(mut self, receive_meta_data: ReceiveMetaData, input_message: InputMessage<GameFactory::Game>) -> ChannelEventResult<Self> {
 
         let time_in_queue = receive_meta_data.get_send_meta_data().get_time_sent();
 
@@ -129,9 +130,9 @@ impl<Game: GameTrait> UdpOutput<Game> {
             (self.last_state_sequence.is_none() ||
                 self.last_state_sequence.as_ref().unwrap() <= &input_message.get_step()) {
 
-            self.time_of_last_input_send = TimeValue::now();
+            self.time_of_last_input_send = self.factory.now();
 
-            let message = ToClientMessageUDP::<Game>::InputMessage(input_message);
+            let message = ToClientMessageUDP::<GameFactory::Game>::InputMessage(input_message);
             self.send_message(message);
 
             //info!("input_message");
@@ -143,16 +144,16 @@ impl<Game: GameTrait> UdpOutput<Game> {
         return Continue(TryForNextEvent(self));
     }
 
-    pub fn on_server_input_message(mut self, receive_meta_data: ReceiveMetaData, server_input_message: ServerInputMessage<Game>) -> ChannelEventResult<Self> {
+    pub fn on_server_input_message(mut self, receive_meta_data: ReceiveMetaData, server_input_message: ServerInputMessage<GameFactory::Game>) -> ChannelEventResult<Self> {
 
         let time_in_queue = receive_meta_data.get_send_meta_data().get_time_sent();
 
         if self.last_state_sequence.is_none() ||
             self.last_state_sequence.as_ref().unwrap() <= &server_input_message.get_step() {
 
-            self.time_of_last_server_input_send = TimeValue::now();
+            self.time_of_last_server_input_send = self.factory.now();
 
-            let message = ToClientMessageUDP::<Game>::ServerInputMessage(server_input_message);
+            let message = ToClientMessageUDP::<GameFactory::Game>::ServerInputMessage(server_input_message);
             self.send_message(message);
 
             //info!("server_input_message");
@@ -166,7 +167,7 @@ impl<Game: GameTrait> UdpOutput<Game> {
 
     //TODO: generalize this for all channels
     fn log_time_in_queue(&mut self, time_in_queue: TimeValue) {
-        let now = TimeValue::now();
+        let now = self.factory.now();
         let duration_in_queue = now.duration_since(&time_in_queue);
 
         self.time_in_queue_rolling_average.add_value(duration_in_queue.get_seconds());
@@ -177,7 +178,7 @@ impl<Game: GameTrait> UdpOutput<Game> {
         }
     }
 
-    fn send_message(&mut self, message: ToClientMessageUDP<Game>) {
+    fn send_message(&mut self, message: ToClientMessageUDP<GameFactory::Game>) {
 
         if let Some(remote_peer) = &self.remote_peer {
             let buf = rmp_serde::to_vec(&message).unwrap();
@@ -195,13 +196,13 @@ impl<Game: GameTrait> UdpOutput<Game> {
     }
 }
 
-impl<Game: GameTrait> EventHandlerTrait for UdpOutput<Game> {
-    type Event = UdpOutputEvent<Game>;
+impl<GameFactory: GameFactoryTrait> EventHandlerTrait for UdpOutput<GameFactory> {
+    type Event = UdpOutputEvent<GameFactory::Game>;
     type ThreadReturn = ();
 
     fn on_channel_event(self, channel_event: ChannelEvent<Self::Event>) -> ChannelEventResult<Self> {
 
-        let now = TimeValue::now();
+        let now = self.factory.now();
 
         // let duration_since_last_input = now.duration_since(self.time_of_last_input_send);
         // if duration_since_last_input > TimeDuration::one_second() {

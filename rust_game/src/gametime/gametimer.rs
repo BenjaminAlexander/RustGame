@@ -1,22 +1,20 @@
-use std::ops::ControlFlow::{Break, Continue};
 use commons::stats::RollingAverage;
 use commons::time::{TimeValue, TimeDuration};
 use crate::gametime::{TimeMessage, TimeReceived};
-use chrono::Local;
-use timer::{Guard, Timer};
-use log::{trace, info, warn, error};
-use crate::gametime::gametimerobserver::GameTimerObserverTrait;
+use timer::Timer;
+use log::{trace, info, warn};
+use commons::factory::FactoryTrait;
 use crate::server::ServerConfig;
-use commons::threading::channel::ReceiveMetaData;
-use commons::threading::eventhandling::{ChannelEvent, ChannelEventResult, EventHandlerTrait, Sender};
-use commons::threading::eventhandling::WaitOrTryForNextEvent::{TryForNextEvent, WaitForNextEvent};
+use commons::threading::eventhandling::Sender;
 use commons::threading::{AsyncJoin, ThreadBuilder};
 use commons::time::timerservice::{Schedule, TimerCallBack, TimerCreationCallBack, TimerId, TimerServiceEvent, TimeService};
 
 const TICK_LATENESS_WARN_DURATION: TimeDuration = TimeDuration::from_seconds(0.02);
 const CLIENT_ERROR_WARN_DURATION: TimeDuration = TimeDuration::from_seconds(0.02);
 
-pub struct GameTimer<T: TimerCallBack> {
+pub struct GameTimer<Factory: FactoryTrait, T: TimerCallBack> {
+    factory: Factory,
+    //TODO: remove timer
     timer: Timer,
     server_config: ServerConfig,
     start: Option<TimeValue>,
@@ -25,42 +23,44 @@ pub struct GameTimer<T: TimerCallBack> {
     new_timer_sender: Sender<TimerServiceEvent<GameTimerCreationCallBack, T>>
 }
 
-impl<T: TimerCallBack> GameTimer<T> {
+impl<Factory: FactoryTrait, T: TimerCallBack> GameTimer<Factory, T> {
 
     pub fn new(
+            factory: Factory,
             server_config: ServerConfig,
             rolling_average_size: usize,
             call_back: T) -> Self {
 
-        let mut timerService = TimeService::<GameTimerCreationCallBack, T>::new();
+        let mut timerService = TimeService::<Factory, GameTimerCreationCallBack, T>::new(factory.clone());
 
         let timer_id = timerService.create_timer(call_back, None);
 
         let new_timer_sender = ThreadBuilder::new()
             .name("NewTimerThread")
-            .spawn_event_handler(timerService, AsyncJoin::log_async_join)
+            .spawn_event_handler(factory.clone(), timerService, AsyncJoin::log_async_join)
             .unwrap();
 
-        GameTimer{
+        return Self {
+            factory,
             timer: Timer::new(),
             server_config,
             start: None,
             rolling_average: RollingAverage::new(rolling_average_size),
             new_timer_id: timer_id,
             new_timer_sender
-        }
+        };
     }
 
     pub fn start_ticking(&mut self) {
 
         info!("Starting timer with duration {:?}", self.server_config.get_step_duration());
 
-        let now = TimeValue::now();
+        let now = self.factory.now();
 
         self.start = Some(now.add(self.server_config.get_step_duration()));
 
         let schedule = Schedule::Repeating(self.start.unwrap(), self.server_config.get_step_duration());
-        self.new_timer_sender.send_event(TimerServiceEvent::RescheduleTimer(self.new_timer_id, Some(schedule))).unwrap();
+        self.new_timer_sender.send_event(&self.factory, TimerServiceEvent::RescheduleTimer(self.new_timer_id, Some(schedule))).unwrap();
     }
 
     pub fn on_time_message(&mut self, time_message: TimeReceived<TimeMessage>) {
@@ -92,16 +92,16 @@ impl<T: TimerCallBack> GameTimer<T> {
             self.start = Some(TimeValue::from_seconds_since_epoch(average));
 
             let next_tick = self.start.unwrap()
-                .add(step_duration * ((TimeValue::now().duration_since(&self.start.unwrap()) / step_duration)
+                .add(step_duration * ((self.factory.now().duration_since(&self.start.unwrap()) / step_duration)
                     .floor() as f64 + 1.0));
 
             let schedule = Schedule::Repeating(self.start.unwrap(), self.server_config.get_step_duration());
-            self.new_timer_sender.send_event(TimerServiceEvent::RescheduleTimer(self.new_timer_id, Some(schedule))).unwrap();
+            self.new_timer_sender.send_event(&self.factory, TimerServiceEvent::RescheduleTimer(self.new_timer_id, Some(schedule))).unwrap();
         }
     }
 
     pub fn create_timer_message(&self) -> TimeMessage {
-        let now = TimeValue::now();
+        let now = self.factory.now();
 
         //TODO: tick_time_value is the value from the remote thread, this value gets older and older as the event makes its way through the queue
         //TODO: How much of this can move into the other thread?
@@ -122,7 +122,7 @@ struct GameTimerCreationCallBack {
 }
 
 impl TimerCreationCallBack for GameTimerCreationCallBack {
-    fn timer_created(self, timer_id: &TimerId) {
+    fn timer_created(&self, timer_id: &TimerId) {
         warn!("Timer Created: {:?}", timer_id);
     }
 }

@@ -1,9 +1,10 @@
+use commons::factory::FactoryTrait;
 use crate::gamemanager::stepmessage::StepMessage;
 use crate::interface::GameTrait;
 use crate::messaging::{ServerInputMessage, StateMessage};
 
 pub trait ManagerObserverTrait : 'static + Send {
-
+    type Factory: FactoryTrait;
     type Game: GameTrait;
 
     const IS_SERVER: bool;

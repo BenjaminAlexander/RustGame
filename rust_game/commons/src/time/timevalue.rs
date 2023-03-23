@@ -14,11 +14,6 @@ pub struct TimeValue {
 }
 
 impl TimeValue {
-    pub fn now() -> Self {
-        return Self {
-            seconds_since_epoch: SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs_f64()
-        }
-    }
 
     pub const fn from_seconds_since_epoch(seconds_since_epoch: f64) -> Self {
         return Self { seconds_since_epoch };
