@@ -60,7 +60,7 @@ impl<Factory: FactoryTrait, T: TimerCallBack> GameTimer<Factory, T> {
         self.start = Some(now.add(self.server_config.get_step_duration()));
 
         let schedule = Schedule::Repeating(self.start.unwrap(), self.server_config.get_step_duration());
-        self.new_timer_sender.send_event(&self.factory, TimerServiceEvent::RescheduleTimer(self.new_timer_id, Some(schedule))).unwrap();
+        self.new_timer_sender.send_event(TimerServiceEvent::RescheduleTimer(self.new_timer_id, Some(schedule))).unwrap();
     }
 
     pub fn on_time_message(&mut self, time_message: TimeReceived<TimeMessage>) {
@@ -96,7 +96,7 @@ impl<Factory: FactoryTrait, T: TimerCallBack> GameTimer<Factory, T> {
                     .floor() as f64 + 1.0));
 
             let schedule = Schedule::Repeating(self.start.unwrap(), self.server_config.get_step_duration());
-            self.new_timer_sender.send_event(&self.factory, TimerServiceEvent::RescheduleTimer(self.new_timer_id, Some(schedule))).unwrap();
+            self.new_timer_sender.send_event(TimerServiceEvent::RescheduleTimer(self.new_timer_id, Some(schedule))).unwrap();
         }
     }
 

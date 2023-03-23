@@ -20,7 +20,7 @@ pub struct UdpInput<GameFactory: GameFactoryTrait> {
     server_socket_addr: SocketAddr,
     socket: UdpSocket,
     fragment_assembler: FragmentAssembler,
-    core_sender: eventhandling::Sender<GameFactory::Factory, ClientCoreEvent<GameFactory::Game>>,
+    core_sender: eventhandling::Sender<GameFactory::Factory, ClientCoreEvent<GameFactory>>,
     manager_sender: eventhandling::Sender<GameFactory::Factory, ManagerEvent<GameFactory::Game>>,
 
     //metrics
@@ -35,7 +35,7 @@ impl<GameFactory: GameFactoryTrait> UdpInput<GameFactory> {
         factory: GameFactory::Factory,
         server_socket_addr_v4: SocketAddrV4,
         socket: &UdpSocket,
-        core_sender: eventhandling::Sender<GameFactory::Factory, ClientCoreEvent<GameFactory::Game>>,
+        core_sender: eventhandling::Sender<GameFactory::Factory, ClientCoreEvent<GameFactory>>,
         manager_sender: eventhandling::Sender<GameFactory::Factory, ManagerEvent<GameFactory::Game>>) -> io::Result<Self> {
 
         let server_socket_addr = SocketAddr::from(server_socket_addr_v4);
@@ -123,18 +123,18 @@ impl<GameFactory: GameFactoryTrait> UdpInput<GameFactory> {
         match value {
             ToClientMessageUDP::TimeMessage(time_message) => {
                 //info!("Time message: {:?}", time_message.get_step());
-                self.core_sender.send_event(&self.factory, ClientCoreEvent::RemoteTimeMessageEvent(TimeReceived::new(time_received, time_message))).unwrap();
+                self.core_sender.send_event(ClientCoreEvent::RemoteTimeMessageEvent(TimeReceived::new(time_received, time_message))).unwrap();
             }
             ToClientMessageUDP::InputMessage(input_message) => {
                 //TODO: ignore input messages from this player
                 //info!("Input message: {:?}", input_message.get_step());
                 self.time_of_last_input_receive = time_received;
-                self.manager_sender.send_event(&self.factory, ManagerEvent::InputEvent(input_message.clone())).unwrap();
+                self.manager_sender.send_event(ManagerEvent::InputEvent(input_message.clone())).unwrap();
             }
             ToClientMessageUDP::ServerInputMessage(server_input_message) => {
                 //info!("Server Input message: {:?}", server_input_message.get_step());
                 self.time_of_last_server_input_receive = time_received;
-                self.manager_sender.send_event(&self.factory, ManagerEvent::ServerInputEvent(server_input_message)).unwrap();
+                self.manager_sender.send_event(ManagerEvent::ServerInputEvent(server_input_message)).unwrap();
             }
             ToClientMessageUDP::StateMessage(state_message) => {
                 //info!("State message: {:?}", state_message.get_sequence());
@@ -148,7 +148,7 @@ impl<GameFactory: GameFactoryTrait> UdpInput<GameFactory> {
                 }
 
                 self.time_of_last_state_receive = time_received;
-                self.manager_sender.send_event(&self.factory, ManagerEvent::StateEvent(state_message)).unwrap();
+                self.manager_sender.send_event(ManagerEvent::StateEvent(state_message)).unwrap();
             }
         };
 

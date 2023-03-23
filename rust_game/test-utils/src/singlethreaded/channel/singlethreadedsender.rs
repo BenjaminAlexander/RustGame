@@ -1,13 +1,14 @@
 use commons::factory::FactoryTrait;
 use commons::threading::channel;
 use commons::threading::channel::{SendError, SenderTrait};
+use crate::singlethreaded::SingleThreadedFactory;
 
 pub struct SingleThreadedSender<T: Send> {
-    sender: channel::Sender<T>
+    sender: channel::RealSender<SingleThreadedFactory, T>
 }
 
 impl<T: Send> SingleThreadedSender<T> {
-    pub fn new(sender: channel::Sender<T>) -> Self {
+    pub fn new(sender: channel::RealSender<SingleThreadedFactory, T>) -> Self {
         return Self {
             sender
         };
@@ -15,8 +16,8 @@ impl<T: Send> SingleThreadedSender<T> {
 }
 
 impl<T: Send> SenderTrait<T> for SingleThreadedSender<T> {
-    fn send(&self, factory: &impl FactoryTrait, value: T) -> Result<(), SendError<T>> {
-        return self.sender.send(factory, value);
+    fn send(&self, value: T) -> Result<(), SendError<T>> {
+        return self.sender.send(value);
     }
 }
 

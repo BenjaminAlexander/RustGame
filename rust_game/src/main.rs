@@ -73,7 +73,7 @@ pub fn main() {
 
         let server_core  = server::ServerCore::<RealGameFactory<SimpleGameImpl>>::new(factory.clone(), server_core_thread_builder.get_sender().clone());
 
-        if let Err(error) = server_core_thread_builder.get_sender().send_event(&factory, ServerCoreEvent::StartListenerEvent) {
+        if let Err(error) = server_core_thread_builder.get_sender().send_event(ServerCoreEvent::StartListenerEvent) {
             error!("{:?}", error);
             return;
         }
@@ -91,7 +91,7 @@ pub fn main() {
 
         render_receiver_option = Some(render_receiver);
 
-        client_core_thread_builder.get_sender().send_event(&factory, Connect(render_receiver_sender)).unwrap();
+        client_core_thread_builder.get_sender().send_event(Connect(render_receiver_sender)).unwrap();
 
         let sender_clone = client_core_thread_builder.get_sender().clone();
 
@@ -124,7 +124,7 @@ pub fn main() {
         let (render_receiver_sender, render_receiver) = RenderReceiver::<RealFactory, SimpleGameImpl>::new(factory.clone());
         unused_render_receiver_option = Some(render_receiver);
 
-        server_core_sender_option.as_ref().unwrap().send_event(&factory, ServerCoreEvent::StartGameEvent(render_receiver_sender)).unwrap();
+        server_core_sender_option.as_ref().unwrap().send_event(ServerCoreEvent::StartGameEvent(render_receiver_sender)).unwrap();
 
         if !run_client {
             let tmp = unused_render_receiver_option;

@@ -11,6 +11,7 @@ use crate::gametime::GameTimer;
 use crate::gamemanager::{Manager, ManagerEvent, RenderReceiverMessage};
 use crate::messaging::{InputMessage, InitialInformation};
 use std::str::FromStr;
+use commons::factory::FactoryTrait;
 use crate::server::udpinput::{UdpInput, UdpInputEvent};
 use crate::server::udpoutput::{UdpOutput, UdpOutputEvent};
 use crate::server::clientaddress::ClientAddress;
@@ -25,22 +26,22 @@ use commons::threading::eventhandling::{ChannelEvent, ChannelEventResult, EventH
 use commons::threading::eventhandling::WaitOrTryForNextEvent::{TryForNextEvent, WaitForNextEvent};
 use self::ServerCoreEvent::{StartListenerEvent, RemoteUdpPeerEvent, StartGameEvent, TcpConnectionEvent, GameTimerTick, InputMessageEvent};
 
-pub enum ServerCoreEvent<Game: GameTrait> {
+pub enum ServerCoreEvent<GameFactory: GameFactoryTrait> {
     //TODO: start listener before spawning event handler
     StartListenerEvent,
 
     RemoteUdpPeerEvent(RemoteUdpPeer),
 
     //TODO: create render receiver sender before spawning event handler
-    StartGameEvent(channel::Sender<RenderReceiverMessage<Game>>),
+    StartGameEvent(<GameFactory::Factory as FactoryTrait>::Sender<RenderReceiverMessage<GameFactory::Game>>),
     TcpConnectionEvent(TcpStream),
     GameTimerTick,
-    InputMessageEvent(InputMessage<Game>)
+    InputMessageEvent(InputMessage<GameFactory::Game>)
 }
 
 pub struct ServerCore<GameFactory: GameFactoryTrait> {
     factory: GameFactory::Factory,
-    sender: eventhandling::Sender<GameFactory::Factory, ServerCoreEvent<GameFactory::Game>>,
+    sender: eventhandling::Sender<GameFactory::Factory, ServerCoreEvent<GameFactory>>,
     game_is_started: bool,
     server_config: ServerConfig,
     tcp_listener_sender_option: Option<eventhandling::Sender<GameFactory::Factory, ()>>,
@@ -51,12 +52,12 @@ pub struct ServerCore<GameFactory: GameFactoryTrait> {
     udp_outputs: Vec<eventhandling::Sender<GameFactory::Factory, UdpOutputEvent<GameFactory::Game>>>,
     udp_input_sender_option: Option<eventhandling::Sender<GameFactory::Factory, UdpInputEvent>>,
     manager_sender_option: Option<eventhandling::Sender<GameFactory::Factory, ManagerEvent<GameFactory::Game>>>,
-    render_receiver_sender: Option<channel::Sender<RenderReceiverMessage<GameFactory::Game>>>,
+    render_receiver_sender: Option<<GameFactory::Factory as FactoryTrait>::Sender<RenderReceiverMessage<GameFactory::Game>>>,
     drop_steps_before: usize
 }
 
 impl<GameFactory: GameFactoryTrait> EventHandlerTrait for ServerCore<GameFactory> {
-    type Event = ServerCoreEvent<GameFactory::Game>;
+    type Event = ServerCoreEvent<GameFactory>;
     type ThreadReturn = ();
 
     fn on_channel_event(self, channel_event: ChannelEvent<Self::Event>) -> ChannelEventResult<Self> {
@@ -78,7 +79,7 @@ impl<GameFactory: GameFactoryTrait> EventHandlerTrait for ServerCore<GameFactory
 
 impl<GameFactory: GameFactoryTrait> ServerCore<GameFactory> {
 
-    pub fn new(factory: GameFactory::Factory, sender: eventhandling::Sender<GameFactory::Factory, ServerCoreEvent<GameFactory::Game>>) -> Self {
+    pub fn new(factory: GameFactory::Factory, sender: eventhandling::Sender<GameFactory::Factory, ServerCoreEvent<GameFactory>>) -> Self {
 
         let server_config = ServerConfig::new(
             GameFactory::Game::STEP_PERIOD
@@ -167,13 +168,13 @@ impl<GameFactory: GameFactoryTrait> ServerCore<GameFactory> {
 
     fn on_remote_udp_peer(self, remote_udp_peer: RemoteUdpPeer) -> ChannelEventResult<Self> {
         if let Some(udp_output_sender) = self.udp_outputs.get(remote_udp_peer.get_player_index()) {
-            udp_output_sender.send_event(&self.factory, UdpOutputEvent::RemotePeer(remote_udp_peer)).unwrap();
+            udp_output_sender.send_event(UdpOutputEvent::RemotePeer(remote_udp_peer)).unwrap();
         }
 
         return Continue(TryForNextEvent(self));
     }
 
-    fn start_game(mut self, render_receiver_sender: channel::Sender<RenderReceiverMessage<GameFactory::Game>>) -> ChannelEventResult<Self> {
+    fn start_game(mut self, render_receiver_sender: <GameFactory::Factory as FactoryTrait>::Sender<RenderReceiverMessage<GameFactory::Game>>) -> ChannelEventResult<Self> {
         //TODO: remove this line
         //let (render_receiver_sender, render_receiver) = RenderReceiver::<Game>::new();
 
@@ -210,7 +211,7 @@ impl<GameFactory: GameFactoryTrait> ServerCore<GameFactory> {
                 server_game_timer_observer
             );
 
-            manager_builder.get_sender().send_event(&self.factory, ManagerEvent::DropStepsBeforeEvent(self.drop_steps_before)).unwrap();
+            manager_builder.get_sender().send_event(ManagerEvent::DropStepsBeforeEvent(self.drop_steps_before)).unwrap();
 
             let server_initial_information = InitialInformation::<GameFactory::Game>::new(
                 self.server_config.clone(),
@@ -219,11 +220,11 @@ impl<GameFactory: GameFactoryTrait> ServerCore<GameFactory> {
                 initial_state.clone()
             );
 
-            manager_builder.get_sender().send_event(&self.factory, ManagerEvent::InitialInformationEvent(server_initial_information.clone())).unwrap();
-            render_receiver_sender.send(&self.factory, RenderReceiverMessage::InitialInformation(server_initial_information.clone())).unwrap();
+            manager_builder.get_sender().send_event(ManagerEvent::InitialInformationEvent(server_initial_information.clone())).unwrap();
+            render_receiver_sender.send(RenderReceiverMessage::InitialInformation(server_initial_information.clone())).unwrap();
 
             for tcp_output in self.tcp_outputs.iter() {
-                tcp_output.send_event(&self.factory, SendInitialInformation(
+                tcp_output.send_event(SendInitialInformation(
                     self.server_config.clone(),
                     self.tcp_outputs.len(),
                     initial_state.clone()
@@ -269,7 +270,7 @@ impl<GameFactory: GameFactoryTrait> ServerCore<GameFactory> {
 
             self.udp_input_sender_option.as_ref()
                 .unwrap()
-                .send_event(&self.factory, UdpInputEvent::ClientAddress(client_address))
+                .send_event(UdpInputEvent::ClientAddress(client_address))
                 .unwrap();
 
             let tcp_output_sender = ThreadBuilder::new(self.factory.clone())
@@ -310,16 +311,16 @@ impl<GameFactory: GameFactoryTrait> ServerCore<GameFactory> {
 
             //the manager needs its lowest step to not have any new inputs
             if self.drop_steps_before > 1 {
-                manager_sender.send_event(&self.factory, ManagerEvent::DropStepsBeforeEvent(self.drop_steps_before - 1)).unwrap();
+                manager_sender.send_event(ManagerEvent::DropStepsBeforeEvent(self.drop_steps_before - 1)).unwrap();
             }
-            manager_sender.send_event(&self.factory, ManagerEvent::SetRequestedStepEvent(time_message.get_step() + 1)).unwrap();
+            manager_sender.send_event(ManagerEvent::SetRequestedStepEvent(time_message.get_step() + 1)).unwrap();
         }
 
         for udp_output in self.udp_outputs.iter() {
-            udp_output.send_event(&self.factory, UdpOutputEvent::SendTimeMessage(time_message.clone())).unwrap();
+            udp_output.send_event(UdpOutputEvent::SendTimeMessage(time_message.clone())).unwrap();
         }
 
-        self.render_receiver_sender.as_ref().unwrap().send(&self.factory, RenderReceiverMessage::TimeMessage(time_message.clone())).unwrap();
+        self.render_receiver_sender.as_ref().unwrap().send(RenderReceiverMessage::TimeMessage(time_message.clone())).unwrap();
 
         return Continue(TryForNextEvent(self));
     }
@@ -333,11 +334,11 @@ impl<GameFactory: GameFactoryTrait> ServerCore<GameFactory> {
 
             self.manager_sender_option.as_ref()
                 .unwrap()
-                .send_event(&self.factory, ManagerEvent::InputEvent(input_message.clone()))
+                .send_event(ManagerEvent::InputEvent(input_message.clone()))
                 .unwrap();
 
             for udp_output in self.udp_outputs.iter() {
-                udp_output.send_event(&self.factory, UdpOutputEvent::SendInputMessage(input_message.clone())).unwrap();
+                udp_output.send_event(UdpOutputEvent::SendInputMessage(input_message.clone())).unwrap();
             }
         }
 

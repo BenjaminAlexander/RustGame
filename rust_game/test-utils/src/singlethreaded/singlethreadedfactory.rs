@@ -32,6 +32,6 @@ impl FactoryTrait for SingleThreadedFactory {
     }
 
     fn new_sender<T: Send>(&self, sender: mpsc::Sender<(SendMetaData, T)>) -> Self::Sender<T> {
-        return SingleThreadedSender::new(channel::Sender::new(sender));
+        return SingleThreadedSender::new(channel::RealSender::new(self.clone(), sender));
     }
 }

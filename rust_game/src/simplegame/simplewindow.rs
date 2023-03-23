@@ -11,14 +11,15 @@ use log::info;
 use commons::factory::FactoryTrait;
 use commons::threading::eventhandling::EventSenderTrait;
 use crate::client::ClientCoreEvent::OnInputEvent;
+use crate::interface::RealGameFactory;
 use crate::simplegame::simplegameimpl::SimpleGameImpl;
 
 pub struct SimpleWindow<Factory: FactoryTrait> {
     factory: Factory,
     window_name: String,
     render_receiver: RenderReceiver<Factory, SimpleGameImpl>,
-    //TODO: don't expose eventhandling, sender or ClientCore, or ClientCoreEvent, or GameFactoryTrait
-    client_core_sender_option: Option<eventhandling::Sender<Factory, ClientCoreEvent<SimpleGameImpl>>>
+    //TODO: don't expose eventhandling, sender or ClientCore, or ClientCoreEvent, or GameFactoryTrait, or RealGameFactory
+    client_core_sender_option: Option<eventhandling::Sender<Factory, ClientCoreEvent<RealGameFactory<SimpleGameImpl>>>>
 }
 
 impl<Factory: FactoryTrait> SimpleWindow<Factory> {
@@ -26,7 +27,7 @@ impl<Factory: FactoryTrait> SimpleWindow<Factory> {
     pub fn new(factory: Factory,
                window_name: String,
                render_receiver: RenderReceiver<Factory, SimpleGameImpl>,
-               client_core_sender_option: Option<eventhandling::Sender<Factory, ClientCoreEvent<SimpleGameImpl>>>) -> Self {
+               client_core_sender_option: Option<eventhandling::Sender<Factory, ClientCoreEvent<RealGameFactory<SimpleGameImpl>>>>) -> Self {
 
         return Self{
             factory,
@@ -102,7 +103,7 @@ impl<Factory: FactoryTrait> SimpleWindow<Factory> {
 
     fn input(&mut self, input: PistonInput) {
         if let Some(core_sender) = self.client_core_sender_option.as_ref() {
-            core_sender.send_event(&self.factory, OnInputEvent(SimpleInputEvent::new(input))).unwrap();
+            core_sender.send_event(OnInputEvent(SimpleInputEvent::new(input))).unwrap();
         }
     }
 }

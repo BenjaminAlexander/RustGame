@@ -4,6 +4,7 @@ use commons::threading::{channel, eventhandling};
 use crate::messaging::ToClientMessageTCP;
 use std::io;
 use std::ops::ControlFlow::*;
+use commons::factory::FactoryTrait;
 use crate::client::clientcore::ClientCoreEvent;
 use crate::client::ClientCoreEvent::OnInitialInformation;
 use crate::gamemanager::{ManagerEvent, RenderReceiverMessage};
@@ -18,8 +19,8 @@ pub struct TcpInput <GameFactory: GameFactoryTrait> {
     player_index: Option<usize>,
     tcp_stream: TcpStream,
     manager_sender: eventhandling::Sender<GameFactory::Factory, ManagerEvent<GameFactory::Game>>,
-    client_core_sender: eventhandling::Sender<GameFactory::Factory, ClientCoreEvent<GameFactory::Game>>,
-    render_data_sender: channel::Sender<RenderReceiverMessage<GameFactory::Game>>
+    client_core_sender: eventhandling::Sender<GameFactory::Factory, ClientCoreEvent<GameFactory>>,
+    render_data_sender: <GameFactory::Factory as FactoryTrait>::Sender<RenderReceiverMessage<GameFactory::Game>>
 }
 
 impl<GameFactory: GameFactoryTrait> TcpInput<GameFactory> {
@@ -27,8 +28,8 @@ impl<GameFactory: GameFactoryTrait> TcpInput<GameFactory> {
     pub fn new(
         factory: GameFactory::Factory,
         manager_sender: eventhandling::Sender<GameFactory::Factory, ManagerEvent<GameFactory::Game>>,
-        client_core_sender: eventhandling::Sender<GameFactory::Factory, ClientCoreEvent<GameFactory::Game>>,
-        render_data_sender: channel::Sender<RenderReceiverMessage<GameFactory::Game>>,
+        client_core_sender: eventhandling::Sender<GameFactory::Factory, ClientCoreEvent<GameFactory>>,
+        render_data_sender: <GameFactory::Factory as FactoryTrait>::Sender<RenderReceiverMessage<GameFactory::Game>>,
         tcp_stream: &TcpStream) -> io::Result<Self> {
 
         Ok(Self {
@@ -83,9 +84,9 @@ impl<GameFactory: GameFactoryTrait> TcpInput<GameFactory> {
                 info!("InitialInformation Received.  Player Index: {:?}", initial_information_message.get_player_index());
 
                 self.player_index = Some(initial_information_message.get_player_index());
-                self.manager_sender.send_event(&self.factory, ManagerEvent::InitialInformationEvent(initial_information_message.clone())).unwrap();
-                self.client_core_sender.send_event(&self.factory, OnInitialInformation(initial_information_message.clone())).unwrap();
-                self.render_data_sender.send(&self.factory, RenderReceiverMessage::InitialInformation(initial_information_message)).unwrap();
+                self.manager_sender.send_event(ManagerEvent::InitialInformationEvent(initial_information_message.clone())).unwrap();
+                self.client_core_sender.send_event(OnInitialInformation(initial_information_message.clone())).unwrap();
+                self.render_data_sender.send(RenderReceiverMessage::InitialInformation(initial_information_message)).unwrap();
             }
         }
     }
