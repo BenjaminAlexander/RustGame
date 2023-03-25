@@ -1,16 +1,14 @@
-use std::cell::RefCell;
 use log::warn;
 use std::collections::VecDeque;
-use std::rc::Rc;
-use commons::factory::FactoryTrait;
+use std::sync::{Arc, Mutex};
 use commons::time::{TimeDuration, TimeValue};
 use crate::singlethreaded::event::Event;
-use crate::singlethreaded::singlethreadedfactory::SingleThreadedFactory;
+use crate::time::SimulatedTimeSource;
 
 #[derive(Clone)]
 pub struct TimeQueue {
-    factory: SingleThreadedFactory,
-    internal: Rc<RefCell<TimeQueueInternal>>
+    simulated_time_source: SimulatedTimeSource,
+    internal: Arc<Mutex<TimeQueueInternal>>
 }
 
 struct TimeQueueInternal {
@@ -20,7 +18,7 @@ struct TimeQueueInternal {
 
 impl TimeQueue {
 
-    pub fn new(factory: SingleThreadedFactory) -> Self {
+    pub fn new(simulated_time_source: SimulatedTimeSource) -> Self {
 
         let internal = TimeQueueInternal {
             next_event_id: 0,
@@ -28,35 +26,35 @@ impl TimeQueue {
         };
 
         return Self {
-            factory,
-            internal: Rc::new(RefCell::new(internal))
+            simulated_time_source,
+            internal: Arc::new(Mutex::new(internal))
         };
     }
 
-    pub fn get_factory(&self) -> &SingleThreadedFactory {
-        return &self.factory;
+    pub fn get_simulated_time_source(&self) -> &SimulatedTimeSource {
+        return &self.simulated_time_source;
     }
 
-    pub fn add_event_at_time(&self, time: TimeValue, function: impl FnOnce() + 'static) -> usize {
-        return self.internal.borrow_mut().add_event_at_time(time, function);
+    pub fn add_event_at_time(&self, time: TimeValue, function: impl FnOnce() + Send + 'static) -> usize {
+        return self.internal.lock().unwrap().add_event_at_time(time, function);
     }
 
-    pub fn add_event_now(&self, function: impl FnOnce() + 'static) -> usize {
-        let time = self.factory.now();
+    pub fn add_event_now(&self, function: impl FnOnce() + Send + 'static) -> usize {
+        let time = self.simulated_time_source.now();
         return self.add_event_at_time(time, function);
     }
 
-    pub fn add_event_at_duration_from_now(&self, duration: TimeDuration, function: impl FnOnce() + 'static) -> usize {
-        let time = self.factory.now().add(duration);
+    pub fn add_event_at_duration_from_now(&self, duration: TimeDuration, function: impl FnOnce() + Send + 'static) -> usize {
+        let time = self.simulated_time_source.now().add(duration);
         return self.add_event_at_time(time, function);
     }
 
     pub fn remove_event(&self, id: usize) {
-        self.internal.borrow_mut().remove_event(id);
+        self.internal.lock().unwrap().remove_event(id);
     }
 
     pub fn run_events(&self) {
-        let now = self.factory.now();
+        let now = self.simulated_time_source.now();
         self.advance_time_until(now);
     }
 
@@ -64,11 +62,11 @@ impl TimeQueue {
 
         loop {
 
-            let event = self.internal.borrow_mut().pop_next_event_at_or_before(time_value);
+            let event = self.internal.lock().unwrap().pop_next_event_at_or_before(time_value);
 
             match event {
                 Some(event) => {
-                    self.factory.get_simulated_time_source().set_simulated_time(*event.get_time());
+                    self.simulated_time_source.set_simulated_time(*event.get_time());
                     event.run();
                 },
                 None => {
@@ -77,18 +75,18 @@ impl TimeQueue {
             }
         }
 
-        self.factory.get_simulated_time_source().set_simulated_time(time_value);
+        self.simulated_time_source.set_simulated_time(time_value);
     }
 
     pub fn advance_time_for_duration(&self, time_duration: TimeDuration) {
-        let time = self.factory.now().add(time_duration);
+        let time = self.simulated_time_source.now().add(time_duration);
         self.advance_time_until(time);
     }
 }
 
 impl TimeQueueInternal {
 
-    fn add_event_at_time(&mut self, time: TimeValue, function: impl FnOnce() + 'static) -> usize {
+    fn add_event_at_time(&mut self, time: TimeValue, function: impl FnOnce() + Send + 'static) -> usize {
         let event_id = self.next_event_id;
         self.next_event_id = event_id + 1;
 

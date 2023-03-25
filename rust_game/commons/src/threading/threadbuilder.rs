@@ -50,7 +50,7 @@ impl<Factory: FactoryTrait> ThreadBuilder<Factory> {
         return self.build_channel_for_event_handler::<ListenerState<Factory, T>>().spawn_listener(listener, join_call_back);
     }
 
-    pub(super) fn spawn_thread<T: Thread>(self, thread: T, join_call_back: impl FnOnce(AsyncJoin<Factory, T::ReturnType>) + Send + 'static) -> std::io::Result<()> {
+    pub(crate) fn spawn_thread<T: Thread>(self, thread: T, join_call_back: impl FnOnce(AsyncJoin<Factory, T::ReturnType>) + Send + 'static) -> std::io::Result<()> {
         let mut builder = Builder::new();
 
         if let Some(name) = self.name.as_ref() {

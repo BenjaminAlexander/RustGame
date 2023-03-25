@@ -20,7 +20,6 @@ use crate::server::servergametimerobserver::ServerGameTimerObserver;
 use crate::server::servermanagerobserver::ServerManagerObserver;
 use crate::server::tcpoutput::TcpOutputEvent::SendInitialInformation;
 use commons::threading::AsyncJoin;
-use commons::threading::channel;
 use commons::threading::channel::{ReceiveMetaData, SenderTrait};
 use commons::threading::eventhandling::{ChannelEvent, ChannelEventResult, EventHandlerTrait, EventSenderTrait};
 use commons::threading::eventhandling::WaitOrTryForNextEvent::{TryForNextEvent, WaitForNextEvent};

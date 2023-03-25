@@ -1,6 +1,6 @@
 use log::{error, info, warn};
 use std::net::TcpStream;
-use commons::threading::{channel, eventhandling};
+use commons::threading::eventhandling;
 use crate::messaging::ToClientMessageTCP;
 use std::io;
 use std::ops::ControlFlow::*;

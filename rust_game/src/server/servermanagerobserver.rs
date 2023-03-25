@@ -3,7 +3,7 @@ use crate::gamemanager::{ManagerObserverTrait, RenderReceiverMessage, StepMessag
 use crate::interface::GameFactoryTrait;
 use crate::messaging::{ServerInputMessage, StateMessage};
 use crate::server::udpoutput::UdpOutputEvent;
-use commons::threading::{channel, eventhandling};
+use commons::threading::eventhandling;
 use commons::threading::channel::SenderTrait;
 use commons::threading::eventhandling::EventSenderTrait;
 

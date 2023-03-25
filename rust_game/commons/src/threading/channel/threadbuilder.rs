@@ -19,10 +19,6 @@ impl<Factory: FactoryTrait, T: Send + 'static> ThreadBuilder<Factory, T> {
         };
     }
 
-    pub fn take(self) -> (threading::ThreadBuilder<Factory>, Channel<Factory, T>) {
-        return (self.thread_builder, self.channel);
-    }
-
     pub fn get_channel(&self) -> &Channel<Factory, T> {
         return &self.channel;
     }
@@ -40,17 +36,15 @@ impl<Factory: FactoryTrait, T: Send + 'static> ThreadBuilder<Factory, EventOrSto
 
     pub fn spawn_event_handler<U: EventHandlerTrait<Event=T>>(self, event_handler: U, join_call_back: impl FnOnce(AsyncJoin<Factory, U::ThreadReturn>) + Send + 'static) -> std::io::Result<eventhandling::Sender<Factory, T>> {
 
-        let (thread_builder, channel) = self.take();
-
-        let (sender, receiver) = channel.take();
+        let (sender, receiver) = self.channel.take();
 
         let thread = EventHandlerThread::new(
-            thread_builder.get_factory().clone(),
+            self.thread_builder.get_factory().clone(),
             receiver,
             event_handler
         );
 
-        thread_builder.spawn_thread(thread, join_call_back)?;
+        self.thread_builder.spawn_thread(thread, join_call_back)?;
 
         return Ok(sender);
     }
