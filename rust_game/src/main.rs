@@ -3,7 +3,7 @@ use std::net::Ipv4Addr;
 use std::path::PathBuf;
 use std::str::FromStr;
 use log::{error, info, LevelFilter};
-use commons::factory::RealFactory;
+use commons::factory::{FactoryTrait, RealFactory};
 use commons::logging::LoggingConfigBuilder;
 use crate::client::ClientCoreEvent::Connect;
 use crate::gamemanager::RenderReceiver;
@@ -67,7 +67,7 @@ pub fn main() {
 
     if run_server {
 
-        let server_core_thread_builder = ThreadBuilder::new(factory.clone())
+        let server_core_thread_builder = factory.new_thread_builder()
             .name("ServerCore")
             .build_channel_for_event_handler::<server::ServerCore<RealGameFactory<SimpleGameImpl>>>();
 
@@ -83,7 +83,7 @@ pub fn main() {
 
     if run_client {
 
-        let client_core_thread_builder = ThreadBuilder::new(factory.clone())
+        let client_core_thread_builder = factory.new_thread_builder()
             .name("ClientCore")
             .build_channel_for_event_handler::<client::ClientCore<RealGameFactory<SimpleGameImpl>>>();
 

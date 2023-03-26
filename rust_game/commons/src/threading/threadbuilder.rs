@@ -1,7 +1,7 @@
 use std::thread::Builder;
 use log::info;
 use crate::factory::FactoryTrait;
-use crate::threading::channel;
+use crate::threading::{AsyncJoinCallBackTrait, channel};
 use crate::threading::eventhandling::{EventHandlerTrait, EventOrStopThread};
 use crate::threading::{eventhandling, Thread};
 use crate::threading::asyncjoin::AsyncJoin;
@@ -14,7 +14,7 @@ pub struct ThreadBuilder<Factory: FactoryTrait> {
 
 impl<Factory: FactoryTrait> ThreadBuilder<Factory> {
 
-    pub fn new(factory: Factory) -> Self {
+    pub(crate) fn new(factory: Factory) -> Self {
         return Self {
             factory,
             name: None
@@ -50,7 +50,7 @@ impl<Factory: FactoryTrait> ThreadBuilder<Factory> {
         return self.build_channel_for_event_handler::<ListenerState<Factory, T>>().spawn_listener(listener, join_call_back);
     }
 
-    pub(crate) fn spawn_thread<T: Thread>(self, thread: T, join_call_back: impl FnOnce(AsyncJoin<Factory, T::ReturnType>) + Send + 'static) -> std::io::Result<()> {
+    pub(crate) fn spawn_thread<T: Thread>(self, thread: T, join_call_back: impl AsyncJoinCallBackTrait<Factory, T::ReturnType>) -> std::io::Result<()> {
         let mut builder = Builder::new();
 
         if let Some(name) = self.name.as_ref() {
@@ -63,7 +63,7 @@ impl<Factory: FactoryTrait> ThreadBuilder<Factory> {
 
             let return_value = thread.run();
             let async_join = AsyncJoin::new(self, return_value);
-            join_call_back(async_join);
+            join_call_back.join(async_join);
 
             info!("Thread Ending");
         })?;

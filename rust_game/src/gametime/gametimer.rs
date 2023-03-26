@@ -35,7 +35,7 @@ impl<Factory: FactoryTrait, T: TimerCallBack> GameTimer<Factory, T> {
 
         let timer_id = timerService.create_timer(call_back, None);
 
-        let new_timer_sender = ThreadBuilder::new(factory.clone())
+        let new_timer_sender = factory.new_thread_builder()
             .name("NewTimerThread")
             .spawn_event_handler(timerService, AsyncJoin::log_async_join)
             .unwrap();

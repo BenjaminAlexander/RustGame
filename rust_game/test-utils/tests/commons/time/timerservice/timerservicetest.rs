@@ -3,11 +3,9 @@ use std::sync::{Arc, Mutex};
 use log::LevelFilter;
 use commons::factory::FactoryTrait;
 use commons::logging::LoggingConfigBuilder;
-use commons::threading::{AsyncJoin, ThreadBuilder};
 use commons::threading::eventhandling::EventSenderTrait;
 use commons::time::TimeDuration;
 use commons::time::timerservice::{Schedule, TimerCallBack, TimerCreationCallBack, TimerId, TimerServiceEvent, TimeService};
-use test_utils::singlethreaded::eventhandling::EventHandlerHolder;
 use test_utils::singlethreaded::SingleThreadedFactory;
 use test_utils::utils::Counter;
 
@@ -29,7 +27,7 @@ fn timer_service_test() {
     let join_counter = Counter::new(0);
 
     let join_counter_clone = join_counter.clone();
-    let sender = ThreadBuilder::new(factory.clone()).spawn_event_handler(timer_service, move |async_join|{
+    let sender = factory.new_thread_builder().spawn_event_handler(timer_service, move |_async_join|{
         join_counter_clone.increment();
     }).unwrap();
 
@@ -75,4 +73,10 @@ fn timer_service_test() {
 
     factory.get_time_queue().advance_time_for_duration(five_seconds);
     assert_eq!(3, tick_count_cell.get());
+
+    assert_eq!(0, join_counter.get());
+    drop(sender);
+    assert_eq!(0, join_counter.get());
+    factory.get_time_queue().run_events();
+    assert_eq!(1, join_counter.get());
 }

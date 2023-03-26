@@ -1,18 +1,18 @@
 use std::ops::ControlFlow::{Break, Continue};
 use std::sync::{Arc, Mutex};
-use commons::threading::{AsyncJoin, ThreadBuilder};
+use commons::threading::{AsyncJoin, AsyncJoinCallBackTrait, ThreadBuilder};
 use commons::threading::channel::{Receiver, TryRecvError};
 use commons::threading::eventhandling::{ChannelEvent, EventHandlerTrait, EventOrStopThread, WaitOrTryForNextEvent};
 use commons::threading::eventhandling::ChannelEvent::{ChannelDisconnected, ChannelEmpty, ReceivedEvent, Timeout};
-use commons::time::{TimeDuration, TimeValue};
+use commons::time::TimeDuration;
 use crate::singlethreaded::SingleThreadedFactory;
 
-pub struct EventHandlerHolder<T: EventHandlerTrait, U: FnOnce(AsyncJoin<SingleThreadedFactory, T::ThreadReturn>) + Send + 'static> {
+pub struct EventHandlerHolder<T: EventHandlerTrait, U: AsyncJoinCallBackTrait<SingleThreadedFactory, T::ThreadReturn>> {
     internal: Arc<Mutex<Option<EventHandlerHolderInternal<T, U>>>>,
     factory: SingleThreadedFactory,
 }
 
-struct EventHandlerHolderInternal<T: EventHandlerTrait, U: FnOnce(AsyncJoin<SingleThreadedFactory, T::ThreadReturn>) + Send + 'static> {
+struct EventHandlerHolderInternal<T: EventHandlerTrait, U: AsyncJoinCallBackTrait<SingleThreadedFactory, T::ThreadReturn>> {
     receiver: Receiver<EventOrStopThread<T::Event>>,
     event_handler: T,
     join_call_back: U,
@@ -20,7 +20,7 @@ struct EventHandlerHolderInternal<T: EventHandlerTrait, U: FnOnce(AsyncJoin<Sing
     pending_channel_event: Option<usize>
 }
 
-impl<T: EventHandlerTrait, U: FnOnce(AsyncJoin<SingleThreadedFactory, T::ThreadReturn>) + Send + 'static> Clone for EventHandlerHolder<T, U> {
+impl<T: EventHandlerTrait, U: AsyncJoinCallBackTrait<SingleThreadedFactory, T::ThreadReturn>> Clone for EventHandlerHolder<T, U> {
     fn clone(&self) -> Self {
         return Self {
             internal: self.internal.clone(),
@@ -30,7 +30,7 @@ impl<T: EventHandlerTrait, U: FnOnce(AsyncJoin<SingleThreadedFactory, T::ThreadR
     }
 }
 
-impl<T: EventHandlerTrait, U: FnOnce(AsyncJoin<SingleThreadedFactory, T::ThreadReturn>) + Send + 'static> EventHandlerHolder<T, U> {
+impl<T: EventHandlerTrait, U: AsyncJoinCallBackTrait<SingleThreadedFactory, T::ThreadReturn>> EventHandlerHolder<T, U> {
 
     pub fn new(factory: SingleThreadedFactory, thread_builder: ThreadBuilder<SingleThreadedFactory>, receiver: Receiver<EventOrStopThread<T::Event>>, event_handler: T, join_call_back: U) -> Self {
 
@@ -70,7 +70,7 @@ impl<T: EventHandlerTrait, U: FnOnce(AsyncJoin<SingleThreadedFactory, T::ThreadR
 
     fn on_channel_event(&self, event: ChannelEvent<T::Event>) {
         let mut guard = self.internal.lock().unwrap();
-        if let Some(mut internal) = guard.take() {
+        if let Some(internal) = guard.take() {
             if let Some(internal) = internal.on_channel_event(&self, event) {
                 *guard = Some(internal);
             }
@@ -92,7 +92,7 @@ impl<T: EventHandlerTrait, U: FnOnce(AsyncJoin<SingleThreadedFactory, T::ThreadR
     }
 }
 
-impl<T: EventHandlerTrait, U: FnOnce(AsyncJoin<SingleThreadedFactory, T::ThreadReturn>) + Send + 'static> EventHandlerHolderInternal<T, U> {
+impl<T: EventHandlerTrait, U: AsyncJoinCallBackTrait<SingleThreadedFactory, T::ThreadReturn>> EventHandlerHolderInternal<T, U> {
 
     fn cancel_pending_event(&mut self, holder: &EventHandlerHolder<T, U>) {
         match self.pending_channel_event.take() {
@@ -108,7 +108,7 @@ impl<T: EventHandlerTrait, U: FnOnce(AsyncJoin<SingleThreadedFactory, T::ThreadR
             }
             Ok((receive_meta_data, EventOrStopThread::StopThread)) => {
                 let result = self.event_handler.on_stop(receive_meta_data);
-                (self.join_call_back)(AsyncJoin::new(self.thread_builder, result));
+                self.join_call_back.join(AsyncJoin::new(self.thread_builder, result));
                 return None;
             }
             Err(TryRecvError::Empty) => panic!("on_send was called when there is nothing in the channel"),
@@ -137,7 +137,7 @@ impl<T: EventHandlerTrait, U: FnOnce(AsyncJoin<SingleThreadedFactory, T::ThreadR
                 return Some(self);
             }
             Break(result) => {
-                (self.join_call_back)(AsyncJoin::new(self.thread_builder, result));
+                self.join_call_back.join(AsyncJoin::new(self.thread_builder, result));
                 return None;
             }
         };

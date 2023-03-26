@@ -1,7 +1,7 @@
 use std::sync::mpsc;
 use commons::factory::FactoryTrait;
-use commons::threading::{AsyncJoin, channel, ThreadBuilder};
-use commons::threading::channel::{Channel, RealSender, Receiver, SendMetaData, TryRecvError};
+use commons::threading::{AsyncJoin, AsyncJoinCallBackTrait, ThreadBuilder};
+use commons::threading::channel::{Channel, RealSender, Receiver, SendMetaData};
 use commons::threading::eventhandling::{EventHandlerTrait, EventOrStopThread, Sender};
 use commons::time::TimeValue;
 use crate::singlethreaded::eventhandling::EventHandlerHolder;
@@ -53,12 +53,8 @@ impl FactoryTrait for SingleThreadedFactory {
         return Channel::new(sender, receiver);
     }
 
-    fn new_sender<T: Send>(&self, sender: mpsc::Sender<(SendMetaData, T)>) -> Self::Sender<T> {
-        return SingleThreadedSender::new(channel::RealSender::new(self.clone(), sender));
-    }
-
-    fn spawn_event_handler<T: Send, U: EventHandlerTrait<Event=T>>(&self, thread_builder: ThreadBuilder<Self>, channel: Channel<Self, EventOrStopThread<T>>, event_handler: U, join_call_back: impl FnOnce(AsyncJoin<Self, U::ThreadReturn>) + Send + 'static) -> std::io::Result<Sender<Self, T>> {
-        let (sender, mut receiver) = channel.take();
+    fn spawn_event_handler<T: Send, U: EventHandlerTrait<Event=T>>(&self, thread_builder: ThreadBuilder<Self>, channel: Channel<Self, EventOrStopThread<T>>, event_handler: U, join_call_back: impl AsyncJoinCallBackTrait<Self, U::ThreadReturn>) -> std::io::Result<Sender<Self, T>> {
+        let (sender, receiver) = channel.take();
 
         let event_handler_holder = EventHandlerHolder::new(
             self.clone(),

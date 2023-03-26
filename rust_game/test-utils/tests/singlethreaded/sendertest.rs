@@ -1,5 +1,5 @@
 use commons::factory::FactoryTrait;
-use commons::threading::channel::{Channel, SenderTrait, TryRecvError};
+use commons::threading::channel::{SenderTrait, TryRecvError};
 use test_utils::singlethreaded::SingleThreadedFactory;
 use test_utils::utils::Counter;
 
