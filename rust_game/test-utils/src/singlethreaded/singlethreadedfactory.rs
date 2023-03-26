@@ -1,5 +1,8 @@
+use std::io::Error;
+use std::net::ToSocketAddrs;
 use std::sync::mpsc;
 use commons::factory::FactoryTrait;
+use commons::ip::RealTcpListener;
 use commons::threading::{AsyncJoin, AsyncJoinCallBackTrait, ThreadBuilder};
 use commons::threading::channel::{Channel, RealSender, Receiver, SendMetaData};
 use commons::threading::eventhandling::{EventHandlerTrait, EventOrStopThread, Sender};
@@ -41,6 +44,9 @@ impl SingleThreadedFactory {
 impl FactoryTrait for SingleThreadedFactory {
     type Sender<T: Send> = SingleThreadedSender<T>;
 
+    //TODO: make a fake listener
+    type TcpListener = RealTcpListener;
+
     fn now(&self) -> TimeValue {
         return self.simulated_time_source.now();
     }
@@ -53,7 +59,7 @@ impl FactoryTrait for SingleThreadedFactory {
         return Channel::new(sender, receiver);
     }
 
-    fn spawn_event_handler<T: Send, U: EventHandlerTrait<Event=T>>(&self, thread_builder: ThreadBuilder<Self>, channel: Channel<Self, EventOrStopThread<T>>, event_handler: U, join_call_back: impl AsyncJoinCallBackTrait<Self, U::ThreadReturn>) -> std::io::Result<Sender<Self, T>> {
+    fn spawn_event_handler<T: Send, U: EventHandlerTrait<Event=T>>(&self, thread_builder: ThreadBuilder<Self>, channel: Channel<Self, EventOrStopThread<T>>, event_handler: U, join_call_back: impl AsyncJoinCallBackTrait<Self, U::ThreadReturn>) -> Result<Sender<Self, T>, Error> {
         let (sender, receiver) = channel.take();
 
         let event_handler_holder = EventHandlerHolder::new(
@@ -68,5 +74,9 @@ impl FactoryTrait for SingleThreadedFactory {
         });
 
         return Ok(sender);
+    }
+
+    fn new_tcp_listener(&self, socket_addr: impl ToSocketAddrs) -> Result<Self::TcpListener, Error> {
+        return RealTcpListener::bind(socket_addr);
     }
 }

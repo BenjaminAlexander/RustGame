@@ -1,11 +1,14 @@
-use std::io;
+use std::io::Error;
+use std::net::ToSocketAddrs;
+use crate::ip::TcpListenerTrait;
 use crate::threading::channel::{Channel, SenderTrait};
-use crate::threading::{AsyncJoin, AsyncJoinCallBackTrait, eventhandling, ThreadBuilder};
+use crate::threading::{AsyncJoinCallBackTrait, eventhandling, ThreadBuilder};
 use crate::threading::eventhandling::{EventHandlerTrait, EventOrStopThread};
 use crate::time::TimeValue;
 
 pub trait FactoryTrait: Clone + Send + 'static {
     type Sender<T: Send>: SenderTrait<T>;
+    type TcpListener: TcpListenerTrait;
 
     fn now(&self) -> TimeValue;
 
@@ -22,5 +25,7 @@ pub trait FactoryTrait: Clone + Send + 'static {
         channel: Channel<Self, EventOrStopThread<T>>,
         event_handler: U,
         join_call_back: impl AsyncJoinCallBackTrait<Self, U::ThreadReturn>
-    ) -> io::Result<eventhandling::Sender<Self, T>>;
+    ) -> Result<eventhandling::Sender<Self, T>, Error>;
+
+    fn new_tcp_listener(&self, socket_addr: impl ToSocketAddrs) -> Result<Self::TcpListener, Error>;
 }

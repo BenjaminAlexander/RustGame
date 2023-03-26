@@ -3,7 +3,7 @@ use crate::threading::channel::Channel;
 use crate::threading::eventhandling::{EventHandlerTrait, EventOrStopThread};
 use crate::threading::listener::{ListenerState, ListenerTrait};
 use crate::threading;
-use crate::threading::{AsyncJoin, AsyncJoinCallBackTrait, eventhandling};
+use crate::threading::{AsyncJoinCallBackTrait, eventhandling};
 
 pub struct ThreadBuilder<Factory: FactoryTrait, T: Send + 'static> {
     thread_builder: threading::ThreadBuilder<Factory>,
