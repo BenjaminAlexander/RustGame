@@ -68,8 +68,8 @@ impl<GameFactory: GameFactoryTrait> ListenerTrait for TcpListenerThread<GameFact
 
         let tcp_listner = match self.tcp_listener_option.as_ref() {
             None => {
-                let socket_addr_v4:SocketAddrV4 = SocketAddrV4::new(Ipv4Addr::new(127, 0, 0, 1), GameFactory::Game::TCP_PORT);
-                let socket_addr:SocketAddr = SocketAddr::from(socket_addr_v4);
+                let socket_addr_v4 = SocketAddrV4::new(Ipv4Addr::new(127, 0, 0, 1), GameFactory::Game::TCP_PORT);
+                let socket_addr = SocketAddr::from(socket_addr_v4);
 
                 self.tcp_listener_option = Some(match TcpListener::bind(socket_addr) {
                     Ok(tcp_listener) => tcp_listener,
