@@ -10,6 +10,8 @@ pub trait FactoryTrait: Clone + Send + 'static {
 
     fn now(&self) -> TimeValue;
 
+    fn new_channel<T: Send>(&self) -> Channel<Self, T>;
+
     fn new_sender<T: Send>(&self, sender: mpsc::Sender<(SendMetaData, T)>) -> Self::Sender<T>;
 
     //TODO: make this less args

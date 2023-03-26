@@ -1,3 +1,4 @@
+use commons::factory::FactoryTrait;
 use commons::threading::channel::{Channel, SenderTrait, TryRecvError};
 use test_utils::singlethreaded::SingleThreadedFactory;
 use test_utils::utils::Counter;
@@ -7,7 +8,7 @@ fn test_sender() {
 
     let factory = SingleThreadedFactory::new();
 
-    let (sender, mut receiver) = Channel::<SingleThreadedFactory, ()>::new(&factory).take();
+    let (sender, mut receiver) = factory.new_channel().take();
 
     let counter = Counter::new(0);
 

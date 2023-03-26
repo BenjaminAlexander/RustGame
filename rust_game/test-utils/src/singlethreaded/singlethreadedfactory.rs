@@ -1,7 +1,7 @@
 use std::sync::mpsc;
 use commons::factory::FactoryTrait;
 use commons::threading::{AsyncJoin, channel, ThreadBuilder};
-use commons::threading::channel::{Channel, SendMetaData, TryRecvError};
+use commons::threading::channel::{Channel, RealSender, Receiver, SendMetaData, TryRecvError};
 use commons::threading::eventhandling::{EventHandlerTrait, EventOrStopThread, Sender};
 use commons::time::TimeValue;
 use crate::singlethreaded::eventhandling::EventHandlerHolder;
@@ -43,6 +43,14 @@ impl FactoryTrait for SingleThreadedFactory {
 
     fn now(&self) -> TimeValue {
         return self.simulated_time_source.now();
+    }
+
+    fn new_channel<T: Send>(&self) -> Channel<Self, T> {
+        let (sender, receiver) = mpsc::channel::<(SendMetaData, T)>();
+        let sender = RealSender::new(self.clone(), sender);
+        let sender = SingleThreadedSender::new(sender);
+        let receiver = Receiver::new(receiver);
+        return Channel::new(sender, receiver);
     }
 
     fn new_sender<T: Send>(&self, sender: mpsc::Sender<(SendMetaData, T)>) -> Self::Sender<T> {

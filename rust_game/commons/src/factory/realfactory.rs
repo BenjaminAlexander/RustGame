@@ -1,7 +1,7 @@
 use std::sync::mpsc;
 use std::time::{SystemTime, UNIX_EPOCH};
 use crate::factory::FactoryTrait;
-use crate::threading::channel::{Channel, RealSender, SendMetaData};
+use crate::threading::channel::{Channel, RealSender, Receiver, SendMetaData};
 use crate::threading::eventhandling::{EventHandlerThread, EventHandlerTrait, EventOrStopThread, Sender};
 use crate::threading::{AsyncJoin, ThreadBuilder};
 use crate::time::TimeValue;
@@ -22,6 +22,13 @@ impl FactoryTrait for RealFactory {
 
     fn now(&self) -> TimeValue {
         return TimeValue::from_seconds_since_epoch(SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs_f64());
+    }
+
+    fn new_channel<T: Send>(&self) -> Channel<Self, T> {
+        let (sender, receiver) = mpsc::channel::<(SendMetaData, T)>();
+        let sender = RealSender::new(self.clone(), sender);
+        let receiver = Receiver::new(receiver);
+        return Channel::new(sender, receiver);
     }
 
     fn new_sender<T: Send>(&self, sender: mpsc::Sender<(SendMetaData, T)>) -> Self::Sender<T> {
