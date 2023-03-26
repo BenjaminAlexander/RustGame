@@ -12,7 +12,7 @@ fn test_sender() {
     let counter = Counter::new(0);
 
     let counter_clone = counter.clone();
-    sender.set_on_send(move ||{
+    sender.clone().set_on_send(move ||{
         counter_clone.increment();
     });
 

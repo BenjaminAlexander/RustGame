@@ -1,7 +1,7 @@
 use std::sync::mpsc;
 use commons::factory::FactoryTrait;
 use commons::threading::{AsyncJoin, channel, ThreadBuilder};
-use commons::threading::channel::{Channel, SendMetaData};
+use commons::threading::channel::{Channel, SendMetaData, TryRecvError};
 use commons::threading::eventhandling::{EventHandlerTrait, EventOrStopThread, Sender};
 use commons::time::TimeValue;
 use crate::singlethreaded::eventhandling::EventHandlerHolder;
@@ -10,7 +10,9 @@ use crate::time::SimulatedTimeSource;
 
 #[derive(Clone)]
 pub struct SingleThreadedFactory {
+    //TODO: don't let this SimulatedTimeSource escape SingleThreaded package
     simulated_time_source: SimulatedTimeSource,
+    //TODO: don't let this TimeQueue escape SingleThreaded package
     time_queue: TimeQueue
 }
 
@@ -48,9 +50,18 @@ impl FactoryTrait for SingleThreadedFactory {
     }
 
     fn spawn_event_handler<T: Send, U: EventHandlerTrait<Event=T>>(&self, thread_builder: ThreadBuilder<Self>, channel: Channel<Self, EventOrStopThread<T>>, event_handler: U, join_call_back: impl FnOnce(AsyncJoin<Self, U::ThreadReturn>) + Send + 'static) -> std::io::Result<Sender<Self, T>> {
-        let (sender, receiver) = channel.take();
+        let (sender, mut receiver) = channel.take();
 
-        //TODO: implement
+        let event_handler_holder = EventHandlerHolder::new(
+            self.clone(),
+            thread_builder,
+            receiver,
+            event_handler,
+            join_call_back);
+
+        sender.set_on_send(move ||{
+            event_handler_holder.on_send();
+        });
 
         return Ok(sender);
     }

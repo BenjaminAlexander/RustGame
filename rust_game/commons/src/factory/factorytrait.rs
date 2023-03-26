@@ -12,6 +12,7 @@ pub trait FactoryTrait: Clone + Send + 'static {
 
     fn new_sender<T: Send>(&self, sender: mpsc::Sender<(SendMetaData, T)>) -> Self::Sender<T>;
 
+    //TODO: make this less args
     fn spawn_event_handler<T: Send, U: EventHandlerTrait<Event=T>>(
         &self,
         thread_builder: ThreadBuilder<Self>,

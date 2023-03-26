@@ -7,7 +7,6 @@ fn test_queue() {
 
     let factory = SingleThreadedFactory::new();
 
-    //TODO: replace with count
     let cell = Counter::new(0);
 
     let five_seconds = TimeDuration::from_seconds(5.0);
