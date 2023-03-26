@@ -1,4 +1,5 @@
 use std::ops::ControlFlow;
+use crate::factory::FactoryTrait;
 use crate::threading::channel;
 use crate::threading::eventhandling::{EventHandlerTrait, EventOrStopThread, WaitOrTryForNextEvent};
 
@@ -8,4 +9,5 @@ pub type SendError<T> = channel::SendError<EventOrStopThread<T>>;
 
 pub type SendResult<T> = Result<(), SendError<T>>;
 
-pub type Sender<T> = channel::Sender<EventOrStopThread<T>>;
+//TODO: make this more simple
+pub type Sender<Factory, T> = <Factory as FactoryTrait>::Sender<EventOrStopThread<T>>;

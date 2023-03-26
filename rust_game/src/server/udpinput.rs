@@ -9,7 +9,7 @@ use std::ops::ControlFlow::{Break, Continue};
 use crate::server::clientaddress::ClientAddress;
 use crate::server::servercore::ServerCoreEvent;
 use commons::threading::channel::ReceiveMetaData;
-use commons::threading::eventhandling::Sender;
+use commons::threading::eventhandling::{Sender, EventSenderTrait};
 use commons::threading::listener::{ChannelEvent, ListenerEventResult, ListenerTrait, ListenResult};
 use commons::threading::listener::ListenedOrDidNotListen::{DidNotListen, Listened};
 
@@ -27,7 +27,7 @@ pub struct UdpInput<GameFactory: GameFactoryTrait> {
     client_addresses: Vec<Option<ClientAddress>>,
     client_ip_set: HashSet<IpAddr>,
     fragment_assemblers: HashMap<SocketAddr, FragmentAssembler>,
-    core_sender: Sender<ServerCoreEvent<GameFactory::Game>>
+    core_sender: Sender<GameFactory::Factory, ServerCoreEvent<GameFactory>>
 }
 
 impl<GameFactory: GameFactoryTrait> UdpInput<GameFactory> {
@@ -35,7 +35,7 @@ impl<GameFactory: GameFactoryTrait> UdpInput<GameFactory> {
     pub fn new(
         factory: GameFactory::Factory,
         socket: &UdpSocket,
-        core_sender: Sender<ServerCoreEvent<GameFactory::Game>>) -> io::Result<Self> {
+        core_sender: Sender<GameFactory::Factory, ServerCoreEvent<GameFactory>>) -> io::Result<Self> {
 
         return Ok(Self {
             factory,
@@ -106,7 +106,7 @@ impl<GameFactory: GameFactoryTrait> UdpInput<GameFactory> {
 
             }
             ToServerMessageUDP::Input(input_message) => {
-                self.core_sender.send_event(&self.factory, ServerCoreEvent::InputMessageEvent(input_message)).unwrap();
+                self.core_sender.send_event(ServerCoreEvent::InputMessageEvent(input_message)).unwrap();
             }
         }
     }
@@ -121,14 +121,14 @@ impl<GameFactory: GameFactoryTrait> UdpInput<GameFactory> {
         match &self.remote_peers[player_index] {
             None => {
                 info!("First time UDP remote peer: {:?}", remote_peer);
-                self.core_sender.send_event(&self.factory, ServerCoreEvent::RemoteUdpPeerEvent(remote_peer.clone())).unwrap();
+                self.core_sender.send_event(ServerCoreEvent::RemoteUdpPeerEvent(remote_peer.clone())).unwrap();
                 self.remote_peers[player_index] = Some(remote_peer);
             }
             Some(existing_remote_peer) => {
                 let existing_socket = existing_remote_peer.get_socket_addr();
                 if !existing_socket.eq(&remote_peer.get_socket_addr()) {
                     info!("Change of UDP remote peer: {:?}", remote_peer);
-                    self.core_sender.send_event(&self.factory, ServerCoreEvent::RemoteUdpPeerEvent(remote_peer.clone())).unwrap();
+                    self.core_sender.send_event(ServerCoreEvent::RemoteUdpPeerEvent(remote_peer.clone())).unwrap();
                     self.remote_peers[player_index] = Some(remote_peer);
                     self.fragment_assemblers.remove(&existing_socket);
                 }

@@ -19,7 +19,7 @@ pub struct EventHandlerThread<Factory: FactoryTrait, T: EventHandlerTrait> {
 
 impl<Factory: FactoryTrait, T: EventHandlerTrait> EventHandlerThread<Factory, T> {
 
-    pub(in crate::threading) fn new(factory: Factory, receiver: EventReceiver<T::Event>, event_handler: T) -> Self {
+    pub(crate) fn new(factory: Factory, receiver: EventReceiver<T::Event>, event_handler: T) -> Self {
         return Self {
             factory,
             receiver,

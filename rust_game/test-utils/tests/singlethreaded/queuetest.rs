@@ -1,46 +1,44 @@
-use std::cell::Cell;
-use std::rc::Rc;
 use commons::time::TimeDuration;
-use test_utils::singlethreaded::{SingleThreadedFactory, TimeQueue};
+use test_utils::singlethreaded::SingleThreadedFactory;
+use test_utils::utils::Counter;
 
 #[test]
-fn test_simulated_time_provider() {
+fn test_queue() {
 
     let factory = SingleThreadedFactory::new();
 
-    let cell = Rc::new(Cell::new(0));
+    let cell = Counter::new(0);
 
-    let queue = TimeQueue::new(factory);
     let five_seconds = TimeDuration::from_seconds(5.0);
 
     let cell_clone = cell.clone();
-    let queue_clone = queue.clone();
-    TimeQueue::add_event_at_duration_from_now(&queue, five_seconds * 2.0, move || {
+    let queue_clone = factory.get_time_queue().clone();
+    factory.get_time_queue().add_event_at_duration_from_now(five_seconds * 2.0, move || {
         cell_clone.set(1);
 
-        TimeQueue::add_event_at_duration_from_now(&queue_clone, five_seconds, move || {
+        queue_clone.add_event_at_duration_from_now(five_seconds, move || {
             cell_clone.set(2);
         });
     });
 
     let cell_clone = cell.clone();
-    let id_to_remove = TimeQueue::add_event_at_duration_from_now(&queue, five_seconds * 4.0, move || {
+    let id_to_remove = factory.get_time_queue().add_event_at_duration_from_now(five_seconds * 4.0, move || {
         cell_clone.set(3);
     });
 
     assert_eq!(cell.get(), 0);
 
-    TimeQueue::advance_time_for_duration(&queue, five_seconds);
+    factory.get_time_queue().advance_time_for_duration(five_seconds);
     assert_eq!(cell.get(), 0);
 
-    TimeQueue::advance_time_for_duration(&queue, five_seconds);
+    factory.get_time_queue().advance_time_for_duration(five_seconds);
     assert_eq!(cell.get(), 1);
 
-    TimeQueue::advance_time_for_duration(&queue, five_seconds);
+    factory.get_time_queue().advance_time_for_duration(five_seconds);
     assert_eq!(cell.get(), 2);
 
-    TimeQueue::remove_event(&queue, id_to_remove);
+    factory.get_time_queue().remove_event(id_to_remove);
 
-    TimeQueue::advance_time_for_duration(&queue, five_seconds);
+    factory.get_time_queue().advance_time_for_duration(five_seconds);
     assert_eq!(cell.get(), 2);
 }

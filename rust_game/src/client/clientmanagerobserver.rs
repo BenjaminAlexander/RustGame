@@ -1,16 +1,17 @@
+use commons::factory::FactoryTrait;
 use crate::gamemanager::{ManagerObserverTrait, RenderReceiverMessage, StepMessage};
 use crate::interface::GameFactoryTrait;
 use crate::messaging::{ServerInputMessage, StateMessage};
-use commons::threading::channel::Sender;
+use commons::threading::channel::SenderTrait;
 
 pub struct ClientManagerObserver<GameFactory: GameFactoryTrait> {
     factory: GameFactory::Factory,
-    render_receiver_sender: Sender<RenderReceiverMessage<GameFactory::Game>>
+    render_receiver_sender: <GameFactory::Factory as FactoryTrait>::Sender<RenderReceiverMessage<GameFactory::Game>>
 }
 
 impl<GameFactory: GameFactoryTrait> ClientManagerObserver<GameFactory> {
 
-    pub fn new(factory: GameFactory::Factory, render_receiver_sender: Sender<RenderReceiverMessage<GameFactory::Game>>) -> Self{
+    pub fn new(factory: GameFactory::Factory, render_receiver_sender: <GameFactory::Factory as FactoryTrait>::Sender<RenderReceiverMessage<GameFactory::Game>>) -> Self{
         return Self {
             factory,
             render_receiver_sender
@@ -26,7 +27,7 @@ impl<GameFactory: GameFactoryTrait> ManagerObserverTrait for ClientManagerObserv
     const IS_SERVER: bool = false;
 
     fn on_step_message(&self, step_message: StepMessage<GameFactory::Game>) {
-        self.render_receiver_sender.send(&self.factory, RenderReceiverMessage::StepMessage(step_message)).unwrap();
+        self.render_receiver_sender.send(RenderReceiverMessage::StepMessage(step_message)).unwrap();
     }
 
     fn on_completed_step(&self, _state_message: StateMessage<GameFactory::Game>) {

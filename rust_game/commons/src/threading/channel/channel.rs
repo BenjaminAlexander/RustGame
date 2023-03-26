@@ -1,23 +1,21 @@
-use std::sync::mpsc;
-use crate::threading::channel::{Receiver, Sender, SendMetaData};
+use crate::factory::FactoryTrait;
+use crate::threading::channel::Receiver;
 
-pub struct Channel<T: Send + 'static> {
-    sender: Sender<T>,
+pub struct Channel<Factory: FactoryTrait, T: Send + 'static> {
+    sender: Factory::Sender<T>,
     receiver: Receiver<T>
 }
 
-impl<T: Send + 'static> Channel<T> {
+impl<Factory: FactoryTrait, T: Send + 'static> Channel<Factory, T> {
 
-    pub fn new() -> Self {
-        let (sender, receiver): (mpsc::Sender<(SendMetaData, T)>, mpsc::Receiver<(SendMetaData, T)>) = mpsc::channel();
-
+    pub fn new(sender: Factory::Sender<T>, receiver: Receiver<T>) -> Self {
         return Self {
-            sender : Sender::new(sender),
-            receiver: Receiver::new(receiver)
+            sender,
+            receiver
         };
     }
 
-    pub fn get_sender(&self) -> &Sender<T> {
+    pub fn get_sender(&self) -> &Factory::Sender<T> {
         return &self.sender;
     }
 
@@ -25,7 +23,7 @@ impl<T: Send + 'static> Channel<T> {
         return &self.receiver;
     }
 
-    pub fn take(self) -> (Sender<T>, Receiver<T>) {
+    pub fn take(self) -> (Factory::Sender<T>, Receiver<T>) {
         return (self.sender, self.receiver);
     }
 }

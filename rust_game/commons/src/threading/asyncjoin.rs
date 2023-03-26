@@ -1,18 +1,19 @@
 use log::info;
+use crate::factory::FactoryTrait;
 use super::ThreadBuilder;
 
-pub struct AsyncJoin<T> {
-    thread_builder: ThreadBuilder,
+pub struct AsyncJoin<Factory: FactoryTrait, T> {
+    thread_builder: ThreadBuilder<Factory>,
     result: T
 }
 
-impl<T> AsyncJoin<T> {
+impl<Factory: FactoryTrait, T> AsyncJoin<Factory, T> {
 
     pub fn log_async_join(self) {
         info!("Thread Join from: {:?}", self.get_thread_name());
     }
 
-    pub fn new(thread_builder: ThreadBuilder, result: T) -> Self {
+    pub fn new(thread_builder: ThreadBuilder<Factory>, result: T) -> Self {
         return Self {
             thread_builder,
             result

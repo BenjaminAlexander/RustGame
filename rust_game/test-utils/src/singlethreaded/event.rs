@@ -4,11 +4,11 @@ use commons::time::TimeValue;
 pub struct Event {
     time: TimeValue,
     id: usize,
-    function: Box<dyn FnOnce()>
+    function: Box<dyn FnOnce() + Send>
 }
 
 impl Event {
-    pub fn new(id: usize, time: TimeValue, function: impl FnOnce() + 'static) -> Self {
+    pub fn new(id: usize, time: TimeValue, function: impl FnOnce() + Send + 'static) -> Self {
         return Self {
             time,
             id,

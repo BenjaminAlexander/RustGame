@@ -5,7 +5,7 @@ use timer::Timer;
 use log::{trace, info, warn};
 use commons::factory::FactoryTrait;
 use crate::server::ServerConfig;
-use commons::threading::eventhandling::Sender;
+use commons::threading::eventhandling::{Sender, EventSenderTrait};
 use commons::threading::{AsyncJoin, ThreadBuilder};
 use commons::time::timerservice::{Schedule, TimerCallBack, TimerCreationCallBack, TimerId, TimerServiceEvent, TimeService};
 
@@ -20,7 +20,7 @@ pub struct GameTimer<Factory: FactoryTrait, T: TimerCallBack> {
     start: Option<TimeValue>,
     rolling_average: RollingAverage,
     new_timer_id: TimerId,
-    new_timer_sender: Sender<TimerServiceEvent<GameTimerCreationCallBack, T>>
+    new_timer_sender: Sender<Factory, TimerServiceEvent<GameTimerCreationCallBack, T>>
 }
 
 impl<Factory: FactoryTrait, T: TimerCallBack> GameTimer<Factory, T> {
@@ -35,9 +35,9 @@ impl<Factory: FactoryTrait, T: TimerCallBack> GameTimer<Factory, T> {
 
         let timer_id = timerService.create_timer(call_back, None);
 
-        let new_timer_sender = ThreadBuilder::new()
+        let new_timer_sender = factory.new_thread_builder()
             .name("NewTimerThread")
-            .spawn_event_handler(factory.clone(), timerService, AsyncJoin::log_async_join)
+            .spawn_event_handler(timerService, AsyncJoin::log_async_join)
             .unwrap();
 
         return Self {
@@ -60,7 +60,7 @@ impl<Factory: FactoryTrait, T: TimerCallBack> GameTimer<Factory, T> {
         self.start = Some(now.add(self.server_config.get_step_duration()));
 
         let schedule = Schedule::Repeating(self.start.unwrap(), self.server_config.get_step_duration());
-        self.new_timer_sender.send_event(&self.factory, TimerServiceEvent::RescheduleTimer(self.new_timer_id, Some(schedule))).unwrap();
+        self.new_timer_sender.send_event(TimerServiceEvent::RescheduleTimer(self.new_timer_id, Some(schedule))).unwrap();
     }
 
     pub fn on_time_message(&mut self, time_message: TimeReceived<TimeMessage>) {
@@ -96,7 +96,7 @@ impl<Factory: FactoryTrait, T: TimerCallBack> GameTimer<Factory, T> {
                     .floor() as f64 + 1.0));
 
             let schedule = Schedule::Repeating(self.start.unwrap(), self.server_config.get_step_duration());
-            self.new_timer_sender.send_event(&self.factory, TimerServiceEvent::RescheduleTimer(self.new_timer_id, Some(schedule))).unwrap();
+            self.new_timer_sender.send_event(TimerServiceEvent::RescheduleTimer(self.new_timer_id, Some(schedule))).unwrap();
         }
     }
 
