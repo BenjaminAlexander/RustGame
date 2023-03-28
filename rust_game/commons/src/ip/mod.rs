@@ -5,3 +5,4 @@ mod realtcplistener;
 
 pub use self::tcplistenertrait::TcpListenerTrait;
 pub use self::realtcplistener::RealTcpListener;
+pub use self::tcpstreamtrait::TcpStreamTrait;

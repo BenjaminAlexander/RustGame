@@ -18,9 +18,9 @@ impl RealTcpListener {
 }
 
 impl TcpListenerTrait for RealTcpListener {
-    type TcpStream<T: Serialize + DeserializeOwned> = RealTcpStream<T>;
+    type TcpStream<ReadType: Serialize + DeserializeOwned + Send, WriteType: Serialize + DeserializeOwned + Send> = RealTcpStream<ReadType, WriteType>;
 
-    fn accept<T: Serialize + DeserializeOwned>(&self) -> Result<Self::TcpStream<T>, Error> {
+    fn accept<ReadType: Serialize + DeserializeOwned + Send, WriteType: Serialize + DeserializeOwned + Send>(&self) -> Result<Self::TcpStream<ReadType, WriteType>, Error> {
         let (tcp_stream, remote_peer_socket_addr) = self.tcp_listener.accept()?;
 
         return Ok(RealTcpStream::new(tcp_stream, remote_peer_socket_addr));

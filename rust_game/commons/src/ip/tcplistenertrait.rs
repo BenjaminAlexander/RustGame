@@ -3,8 +3,8 @@ use serde::de::DeserializeOwned;
 use serde::Serialize;
 use crate::ip::tcpstreamtrait::TcpStreamTrait;
 
-pub trait TcpListenerTrait {
-    type TcpStream<T: Serialize + DeserializeOwned>: TcpStreamTrait<T=T>;
+pub trait TcpListenerTrait: Send {
+    type TcpStream<ReadType: Serialize + DeserializeOwned + Send, WriteType: Serialize + DeserializeOwned + Send>: TcpStreamTrait<ReadType, WriteType>;
 
-    fn accept<T: Serialize + DeserializeOwned>(&self) -> Result<Self::TcpStream<T>, Error>;
+    fn accept<ReadType: Serialize + DeserializeOwned + Send, WriteType: Serialize + DeserializeOwned + Send>(&self) -> Result<Self::TcpStream<ReadType, WriteType>, Error>;
 }

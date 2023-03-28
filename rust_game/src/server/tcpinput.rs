@@ -1,32 +1,31 @@
-use std::net::TcpStream;
-
 use log::error;
-use rmp_serde::decode::Error;
-
 use crate::messaging::{ToServerMessageTCP};
-use std::io;
 use std::ops::ControlFlow::{Break, Continue};
+use commons::ip::TcpStreamTrait;
 use commons::threading::channel::ReceiveMetaData;
 use commons::threading::listener::{ChannelEvent, ListenedOrDidNotListen, ListenerEventResult, ListenerTrait, ListenResult};
+use crate::interface::{GameFactoryTrait, ServerToClientTcpStream};
 
-pub struct TcpInput {
-    tcp_stream: TcpStream
+pub struct TcpInput<GameFactory: GameFactoryTrait> {
+    tcp_stream: ServerToClientTcpStream<GameFactory>
 }
 
-impl TcpInput {
+impl<GameFactory: GameFactoryTrait> TcpInput<GameFactory> {
 
-    pub fn new(tcp_stream: &TcpStream) -> io::Result<Self> {
-        Ok(Self {tcp_stream: tcp_stream.try_clone()?})
+    pub fn new(tcp_stream: ServerToClientTcpStream<GameFactory>) -> Self {
+        return Self {
+            tcp_stream
+        };
     }
 }
 
-impl ListenerTrait for TcpInput {
+impl<GameFactory: GameFactoryTrait> ListenerTrait for TcpInput<GameFactory> {
     type Event = ();
     type ThreadReturn = ();
     type ListenFor = ToServerMessageTCP;
 
     fn listen(self) -> ListenResult<Self> {
-        let result: Result<ToServerMessageTCP, Error> = rmp_serde::from_read(&self.tcp_stream);
+        let result = self.tcp_stream.read();
 
         match result {
             Ok(message) => {

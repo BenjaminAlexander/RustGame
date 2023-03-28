@@ -3,7 +3,7 @@ use std::net::ToSocketAddrs;
 use std::sync::mpsc;
 use commons::factory::FactoryTrait;
 use commons::ip::RealTcpListener;
-use commons::threading::{AsyncJoin, AsyncJoinCallBackTrait, ThreadBuilder};
+use commons::threading::{AsyncJoinCallBackTrait, ThreadBuilder};
 use commons::threading::channel::{Channel, RealSender, Receiver, SendMetaData};
 use commons::threading::eventhandling::{EventHandlerTrait, EventOrStopThread, Sender};
 use commons::time::TimeValue;
