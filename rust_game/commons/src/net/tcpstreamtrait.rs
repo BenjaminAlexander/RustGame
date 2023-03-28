@@ -5,11 +5,13 @@ use serde::Serialize;
 use rmp_serde::decode::Error as DecodeError;
 use rmp_serde::encode::Error as EncodeError;
 
-pub trait TcpStreamTrait<ReadType: Serialize + DeserializeOwned, WriteType: Serialize + DeserializeOwned>: Send + Sized {
+pub trait TcpStreamTrait: Send + Sized {
+    type ReadType: Serialize + DeserializeOwned;
+    type WriteType: Serialize + DeserializeOwned;
 
-    fn read(&self) -> Result<ReadType, DecodeError>;
+    fn read(&self) -> Result<Self::ReadType, DecodeError>;
 
-    fn write(&mut self, write: &WriteType) -> Result<(), EncodeError>;
+    fn write(&mut self, write: &Self::WriteType) -> Result<(), EncodeError>;
 
     fn flush(&mut self) -> Result<(), Error>;
 

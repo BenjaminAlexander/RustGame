@@ -1560,6 +1560,8 @@ dependencies = [
  "commons",
  "log",
  "log4rs",
+ "rmp-serde",
+ "serde",
 ]
 
 [[package]]

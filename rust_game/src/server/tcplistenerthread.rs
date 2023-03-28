@@ -1,18 +1,18 @@
 use std::ops::ControlFlow::*;
 use log::{error, info, warn};
 use commons::factory::FactoryTrait;
-use commons::ip::TcpListenerTrait;
-use crate::interface::{GameFactoryTrait, ServerToClientTcpStream};
+use commons::net::TcpListenerTrait;
+use crate::interface::{GameFactoryTrait, ServerTcpListener, ServerToClientTcpStream};
 use crate::server::servercore::ServerCoreEvent;
 use crate::server::servercore::ServerCoreEvent::TcpConnectionEvent;
 use commons::threading::channel::ReceiveMetaData;
 use commons::threading::eventhandling::{Sender, EventSenderTrait};
 use commons::threading::listener::{ListenedOrDidNotListen, ChannelEvent, ListenerEventResult, ListenerTrait, ListenResult};
-use commons::ip::TcpStreamTrait;
+use commons::net::TcpStreamTrait;
 
 pub struct TcpListenerThread<GameFactory: GameFactoryTrait> {
     factory: GameFactory::Factory,
-    tcp_listener: <GameFactory::Factory as FactoryTrait>::TcpListener,
+    tcp_listener: ServerTcpListener<GameFactory>,
     server_core_sender: Sender<GameFactory::Factory, ServerCoreEvent<GameFactory>>
 }
 
@@ -20,7 +20,7 @@ impl<GameFactory: GameFactoryTrait> TcpListenerThread<GameFactory> {
     pub fn new(
         factory: GameFactory::Factory,
         server_core_sender: Sender<GameFactory::Factory, ServerCoreEvent<GameFactory>>,
-        tcp_listener: <GameFactory::Factory as FactoryTrait>::TcpListener
+        tcp_listener: ServerTcpListener<GameFactory>
     ) -> Self {
         return Self {
             factory,

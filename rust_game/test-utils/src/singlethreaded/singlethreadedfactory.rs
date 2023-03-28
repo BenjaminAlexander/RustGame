@@ -1,8 +1,10 @@
 use std::io::Error;
 use std::net::ToSocketAddrs;
 use std::sync::mpsc;
+use serde::de::DeserializeOwned;
+use serde::Serialize;
 use commons::factory::FactoryTrait;
-use commons::ip::RealTcpListener;
+use commons::net::RealTcpListener;
 use commons::threading::{AsyncJoinCallBackTrait, ThreadBuilder};
 use commons::threading::channel::{Channel, RealSender, Receiver, SendMetaData};
 use commons::threading::eventhandling::{EventHandlerTrait, EventOrStopThread, Sender};
@@ -45,7 +47,7 @@ impl FactoryTrait for SingleThreadedFactory {
     type Sender<T: Send> = SingleThreadedSender<T>;
 
     //TODO: make a fake listener
-    type TcpListener = RealTcpListener;
+    type TcpListener<ReadType: Serialize + DeserializeOwned + Send, WriteType: Serialize + DeserializeOwned + Send> = RealTcpListener<ReadType, WriteType>;
 
     fn now(&self) -> TimeValue {
         return self.simulated_time_source.now();
@@ -76,7 +78,7 @@ impl FactoryTrait for SingleThreadedFactory {
         return Ok(sender);
     }
 
-    fn new_tcp_listener(&self, socket_addr: impl ToSocketAddrs) -> Result<Self::TcpListener, Error> {
+    fn new_tcp_listener<ReadType: Serialize + DeserializeOwned + Send, WriteType: Serialize + DeserializeOwned + Send>(&self, socket_addr: impl ToSocketAddrs) -> Result<Self::TcpListener<ReadType, WriteType>, Error> {
         return RealTcpListener::bind(socket_addr);
     }
 }

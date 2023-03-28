@@ -1,5 +1,7 @@
+use std::any::Any;
 use std::net::{Ipv4Addr, SocketAddrV4, UdpSocket, SocketAddr};
 use std::ops::ControlFlow::{Continue, Break};
+use std::ops::Deref;
 use log::{error, info};
 use crate::interface::{GameFactoryTrait, GameTrait, ServerToClientTcpStream};
 use crate::server::tcpinput::TcpInput;
@@ -8,10 +10,10 @@ use crate::server::{TcpListenerThread, ServerConfig};
 use crate::server::tcpoutput::{TcpOutput, TcpOutputEvent};
 use crate::gametime::GameTimer;
 use crate::gamemanager::{Manager, ManagerEvent, RenderReceiverMessage};
-use crate::messaging::{InputMessage, InitialInformation};
+use crate::messaging::{InputMessage, InitialInformation, ToServerMessageTCP};
 use std::str::FromStr;
 use commons::factory::FactoryTrait;
-use commons::ip::TcpStreamTrait;
+use commons::net::TcpStreamTrait;
 use crate::server::udpinput::{UdpInput, UdpInputEvent};
 use crate::server::udpoutput::{UdpOutput, UdpOutputEvent};
 use crate::server::clientaddress::ClientAddress;
@@ -23,6 +25,7 @@ use commons::threading::AsyncJoin;
 use commons::threading::channel::{ReceiveMetaData, SenderTrait};
 use commons::threading::eventhandling::{ChannelEvent, ChannelEventResult, EventHandlerTrait, EventSenderTrait};
 use commons::threading::eventhandling::WaitOrTryForNextEvent::{TryForNextEvent, WaitForNextEvent};
+use commons::threading::listener::ListenerTrait;
 use self::ServerCoreEvent::{StartListenerEvent, RemoteUdpPeerEvent, StartGameEvent, TcpConnectionEvent, GameTimerTick, InputMessageEvent};
 
 pub enum ServerCoreEvent<GameFactory: GameFactoryTrait> {
@@ -273,6 +276,7 @@ impl<GameFactory: GameFactoryTrait> ServerCore<GameFactory> {
             let client_address = ClientAddress::new(player_index, tcp_stream.get_peer_addr().ip());
 
             let tcp_stream_clone = tcp_stream.try_clone().unwrap();
+
             let tcp_input_join_handle = self.factory.new_thread_builder()
                 .name("ServerTcpInput")
                 .spawn_listener(TcpInput::<GameFactory>::new(tcp_stream_clone), AsyncJoin::log_async_join)

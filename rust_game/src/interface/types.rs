@@ -1,6 +1,7 @@
 use commons::factory::FactoryTrait;
-use commons::ip::TcpListenerTrait;
+use commons::net::TcpListenerTrait;
 use crate::interface::GameFactoryTrait;
 use crate::messaging::{ToClientMessageTCP, ToServerMessageTCP};
 
-pub type ServerToClientTcpStream<GameFactory> = <<<GameFactory as GameFactoryTrait>::Factory as FactoryTrait>::TcpListener as TcpListenerTrait>::TcpStream<ToServerMessageTCP, ToClientMessageTCP<<GameFactory as GameFactoryTrait>::Game>>;
+pub type ServerTcpListener<GameFactory> = <<GameFactory as GameFactoryTrait>::Factory as FactoryTrait>::TcpListener<ToServerMessageTCP, ToClientMessageTCP<<GameFactory as GameFactoryTrait>::Game>>;
+pub type ServerToClientTcpStream<GameFactory> = <ServerTcpListener<GameFactory> as TcpListenerTrait>::TcpStream;

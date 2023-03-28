@@ -1,7 +1,7 @@
 use log::error;
 use crate::messaging::{ToServerMessageTCP};
 use std::ops::ControlFlow::{Break, Continue};
-use commons::ip::TcpStreamTrait;
+use commons::net::TcpStreamTrait;
 use commons::threading::channel::ReceiveMetaData;
 use commons::threading::listener::{ChannelEvent, ListenedOrDidNotListen, ListenerEventResult, ListenerTrait, ListenResult};
 use crate::interface::{GameFactoryTrait, ServerToClientTcpStream};

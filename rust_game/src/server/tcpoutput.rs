@@ -6,7 +6,7 @@ use std::io::Write;
 use crate::interface::{GameFactoryTrait, GameTrait, ServerToClientTcpStream};
 use std::marker::PhantomData;
 use std::ops::ControlFlow::{Break, Continue};
-use commons::ip::TcpStreamTrait;
+use commons::net::TcpStreamTrait;
 use crate::server::ServerConfig;
 use crate::server::tcpoutput::TcpOutputEvent::SendInitialInformation;
 use commons::threading::channel::ReceiveMetaData;
