@@ -1,8 +1,7 @@
 use std::ops::ControlFlow::*;
 use log::{error, info, warn};
-use commons::factory::FactoryTrait;
 use commons::net::TcpListenerTrait;
-use crate::interface::{GameFactoryTrait, ServerTcpListener, ServerToClientTcpStream};
+use crate::interface::{GameFactoryTrait, TcpListener, TcpStream};
 use crate::server::servercore::ServerCoreEvent;
 use crate::server::servercore::ServerCoreEvent::TcpConnectionEvent;
 use commons::threading::channel::ReceiveMetaData;
@@ -12,7 +11,7 @@ use commons::net::TcpStreamTrait;
 
 pub struct TcpListenerThread<GameFactory: GameFactoryTrait> {
     factory: GameFactory::Factory,
-    tcp_listener: ServerTcpListener<GameFactory>,
+    tcp_listener: TcpListener<GameFactory>,
     server_core_sender: Sender<GameFactory::Factory, ServerCoreEvent<GameFactory>>
 }
 
@@ -20,7 +19,7 @@ impl<GameFactory: GameFactoryTrait> TcpListenerThread<GameFactory> {
     pub fn new(
         factory: GameFactory::Factory,
         server_core_sender: Sender<GameFactory::Factory, ServerCoreEvent<GameFactory>>,
-        tcp_listener: ServerTcpListener<GameFactory>
+        tcp_listener: TcpListener<GameFactory>
     ) -> Self {
         return Self {
             factory,
@@ -29,7 +28,7 @@ impl<GameFactory: GameFactoryTrait> TcpListenerThread<GameFactory> {
         };
     }
 
-    fn handle_tcp_stream_and_socket_addr(self, tcp_stream: ServerToClientTcpStream<GameFactory>) -> ListenerEventResult<Self> {
+    fn handle_tcp_stream_and_socket_addr(self, tcp_stream: TcpStream<GameFactory>) -> ListenerEventResult<Self> {
 
         info!("New TCP connection from {:?}", tcp_stream.get_peer_addr());
 
@@ -56,7 +55,7 @@ impl<GameFactory: GameFactoryTrait> TcpListenerThread<GameFactory> {
 impl<GameFactory: GameFactoryTrait> ListenerTrait for TcpListenerThread<GameFactory> {
     type Event = ();
     type ThreadReturn = ();
-    type ListenFor = ServerToClientTcpStream<GameFactory>;
+    type ListenFor = TcpStream<GameFactory>;
 
     fn listen(mut self) -> ListenResult<Self> {
 

@@ -1,6 +1,5 @@
 use std::fmt::Debug;
 use std::io::{Error, Write};
-use std::marker::PhantomData;
 use std::net::{SocketAddr, TcpStream};
 use serde::de::DeserializeOwned;
 use serde::Serialize;
@@ -9,32 +8,28 @@ use rmp_serde::encode::Error as EncodeError;
 use crate::net::tcpstreamtrait::TcpStreamTrait;
 
 #[derive(Debug)]
-pub struct RealTcpStream<ReadType: Serialize + DeserializeOwned, WriteType: Serialize + DeserializeOwned> {
+pub struct RealTcpStream {
     tcp_stream: TcpStream,
     remote_peer_socket_addr: SocketAddr,
-    phantom: PhantomData<(ReadType, WriteType)>
 }
 
-impl<ReadType: Serialize + DeserializeOwned, WriteType: Serialize + DeserializeOwned> RealTcpStream<ReadType, WriteType> {
+impl RealTcpStream {
 
     pub fn new(tcp_stream: TcpStream, remote_peer_socket_addr: SocketAddr) -> Self {
         return Self {
             tcp_stream,
-            remote_peer_socket_addr,
-            phantom: PhantomData::default()
+            remote_peer_socket_addr
         };
     }
 }
 
-impl<ReadType: Serialize + DeserializeOwned + Send, WriteType: Serialize + DeserializeOwned + Send> TcpStreamTrait for RealTcpStream<ReadType, WriteType> {
-    type ReadType = ReadType;
-    type WriteType = WriteType;
+impl TcpStreamTrait for RealTcpStream {
 
-    fn read(&self) -> Result<ReadType, DecodeError> {
+    fn read<T: Serialize + DeserializeOwned>(&self) -> Result<T, DecodeError> {
         return rmp_serde::from_read(&self.tcp_stream);
     }
 
-    fn write(&mut self, write: &WriteType) -> Result<(), EncodeError> {
+    fn write<T: Serialize + DeserializeOwned>(&mut self, write: &T) -> Result<(), EncodeError> {
         return rmp_serde::encode::write(&mut self.tcp_stream, &write);
     }
 
@@ -49,8 +44,7 @@ impl<ReadType: Serialize + DeserializeOwned + Send, WriteType: Serialize + Deser
     fn try_clone(&self) -> Result<Self, Error> {
         return Ok(Self {
             tcp_stream: self.tcp_stream.try_clone()?,
-            remote_peer_socket_addr: self.remote_peer_socket_addr.clone(),
-            phantom: PhantomData::default()
+            remote_peer_socket_addr: self.remote_peer_socket_addr.clone()
         });
     }
 }

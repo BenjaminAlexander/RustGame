@@ -6,7 +6,7 @@ use log::{trace, info, warn};
 use commons::factory::FactoryTrait;
 use crate::server::ServerConfig;
 use commons::threading::eventhandling::{Sender, EventSenderTrait};
-use commons::threading::{AsyncJoin, ThreadBuilder};
+use commons::threading::AsyncJoin;
 use commons::time::timerservice::{Schedule, TimerCallBack, TimerCreationCallBack, TimerId, TimerServiceEvent, TimeService};
 
 const TICK_LATENESS_WARN_DURATION: TimeDuration = TimeDuration::from_seconds(0.02);
@@ -31,13 +31,13 @@ impl<Factory: FactoryTrait, T: TimerCallBack> GameTimer<Factory, T> {
             rolling_average_size: usize,
             call_back: T) -> Self {
 
-        let mut timerService = TimeService::<Factory, GameTimerCreationCallBack, T>::new(factory.clone());
+        let mut timer_service = TimeService::<Factory, GameTimerCreationCallBack, T>::new(factory.clone());
 
-        let timer_id = timerService.create_timer(call_back, None);
+        let timer_id = timer_service.create_timer(call_back, None);
 
         let new_timer_sender = factory.new_thread_builder()
             .name("NewTimerThread")
-            .spawn_event_handler(timerService, AsyncJoin::log_async_join)
+            .spawn_event_handler(timer_service, AsyncJoin::log_async_join)
             .unwrap();
 
         return Self {

@@ -2,8 +2,6 @@ use std::io::Error;
 use std::net::ToSocketAddrs;
 use std::sync::mpsc;
 use std::time::{SystemTime, UNIX_EPOCH};
-use serde::de::DeserializeOwned;
-use serde::Serialize;
 use crate::factory::FactoryTrait;
 use crate::net::RealTcpListener;
 use crate::threading::channel::{Channel, RealSender, Receiver, SendMetaData};
@@ -24,7 +22,7 @@ impl RealFactory {
 
 impl FactoryTrait for RealFactory {
     type Sender<T: Send> = RealSender<Self, T>;
-    type TcpListener<ReadType: Serialize + DeserializeOwned + Send, WriteType: Serialize + DeserializeOwned + Send> = RealTcpListener<ReadType, WriteType>;
+    type TcpListener = RealTcpListener;
 
     fn now(&self) -> TimeValue {
         return TimeValue::from_seconds_since_epoch(SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs_f64());
@@ -51,7 +49,7 @@ impl FactoryTrait for RealFactory {
         return Ok(sender);
     }
 
-    fn new_tcp_listener<ReadType: Serialize + DeserializeOwned + Send, WriteType: Serialize + DeserializeOwned + Send>(&self, socket_addr: impl ToSocketAddrs) -> Result<Self::TcpListener<ReadType, WriteType>, Error> {
+    fn new_tcp_listener(&self, socket_addr: impl ToSocketAddrs) -> Result<Self::TcpListener, Error> {
         return RealTcpListener::bind(socket_addr);
     }
 }

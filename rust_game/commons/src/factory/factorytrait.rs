@@ -1,7 +1,5 @@
 use std::io::Error;
 use std::net::ToSocketAddrs;
-use serde::de::DeserializeOwned;
-use serde::Serialize;
 use crate::net::TcpListenerTrait;
 use crate::threading::channel::{Channel, SenderTrait};
 use crate::threading::{AsyncJoinCallBackTrait, eventhandling, ThreadBuilder};
@@ -10,7 +8,7 @@ use crate::time::TimeValue;
 
 pub trait FactoryTrait: Clone + Send + 'static {
     type Sender<T: Send>: SenderTrait<T>;
-    type TcpListener<ReadType: Serialize + DeserializeOwned + Send, WriteType: Serialize + DeserializeOwned + Send>: TcpListenerTrait<ReadType=ReadType, WriteType=WriteType> ;
+    type TcpListener: TcpListenerTrait ;
 
     fn now(&self) -> TimeValue;
 
@@ -29,5 +27,5 @@ pub trait FactoryTrait: Clone + Send + 'static {
         join_call_back: impl AsyncJoinCallBackTrait<Self, U::ThreadReturn>
     ) -> Result<eventhandling::Sender<Self, T>, Error>;
 
-    fn new_tcp_listener<ReadType: Serialize + DeserializeOwned + Send, WriteType: Serialize + DeserializeOwned + Send>(&self, socket_addr: impl ToSocketAddrs) -> Result<Self::TcpListener<ReadType, WriteType>, Error>;
+    fn new_tcp_listener(&self, socket_addr: impl ToSocketAddrs) -> Result<Self::TcpListener, Error>;
 }

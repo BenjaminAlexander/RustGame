@@ -13,8 +13,8 @@ pub use self::game::GameTrait;
 pub use self::gamefactorytrait::GameFactoryTrait;
 pub use self::realgamefactory::RealGameFactory;
 
-pub(crate) use self::types::ServerTcpListener;
-pub(crate) use self::types::ServerToClientTcpStream;
+pub(crate) use self::types::TcpListener;
+pub(crate) use self::types::TcpStream;
 
 
 

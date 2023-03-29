@@ -1,16 +1,14 @@
-use std::any::Any;
 use std::net::{Ipv4Addr, SocketAddrV4, UdpSocket, SocketAddr};
 use std::ops::ControlFlow::{Continue, Break};
-use std::ops::Deref;
 use log::{error, info};
-use crate::interface::{GameFactoryTrait, GameTrait, ServerToClientTcpStream};
+use crate::interface::{GameFactoryTrait, GameTrait, TcpStream};
 use crate::server::tcpinput::TcpInput;
 use commons::threading::eventhandling;
 use crate::server::{TcpListenerThread, ServerConfig};
 use crate::server::tcpoutput::{TcpOutput, TcpOutputEvent};
 use crate::gametime::GameTimer;
 use crate::gamemanager::{Manager, ManagerEvent, RenderReceiverMessage};
-use crate::messaging::{InputMessage, InitialInformation, ToServerMessageTCP};
+use crate::messaging::{InputMessage, InitialInformation};
 use std::str::FromStr;
 use commons::factory::FactoryTrait;
 use commons::net::TcpStreamTrait;
@@ -25,7 +23,6 @@ use commons::threading::AsyncJoin;
 use commons::threading::channel::{ReceiveMetaData, SenderTrait};
 use commons::threading::eventhandling::{ChannelEvent, ChannelEventResult, EventHandlerTrait, EventSenderTrait};
 use commons::threading::eventhandling::WaitOrTryForNextEvent::{TryForNextEvent, WaitForNextEvent};
-use commons::threading::listener::ListenerTrait;
 use self::ServerCoreEvent::{StartListenerEvent, RemoteUdpPeerEvent, StartGameEvent, TcpConnectionEvent, GameTimerTick, InputMessageEvent};
 
 pub enum ServerCoreEvent<GameFactory: GameFactoryTrait> {
@@ -36,7 +33,7 @@ pub enum ServerCoreEvent<GameFactory: GameFactoryTrait> {
 
     //TODO: create render receiver sender before spawning event handler
     StartGameEvent(<GameFactory::Factory as FactoryTrait>::Sender<RenderReceiverMessage<GameFactory::Game>>),
-    TcpConnectionEvent(ServerToClientTcpStream<GameFactory>),
+    TcpConnectionEvent(TcpStream<GameFactory>),
     GameTimerTick,
     InputMessageEvent(InputMessage<GameFactory::Game>)
 }
@@ -266,7 +263,7 @@ impl<GameFactory: GameFactoryTrait> ServerCore<GameFactory> {
     Tcp Hello ->
         <- UdpHello
      */
-    fn on_tcp_connection(mut self, tcp_stream: ServerToClientTcpStream<GameFactory>) -> ChannelEventResult<Self> {
+    fn on_tcp_connection(mut self, tcp_stream: TcpStream<GameFactory>) -> ChannelEventResult<Self> {
         if !self.game_is_started {
 
             info!("TcpStream accepted: {:?}", tcp_stream.get_peer_addr());

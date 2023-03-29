@@ -5,7 +5,7 @@ use crate::interface::{InterpolationArg, GameTrait};
 use crate::gamemanager::stepmessage::StepMessage;
 use crate::gametime::TimeMessage;
 use crate::messaging::InitialInformation;
-use commons::threading::channel::{Channel, TryRecvError, Receiver};
+use commons::threading::channel::{TryRecvError, Receiver};
 
 pub enum RenderReceiverMessage<Game: GameTrait> {
     InitialInformation(InitialInformation<Game>),

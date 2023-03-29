@@ -6,12 +6,10 @@ use rmp_serde::decode::Error as DecodeError;
 use rmp_serde::encode::Error as EncodeError;
 
 pub trait TcpStreamTrait: Send + Sized {
-    type ReadType: Serialize + DeserializeOwned;
-    type WriteType: Serialize + DeserializeOwned;
 
-    fn read(&self) -> Result<Self::ReadType, DecodeError>;
+    fn read<T: Serialize + DeserializeOwned>(&self) -> Result<T, DecodeError>;
 
-    fn write(&mut self, write: &Self::WriteType) -> Result<(), EncodeError>;
+    fn write<T: Serialize + DeserializeOwned>(&mut self, write: &T) -> Result<(), EncodeError>;
 
     fn flush(&mut self) -> Result<(), Error>;
 

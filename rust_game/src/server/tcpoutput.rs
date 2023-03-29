@@ -1,10 +1,6 @@
 use log::debug;
-use std::net::TcpStream;
-use std::io;
 use crate::messaging::{ToClientMessageTCP, InitialInformation};
-use std::io::Write;
-use crate::interface::{GameFactoryTrait, GameTrait, ServerToClientTcpStream};
-use std::marker::PhantomData;
+use crate::interface::{GameFactoryTrait, GameTrait, TcpStream};
 use std::ops::ControlFlow::{Break, Continue};
 use commons::net::TcpStreamTrait;
 use crate::server::ServerConfig;
@@ -19,13 +15,13 @@ pub enum TcpOutputEvent<Game: GameTrait> {
 
 pub struct TcpOutput<GameFactory: GameFactoryTrait> {
     player_index: usize,
-    tcp_stream: ServerToClientTcpStream<GameFactory>
+    tcp_stream: TcpStream<GameFactory>
 }
 
 impl<GameFactory: GameFactoryTrait> TcpOutput<GameFactory> {
 
     pub fn new(player_index: usize,
-               tcp_stream: ServerToClientTcpStream<GameFactory>) -> Self {
+               tcp_stream: TcpStream<GameFactory>) -> Self {
 
         return TcpOutput {
             player_index,

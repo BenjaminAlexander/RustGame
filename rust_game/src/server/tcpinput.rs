@@ -4,15 +4,15 @@ use std::ops::ControlFlow::{Break, Continue};
 use commons::net::TcpStreamTrait;
 use commons::threading::channel::ReceiveMetaData;
 use commons::threading::listener::{ChannelEvent, ListenedOrDidNotListen, ListenerEventResult, ListenerTrait, ListenResult};
-use crate::interface::{GameFactoryTrait, ServerToClientTcpStream};
+use crate::interface::{GameFactoryTrait, TcpStream};
 
 pub struct TcpInput<GameFactory: GameFactoryTrait> {
-    tcp_stream: ServerToClientTcpStream<GameFactory>
+    tcp_stream: TcpStream<GameFactory>
 }
 
 impl<GameFactory: GameFactoryTrait> TcpInput<GameFactory> {
 
-    pub fn new(tcp_stream: ServerToClientTcpStream<GameFactory>) -> Self {
+    pub fn new(tcp_stream: TcpStream<GameFactory>) -> Self {
         return Self {
             tcp_stream
         };

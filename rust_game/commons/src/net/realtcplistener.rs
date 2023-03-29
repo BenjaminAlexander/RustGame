@@ -1,29 +1,22 @@
 use std::io::Error;
-use std::marker::PhantomData;
 use std::net::{TcpListener, ToSocketAddrs};
-use serde::de::DeserializeOwned;
-use serde::Serialize;
 use crate::net::realtcpstream::RealTcpStream;
 use crate::net::TcpListenerTrait;
 
-pub struct RealTcpListener<ReadType: Serialize + DeserializeOwned + Send, WriteType: Serialize + DeserializeOwned + Send> {
-    tcp_listener: TcpListener,
-    phantom: PhantomData<(ReadType, WriteType)>
+pub struct RealTcpListener {
+    tcp_listener: TcpListener
 }
 
-impl<ReadType: Serialize + DeserializeOwned + Send, WriteType: Serialize + DeserializeOwned + Send> RealTcpListener<ReadType, WriteType> {
+impl RealTcpListener {
     pub fn bind(socket_addr: impl ToSocketAddrs) -> Result<Self, Error>{
         return Ok(Self {
-            tcp_listener: TcpListener::bind(socket_addr)?,
-            phantom: PhantomData::default()
+            tcp_listener: TcpListener::bind(socket_addr)?
         });
     }
 }
 
-impl<ReadType: Serialize + DeserializeOwned + Send, WriteType: Serialize + DeserializeOwned + Send> TcpListenerTrait for RealTcpListener<ReadType, WriteType> {
-    type ReadType = ReadType;
-    type WriteType = WriteType;
-    type TcpStream = RealTcpStream<ReadType, WriteType>;
+impl TcpListenerTrait for RealTcpListener {
+    type TcpStream = RealTcpStream;
 
     fn accept(&self) -> Result<Self::TcpStream, Error> {
         let (tcp_stream, remote_peer_socket_addr) = self.tcp_listener.accept()?;
