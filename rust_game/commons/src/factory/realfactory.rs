@@ -3,7 +3,7 @@ use std::net::ToSocketAddrs;
 use std::sync::mpsc;
 use std::time::{SystemTime, UNIX_EPOCH};
 use crate::factory::FactoryTrait;
-use crate::net::RealTcpListener;
+use crate::net::{RealTcpListener, TcpConnectionHandler, TcpListenerEventHandler, TcpListenerTrait};
 use crate::threading::channel::{Channel, RealSender, Receiver, SendMetaData};
 use crate::threading::eventhandling::{EventHandlerThread, EventHandlerTrait, EventOrStopThread, Sender};
 use crate::threading::{AsyncJoinCallBackTrait, ThreadBuilder};
@@ -51,5 +51,13 @@ impl FactoryTrait for RealFactory {
 
     fn new_tcp_listener(&self, socket_addr: impl ToSocketAddrs) -> Result<Self::TcpListener, Error> {
         return RealTcpListener::bind(socket_addr);
+    }
+
+    fn spawn_tcp_listener<T: TcpConnectionHandler<TcpStream=<Self::TcpListener as TcpListenerTrait>::TcpStream>>(&self, tcp_listener: Self::TcpListener, tcp_connection_handler: T, join_call_back: impl AsyncJoinCallBackTrait<Self, T>) -> Result<Sender<Self, ()>, Error> {
+        let event_handler = TcpListenerEventHandler::new(tcp_listener, tcp_connection_handler);
+
+        return self.new_thread_builder()
+            .name("TODO-NAME-THIS-TCP-LISTENER-THREAD")
+            .spawn_event_handler(event_handler, join_call_back);
     }
 }

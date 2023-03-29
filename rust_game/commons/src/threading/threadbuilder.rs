@@ -42,7 +42,7 @@ impl<Factory: FactoryTrait> ThreadBuilder<Factory> {
         return self.build_channel_thread();
     }
 
-    pub fn spawn_event_handler<T: EventHandlerTrait>(self, event_handler: T, join_call_back: impl FnOnce(AsyncJoin<Factory, T::ThreadReturn>) + Send + 'static) -> std::io::Result<eventhandling::Sender<Factory, T::Event>> {
+    pub fn spawn_event_handler<T: EventHandlerTrait>(self, event_handler: T, join_call_back: impl AsyncJoinCallBackTrait<Factory, T::ThreadReturn>) -> std::io::Result<eventhandling::Sender<Factory, T::Event>> {
         return self.build_channel_for_event_handler::<T>().spawn_event_handler(event_handler, join_call_back);
     }
 

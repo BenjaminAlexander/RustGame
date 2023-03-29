@@ -1,6 +1,6 @@
 use std::io::Error;
-use std::net::ToSocketAddrs;
-use crate::net::TcpListenerTrait;
+use std::net::{TcpListener, ToSocketAddrs};
+use crate::net::{TcpConnectionHandler, TcpListenerTrait};
 use crate::threading::channel::{Channel, SenderTrait};
 use crate::threading::{AsyncJoinCallBackTrait, eventhandling, ThreadBuilder};
 use crate::threading::eventhandling::{EventHandlerTrait, EventOrStopThread};
@@ -27,5 +27,8 @@ pub trait FactoryTrait: Clone + Send + 'static {
         join_call_back: impl AsyncJoinCallBackTrait<Self, U::ThreadReturn>
     ) -> Result<eventhandling::Sender<Self, T>, Error>;
 
+    //TODO: maybe get rid of this?
     fn new_tcp_listener(&self, socket_addr: impl ToSocketAddrs) -> Result<Self::TcpListener, Error>;
+
+    fn spawn_tcp_listener<T: TcpConnectionHandler<TcpStream=<Self::TcpListener as TcpListenerTrait>::TcpStream>>(&self, tcp_listener: Self::TcpListener, tcp_connection_handler: T, join_call_back: impl AsyncJoinCallBackTrait<Self, T>) -> Result<eventhandling::Sender<Self, ()>, Error>;
 }
