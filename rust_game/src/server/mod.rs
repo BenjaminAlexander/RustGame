@@ -1,10 +1,10 @@
-pub use crate::server::tcplistenerthread::TcpListenerThread;
+pub use crate::server::tcpconnectionhandler::TcpConnectionHandler;
 pub use self::serverconfig::ServerConfig;
 pub use self::servercore::{ServerCore, ServerCoreEvent};
 
 mod servercore;
 mod tcpinput;
-mod tcplistenerthread;
+mod tcpconnectionhandler;
 mod tcpoutput;
 mod udpinput;
 mod udpoutput;

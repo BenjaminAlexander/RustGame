@@ -1,12 +1,9 @@
-mod tcplistenertrait;
 mod tcpstreamtrait;
 mod realtcpstream;
-mod realtcplistener;
 mod tcpconnectionhandlertrait;
 mod tcplistenereventhandler;
 
-pub use self::tcplistenertrait::TcpListenerTrait;
-pub use self::realtcplistener::RealTcpListener;
+pub use self::realtcpstream::RealTcpStream;
 pub use self::tcpstreamtrait::TcpStreamTrait;
-pub use self::tcpconnectionhandlertrait::TcpConnectionHandler;
+pub use self::tcpconnectionhandlertrait::TcpConnectionHandlerTrait;
 pub(crate) use self::tcplistenereventhandler::TcpListenerEventHandler;

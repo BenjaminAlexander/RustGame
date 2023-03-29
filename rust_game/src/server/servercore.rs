@@ -4,7 +4,7 @@ use log::{error, info};
 use crate::interface::{GameFactoryTrait, GameTrait, TcpStream};
 use crate::server::tcpinput::TcpInput;
 use commons::threading::eventhandling;
-use crate::server::{TcpListenerThread, ServerConfig};
+use crate::server::{TcpConnectionHandler, ServerConfig};
 use crate::server::tcpoutput::{TcpOutput, TcpOutputEvent};
 use crate::gametime::GameTimer;
 use crate::gamemanager::{Manager, ManagerEvent, RenderReceiverMessage};
@@ -153,17 +153,9 @@ impl<GameFactory: GameFactoryTrait> ServerCore<GameFactory> {
         let socket_addr_v4 = SocketAddrV4::new(Ipv4Addr::new(127, 0, 0, 1), GameFactory::Game::TCP_PORT);
         let socket_addr = SocketAddr::from(socket_addr_v4);
 
-        let tcp_listener = match self.factory.new_tcp_listener(socket_addr) {
-            Ok(tcp_listener) => tcp_listener,
-            Err(error) => {
-                error!("Error while binding TcpListener: {:?}", error);
-                return Break(());
-            }
-        };
-
         let tcp_listener_sender_result = self.factory.spawn_tcp_listener(
-            tcp_listener,
-            TcpListenerThread::<GameFactory>::new(self.sender.clone()),
+            socket_addr,
+            TcpConnectionHandler::<GameFactory>::new(self.sender.clone()),
             AsyncJoin::log_async_join
         );
 

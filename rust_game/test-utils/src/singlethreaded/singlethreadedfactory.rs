@@ -2,7 +2,7 @@ use std::io::Error;
 use std::net::ToSocketAddrs;
 use std::sync::mpsc;
 use commons::factory::FactoryTrait;
-use commons::net::{RealTcpListener, TcpConnectionHandler, TcpListenerTrait};
+use commons::net::{RealTcpStream, TcpConnectionHandlerTrait};
 use commons::threading::{AsyncJoinCallBackTrait, ThreadBuilder};
 use commons::threading::channel::{Channel, RealSender, Receiver, SendMetaData};
 use commons::threading::eventhandling::{EventHandlerTrait, EventOrStopThread, Sender};
@@ -45,7 +45,7 @@ impl FactoryTrait for SingleThreadedFactory {
     type Sender<T: Send> = SingleThreadedSender<T>;
 
     //TODO: make a fake listener
-    type TcpListener = RealTcpListener;
+    type TcpStream = RealTcpStream;
 
     fn now(&self) -> TimeValue {
         return self.simulated_time_source.now();
@@ -76,11 +76,7 @@ impl FactoryTrait for SingleThreadedFactory {
         return Ok(sender);
     }
 
-    fn new_tcp_listener(&self, socket_addr: impl ToSocketAddrs) -> Result<Self::TcpListener, Error> {
-        return RealTcpListener::bind(socket_addr);
-    }
-
-    fn spawn_tcp_listener<T: TcpConnectionHandler<TcpStream=<Self::TcpListener as TcpListenerTrait>::TcpStream>>(&self, tcp_listener: Self::TcpListener, tcp_connection_handler: T, join_call_back: impl AsyncJoinCallBackTrait<Self, T>) -> Result<Sender<Self, ()>, Error> {
+    fn spawn_tcp_listener<T: TcpConnectionHandlerTrait<TcpStream=Self::TcpStream>>(&self, socket_addr: impl ToSocketAddrs, tcp_connection_handler: T, join_call_back: impl AsyncJoinCallBackTrait<Self, T>) -> Result<Sender<Self, ()>, Error> {
         todo!()
     }
 }

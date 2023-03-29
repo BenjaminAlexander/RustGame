@@ -1,23 +1,21 @@
-use std::io::Error;
-use std::ops::ControlFlow;
+use std::net::TcpListener;
 use std::ops::ControlFlow::{Break, Continue};
 use log::error;
-use crate::net::{RealTcpListener, TcpListenerTrait};
 use crate::net::realtcpstream::RealTcpStream;
-use crate::net::tcpconnectionhandlertrait::TcpConnectionHandler;
+use crate::net::tcpconnectionhandlertrait::TcpConnectionHandlerTrait;
 use crate::threading::channel::ReceiveMetaData;
 use crate::threading::eventhandling::{ChannelEvent, ChannelEventResult, EventHandlerTrait};
 use crate::threading::eventhandling::WaitOrTryForNextEvent::TryForNextEvent;
 
-pub struct TcpListenerEventHandler<T: TcpConnectionHandler<TcpStream=RealTcpStream>> {
-    tcp_listener: RealTcpListener,
+pub struct TcpListenerEventHandler<T: TcpConnectionHandlerTrait<TcpStream=RealTcpStream>> {
+    tcp_listener: TcpListener,
     tcp_connection_handler: T
 
 }
 
-impl<T: TcpConnectionHandler<TcpStream=RealTcpStream>> TcpListenerEventHandler<T> {
+impl<T: TcpConnectionHandlerTrait<TcpStream=RealTcpStream>> TcpListenerEventHandler<T> {
 
-    pub fn new(tcp_listener: RealTcpListener, tcp_connection_handler: T) -> Self {
+    pub fn new(tcp_listener: TcpListener, tcp_connection_handler: T) -> Self {
         return Self {
             tcp_listener,
             tcp_connection_handler
@@ -25,8 +23,12 @@ impl<T: TcpConnectionHandler<TcpStream=RealTcpStream>> TcpListenerEventHandler<T
     }
 
     fn accept(mut self) -> ChannelEventResult<Self> {
+
         match self.tcp_listener.accept() {
-            Ok(tcp_stream) => {
+            Ok((tcp_stream, remote_peer_socket_addr)) => {
+
+                let tcp_stream = RealTcpStream::new(tcp_stream, remote_peer_socket_addr);
+
                 match self.tcp_connection_handler.on_connection(tcp_stream) {
                     Continue(()) => {
                         return Continue(TryForNextEvent(self));
@@ -44,7 +46,7 @@ impl<T: TcpConnectionHandler<TcpStream=RealTcpStream>> TcpListenerEventHandler<T
     }
 }
 
-impl<T: TcpConnectionHandler<TcpStream=RealTcpStream>> EventHandlerTrait for TcpListenerEventHandler<T> {
+impl<T: TcpConnectionHandlerTrait<TcpStream=RealTcpStream>> EventHandlerTrait for TcpListenerEventHandler<T> {
     type Event = ();
     type ThreadReturn = T;
 
@@ -57,7 +59,7 @@ impl<T: TcpConnectionHandler<TcpStream=RealTcpStream>> EventHandlerTrait for Tcp
         };
     }
 
-    fn on_stop(self, receive_meta_data: ReceiveMetaData) -> Self::ThreadReturn {
+    fn on_stop(self, _receive_meta_data: ReceiveMetaData) -> Self::ThreadReturn {
         return self.tcp_connection_handler;
     }
 }

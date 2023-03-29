@@ -1,9 +1,9 @@
 use std::io::Error;
-use std::net::ToSocketAddrs;
+use std::net::{TcpListener, ToSocketAddrs};
 use std::sync::mpsc;
 use std::time::{SystemTime, UNIX_EPOCH};
 use crate::factory::FactoryTrait;
-use crate::net::{RealTcpListener, TcpConnectionHandler, TcpListenerEventHandler, TcpListenerTrait};
+use crate::net::{RealTcpStream, TcpConnectionHandlerTrait, TcpListenerEventHandler};
 use crate::threading::channel::{Channel, RealSender, Receiver, SendMetaData};
 use crate::threading::eventhandling::{EventHandlerThread, EventHandlerTrait, EventOrStopThread, Sender};
 use crate::threading::{AsyncJoinCallBackTrait, ThreadBuilder};
@@ -22,7 +22,7 @@ impl RealFactory {
 
 impl FactoryTrait for RealFactory {
     type Sender<T: Send> = RealSender<Self, T>;
-    type TcpListener = RealTcpListener;
+    type TcpStream = RealTcpStream;
 
     fn now(&self) -> TimeValue {
         return TimeValue::from_seconds_since_epoch(SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs_f64());
@@ -49,15 +49,15 @@ impl FactoryTrait for RealFactory {
         return Ok(sender);
     }
 
-    fn new_tcp_listener(&self, socket_addr: impl ToSocketAddrs) -> Result<Self::TcpListener, Error> {
-        return RealTcpListener::bind(socket_addr);
-    }
+    fn spawn_tcp_listener<T: TcpConnectionHandlerTrait<TcpStream=Self::TcpStream>>(&self, socket_addr: impl ToSocketAddrs, tcp_connection_handler: T, join_call_back: impl AsyncJoinCallBackTrait<Self, T>) -> Result<Sender<Self, ()>, Error> {
+        let tcp_listener = TcpListener::bind(socket_addr)?;
 
-    fn spawn_tcp_listener<T: TcpConnectionHandler<TcpStream=<Self::TcpListener as TcpListenerTrait>::TcpStream>>(&self, tcp_listener: Self::TcpListener, tcp_connection_handler: T, join_call_back: impl AsyncJoinCallBackTrait<Self, T>) -> Result<Sender<Self, ()>, Error> {
         let event_handler = TcpListenerEventHandler::new(tcp_listener, tcp_connection_handler);
 
         return self.new_thread_builder()
             .name("TODO-NAME-THIS-TCP-LISTENER-THREAD")
             .spawn_event_handler(event_handler, join_call_back);
     }
+
+
 }
