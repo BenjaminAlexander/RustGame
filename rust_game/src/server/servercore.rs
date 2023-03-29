@@ -161,13 +161,11 @@ impl<GameFactory: GameFactoryTrait> ServerCore<GameFactory> {
             }
         };
 
-        let tcp_listener_sender_result = self.factory.new_thread_builder()
-            .name("ServerTcpListener")
-            .spawn_listener(TcpListenerThread::<GameFactory>::new(
-                self.factory.clone(),
-                self.sender.clone(),
-                tcp_listener
-            ), AsyncJoin::log_async_join);
+        let tcp_listener_sender_result = self.factory.spawn_tcp_listener(
+            tcp_listener,
+            TcpListenerThread::<GameFactory>::new(self.sender.clone()),
+            AsyncJoin::log_async_join
+        );
 
         match tcp_listener_sender_result {
             Ok(tcp_listener_sender) => {
