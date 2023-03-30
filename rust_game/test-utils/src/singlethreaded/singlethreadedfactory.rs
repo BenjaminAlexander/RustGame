@@ -45,7 +45,8 @@ impl FactoryTrait for SingleThreadedFactory {
     type Sender<T: Send> = SingleThreadedSender<T>;
 
     //TODO: make a fake listener
-    type TcpStream = RealTcpStream;
+    type TcpSender = RealTcpStream;
+    type TcpReceiver = RealTcpStream;
 
     fn now(&self) -> TimeValue {
         return self.simulated_time_source.now();
@@ -76,7 +77,7 @@ impl FactoryTrait for SingleThreadedFactory {
         return Ok(sender);
     }
 
-    fn spawn_tcp_listener<T: TcpConnectionHandlerTrait<TcpStream=Self::TcpStream>>(&self, socket_addr: impl ToSocketAddrs, tcp_connection_handler: T, join_call_back: impl AsyncJoinCallBackTrait<Self, T>) -> Result<Sender<Self, ()>, Error> {
+    fn spawn_tcp_listener<T: TcpConnectionHandlerTrait<TcpSender=Self::TcpSender, TcpReceiver=Self::TcpReceiver>>(&self, socket_addr: impl ToSocketAddrs, tcp_connection_handler: T, join_call_back: impl AsyncJoinCallBackTrait<Self, T>) -> Result<Sender<Self, ()>, Error> {
         todo!()
     }
 }

@@ -5,7 +5,7 @@ use serde::de::DeserializeOwned;
 use serde::Serialize;
 use rmp_serde::decode::Error as DecodeError;
 use rmp_serde::encode::Error as EncodeError;
-use crate::net::tcpstreamtrait::TcpStreamTrait;
+use crate::net::{TcpReceiverTrait, TcpSenderTrait};
 
 #[derive(Debug)]
 pub struct RealTcpStream {
@@ -21,13 +21,20 @@ impl RealTcpStream {
             remote_peer_socket_addr
         };
     }
+
+    fn get_peer_addr(&self) -> &SocketAddr {
+        return &self.remote_peer_socket_addr;
+    }
+
+    pub fn try_clone(&self) -> Result<Self, Error> {
+        return Ok(Self {
+            tcp_stream: self.tcp_stream.try_clone()?,
+            remote_peer_socket_addr: self.remote_peer_socket_addr.clone()
+        });
+    }
 }
 
-impl TcpStreamTrait for RealTcpStream {
-
-    fn read<T: Serialize + DeserializeOwned>(&self) -> Result<T, DecodeError> {
-        return rmp_serde::from_read(&self.tcp_stream);
-    }
+impl TcpSenderTrait for RealTcpStream {
 
     fn write<T: Serialize + DeserializeOwned>(&mut self, write: &T) -> Result<(), EncodeError> {
         return rmp_serde::encode::write(&mut self.tcp_stream, &write);
@@ -38,13 +45,19 @@ impl TcpStreamTrait for RealTcpStream {
     }
 
     fn get_peer_addr(&self) -> &SocketAddr {
-        return &self.remote_peer_socket_addr;
+        return RealTcpStream::get_peer_addr(self);
     }
 
-    fn try_clone(&self) -> Result<Self, Error> {
-        return Ok(Self {
-            tcp_stream: self.tcp_stream.try_clone()?,
-            remote_peer_socket_addr: self.remote_peer_socket_addr.clone()
-        });
+
+}
+
+impl TcpReceiverTrait for RealTcpStream {
+
+    fn read<T: Serialize + DeserializeOwned>(&self) -> Result<T, DecodeError> {
+        return rmp_serde::from_read(&self.tcp_stream);
+    }
+
+    fn get_peer_addr(&self) -> &SocketAddr {
+        return RealTcpStream::get_peer_addr(self);
     }
 }

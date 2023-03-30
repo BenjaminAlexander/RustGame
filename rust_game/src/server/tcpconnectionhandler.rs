@@ -2,14 +2,13 @@ use std::ops::ControlFlow;
 use std::ops::ControlFlow::*;
 use log::{error, info, warn};
 use commons::factory::FactoryTrait;
-use commons::net::TcpConnectionHandlerTrait;
-use crate::interface::{GameFactoryTrait, TcpStream};
+use commons::net::{TcpConnectionHandlerTrait, TcpSenderTrait};
+use crate::interface::{GameFactoryTrait, TcpReceiver, TcpSender};
 use crate::server::servercore::ServerCoreEvent;
 use crate::server::servercore::ServerCoreEvent::TcpConnectionEvent;
 use commons::threading::channel::ReceiveMetaData;
 use commons::threading::eventhandling::{Sender, EventSenderTrait};
 use commons::threading::listener::{ListenedOrDidNotListen, ChannelEvent, ListenerEventResult, ListenerTrait, ListenResult};
-use commons::net::TcpStreamTrait;
 
 pub struct TcpConnectionHandler<GameFactory: GameFactoryTrait> {
     server_core_sender: Sender<GameFactory::Factory, ServerCoreEvent<GameFactory>>
@@ -24,20 +23,13 @@ impl<GameFactory: GameFactoryTrait> TcpConnectionHandler<GameFactory> {
 }
 
 impl<GameFactory: GameFactoryTrait> TcpConnectionHandlerTrait for TcpConnectionHandler<GameFactory> {
-    type TcpStream = <GameFactory::Factory as FactoryTrait>::TcpStream;
+    type TcpSender = TcpSender<GameFactory>;
+    type TcpReceiver = TcpReceiver<GameFactory>;
 
-    fn on_connection(&mut self, tcp_stream: Self::TcpStream) -> ControlFlow<()> {
-        info!("New TCP connection from {:?}", tcp_stream.get_peer_addr());
+    fn on_connection(&mut self, tcp_sender: Self::TcpSender, tcp_receiver: Self::TcpReceiver) -> ControlFlow<()> {
+        info!("New TCP connection from {:?}", tcp_sender.get_peer_addr());
 
-        let stream_clone = match tcp_stream.try_clone() {
-            Ok(stream_clone) => stream_clone,
-            Err(error) => {
-                error!("Unable to clone tcp stream: {:?}", error);
-                return Continue(());
-            }
-        };
-
-        match self.server_core_sender.send_event(TcpConnectionEvent(stream_clone)) {
+        match self.server_core_sender.send_event(TcpConnectionEvent(tcp_sender, tcp_receiver)) {
             Ok(()) => {
                 return Continue(());
             }

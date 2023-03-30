@@ -1,6 +1,7 @@
 use crate::factory::FactoryTrait;
 use crate::threading::channel::Receiver;
 
+//TODO: maybe refactor to just use SenderTrait instead of factory
 pub struct Channel<Factory: FactoryTrait, T: Send + 'static> {
     sender: Factory::Sender<T>,
     receiver: Receiver<T>

@@ -1,8 +1,8 @@
 use log::debug;
 use crate::messaging::{ToClientMessageTCP, InitialInformation};
-use crate::interface::{GameFactoryTrait, GameTrait, TcpStream};
+use crate::interface::{GameFactoryTrait, GameTrait, TcpSender};
 use std::ops::ControlFlow::{Break, Continue};
-use commons::net::TcpStreamTrait;
+use commons::net::TcpSenderTrait;
 use crate::server::ServerConfig;
 use crate::server::tcpoutput::TcpOutputEvent::SendInitialInformation;
 use commons::threading::channel::ReceiveMetaData;
@@ -15,17 +15,17 @@ pub enum TcpOutputEvent<Game: GameTrait> {
 
 pub struct TcpOutput<GameFactory: GameFactoryTrait> {
     player_index: usize,
-    tcp_stream: TcpStream<GameFactory>
+    tcp_sender: TcpSender<GameFactory>
 }
 
 impl<GameFactory: GameFactoryTrait> TcpOutput<GameFactory> {
 
     pub fn new(player_index: usize,
-               tcp_stream: TcpStream<GameFactory>) -> Self {
+               tcp_sender: TcpSender<GameFactory>) -> Self {
 
         return TcpOutput {
             player_index,
-            tcp_stream
+            tcp_sender
         };
     }
 
@@ -39,8 +39,8 @@ impl<GameFactory: GameFactoryTrait> TcpOutput<GameFactory> {
         );
 
         let message = ToClientMessageTCP::<GameFactory::Game>::InitialInformation(initial_information);
-        self.tcp_stream.write(&message).unwrap();
-        self.tcp_stream.flush().unwrap();
+        self.tcp_sender.write(&message).unwrap();
+        self.tcp_sender.flush().unwrap();
 
         debug!("Sent InitialInformation");
 

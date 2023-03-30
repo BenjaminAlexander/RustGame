@@ -1,8 +1,9 @@
 use std::ops::ControlFlow;
-use crate::net::TcpStreamTrait;
+use crate::net::{TcpReceiverTrait, TcpSenderTrait};
 
 pub trait TcpConnectionHandlerTrait: Send + 'static {
-    type TcpStream: TcpStreamTrait;
+    type TcpSender: TcpSenderTrait;
+    type TcpReceiver: TcpReceiverTrait;
 
-    fn on_connection(&mut self, tcp_stream: Self::TcpStream) -> ControlFlow<()>;
+    fn on_connection(&mut self, tcp_sender: Self::TcpSender, tcp_receiver: Self::TcpReceiver) -> ControlFlow<()>;
 }

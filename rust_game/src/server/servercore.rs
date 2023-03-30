@@ -1,7 +1,7 @@
 use std::net::{Ipv4Addr, SocketAddrV4, UdpSocket, SocketAddr};
 use std::ops::ControlFlow::{Continue, Break};
 use log::{error, info};
-use crate::interface::{GameFactoryTrait, GameTrait, TcpStream};
+use crate::interface::{GameFactoryTrait, GameTrait, TcpReceiver, TcpSender};
 use crate::server::tcpinput::TcpInput;
 use commons::threading::eventhandling;
 use crate::server::{TcpConnectionHandler, ServerConfig};
@@ -11,7 +11,7 @@ use crate::gamemanager::{Manager, ManagerEvent, RenderReceiverMessage};
 use crate::messaging::{InputMessage, InitialInformation};
 use std::str::FromStr;
 use commons::factory::FactoryTrait;
-use commons::net::TcpStreamTrait;
+use commons::net::TcpSenderTrait;
 use crate::server::udpinput::{UdpInput, UdpInputEvent};
 use crate::server::udpoutput::{UdpOutput, UdpOutputEvent};
 use crate::server::clientaddress::ClientAddress;
@@ -33,7 +33,7 @@ pub enum ServerCoreEvent<GameFactory: GameFactoryTrait> {
 
     //TODO: create render receiver sender before spawning event handler
     StartGameEvent(<GameFactory::Factory as FactoryTrait>::Sender<RenderReceiverMessage<GameFactory::Game>>),
-    TcpConnectionEvent(TcpStream<GameFactory>),
+    TcpConnectionEvent(TcpSender<GameFactory>, TcpReceiver<GameFactory>),
     GameTimerTick,
     InputMessageEvent(InputMessage<GameFactory::Game>)
 }
@@ -64,7 +64,7 @@ impl<GameFactory: GameFactoryTrait> EventHandlerTrait for ServerCore<GameFactory
             ChannelEvent::ReceivedEvent(_, StartListenerEvent) => self.start_listener(),
             ChannelEvent::ReceivedEvent(_, RemoteUdpPeerEvent(remote_udp_peer)) => self.on_remote_udp_peer(remote_udp_peer),
             ChannelEvent::ReceivedEvent(_, StartGameEvent(render_receiver_sender)) => self.start_game(render_receiver_sender),
-            ChannelEvent::ReceivedEvent(_, TcpConnectionEvent(tcp_stream)) => self.on_tcp_connection(tcp_stream),
+            ChannelEvent::ReceivedEvent(_, TcpConnectionEvent(tcp_sender, tcp_receiver)) => self.on_tcp_connection(tcp_sender, tcp_receiver),
             ChannelEvent::ReceivedEvent(_, GameTimerTick) => self.on_game_timer_tick(),
             ChannelEvent::ReceivedEvent(_, InputMessageEvent(input_message)) => self.on_input_message(input_message),
             ChannelEvent::Timeout => Continue(WaitForNextEvent(self)),
@@ -253,20 +253,18 @@ impl<GameFactory: GameFactoryTrait> ServerCore<GameFactory> {
     Tcp Hello ->
         <- UdpHello
      */
-    fn on_tcp_connection(mut self, tcp_stream: TcpStream<GameFactory>) -> ChannelEventResult<Self> {
+    fn on_tcp_connection(mut self, tcp_sender: TcpSender<GameFactory>, tcp_receiver: TcpReceiver<GameFactory>) -> ChannelEventResult<Self> {
         if !self.game_is_started {
 
-            info!("TcpStream accepted: {:?}", tcp_stream.get_peer_addr());
+            info!("TcpStream accepted: {:?}", tcp_sender.get_peer_addr());
 
             let player_index = self.tcp_inputs.len();
 
-            let client_address = ClientAddress::new(player_index, tcp_stream.get_peer_addr().ip());
-
-            let tcp_stream_clone = tcp_stream.try_clone().unwrap();
+            let client_address = ClientAddress::new(player_index, tcp_sender.get_peer_addr().ip());
 
             let tcp_input_join_handle = self.factory.new_thread_builder()
                 .name("ServerTcpInput")
-                .spawn_listener(TcpInput::<GameFactory>::new(tcp_stream_clone), AsyncJoin::log_async_join)
+                .spawn_listener(TcpInput::<GameFactory>::new(tcp_receiver), AsyncJoin::log_async_join)
                 .unwrap();
 
             self.tcp_inputs.push(tcp_input_join_handle);
@@ -286,7 +284,7 @@ impl<GameFactory: GameFactoryTrait> ServerCore<GameFactory> {
             let tcp_output_sender = self.factory.new_thread_builder()
                 .name("ServerTcpOutput")
                 .spawn_event_handler(
-                    TcpOutput::<GameFactory>::new(player_index, tcp_stream),
+                    TcpOutput::<GameFactory>::new(player_index, tcp_sender),
                     AsyncJoin::log_async_join
                 )
                 .unwrap();
@@ -295,7 +293,7 @@ impl<GameFactory: GameFactoryTrait> ServerCore<GameFactory> {
             self.udp_outputs.push(udp_out_sender);
 
         } else {
-            info!("TcpStream connected after the core has stated and will be dropped. {:?}", tcp_stream.get_peer_addr());
+            info!("TcpStream connected after the core has stated and will be dropped. {:?}", tcp_sender.get_peer_addr());
         }
 
         return Continue(TryForNextEvent(self));

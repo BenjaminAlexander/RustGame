@@ -22,7 +22,8 @@ impl RealFactory {
 
 impl FactoryTrait for RealFactory {
     type Sender<T: Send> = RealSender<Self, T>;
-    type TcpStream = RealTcpStream;
+    type TcpSender = RealTcpStream;
+    type TcpReceiver = RealTcpStream;
 
     fn now(&self) -> TimeValue {
         return TimeValue::from_seconds_since_epoch(SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs_f64());
@@ -49,7 +50,7 @@ impl FactoryTrait for RealFactory {
         return Ok(sender);
     }
 
-    fn spawn_tcp_listener<T: TcpConnectionHandlerTrait<TcpStream=Self::TcpStream>>(&self, socket_addr: impl ToSocketAddrs, tcp_connection_handler: T, join_call_back: impl AsyncJoinCallBackTrait<Self, T>) -> Result<Sender<Self, ()>, Error> {
+    fn spawn_tcp_listener<T: TcpConnectionHandlerTrait<TcpSender=Self::TcpSender, TcpReceiver=Self::TcpReceiver>>(&self, socket_addr: impl ToSocketAddrs, tcp_connection_handler: T, join_call_back: impl AsyncJoinCallBackTrait<Self, T>) -> Result<Sender<Self, ()>, Error> {
         let tcp_listener = TcpListener::bind(socket_addr)?;
 
         let event_handler = TcpListenerEventHandler::new(tcp_listener, tcp_connection_handler);
@@ -58,6 +59,4 @@ impl FactoryTrait for RealFactory {
             .name("TODO-NAME-THIS-TCP-LISTENER-THREAD")
             .spawn_event_handler(event_handler, join_call_back);
     }
-
-
 }

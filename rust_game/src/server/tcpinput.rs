@@ -1,20 +1,20 @@
 use log::error;
 use crate::messaging::{ToServerMessageTCP};
 use std::ops::ControlFlow::{Break, Continue};
-use commons::net::TcpStreamTrait;
+use commons::net::TcpReceiverTrait;
 use commons::threading::channel::ReceiveMetaData;
 use commons::threading::listener::{ChannelEvent, ListenedOrDidNotListen, ListenerEventResult, ListenerTrait, ListenResult};
-use crate::interface::{GameFactoryTrait, TcpStream};
+use crate::interface::{GameFactoryTrait, TcpReceiver};
 
 pub struct TcpInput<GameFactory: GameFactoryTrait> {
-    tcp_stream: TcpStream<GameFactory>
+    tcp_receiver: TcpReceiver<GameFactory>
 }
 
 impl<GameFactory: GameFactoryTrait> TcpInput<GameFactory> {
 
-    pub fn new(tcp_stream: TcpStream<GameFactory>) -> Self {
+    pub fn new(tcp_receiver: TcpReceiver<GameFactory>) -> Self {
         return Self {
-            tcp_stream
+            tcp_receiver
         };
     }
 }
@@ -25,7 +25,7 @@ impl<GameFactory: GameFactoryTrait> ListenerTrait for TcpInput<GameFactory> {
     type ListenFor = ToServerMessageTCP;
 
     fn listen(self) -> ListenResult<Self> {
-        let result = self.tcp_stream.read();
+        let result = self.tcp_receiver.read();
 
         match result {
             Ok(message) => {
