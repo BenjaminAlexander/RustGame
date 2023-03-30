@@ -9,17 +9,17 @@ use crate::threading::eventhandling::ChannelEvent::{ChannelDisconnected, Channel
 use crate::threading::eventhandling::WaitOrTryForNextEvent::{TryForNextEvent, WaitForNextEvent, WaitForNextEventOrTimeout};
 use crate::time::TimeDuration;
 
-type EventReceiver<T> = Receiver<EventOrStopThread<T>>;
+type EventReceiver<Factory, T> = Receiver<Factory, EventOrStopThread<T>>;
 
 pub struct EventHandlerThread<Factory: FactoryTrait, T: EventHandlerTrait> {
     factory: Factory,
-    receiver: EventReceiver<T::Event>,
+    receiver: EventReceiver<Factory, T::Event>,
     event_handler: T
 }
 
 impl<Factory: FactoryTrait, T: EventHandlerTrait> EventHandlerThread<Factory, T> {
 
-    pub(crate) fn new(factory: Factory, receiver: EventReceiver<T::Event>, event_handler: T) -> Self {
+    pub(crate) fn new(factory: Factory, receiver: EventReceiver<Factory, T::Event>, event_handler: T) -> Self {
         return Self {
             factory,
             receiver,
@@ -27,9 +27,9 @@ impl<Factory: FactoryTrait, T: EventHandlerTrait> EventHandlerThread<Factory, T>
         };
     }
 
-    fn wait_for_message_or_timeout(factory: &Factory, message_handler: T, receiver: &mut EventReceiver<T::Event>, time_duration: TimeDuration) -> ChannelEventResult<T> {
+    fn wait_for_message_or_timeout(message_handler: T, receiver: &mut EventReceiver<Factory, T::Event>, time_duration: TimeDuration) -> ChannelEventResult<T> {
 
-        return match receiver.recv_timeout_meta_data(factory, time_duration) {
+        return match receiver.recv_timeout_meta_data(time_duration) {
             Ok((receive_meta_data, Event(event))) => Self::on_message(message_handler, receive_meta_data, event),
             Ok((receive_meta_data, StopThread)) => Break(Self::on_stop(message_handler, receive_meta_data)),
             Err(RecvTimeoutError::Timeout) => Self::on_timeout(message_handler),
@@ -37,18 +37,18 @@ impl<Factory: FactoryTrait, T: EventHandlerTrait> EventHandlerThread<Factory, T>
         };
     }
 
-    fn wait_for_message(factory: &Factory, message_handler: T, receiver: &mut EventReceiver<T::Event>) -> ChannelEventResult<T> {
+    fn wait_for_message(message_handler: T, receiver: &mut EventReceiver<Factory, T::Event>) -> ChannelEventResult<T> {
 
-        return match receiver.recv_meta_data(factory) {
+        return match receiver.recv_meta_data() {
             Ok((receive_meta_data, Event(event))) => Self::on_message(message_handler, receive_meta_data, event),
             Ok((receive_meta_data, StopThread)) => Break(Self::on_stop(message_handler, receive_meta_data)),
             Err(_) => Self::on_channel_disconnected(message_handler)
         };
     }
 
-    fn try_for_message(factory: &Factory, message_handler: T, receiver: &mut EventReceiver<T::Event>) -> ChannelEventResult<T> {
+    fn try_for_message(message_handler: T, receiver: &mut EventReceiver<Factory, T::Event>) -> ChannelEventResult<T> {
 
-        return match receiver.try_recv_meta_data(factory) {
+        return match receiver.try_recv_meta_data() {
             Ok((receive_meta_data, Event(event))) => Self::on_message(message_handler, receive_meta_data, event),
             Ok((receive_meta_data, StopThread)) => Break(Self::on_stop(message_handler, receive_meta_data)),
             Err(TryRecvError::Disconnected) => Self::on_channel_disconnected(message_handler),
@@ -89,9 +89,9 @@ impl<Factory: FactoryTrait, T: EventHandlerTrait> threading::Thread for EventHan
         loop {
 
             let result = match wait_or_try {
-                WaitForNextEvent(message_handler) => Self::wait_for_message(&self.factory, message_handler, &mut self.receiver),
-                WaitForNextEventOrTimeout(message_handler, time_duration) => Self::wait_for_message_or_timeout(&self.factory, message_handler, &mut self.receiver, time_duration),
-                TryForNextEvent(message_handler) => Self::try_for_message(&self.factory, message_handler, &mut self.receiver),
+                WaitForNextEvent(message_handler) => Self::wait_for_message(message_handler, &mut self.receiver),
+                WaitForNextEventOrTimeout(message_handler, time_duration) => Self::wait_for_message_or_timeout(message_handler, &mut self.receiver, time_duration),
+                TryForNextEvent(message_handler) => Self::try_for_message(message_handler, &mut self.receiver),
             };
 
             wait_or_try = match result {

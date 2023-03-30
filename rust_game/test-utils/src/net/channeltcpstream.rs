@@ -4,7 +4,7 @@ use commons::threading::channel::{Receiver, SenderTrait};
 
 pub struct ChannelTcpStream<Factory: FactoryTrait> {
     sender: Factory::Sender<Box<dyn Any + Send>>,
-    receiver: Receiver<Box<dyn Any + Send>>
+    receiver: Receiver<Factory, Box<dyn Any + Send>>
 }
 
 impl<Factory: FactoryTrait> ChannelTcpStream<Factory> {

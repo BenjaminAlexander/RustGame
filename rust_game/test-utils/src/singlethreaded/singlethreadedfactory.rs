@@ -56,7 +56,7 @@ impl FactoryTrait for SingleThreadedFactory {
         let (sender, receiver) = mpsc::channel::<(SendMetaData, T)>();
         let sender = RealSender::new(self.clone(), sender);
         let sender = SingleThreadedSender::new(sender);
-        let receiver = Receiver::new(receiver);
+        let receiver = Receiver::new(self.clone(), receiver);
         return Channel::new(sender, receiver);
     }
 

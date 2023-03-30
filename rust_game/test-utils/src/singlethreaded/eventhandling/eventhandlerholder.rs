@@ -13,7 +13,7 @@ pub struct EventHandlerHolder<T: EventHandlerTrait, U: AsyncJoinCallBackTrait<Si
 }
 
 struct EventHandlerHolderInternal<T: EventHandlerTrait, U: AsyncJoinCallBackTrait<SingleThreadedFactory, T::ThreadReturn>> {
-    receiver: Receiver<EventOrStopThread<T::Event>>,
+    receiver: Receiver<SingleThreadedFactory, EventOrStopThread<T::Event>>,
     event_handler: T,
     join_call_back: U,
     thread_builder: ThreadBuilder<SingleThreadedFactory>,
@@ -32,7 +32,7 @@ impl<T: EventHandlerTrait, U: AsyncJoinCallBackTrait<SingleThreadedFactory, T::T
 
 impl<T: EventHandlerTrait, U: AsyncJoinCallBackTrait<SingleThreadedFactory, T::ThreadReturn>> EventHandlerHolder<T, U> {
 
-    pub fn new(factory: SingleThreadedFactory, thread_builder: ThreadBuilder<SingleThreadedFactory>, receiver: Receiver<EventOrStopThread<T::Event>>, event_handler: T, join_call_back: U) -> Self {
+    pub fn new(factory: SingleThreadedFactory, thread_builder: ThreadBuilder<SingleThreadedFactory>, receiver: Receiver<SingleThreadedFactory, EventOrStopThread<T::Event>>, event_handler: T, join_call_back: U) -> Self {
 
         let internal = EventHandlerHolderInternal {
             receiver,
@@ -102,7 +102,7 @@ impl<T: EventHandlerTrait, U: AsyncJoinCallBackTrait<SingleThreadedFactory, T::T
     }
 
     fn try_receive(mut self, holder: &EventHandlerHolder<T, U>) -> Option<Self> {
-        match self.receiver.try_recv_meta_data(&holder.factory) {
+        match self.receiver.try_recv_meta_data() {
             Ok((receive_meta_data, EventOrStopThread::Event(event))) => {
                 return self.on_channel_event(holder, ReceivedEvent(receive_meta_data, event));
             }

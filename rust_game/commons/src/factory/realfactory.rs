@@ -32,7 +32,7 @@ impl FactoryTrait for RealFactory {
     fn new_channel<T: Send>(&self) -> Channel<Self, T> {
         let (sender, receiver) = mpsc::channel::<(SendMetaData, T)>();
         let sender = RealSender::new(self.clone(), sender);
-        let receiver = Receiver::new(receiver);
+        let receiver = Receiver::new(self.clone(), receiver);
         return Channel::new(sender, receiver);
     }
 

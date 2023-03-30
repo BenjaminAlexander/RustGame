@@ -21,9 +21,9 @@ fn test_sender() {
 
     sender.send(()).unwrap();
     assert_eq!(1, counter.get());
-    assert_eq!((), receiver.try_recv(&factory).unwrap());
+    assert_eq!((), receiver.try_recv().unwrap());
 
     drop(sender);
     assert_eq!(2, counter.get());
-    assert_eq!(TryRecvError::Disconnected, receiver.try_recv(&factory).unwrap_err());
+    assert_eq!(TryRecvError::Disconnected, receiver.try_recv().unwrap_err());
 }
