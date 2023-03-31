@@ -53,7 +53,7 @@ impl TcpSenderTrait for RealTcpStream {
 
 impl TcpReceiverTrait for RealTcpStream {
 
-    fn read<T: Serialize + DeserializeOwned>(&self) -> Result<T, DecodeError> {
+    fn read<T: Serialize + DeserializeOwned>(&mut self) -> Result<T, DecodeError> {
         return rmp_serde::from_read(&self.tcp_stream);
     }
 

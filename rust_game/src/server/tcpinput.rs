@@ -24,7 +24,7 @@ impl<GameFactory: GameFactoryTrait> ListenerTrait for TcpInput<GameFactory> {
     type ThreadReturn = ();
     type ListenFor = ToServerMessageTCP;
 
-    fn listen(self) -> ListenResult<Self> {
+    fn listen(mut self) -> ListenResult<Self> {
         let result = self.tcp_receiver.read();
 
         match result {

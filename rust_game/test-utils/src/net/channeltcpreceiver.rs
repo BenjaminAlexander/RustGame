@@ -6,19 +6,21 @@ use commons::factory::FactoryTrait;
 use commons::net::TcpReceiverTrait;
 use commons::threading::channel::Receiver;
 
-pub struct ChannelTcpReceiver/*<Factory: FactoryTrait>*/ {
-    //peer_addr: SocketAddr,
-    //receiver: Receiver<Box<Vec<u8>>>
+pub struct ChannelTcpReceiver<Factory: FactoryTrait> {
+    peer_addr: SocketAddr,
+    receiver: Receiver<Factory, Vec<u8>>
 }
-/*
+
 impl<Factory: FactoryTrait> TcpReceiverTrait for ChannelTcpReceiver<Factory> {
 
-    fn read<T: Serialize + DeserializeOwned>(&self) -> Result<T, DecodeError> {
-        todo!()
+    fn read<T: Serialize + DeserializeOwned>(&mut self) -> Result<T, DecodeError> {
+        match self.receiver.recv() {
+            Ok(vec) =>  rmp_serde::from_slice(&vec[..]),
+            Err(_) =>  Err(DecodeError::Syntax("Channel has been closed".to_string()))
+        }
     }
 
     fn get_peer_addr(&self) -> &SocketAddr {
-        todo!()
+        return &self.peer_addr;
     }
 }
- */

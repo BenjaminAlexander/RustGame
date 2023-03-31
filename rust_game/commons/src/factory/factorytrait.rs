@@ -1,5 +1,5 @@
 use std::io::Error;
-use std::net::ToSocketAddrs;
+use std::net::SocketAddr;
 use crate::net::{TcpConnectionHandlerTrait, TcpReceiverTrait, TcpSenderTrait};
 use crate::threading::channel::{Channel, SenderTrait};
 use crate::threading::{AsyncJoinCallBackTrait, eventhandling, ThreadBuilder};
@@ -30,8 +30,10 @@ pub trait FactoryTrait: Clone + Send + 'static {
 
     fn spawn_tcp_listener<T: TcpConnectionHandlerTrait<TcpSender=Self::TcpSender, TcpReceiver=Self::TcpReceiver>>(
         &self,
-        socket_addr: impl ToSocketAddrs,
+        socket_addr: SocketAddr,
         tcp_connection_handler: T,
         join_call_back: impl AsyncJoinCallBackTrait<Self, T>
     ) -> Result<eventhandling::Sender<Self, ()>, Error>;
+
+    fn connect_tcp(&self, socket_addr: SocketAddr) -> Result<(Self::TcpSender, Self::TcpReceiver), Error>;
 }

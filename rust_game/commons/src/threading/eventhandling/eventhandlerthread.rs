@@ -12,16 +12,14 @@ use crate::time::TimeDuration;
 type EventReceiver<Factory, T> = Receiver<Factory, EventOrStopThread<T>>;
 
 pub struct EventHandlerThread<Factory: FactoryTrait, T: EventHandlerTrait> {
-    factory: Factory,
     receiver: EventReceiver<Factory, T::Event>,
     event_handler: T
 }
 
 impl<Factory: FactoryTrait, T: EventHandlerTrait> EventHandlerThread<Factory, T> {
 
-    pub(crate) fn new(factory: Factory, receiver: EventReceiver<Factory, T::Event>, event_handler: T) -> Self {
+    pub(crate) fn new(receiver: EventReceiver<Factory, T::Event>, event_handler: T) -> Self {
         return Self {
-            factory,
             receiver,
             event_handler
         };

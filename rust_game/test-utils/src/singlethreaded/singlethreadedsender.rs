@@ -8,7 +8,7 @@ pub struct SingleThreadedSender<T: Send> {
 
 struct Internal<T: Send> {
     sender: RealSender<SingleThreadedFactory, T>,
-    on_send: Option<Box<dyn Fn() + Send + Sync>>
+    on_send: Option<Box<dyn Fn() + Send >>
 }
 
 impl<T: Send> Drop for Internal<T> {
@@ -32,7 +32,7 @@ impl<T: Send> SingleThreadedSender<T> {
         };
     }
 
-    pub fn set_on_send(&self, function: impl Fn() + Send + Sync + 'static) {
+    pub fn set_on_send(&self, function: impl Fn() + Send + 'static) {
         self.internal.lock().unwrap().on_send = Some(Box::new(function));
     }
 }

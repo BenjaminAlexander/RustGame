@@ -25,8 +25,12 @@ impl<Factory: FactoryTrait> ThreadBuilder<Factory> {
         return &self.factory;
     }
 
-    pub fn name(mut self, name: &str) -> Self {
-        self.name = Some(name.to_string());
+    pub fn name(self, name: &str) -> Self {
+        return self.set_name_from_string(name.to_string());
+    }
+
+    pub fn set_name_from_string(mut self, name: String) -> Self {
+        self.name = Some(name);
         return self;
     }
 

@@ -1,6 +1,6 @@
 use std::any::Any;
 use commons::factory::FactoryTrait;
-use commons::threading::channel::{Receiver, SenderTrait};
+use commons::threading::channel::Receiver;
 
 pub struct ChannelTcpStream<Factory: FactoryTrait> {
     sender: Factory::Sender<Box<dyn Any + Send>>,

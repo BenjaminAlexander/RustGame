@@ -1,12 +1,13 @@
 use std::io::Error;
-use std::net::ToSocketAddrs;
-use std::sync::mpsc;
+use std::net::{IpAddr, Ipv4Addr, SocketAddr};
+use std::sync::{mpsc, Mutex};
 use commons::factory::FactoryTrait;
-use commons::net::{RealTcpStream, TcpConnectionHandlerTrait};
+use commons::net::{TcpConnectionHandlerTrait};
 use commons::threading::{AsyncJoinCallBackTrait, ThreadBuilder};
 use commons::threading::channel::{Channel, RealSender, Receiver, SendMetaData};
 use commons::threading::eventhandling::{EventHandlerTrait, EventOrStopThread, Sender};
 use commons::time::TimeValue;
+use crate::net::{ChannelTcpReceiver, ChannelTcpSender, HostSimulator, NetworkSimulator};
 use crate::singlethreaded::eventhandling::EventHandlerHolder;
 use crate::singlethreaded::{SingleThreadedSender, TimeQueue};
 use crate::time::SimulatedTimeSource;
@@ -16,7 +17,8 @@ pub struct SingleThreadedFactory {
     //TODO: don't let this SimulatedTimeSource escape SingleThreaded package
     simulated_time_source: SimulatedTimeSource,
     //TODO: don't let this TimeQueue escape SingleThreaded package
-    time_queue: TimeQueue
+    time_queue: TimeQueue,
+    host_simulator: HostSimulator
 }
 
 impl SingleThreadedFactory {
@@ -28,7 +30,8 @@ impl SingleThreadedFactory {
 
         return Self {
             simulated_time_source,
-            time_queue
+            time_queue,
+            host_simulator: NetworkSimulator::new().new_host(IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)))
         }
     }
 
@@ -39,14 +42,22 @@ impl SingleThreadedFactory {
     pub fn get_time_queue(&self) -> &TimeQueue {
         return &self.time_queue;
     }
+
+    pub fn get_host_simulator(&self) -> &HostSimulator {
+        return &self.host_simulator;
+    }
+
+    pub fn clone_for_new_host(&self, ip_adder: IpAddr) -> Self {
+        let mut clone = self.clone();
+        clone.host_simulator = clone.host_simulator.get_network_simulator().new_host(ip_adder);
+        return clone;
+    }
 }
 
 impl FactoryTrait for SingleThreadedFactory {
     type Sender<T: Send> = SingleThreadedSender<T>;
-
-    //TODO: make a fake listener
-    type TcpSender = RealTcpStream;
-    type TcpReceiver = RealTcpStream;
+    type TcpSender = ChannelTcpSender<Self>;
+    type TcpReceiver = ChannelTcpReceiver<Self>;
 
     fn now(&self) -> TimeValue {
         return self.simulated_time_source.now();
@@ -77,7 +88,33 @@ impl FactoryTrait for SingleThreadedFactory {
         return Ok(sender);
     }
 
-    fn spawn_tcp_listener<T: TcpConnectionHandlerTrait<TcpSender=Self::TcpSender, TcpReceiver=Self::TcpReceiver>>(&self, socket_addr: impl ToSocketAddrs, tcp_connection_handler: T, join_call_back: impl AsyncJoinCallBackTrait<Self, T>) -> Result<Sender<Self, ()>, Error> {
+    fn spawn_tcp_listener<T: TcpConnectionHandlerTrait<TcpSender=Self::TcpSender, TcpReceiver=Self::TcpReceiver>>(&self, socket_addr: SocketAddr, tcp_connection_handler: T, join_call_back: impl AsyncJoinCallBackTrait<Self, T>) -> Result<Sender<Self, ()>, Error> {
+
+        let socket_addr_clone = socket_addr.clone();
+        let thread_builder = self.new_thread_builder().set_name_from_string("TcpConnectionHandler-".to_string() + &socket_addr.to_string());
+
+        self.host_simulator.get_network_simulator().start_listener(socket_addr_clone, thread_builder, tcp_connection_handler, join_call_back);
+
+        let (sender, receiver) = self.new_channel::<EventOrStopThread<()>>().take();
+
+        let receiver = Mutex::new(receiver);
+        let network_simulator_clone = self.host_simulator.get_network_simulator().clone();
+        let sender_clone = sender.clone();
+
+        sender.set_on_send(move ||{
+            match receiver.lock().unwrap().recv() {
+                Ok(EventOrStopThread::StopThread) => network_simulator_clone.stop_listener(&socket_addr),
+                Ok(EventOrStopThread::Event(())) => { }
+                Err(_error) => network_simulator_clone.stop_listener(&socket_addr)
+            }
+
+            sender_clone.set_on_send(||{});
+        });
+
+        return Ok(sender);
+    }
+
+    fn connect_tcp(&self, socket_addr: SocketAddr) -> Result<(Self::TcpSender, Self::TcpReceiver), Error> {
         todo!()
     }
 }
