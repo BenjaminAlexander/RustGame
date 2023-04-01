@@ -69,7 +69,8 @@ impl<GameFactory: GameFactoryTrait> ClientCore<GameFactory> {
 
         let socket_addr_v4 = SocketAddrV4::new(self.server_ip, GameFactory::Game::TCP_PORT);
         let socket_addr = SocketAddr::from(socket_addr_v4);
-        let tcp_stream = TcpStream::connect(socket_addr).unwrap();
+
+        let (tcp_sender, tcp_receiver) = self.factory.connect_tcp(socket_addr).unwrap();
 
         let manager_sender = self.factory.new_thread_builder()
             .name("ClientManager")
@@ -83,12 +84,12 @@ impl<GameFactory: GameFactoryTrait> ClientCore<GameFactory> {
                 manager_sender.clone(),
                 self.sender.clone(),
                 render_receiver_sender.clone(),
-                &tcp_stream).unwrap(), AsyncJoin::log_async_join)
+                tcp_receiver), AsyncJoin::log_async_join)
             .unwrap();
 
         let tcp_output_join_handle = self.factory.new_thread_builder()
             .name("ClientTcpOutput")
-            .spawn_event_handler(TcpOutput::new(&tcp_stream).unwrap(), AsyncJoin::log_async_join)
+            .spawn_event_handler(TcpOutput::<GameFactory>::new(tcp_sender), AsyncJoin::log_async_join)
             .unwrap();
 
         self.render_receiver_sender = Some(render_receiver_sender);

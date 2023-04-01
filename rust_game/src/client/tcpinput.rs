@@ -5,10 +5,11 @@ use crate::messaging::ToClientMessageTCP;
 use std::io;
 use std::ops::ControlFlow::*;
 use commons::factory::FactoryTrait;
+use commons::net::TcpReceiverTrait;
 use crate::client::clientcore::ClientCoreEvent;
 use crate::client::ClientCoreEvent::OnInitialInformation;
 use crate::gamemanager::{ManagerEvent, RenderReceiverMessage};
-use crate::interface::GameFactoryTrait;
+use crate::interface::{GameFactoryTrait, TcpReceiver};
 use commons::threading::channel::{ReceiveMetaData, SenderTrait};
 use commons::threading::eventhandling::EventSenderTrait;
 use commons::threading::listener::{ChannelEvent, ListenerEventResult, ListenerTrait, ListenResult};
@@ -17,7 +18,7 @@ use commons::threading::listener::ListenedOrDidNotListen::Listened;
 pub struct TcpInput <GameFactory: GameFactoryTrait> {
     factory: GameFactory::Factory,
     player_index: Option<usize>,
-    tcp_stream: TcpStream,
+    tcp_receiver: TcpReceiver<GameFactory>,
     manager_sender: eventhandling::Sender<GameFactory::Factory, ManagerEvent<GameFactory::Game>>,
     client_core_sender: eventhandling::Sender<GameFactory::Factory, ClientCoreEvent<GameFactory>>,
     render_data_sender: <GameFactory::Factory as FactoryTrait>::Sender<RenderReceiverMessage<GameFactory::Game>>
@@ -30,16 +31,16 @@ impl<GameFactory: GameFactoryTrait> TcpInput<GameFactory> {
         manager_sender: eventhandling::Sender<GameFactory::Factory, ManagerEvent<GameFactory::Game>>,
         client_core_sender: eventhandling::Sender<GameFactory::Factory, ClientCoreEvent<GameFactory>>,
         render_data_sender: <GameFactory::Factory as FactoryTrait>::Sender<RenderReceiverMessage<GameFactory::Game>>,
-        tcp_stream: &TcpStream) -> io::Result<Self> {
+        tcp_receiver: TcpReceiver<GameFactory>,) -> Self {
 
-        Ok(Self {
+        return Self {
             factory,
             player_index: None,
-            tcp_stream: tcp_stream.try_clone()?,
+            tcp_receiver,
             manager_sender,
             client_core_sender,
             render_data_sender
-        })
+        };
     }
 }
 
@@ -48,8 +49,8 @@ impl<GameFactory: GameFactoryTrait> ListenerTrait for TcpInput<GameFactory> {
     type ThreadReturn = ();
     type ListenFor = ToClientMessageTCP<GameFactory::Game>;
 
-    fn listen(self) -> ListenResult<Self> {
-        return match rmp_serde::from_read(&self.tcp_stream) {
+    fn listen(mut self) -> ListenResult<Self> {
+        return match self.tcp_receiver.read() {
             Ok(message) => Continue(Listened(self, message)),
             Err(error) => {
                 error!("Error: {:?}", error);
