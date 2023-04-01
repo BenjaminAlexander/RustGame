@@ -49,16 +49,10 @@ impl FactoryTrait for RealFactory {
         return Ok(sender);
     }
 
-    //TODO: pass in thread builder
-    //TODO: call from thread builder
-    fn spawn_tcp_listener<T: TcpConnectionHandlerTrait<TcpSender=Self::TcpWriter, TcpReceiver=Self::TcpReader>>(&self, socket_addr: SocketAddr, tcp_connection_handler: T, join_call_back: impl AsyncJoinCallBackTrait<Self, T>) -> Result<Sender<Self, ()>, Error> {
+    fn spawn_tcp_listener<T: TcpConnectionHandlerTrait<TcpSender=Self::TcpWriter, TcpReceiver=Self::TcpReader>>(&self, thread_builder: channel::ThreadBuilder<Self, EventOrStopThread<()>>, socket_addr: SocketAddr, tcp_connection_handler: T, join_call_back: impl AsyncJoinCallBackTrait<Self, T>) -> Result<Sender<Self, ()>, Error> {
         let tcp_listener = TcpListener::bind(socket_addr)?;
-
         let event_handler = TcpListenerEventHandler::new(tcp_listener, tcp_connection_handler);
-
-        return self.new_thread_builder()
-            .name("TODO-NAME-THIS-TCP-LISTENER-THREAD")
-            .spawn_event_handler(event_handler, join_call_back);
+        return thread_builder.spawn_event_handler(event_handler, join_call_back);
     }
 
     fn connect_tcp(&self, socket_addr: SocketAddr) -> Result<(Self::TcpWriter, Self::TcpReader), Error> {
@@ -67,8 +61,6 @@ impl FactoryTrait for RealFactory {
         return Ok((real_tcp_stream.try_clone()?, real_tcp_stream));
     }
 
-    //TODO: pass in thread builder
-    //TODO: call from thread builder
     fn spawn_tcp_reader<T: TcpReadHandlerTrait>(&self, thread_builder: channel::ThreadBuilder<Self, EventOrStopThread<()>>, tcp_reader: Self::TcpReader, tcp_read_handler: T, join_call_back: impl AsyncJoinCallBackTrait<Self, T>) -> Result<Sender<Self, ()>, Error> {
         let event_handler = TcpReaderEventHandler::new(tcp_reader, tcp_read_handler);
         return thread_builder.spawn_event_handler(event_handler, join_call_back);

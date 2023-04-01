@@ -153,11 +153,13 @@ impl<GameFactory: GameFactoryTrait> ServerCore<GameFactory> {
         let socket_addr_v4 = SocketAddrV4::new(Ipv4Addr::new(127, 0, 0, 1), GameFactory::Game::TCP_PORT);
         let socket_addr = SocketAddr::from(socket_addr_v4);
 
-        let tcp_listener_sender_result = self.factory.spawn_tcp_listener(
-            socket_addr,
-            TcpConnectionHandler::<GameFactory>::new(self.sender.clone()),
-            AsyncJoin::log_async_join
-        );
+        let tcp_listener_sender_result = self.factory.new_thread_builder()
+            .name("ServerTcpListener")
+            .spawn_tcp_listener(
+                socket_addr,
+                TcpConnectionHandler::<GameFactory>::new(self.sender.clone()),
+                AsyncJoin::log_async_join
+            );
 
         match tcp_listener_sender_result {
             Ok(tcp_listener_sender) => {

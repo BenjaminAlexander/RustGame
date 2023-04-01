@@ -31,6 +31,7 @@ pub trait FactoryTrait: Clone + Send + 'static {
 
     fn spawn_tcp_listener<T: TcpConnectionHandlerTrait<TcpSender=Self::TcpWriter, TcpReceiver=Self::TcpReader>>(
         &self,
+        thread_builder: channel::ThreadBuilder<Self, EventOrStopThread<()>>,
         socket_addr: SocketAddr,
         tcp_connection_handler: T,
         join_call_back: impl AsyncJoinCallBackTrait<Self, T>

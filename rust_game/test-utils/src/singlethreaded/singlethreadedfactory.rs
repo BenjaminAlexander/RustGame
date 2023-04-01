@@ -88,14 +88,13 @@ impl FactoryTrait for SingleThreadedFactory {
         return Ok(sender);
     }
 
-    fn spawn_tcp_listener<T: TcpConnectionHandlerTrait<TcpSender=Self::TcpWriter, TcpReceiver=Self::TcpReader>>(&self, socket_addr: SocketAddr, tcp_connection_handler: T, join_call_back: impl AsyncJoinCallBackTrait<Self, T>) -> Result<Sender<Self, ()>, Error> {
+    fn spawn_tcp_listener<T: TcpConnectionHandlerTrait<TcpSender=Self::TcpWriter, TcpReceiver=Self::TcpReader>>(&self, thread_builder: channel::ThreadBuilder<Self, EventOrStopThread<()>>, socket_addr: SocketAddr, tcp_connection_handler: T, join_call_back: impl AsyncJoinCallBackTrait<Self, T>) -> Result<Sender<Self, ()>, Error> {
+
+        let (thread_builder, channel) = thread_builder.take();
+        let (sender, receiver) = channel.take();
 
         let socket_addr_clone = socket_addr.clone();
-        let thread_builder = self.new_thread_builder().set_name_from_string("TcpConnectionHandler-".to_string() + &socket_addr.to_string());
-
         self.host_simulator.get_network_simulator().start_listener(socket_addr_clone, thread_builder, tcp_connection_handler, join_call_back);
-
-        let (sender, receiver) = self.new_channel::<EventOrStopThread<()>>().take();
 
         let receiver = Mutex::new(receiver);
         let network_simulator_clone = self.host_simulator.get_network_simulator().clone();
