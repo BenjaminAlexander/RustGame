@@ -77,14 +77,15 @@ impl<GameFactory: GameFactoryTrait> ClientCore<GameFactory> {
             .spawn_event_handler(Manager::new(self.factory.clone(), ClientManagerObserver::<GameFactory>::new(self.factory.clone(), render_receiver_sender.clone())), AsyncJoin::log_async_join)
             .unwrap();
 
+        let tcp_input = TcpInput::<GameFactory>::new(
+            self.factory.clone(),
+            manager_sender.clone(),
+            self.sender.clone(),
+            render_receiver_sender.clone());
+
         let tcp_input_sender = self.factory.new_thread_builder()
             .name("ClientTcpInput")
-            .spawn_listener(TcpInput::<GameFactory>::new(
-                self.factory.clone(),
-                manager_sender.clone(),
-                self.sender.clone(),
-                render_receiver_sender.clone(),
-                tcp_receiver), AsyncJoin::log_async_join)
+            .spawn_tcp_reader(tcp_receiver, tcp_input, AsyncJoin::log_async_join)
             .unwrap();
 
         let tcp_output_join_handle = self.factory.new_thread_builder()

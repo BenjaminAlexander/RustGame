@@ -1,6 +1,8 @@
+use std::io::Error;
 use std::thread::Builder;
 use log::info;
 use crate::factory::FactoryTrait;
+use crate::net::TcpReadHandlerTrait;
 use crate::threading::{AsyncJoinCallBackTrait, channel};
 use crate::threading::eventhandling::{EventHandlerTrait, EventOrStopThread};
 use crate::threading::{eventhandling, Thread};
@@ -50,8 +52,13 @@ impl<Factory: FactoryTrait> ThreadBuilder<Factory> {
         return self.build_channel_for_event_handler::<T>().spawn_event_handler(event_handler, join_call_back);
     }
 
+    //TODO: remove
     pub fn spawn_listener<T: ListenerTrait>(self, listener: T, join_call_back: impl FnOnce(AsyncJoin<Factory, T::ThreadReturn>) + Send + 'static) -> std::io::Result<eventhandling::Sender<Factory, T::Event>> {
         return self.build_channel_for_event_handler::<ListenerState<Factory, T>>().spawn_listener(listener, join_call_back);
+    }
+
+    pub fn spawn_tcp_reader<T: TcpReadHandlerTrait>(self, tcp_reader: Factory::TcpReceiver, tcp_read_handler: T, join_call_back: impl AsyncJoinCallBackTrait<Factory, T>) -> Result<eventhandling::Sender<Factory, ()>, Error> {
+        return self.build_channel_thread::<EventOrStopThread<()>>().spawn_tcp_reader(tcp_reader, tcp_read_handler, join_call_back);
     }
 
     pub(crate) fn spawn_thread<T: Thread>(self, thread: T, join_call_back: impl AsyncJoinCallBackTrait<Factory, T::ReturnType>) -> std::io::Result<()> {

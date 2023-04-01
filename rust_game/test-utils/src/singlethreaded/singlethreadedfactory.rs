@@ -3,7 +3,7 @@ use std::net::{IpAddr, Ipv4Addr, SocketAddr};
 use std::sync::{mpsc, Mutex};
 use commons::factory::FactoryTrait;
 use commons::net::{TcpConnectionHandlerTrait, TcpReadHandlerTrait};
-use commons::threading::{AsyncJoinCallBackTrait, ThreadBuilder};
+use commons::threading::{AsyncJoinCallBackTrait, channel, ThreadBuilder};
 use commons::threading::channel::{Channel, RealSender, Receiver, SendMetaData};
 use commons::threading::eventhandling::{EventHandlerTrait, EventOrStopThread, Sender};
 use commons::time::TimeValue;
@@ -118,7 +118,7 @@ impl FactoryTrait for SingleThreadedFactory {
         todo!()
     }
 
-    fn spawn_tcp_reader<T: TcpReadHandlerTrait>(&self, tcp_reader: Self::TcpReceiver, read_handler: T, join_call_back: impl AsyncJoinCallBackTrait<Self, T>) -> Result<Sender<Self, ()>, Error> {
+    fn spawn_tcp_reader<T: TcpReadHandlerTrait>(&self, thread_builder: channel::ThreadBuilder<Self, EventOrStopThread<()>>, tcp_reader: Self::TcpReceiver, read_handler: T, join_call_back: impl AsyncJoinCallBackTrait<Self, T>) -> Result<Sender<Self, ()>, Error> {
         todo!()
     }
 }

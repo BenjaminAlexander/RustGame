@@ -6,7 +6,7 @@ use crate::factory::FactoryTrait;
 use crate::net::{RealTcpStream, TcpConnectionHandlerTrait, TcpListenerEventHandler, TcpReaderEventHandler, TcpReadHandlerTrait};
 use crate::threading::channel::{Channel, RealSender, Receiver, SendMetaData};
 use crate::threading::eventhandling::{EventHandlerThread, EventHandlerTrait, EventOrStopThread, Sender};
-use crate::threading::{AsyncJoinCallBackTrait, ThreadBuilder};
+use crate::threading::{AsyncJoinCallBackTrait, channel, ThreadBuilder};
 use crate::time::TimeValue;
 
 #[derive(Clone, Copy)]
@@ -69,12 +69,8 @@ impl FactoryTrait for RealFactory {
 
     //TODO: pass in thread builder
     //TODO: call from thread builder
-    fn spawn_tcp_reader<T: TcpReadHandlerTrait>(&self, tcp_reader: Self::TcpReceiver, tcp_read_handler: T, join_call_back: impl AsyncJoinCallBackTrait<Self, T>) -> Result<Sender<Self, ()>, Error> {
-
+    fn spawn_tcp_reader<T: TcpReadHandlerTrait>(&self, thread_builder: channel::ThreadBuilder<Self, EventOrStopThread<()>>, tcp_reader: Self::TcpReceiver, tcp_read_handler: T, join_call_back: impl AsyncJoinCallBackTrait<Self, T>) -> Result<Sender<Self, ()>, Error> {
         let event_handler = TcpReaderEventHandler::new(tcp_reader, tcp_read_handler);
-
-        return self.new_thread_builder()
-            .name("TODO-NAME-THIS-TCP-READ-THREAD")
-            .spawn_event_handler(event_handler, join_call_back);
+        return thread_builder.spawn_event_handler(event_handler, join_call_back);
     }
 }
