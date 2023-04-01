@@ -3,7 +3,7 @@ use serde::de::DeserializeOwned;
 use serde::Serialize;
 use rmp_serde::decode::Error as DecodeError;
 
-pub trait TcpReceiverTrait: Send + Sized {
+pub trait TcpReaderTrait: Send + Sized {
 
     fn read<T: Serialize + DeserializeOwned>(&mut self) -> Result<T, DecodeError>;
 

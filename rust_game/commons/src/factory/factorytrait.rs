@@ -1,6 +1,6 @@
 use std::io::Error;
 use std::net::SocketAddr;
-use crate::net::{TcpConnectionHandlerTrait, TcpReceiverTrait, TcpSenderTrait};
+use crate::net::{TcpConnectionHandlerTrait, TcpReaderTrait, TcpReadHandlerTrait, TcpSenderTrait};
 use crate::threading::channel::{Channel, SenderTrait};
 use crate::threading::{AsyncJoinCallBackTrait, eventhandling, ThreadBuilder};
 use crate::threading::eventhandling::{EventHandlerTrait, EventOrStopThread};
@@ -8,8 +8,12 @@ use crate::time::TimeValue;
 
 pub trait FactoryTrait: Clone + Send + 'static {
     type Sender<T: Send>: SenderTrait<T>;
+
+    //TODO: rename as writer
     type TcpSender: TcpSenderTrait;
-    type TcpReceiver: TcpReceiverTrait;
+
+    //TODO: rename as reader
+    type TcpReceiver: TcpReaderTrait;
 
     fn now(&self) -> TimeValue;
 
@@ -36,4 +40,11 @@ pub trait FactoryTrait: Clone + Send + 'static {
     ) -> Result<eventhandling::Sender<Self, ()>, Error>;
 
     fn connect_tcp(&self, socket_addr: SocketAddr) -> Result<(Self::TcpSender, Self::TcpReceiver), Error>;
+
+    fn spawn_tcp_reader<T: TcpReadHandlerTrait>(
+        &self,
+        tcp_reader: Self::TcpReceiver,
+        read_handler: T,
+        join_call_back: impl AsyncJoinCallBackTrait<Self, T>
+    ) -> Result<eventhandling::Sender<Self, ()>, Error>;
 }

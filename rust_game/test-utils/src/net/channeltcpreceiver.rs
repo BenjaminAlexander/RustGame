@@ -3,7 +3,7 @@ use rmp_serde::decode::Error as DecodeError;
 use serde::de::DeserializeOwned;
 use serde::Serialize;
 use commons::factory::FactoryTrait;
-use commons::net::TcpReceiverTrait;
+use commons::net::TcpReaderTrait;
 use commons::threading::channel::Receiver;
 
 pub struct ChannelTcpReceiver<Factory: FactoryTrait> {
@@ -11,7 +11,7 @@ pub struct ChannelTcpReceiver<Factory: FactoryTrait> {
     receiver: Receiver<Factory, Vec<u8>>
 }
 
-impl<Factory: FactoryTrait> TcpReceiverTrait for ChannelTcpReceiver<Factory> {
+impl<Factory: FactoryTrait> TcpReaderTrait for ChannelTcpReceiver<Factory> {
 
     fn read<T: Serialize + DeserializeOwned>(&mut self) -> Result<T, DecodeError> {
         match self.receiver.recv() {

@@ -5,7 +5,7 @@ use crate::messaging::ToClientMessageTCP;
 use std::io;
 use std::ops::ControlFlow::*;
 use commons::factory::FactoryTrait;
-use commons::net::TcpReceiverTrait;
+use commons::net::TcpReaderTrait;
 use crate::client::clientcore::ClientCoreEvent;
 use crate::client::ClientCoreEvent::OnInitialInformation;
 use crate::gamemanager::{ManagerEvent, RenderReceiverMessage};

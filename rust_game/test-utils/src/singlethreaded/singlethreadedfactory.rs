@@ -2,7 +2,7 @@ use std::io::Error;
 use std::net::{IpAddr, Ipv4Addr, SocketAddr};
 use std::sync::{mpsc, Mutex};
 use commons::factory::FactoryTrait;
-use commons::net::{TcpConnectionHandlerTrait};
+use commons::net::{TcpConnectionHandlerTrait, TcpReadHandlerTrait};
 use commons::threading::{AsyncJoinCallBackTrait, ThreadBuilder};
 use commons::threading::channel::{Channel, RealSender, Receiver, SendMetaData};
 use commons::threading::eventhandling::{EventHandlerTrait, EventOrStopThread, Sender};
@@ -115,6 +115,10 @@ impl FactoryTrait for SingleThreadedFactory {
     }
 
     fn connect_tcp(&self, socket_addr: SocketAddr) -> Result<(Self::TcpSender, Self::TcpReceiver), Error> {
+        todo!()
+    }
+
+    fn spawn_tcp_reader<T: TcpReadHandlerTrait>(&self, tcp_reader: Self::TcpReceiver, read_handler: T, join_call_back: impl AsyncJoinCallBackTrait<Self, T>) -> Result<Sender<Self, ()>, Error> {
         todo!()
     }
 }
