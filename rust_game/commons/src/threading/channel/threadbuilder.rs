@@ -54,7 +54,7 @@ impl<Factory: FactoryTrait, T: Send + 'static> ThreadBuilder<Factory, EventOrSto
 
 impl<Factory: FactoryTrait> ThreadBuilder<Factory, EventOrStopThread<()>> {
 
-    pub fn spawn_tcp_reader<T: TcpReadHandlerTrait>(self, tcp_reader: Factory::TcpReceiver, tcp_read_handler: T, join_call_back: impl AsyncJoinCallBackTrait<Factory, T>) -> Result<eventhandling::Sender<Factory, ()>, Error> {
+    pub fn spawn_tcp_reader<T: TcpReadHandlerTrait>(self, tcp_reader: Factory::TcpReader, tcp_read_handler: T, join_call_back: impl AsyncJoinCallBackTrait<Factory, T>) -> Result<eventhandling::Sender<Factory, ()>, Error> {
         let factory = self.thread_builder.get_factory().clone();
         return factory.spawn_tcp_reader(self, tcp_reader, tcp_read_handler, join_call_back);
     }

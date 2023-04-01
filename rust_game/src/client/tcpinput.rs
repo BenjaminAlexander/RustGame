@@ -10,7 +10,7 @@ use commons::net::{TcpReaderTrait, TcpReadHandlerTrait};
 use crate::client::clientcore::ClientCoreEvent;
 use crate::client::ClientCoreEvent::OnInitialInformation;
 use crate::gamemanager::{ManagerEvent, RenderReceiverMessage};
-use crate::interface::{GameFactoryTrait, TcpReceiver};
+use crate::interface::{GameFactoryTrait, TcpReader};
 use commons::threading::channel::{ReceiveMetaData, SenderTrait};
 use commons::threading::eventhandling::EventSenderTrait;
 use commons::threading::listener::{ChannelEvent, ListenerEventResult, ListenerTrait, ListenResult};

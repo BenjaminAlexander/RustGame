@@ -13,8 +13,8 @@ pub use self::game::GameTrait;
 pub use self::gamefactorytrait::GameFactoryTrait;
 pub use self::realgamefactory::RealGameFactory;
 
-pub(crate) use self::types::TcpSender;
-pub(crate) use self::types::TcpReceiver;
+pub(crate) use self::types::TcpWriter;
+pub(crate) use self::types::TcpReader;
 
 
 

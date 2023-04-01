@@ -56,8 +56,8 @@ impl SingleThreadedFactory {
 
 impl FactoryTrait for SingleThreadedFactory {
     type Sender<T: Send> = SingleThreadedSender<T>;
-    type TcpSender = ChannelTcpSender<Self>;
-    type TcpReceiver = ChannelTcpReceiver<Self>;
+    type TcpWriter = ChannelTcpSender<Self>;
+    type TcpReader = ChannelTcpReceiver<Self>;
 
     fn now(&self) -> TimeValue {
         return self.simulated_time_source.now();
@@ -88,7 +88,7 @@ impl FactoryTrait for SingleThreadedFactory {
         return Ok(sender);
     }
 
-    fn spawn_tcp_listener<T: TcpConnectionHandlerTrait<TcpSender=Self::TcpSender, TcpReceiver=Self::TcpReceiver>>(&self, socket_addr: SocketAddr, tcp_connection_handler: T, join_call_back: impl AsyncJoinCallBackTrait<Self, T>) -> Result<Sender<Self, ()>, Error> {
+    fn spawn_tcp_listener<T: TcpConnectionHandlerTrait<TcpSender=Self::TcpWriter, TcpReceiver=Self::TcpReader>>(&self, socket_addr: SocketAddr, tcp_connection_handler: T, join_call_back: impl AsyncJoinCallBackTrait<Self, T>) -> Result<Sender<Self, ()>, Error> {
 
         let socket_addr_clone = socket_addr.clone();
         let thread_builder = self.new_thread_builder().set_name_from_string("TcpConnectionHandler-".to_string() + &socket_addr.to_string());
@@ -114,11 +114,11 @@ impl FactoryTrait for SingleThreadedFactory {
         return Ok(sender);
     }
 
-    fn connect_tcp(&self, socket_addr: SocketAddr) -> Result<(Self::TcpSender, Self::TcpReceiver), Error> {
+    fn connect_tcp(&self, socket_addr: SocketAddr) -> Result<(Self::TcpWriter, Self::TcpReader), Error> {
         todo!()
     }
 
-    fn spawn_tcp_reader<T: TcpReadHandlerTrait>(&self, thread_builder: channel::ThreadBuilder<Self, EventOrStopThread<()>>, tcp_reader: Self::TcpReceiver, read_handler: T, join_call_back: impl AsyncJoinCallBackTrait<Self, T>) -> Result<Sender<Self, ()>, Error> {
+    fn spawn_tcp_reader<T: TcpReadHandlerTrait>(&self, thread_builder: channel::ThreadBuilder<Self, EventOrStopThread<()>>, tcp_reader: Self::TcpReader, read_handler: T, join_call_back: impl AsyncJoinCallBackTrait<Self, T>) -> Result<Sender<Self, ()>, Error> {
         todo!()
     }
 }

@@ -8,7 +8,7 @@ pub trait TcpConnectionHandlerHolderTrait {
 
 pub fn new<
     Factory: FactoryTrait,
-    TcpConnectionHandler: TcpConnectionHandlerTrait<TcpSender=Factory::TcpSender, TcpReceiver=Factory::TcpReceiver>,
+    TcpConnectionHandler: TcpConnectionHandlerTrait<TcpSender=Factory::TcpWriter, TcpReceiver=Factory::TcpReader>,
     AsyncJoinCallBack: AsyncJoinCallBackTrait<Factory, TcpConnectionHandler>
 >(
     thread_builder: ThreadBuilder<Factory>,
@@ -31,7 +31,7 @@ pub fn new<
 
 struct TcpConnectionHandlerHolder<
     Factory: FactoryTrait,
-    TcpConnectionHandler: TcpConnectionHandlerTrait<TcpSender=Factory::TcpSender, TcpReceiver=Factory::TcpReceiver>,
+    TcpConnectionHandler: TcpConnectionHandlerTrait<TcpSender=Factory::TcpWriter, TcpReceiver=Factory::TcpReader>,
     AsyncJoinCallBack: AsyncJoinCallBackTrait<Factory, TcpConnectionHandler>
 > {
     holder: Option<Holder<Factory, TcpConnectionHandler, AsyncJoinCallBack>>
@@ -39,7 +39,7 @@ struct TcpConnectionHandlerHolder<
 
 struct Holder<
     Factory: FactoryTrait,
-    TcpConnectionHandler: TcpConnectionHandlerTrait<TcpSender=Factory::TcpSender, TcpReceiver=Factory::TcpReceiver>,
+    TcpConnectionHandler: TcpConnectionHandlerTrait<TcpSender=Factory::TcpWriter, TcpReceiver=Factory::TcpReader>,
     AsyncJoinCallBack: AsyncJoinCallBackTrait<Factory, TcpConnectionHandler>
 > {
     connection_handler: TcpConnectionHandler,
@@ -49,7 +49,7 @@ struct Holder<
 
 impl<
     Factory: FactoryTrait,
-    TcpConnectionHandler: TcpConnectionHandlerTrait<TcpSender=Factory::TcpSender, TcpReceiver=Factory::TcpReceiver>,
+    TcpConnectionHandler: TcpConnectionHandlerTrait<TcpSender=Factory::TcpWriter, TcpReceiver=Factory::TcpReader>,
     AsyncJoinCallBack: AsyncJoinCallBackTrait<Factory, TcpConnectionHandler>
 > Drop for TcpConnectionHandlerHolder<Factory, TcpConnectionHandler, AsyncJoinCallBack> {
     fn drop(&mut self) {
@@ -62,7 +62,7 @@ impl<
 
 impl<
     Factory: FactoryTrait,
-    TcpConnectionHandler: TcpConnectionHandlerTrait<TcpSender=Factory::TcpSender, TcpReceiver=Factory::TcpReceiver>,
+    TcpConnectionHandler: TcpConnectionHandlerTrait<TcpSender=Factory::TcpWriter, TcpReceiver=Factory::TcpReader>,
     AsyncJoinCallBack: AsyncJoinCallBackTrait<Factory, TcpConnectionHandler>
 > TcpConnectionHandlerHolderTrait for TcpConnectionHandlerHolder<Factory, TcpConnectionHandler, AsyncJoinCallBack> {
 

@@ -31,7 +31,7 @@ impl NetworkSimulator {
 
     pub fn start_listener<
         Factory: FactoryTrait,
-        TcpConnectionHandler: TcpConnectionHandlerTrait<TcpSender=Factory::TcpSender, TcpReceiver=Factory::TcpReceiver>
+        TcpConnectionHandler: TcpConnectionHandlerTrait<TcpSender=Factory::TcpWriter, TcpReceiver=Factory::TcpReader>
     >(
         &self,
         socket_adder: SocketAddr,

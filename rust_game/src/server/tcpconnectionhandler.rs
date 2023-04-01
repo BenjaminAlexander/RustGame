@@ -2,8 +2,8 @@ use std::ops::ControlFlow;
 use std::ops::ControlFlow::*;
 use log::{error, info, warn};
 use commons::factory::FactoryTrait;
-use commons::net::{TcpConnectionHandlerTrait, TcpSenderTrait};
-use crate::interface::{GameFactoryTrait, TcpReceiver, TcpSender};
+use commons::net::{TcpConnectionHandlerTrait, TcpWriterTrait};
+use crate::interface::{GameFactoryTrait, TcpReader, TcpWriter};
 use crate::server::servercore::ServerCoreEvent;
 use crate::server::servercore::ServerCoreEvent::TcpConnectionEvent;
 use commons::threading::channel::ReceiveMetaData;
@@ -23,8 +23,8 @@ impl<GameFactory: GameFactoryTrait> TcpConnectionHandler<GameFactory> {
 }
 
 impl<GameFactory: GameFactoryTrait> TcpConnectionHandlerTrait for TcpConnectionHandler<GameFactory> {
-    type TcpSender = TcpSender<GameFactory>;
-    type TcpReceiver = TcpReceiver<GameFactory>;
+    type TcpSender = TcpWriter<GameFactory>;
+    type TcpReceiver = TcpReader<GameFactory>;
 
     fn on_connection(&mut self, tcp_sender: Self::TcpSender, tcp_receiver: Self::TcpReceiver) -> ControlFlow<()> {
         info!("New TCP connection from {:?}", tcp_sender.get_peer_addr());

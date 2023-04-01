@@ -4,7 +4,7 @@ use rmp_serde::encode::Error as EncodeError;
 use serde::de::DeserializeOwned;
 use serde::Serialize;
 use commons::factory::FactoryTrait;
-use commons::net::TcpSenderTrait;
+use commons::net::TcpWriterTrait;
 use commons::threading::channel::SenderTrait;
 
 pub struct ChannelTcpSender<Factory: FactoryTrait> {
@@ -13,7 +13,7 @@ pub struct ChannelTcpSender<Factory: FactoryTrait> {
     sender: Factory::Sender<Vec<u8>>
 }
 
-impl<Factory: FactoryTrait> TcpSenderTrait for ChannelTcpSender<Factory> {
+impl<Factory: FactoryTrait> TcpWriterTrait for ChannelTcpSender<Factory> {
     fn write<T: Serialize + DeserializeOwned>(&mut self, write: &T) -> Result<(), EncodeError> {
 
         let vec = rmp_serde::encode::to_vec(write)?;

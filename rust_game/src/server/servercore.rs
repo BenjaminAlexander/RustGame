@@ -1,7 +1,7 @@
 use std::net::{Ipv4Addr, SocketAddrV4, UdpSocket, SocketAddr};
 use std::ops::ControlFlow::{Continue, Break};
 use log::{error, info};
-use crate::interface::{GameFactoryTrait, GameTrait, TcpReceiver, TcpSender};
+use crate::interface::{GameFactoryTrait, GameTrait, TcpReader, TcpWriter};
 use crate::server::tcpinput::TcpInput;
 use commons::threading::eventhandling;
 use crate::server::{TcpConnectionHandler, ServerConfig};
@@ -11,7 +11,7 @@ use crate::gamemanager::{Manager, ManagerEvent, RenderReceiverMessage};
 use crate::messaging::{InputMessage, InitialInformation};
 use std::str::FromStr;
 use commons::factory::FactoryTrait;
-use commons::net::TcpSenderTrait;
+use commons::net::TcpWriterTrait;
 use crate::server::udpinput::{UdpInput, UdpInputEvent};
 use crate::server::udpoutput::{UdpOutput, UdpOutputEvent};
 use crate::server::clientaddress::ClientAddress;
@@ -33,7 +33,7 @@ pub enum ServerCoreEvent<GameFactory: GameFactoryTrait> {
 
     //TODO: create render receiver sender before spawning event handler
     StartGameEvent(<GameFactory::Factory as FactoryTrait>::Sender<RenderReceiverMessage<GameFactory::Game>>),
-    TcpConnectionEvent(TcpSender<GameFactory>, TcpReceiver<GameFactory>),
+    TcpConnectionEvent(TcpWriter<GameFactory>, TcpReader<GameFactory>),
     GameTimerTick,
     InputMessageEvent(InputMessage<GameFactory::Game>)
 }
@@ -253,7 +253,7 @@ impl<GameFactory: GameFactoryTrait> ServerCore<GameFactory> {
     Tcp Hello ->
         <- UdpHello
      */
-    fn on_tcp_connection(mut self, tcp_sender: TcpSender<GameFactory>, tcp_receiver: TcpReceiver<GameFactory>) -> ChannelEventResult<Self> {
+    fn on_tcp_connection(mut self, tcp_sender: TcpWriter<GameFactory>, tcp_receiver: TcpReader<GameFactory>) -> ChannelEventResult<Self> {
         if !self.game_is_started {
 
             info!("TcpStream accepted: {:?}", tcp_sender.get_peer_addr());
@@ -264,7 +264,7 @@ impl<GameFactory: GameFactoryTrait> ServerCore<GameFactory> {
 
             let tcp_input_join_handle = self.factory.new_thread_builder()
                 .name("ServerTcpInput")
-                .spawn_listener(TcpInput::<GameFactory>::new(tcp_receiver), AsyncJoin::log_async_join)
+                .spawn_tcp_reader(tcp_receiver, TcpInput::new(), AsyncJoin::log_async_join)
                 .unwrap();
 
             self.tcp_inputs.push(tcp_input_join_handle);

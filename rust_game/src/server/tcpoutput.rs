@@ -1,8 +1,8 @@
 use log::debug;
 use crate::messaging::{ToClientMessageTCP, InitialInformation};
-use crate::interface::{GameFactoryTrait, GameTrait, TcpSender};
+use crate::interface::{GameFactoryTrait, GameTrait, TcpWriter};
 use std::ops::ControlFlow::{Break, Continue};
-use commons::net::TcpSenderTrait;
+use commons::net::TcpWriterTrait;
 use crate::server::ServerConfig;
 use crate::server::tcpoutput::TcpOutputEvent::SendInitialInformation;
 use commons::threading::channel::ReceiveMetaData;
@@ -15,13 +15,13 @@ pub enum TcpOutputEvent<Game: GameTrait> {
 
 pub struct TcpOutput<GameFactory: GameFactoryTrait> {
     player_index: usize,
-    tcp_sender: TcpSender<GameFactory>
+    tcp_sender: TcpWriter<GameFactory>
 }
 
 impl<GameFactory: GameFactoryTrait> TcpOutput<GameFactory> {
 
     pub fn new(player_index: usize,
-               tcp_sender: TcpSender<GameFactory>) -> Self {
+               tcp_sender: TcpWriter<GameFactory>) -> Self {
 
         return TcpOutput {
             player_index,

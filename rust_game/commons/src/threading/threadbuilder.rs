@@ -57,7 +57,7 @@ impl<Factory: FactoryTrait> ThreadBuilder<Factory> {
         return self.build_channel_for_event_handler::<ListenerState<Factory, T>>().spawn_listener(listener, join_call_back);
     }
 
-    pub fn spawn_tcp_reader<T: TcpReadHandlerTrait>(self, tcp_reader: Factory::TcpReceiver, tcp_read_handler: T, join_call_back: impl AsyncJoinCallBackTrait<Factory, T>) -> Result<eventhandling::Sender<Factory, ()>, Error> {
+    pub fn spawn_tcp_reader<T: TcpReadHandlerTrait>(self, tcp_reader: Factory::TcpReader, tcp_read_handler: T, join_call_back: impl AsyncJoinCallBackTrait<Factory, T>) -> Result<eventhandling::Sender<Factory, ()>, Error> {
         return self.build_channel_thread::<EventOrStopThread<()>>().spawn_tcp_reader(tcp_reader, tcp_read_handler, join_call_back);
     }
 

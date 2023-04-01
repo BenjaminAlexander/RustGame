@@ -5,7 +5,7 @@ use serde::de::DeserializeOwned;
 use serde::Serialize;
 use rmp_serde::decode::Error as DecodeError;
 use rmp_serde::encode::Error as EncodeError;
-use crate::net::{TcpReaderTrait, TcpSenderTrait};
+use crate::net::{TcpReaderTrait, TcpWriterTrait};
 
 #[derive(Debug)]
 pub struct RealTcpStream {
@@ -34,7 +34,7 @@ impl RealTcpStream {
     }
 }
 
-impl TcpSenderTrait for RealTcpStream {
+impl TcpWriterTrait for RealTcpStream {
 
     fn write<T: Serialize + DeserializeOwned>(&mut self, write: &T) -> Result<(), EncodeError> {
         return rmp_serde::encode::write(&mut self.tcp_stream, &write);

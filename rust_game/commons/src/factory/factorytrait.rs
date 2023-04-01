@@ -1,6 +1,6 @@
 use std::io::Error;
 use std::net::SocketAddr;
-use crate::net::{TcpConnectionHandlerTrait, TcpReaderTrait, TcpReadHandlerTrait, TcpSenderTrait};
+use crate::net::{TcpConnectionHandlerTrait, TcpReaderTrait, TcpReadHandlerTrait, TcpWriterTrait};
 use crate::threading::channel::{Channel, SenderTrait};
 use crate::threading::{AsyncJoinCallBackTrait, channel, eventhandling, ThreadBuilder};
 use crate::threading::eventhandling::{EventHandlerTrait, EventOrStopThread};
@@ -8,12 +8,8 @@ use crate::time::TimeValue;
 
 pub trait FactoryTrait: Clone + Send + 'static {
     type Sender<T: Send>: SenderTrait<T>;
-
-    //TODO: rename as writer
-    type TcpSender: TcpSenderTrait;
-
-    //TODO: rename as reader
-    type TcpReceiver: TcpReaderTrait;
+    type TcpWriter: TcpWriterTrait;
+    type TcpReader: TcpReaderTrait;
 
     fn now(&self) -> TimeValue;
 
@@ -33,19 +29,19 @@ pub trait FactoryTrait: Clone + Send + 'static {
         join_call_back: impl AsyncJoinCallBackTrait<Self, U::ThreadReturn>
     ) -> Result<eventhandling::Sender<Self, T>, Error>;
 
-    fn spawn_tcp_listener<T: TcpConnectionHandlerTrait<TcpSender=Self::TcpSender, TcpReceiver=Self::TcpReceiver>>(
+    fn spawn_tcp_listener<T: TcpConnectionHandlerTrait<TcpSender=Self::TcpWriter, TcpReceiver=Self::TcpReader>>(
         &self,
         socket_addr: SocketAddr,
         tcp_connection_handler: T,
         join_call_back: impl AsyncJoinCallBackTrait<Self, T>
     ) -> Result<eventhandling::Sender<Self, ()>, Error>;
 
-    fn connect_tcp(&self, socket_addr: SocketAddr) -> Result<(Self::TcpSender, Self::TcpReceiver), Error>;
+    fn connect_tcp(&self, socket_addr: SocketAddr) -> Result<(Self::TcpWriter, Self::TcpReader), Error>;
 
     fn spawn_tcp_reader<T: TcpReadHandlerTrait>(
         &self,
         thread_builder: channel::ThreadBuilder<Self, EventOrStopThread<()>>,
-        tcp_reader: Self::TcpReceiver,
+        tcp_reader: Self::TcpReader,
         read_handler: T,
         join_call_back: impl AsyncJoinCallBackTrait<Self, T>
     ) -> Result<eventhandling::Sender<Self, ()>, Error>;
