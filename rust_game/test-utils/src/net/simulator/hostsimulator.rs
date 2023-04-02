@@ -4,15 +4,16 @@ use std::net::{IpAddr, SocketAddr};
 use std::sync::{Arc, Mutex};
 use commons::factory::FactoryTrait;
 use crate::net::{ChannelTcpReader, ChannelTcpWriter, NetworkSimulator};
+use crate::singlethreaded::SingleThreadedFactory;
 
 #[derive(Clone)]
-pub struct HostSimulator<Factory: FactoryTrait<TcpWriter=ChannelTcpWriter<Factory>, TcpReader=ChannelTcpReader<Factory>>> {
+pub struct HostSimulator {
     ip_addr: Arc<IpAddr>,
-    network_simulator: NetworkSimulator<Factory>
+    network_simulator: NetworkSimulator
 }
 
-impl<Factory: FactoryTrait<TcpWriter=ChannelTcpWriter<Factory>, TcpReader=ChannelTcpReader<Factory>>> HostSimulator<Factory> {
-    pub fn new(network_simulator: NetworkSimulator<Factory>, ip_addr: IpAddr) -> Self {
+impl HostSimulator {
+    pub fn new(network_simulator: NetworkSimulator, ip_addr: IpAddr) -> Self {
         return Self {
             network_simulator,
             ip_addr: Arc::new(ip_addr)
@@ -23,11 +24,11 @@ impl<Factory: FactoryTrait<TcpWriter=ChannelTcpWriter<Factory>, TcpReader=Channe
         return *self.ip_addr;
     }
 
-    pub fn get_network_simulator(&self) -> &NetworkSimulator<Factory> {
+    pub fn get_network_simulator(&self) -> &NetworkSimulator {
         return &self.network_simulator;
     }
 
-    fn connect_tcp(&self, socket_addr: SocketAddr) -> Result<(ChannelTcpWriter<Factory>, ChannelTcpReader<Factory>), Error> {
+    fn connect_tcp(&self, socket_addr: SocketAddr) -> Result<(ChannelTcpWriter<SingleThreadedFactory>, ChannelTcpReader<SingleThreadedFactory>), Error> {
         todo!()
     }
 }

@@ -18,7 +18,7 @@ pub struct SingleThreadedFactory {
     simulated_time_source: SimulatedTimeSource,
     //TODO: don't let this TimeQueue escape SingleThreaded package
     time_queue: TimeQueue,
-    host_simulator: HostSimulator<Self>
+    host_simulator: HostSimulator
 }
 
 impl SingleThreadedFactory {
@@ -43,7 +43,7 @@ impl SingleThreadedFactory {
         return &self.time_queue;
     }
 
-    pub fn get_host_simulator(&self) -> &HostSimulator<Self> {
+    pub fn get_host_simulator(&self) -> &HostSimulator {
         return &self.host_simulator;
     }
 
@@ -52,6 +52,7 @@ impl SingleThreadedFactory {
         clone.host_simulator = clone.host_simulator.get_network_simulator().new_host(ip_adder);
         return clone;
     }
+
 }
 
 impl FactoryTrait for SingleThreadedFactory {
@@ -88,25 +89,19 @@ impl FactoryTrait for SingleThreadedFactory {
         return Ok(sender);
     }
 
-    fn spawn_tcp_listener<T: TcpConnectionHandlerTrait<TcpSender=Self::TcpWriter, TcpReceiver=Self::TcpReader>>(&self, thread_builder: channel::ThreadBuilder<Self, EventOrStopThread<()>>, socket_addr: SocketAddr, tcp_connection_handler: T, join_call_back: impl AsyncJoinCallBackTrait<Self, T>) -> Result<Sender<Self, ()>, Error> {
+    fn spawn_tcp_listener<T: TcpConnectionHandlerTrait<TcpSender=Self::TcpWriter, TcpReceiver=Self::TcpReader>>(
+        &self,
+        thread_builder: channel::ThreadBuilder<Self, EventOrStopThread<()>>,
+        socket_addr: SocketAddr,
+        tcp_connection_handler: T,
+        join_call_back: impl AsyncJoinCallBackTrait<Self, T>) -> Result<Sender<Self, ()>, Error> {
 
-        let (thread_builder, channel) = thread_builder.take();
-        let (sender, receiver) = channel.take();
-
-        let socket_addr_clone = socket_addr.clone();
-        self.host_simulator.get_network_simulator().start_listener(
-            socket_addr_clone,
+        return Ok(self.host_simulator.get_network_simulator().spawn_tcp_listener(
+            socket_addr,
             thread_builder,
-            receiver,
             tcp_connection_handler,
-            join_call_back);
+            join_call_back));
 
-        let network_simulator_clone = self.host_simulator.get_network_simulator().clone();
-        sender.set_on_send(move ||{
-            network_simulator_clone.on_send_to_tcp_listener(socket_addr);
-        });
-
-        return Ok(sender);
     }
 
     fn connect_tcp(&self, socket_addr: SocketAddr) -> Result<(Self::TcpWriter, Self::TcpReader), Error> {

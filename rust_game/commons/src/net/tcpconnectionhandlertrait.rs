@@ -2,6 +2,7 @@ use std::ops::ControlFlow;
 use crate::net::{TcpReaderTrait, TcpWriterTrait};
 
 pub trait TcpConnectionHandlerTrait: Send + 'static {
+    //TODO: replace with factory
     type TcpSender: TcpWriterTrait;
     type TcpReceiver: TcpReaderTrait;
 
