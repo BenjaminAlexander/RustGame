@@ -6,12 +6,21 @@ use commons::factory::FactoryTrait;
 use commons::net::TcpReaderTrait;
 use commons::threading::channel::Receiver;
 
-pub struct ChannelTcpReceiver<Factory: FactoryTrait> {
+pub struct ChannelTcpReader<Factory: FactoryTrait> {
     peer_addr: SocketAddr,
     receiver: Receiver<Factory, Vec<u8>>
 }
 
-impl<Factory: FactoryTrait> TcpReaderTrait for ChannelTcpReceiver<Factory> {
+impl<Factory: FactoryTrait> ChannelTcpReader<Factory> {
+    pub fn new(peer_addr: SocketAddr, receiver: Receiver<Factory, Vec<u8>>) -> Self {
+        return Self {
+            peer_addr,
+            receiver
+        }
+    }
+}
+
+impl<Factory: FactoryTrait> TcpReaderTrait for ChannelTcpReader<Factory> {
 
     fn read<T: Serialize + DeserializeOwned>(&mut self) -> Result<T, DecodeError> {
         match self.receiver.recv() {

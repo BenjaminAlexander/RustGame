@@ -7,7 +7,7 @@ use commons::threading::{AsyncJoinCallBackTrait, channel, ThreadBuilder};
 use commons::threading::channel::{Channel, RealSender, Receiver, SendMetaData};
 use commons::threading::eventhandling::{EventHandlerTrait, EventOrStopThread, Sender};
 use commons::time::TimeValue;
-use crate::net::{ChannelTcpReceiver, ChannelTcpSender, HostSimulator, NetworkSimulator};
+use crate::net::{ChannelTcpReader, ChannelTcpWriter, HostSimulator, NetworkSimulator};
 use crate::singlethreaded::eventhandling::EventHandlerHolder;
 use crate::singlethreaded::{SingleThreadedSender, TimeQueue};
 use crate::time::SimulatedTimeSource;
@@ -18,7 +18,7 @@ pub struct SingleThreadedFactory {
     simulated_time_source: SimulatedTimeSource,
     //TODO: don't let this TimeQueue escape SingleThreaded package
     time_queue: TimeQueue,
-    host_simulator: HostSimulator
+    host_simulator: HostSimulator<Self>
 }
 
 impl SingleThreadedFactory {
@@ -30,8 +30,8 @@ impl SingleThreadedFactory {
 
         return Self {
             simulated_time_source,
+            host_simulator: NetworkSimulator::new(time_queue.clone()).new_host(IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1))),
             time_queue,
-            host_simulator: NetworkSimulator::new().new_host(IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)))
         }
     }
 
@@ -43,7 +43,7 @@ impl SingleThreadedFactory {
         return &self.time_queue;
     }
 
-    pub fn get_host_simulator(&self) -> &HostSimulator {
+    pub fn get_host_simulator(&self) -> &HostSimulator<Self> {
         return &self.host_simulator;
     }
 
@@ -56,8 +56,8 @@ impl SingleThreadedFactory {
 
 impl FactoryTrait for SingleThreadedFactory {
     type Sender<T: Send> = SingleThreadedSender<T>;
-    type TcpWriter = ChannelTcpSender<Self>;
-    type TcpReader = ChannelTcpReceiver<Self>;
+    type TcpWriter = ChannelTcpWriter<Self>;
+    type TcpReader = ChannelTcpReader<Self>;
 
     fn now(&self) -> TimeValue {
         return self.simulated_time_source.now();
@@ -94,20 +94,16 @@ impl FactoryTrait for SingleThreadedFactory {
         let (sender, receiver) = channel.take();
 
         let socket_addr_clone = socket_addr.clone();
-        self.host_simulator.get_network_simulator().start_listener(socket_addr_clone, thread_builder, tcp_connection_handler, join_call_back);
+        self.host_simulator.get_network_simulator().start_listener(
+            socket_addr_clone,
+            thread_builder,
+            receiver,
+            tcp_connection_handler,
+            join_call_back);
 
-        let receiver = Mutex::new(receiver);
         let network_simulator_clone = self.host_simulator.get_network_simulator().clone();
-        let sender_clone = sender.clone();
-
         sender.set_on_send(move ||{
-            match receiver.lock().unwrap().recv() {
-                Ok(EventOrStopThread::StopThread) => network_simulator_clone.stop_listener(&socket_addr),
-                Ok(EventOrStopThread::Event(())) => { }
-                Err(_error) => network_simulator_clone.stop_listener(&socket_addr)
-            }
-
-            sender_clone.set_on_send(||{});
+            network_simulator_clone.on_send_to_tcp_listener(socket_addr);
         });
 
         return Ok(sender);

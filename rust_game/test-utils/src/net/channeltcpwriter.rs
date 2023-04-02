@@ -7,13 +7,23 @@ use commons::factory::FactoryTrait;
 use commons::net::TcpWriterTrait;
 use commons::threading::channel::SenderTrait;
 
-pub struct ChannelTcpSender<Factory: FactoryTrait> {
+pub struct ChannelTcpWriter<Factory: FactoryTrait> {
     peer_addr: SocketAddr,
     has_been_closed: bool,
     sender: Factory::Sender<Vec<u8>>
 }
 
-impl<Factory: FactoryTrait> TcpWriterTrait for ChannelTcpSender<Factory> {
+impl<Factory: FactoryTrait> ChannelTcpWriter<Factory> {
+    pub fn new(peer_addr: SocketAddr, sender: Factory::Sender<Vec<u8>>) -> Self {
+        return Self {
+            peer_addr,
+            has_been_closed: false,
+            sender
+        };
+    }
+}
+
+impl<Factory: FactoryTrait> TcpWriterTrait for ChannelTcpWriter<Factory> {
     fn write<T: Serialize + DeserializeOwned>(&mut self, write: &T) -> Result<(), EncodeError> {
 
         let vec = rmp_serde::encode::to_vec(write)?;

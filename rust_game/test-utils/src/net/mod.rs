@@ -1,9 +1,9 @@
 mod channeltcpstream;
-mod channeltcpsender;
-mod channeltcpreceiver;
+mod channeltcpwriter;
+mod channeltcpreader;
 mod simulator;
 
 pub use self::simulator::NetworkSimulator;
 pub use self::simulator::HostSimulator;
-pub use self::channeltcpsender::ChannelTcpSender;
-pub use self::channeltcpreceiver::ChannelTcpReceiver;
+pub use self::channeltcpwriter::ChannelTcpWriter;
+pub use self::channeltcpreader::ChannelTcpReader;
