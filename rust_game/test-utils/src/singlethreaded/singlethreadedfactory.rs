@@ -105,7 +105,7 @@ impl FactoryTrait for SingleThreadedFactory {
     }
 
     fn connect_tcp(&self, socket_addr: SocketAddr) -> Result<(Self::TcpWriter, Self::TcpReader), Error> {
-        todo!()
+        return self.host_simulator.connect_tcp(&self, socket_addr);
     }
 
     fn spawn_tcp_reader<T: TcpReadHandlerTrait>(&self, thread_builder: channel::ThreadBuilder<Self, EventOrStopThread<()>>, tcp_reader: Self::TcpReader, read_handler: T, join_call_back: impl AsyncJoinCallBackTrait<Self, T>) -> Result<Sender<Self, ()>, Error> {

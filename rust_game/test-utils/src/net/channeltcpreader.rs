@@ -7,13 +7,15 @@ use commons::net::TcpReaderTrait;
 use commons::threading::channel::Receiver;
 
 pub struct ChannelTcpReader<Factory: FactoryTrait> {
+    local_addr: SocketAddr,
     peer_addr: SocketAddr,
     receiver: Receiver<Factory, Vec<u8>>
 }
 
 impl<Factory: FactoryTrait> ChannelTcpReader<Factory> {
-    pub fn new(peer_addr: SocketAddr, receiver: Receiver<Factory, Vec<u8>>) -> Self {
+    pub fn new(local_addr: SocketAddr, peer_addr: SocketAddr, receiver: Receiver<Factory, Vec<u8>>) -> Self {
         return Self {
+            local_addr,
             peer_addr,
             receiver
         }

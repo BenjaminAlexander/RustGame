@@ -8,14 +8,16 @@ use commons::net::TcpWriterTrait;
 use commons::threading::channel::SenderTrait;
 
 pub struct ChannelTcpWriter<Factory: FactoryTrait> {
+    local_addr: SocketAddr,
     peer_addr: SocketAddr,
     has_been_closed: bool,
     sender: Factory::Sender<Vec<u8>>
 }
 
 impl<Factory: FactoryTrait> ChannelTcpWriter<Factory> {
-    pub fn new(peer_addr: SocketAddr, sender: Factory::Sender<Vec<u8>>) -> Self {
+    pub fn new(local_addr: SocketAddr, peer_addr: SocketAddr, sender: Factory::Sender<Vec<u8>>) -> Self {
         return Self {
+            local_addr,
             peer_addr,
             has_been_closed: false,
             sender

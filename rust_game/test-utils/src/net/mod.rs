@@ -1,4 +1,3 @@
-mod channeltcpstream;
 mod channeltcpwriter;
 mod channeltcpreader;
 mod simulator;
