@@ -83,7 +83,7 @@ impl FactoryTrait for SingleThreadedFactory {
 
     fn spawn_tcp_listener<T: TcpConnectionHandlerTrait<Factory=Self>>(
         &self,
-        thread_builder: channel::ChannelThreadBuilder<Self, EventOrStopThread<()>>,
+        thread_builder: ChannelThreadBuilder<Self, EventOrStopThread<()>>,
         socket_addr: SocketAddr,
         tcp_connection_handler: T,
         join_call_back: impl AsyncJoinCallBackTrait<Self, T>) -> Result<Sender<Self, ()>, Error> {
@@ -100,7 +100,7 @@ impl FactoryTrait for SingleThreadedFactory {
         return self.host_simulator.connect_tcp(&self, socket_addr);
     }
 
-    fn spawn_tcp_reader<T: TcpReadHandlerTrait>(&self, thread_builder: channel::ChannelThreadBuilder<Self, EventOrStopThread<()>>, tcp_reader: Self::TcpReader, read_handler: T, join_call_back: impl AsyncJoinCallBackTrait<Self, T>) -> Result<Sender<Self, ()>, Error> {
+    fn spawn_tcp_reader<T: TcpReadHandlerTrait>(&self, thread_builder: ChannelThreadBuilder<Self, EventOrStopThread<()>>, tcp_reader: Self::TcpReader, read_handler: T, join_call_back: impl AsyncJoinCallBackTrait<Self, T>) -> Result<Sender<Self, ()>, Error> {
         todo!()
     }
 }
