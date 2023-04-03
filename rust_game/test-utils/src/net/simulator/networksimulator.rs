@@ -51,7 +51,7 @@ impl NetworkSimulator {
         return self.internal.lock().unwrap().contains_tcp_listener(socket_adder);
     }
 
-    fn new_tcp_channel(factory: &SingleThreadedFactory, src_socket_addr: SocketAddr, dest_socket_addr: SocketAddr) -> (ChannelTcpWriter<SingleThreadedFactory>, ChannelTcpReader<SingleThreadedFactory>) {
+    fn new_tcp_channel(factory: &SingleThreadedFactory, src_socket_addr: SocketAddr, dest_socket_addr: SocketAddr) -> (ChannelTcpWriter, ChannelTcpReader) {
 
         let (sender, receiver) = factory.new_channel::<Vec<u8>>().take();
         let reader = ChannelTcpReader::new(dest_socket_addr, src_socket_addr, receiver);
@@ -59,7 +59,7 @@ impl NetworkSimulator {
         return (writer, reader);
     }
 
-    pub fn spawn_tcp_listener<TcpConnectionHandler: TcpConnectionHandlerTrait<TcpSender=ChannelTcpWriter<SingleThreadedFactory>, TcpReceiver=ChannelTcpReader<SingleThreadedFactory>>>(
+    pub fn spawn_tcp_listener<TcpConnectionHandler: TcpConnectionHandlerTrait<Factory=SingleThreadedFactory>>(
         &self,
         socket_adder: SocketAddr,
         thread_builder: channel::ThreadBuilder<SingleThreadedFactory, EventOrStopThread<()>>,
@@ -97,7 +97,7 @@ impl NetworkSimulator {
         return sender;
     }
 
-    pub fn connect_tcp(&self, factory: &SingleThreadedFactory, client_socket_addr: SocketAddr, server_socket_addr: SocketAddr) -> Result<(ChannelTcpWriter<SingleThreadedFactory>, ChannelTcpReader<SingleThreadedFactory>), Error> {
+    pub fn connect_tcp(&self, factory: &SingleThreadedFactory, client_socket_addr: SocketAddr, server_socket_addr: SocketAddr) -> Result<(ChannelTcpWriter, ChannelTcpReader), Error> {
 
         if self.contains_tcp_listener(&server_socket_addr) {
 
@@ -119,6 +119,8 @@ impl NetworkSimulator {
         info!("{:?} tried to connect (TCP) to {:?} but there is no listener at that SocketAddr.", client_socket_addr, server_socket_addr);
         return Err(Error::from(ErrorKind::ConnectionRefused));
     }
+
+
 }
 
 struct Internal {

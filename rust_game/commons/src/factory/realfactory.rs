@@ -49,7 +49,7 @@ impl FactoryTrait for RealFactory {
         return Ok(sender);
     }
 
-    fn spawn_tcp_listener<T: TcpConnectionHandlerTrait<TcpSender=Self::TcpWriter, TcpReceiver=Self::TcpReader>>(&self, thread_builder: channel::ThreadBuilder<Self, EventOrStopThread<()>>, socket_addr: SocketAddr, tcp_connection_handler: T, join_call_back: impl AsyncJoinCallBackTrait<Self, T>) -> Result<Sender<Self, ()>, Error> {
+    fn spawn_tcp_listener<T: TcpConnectionHandlerTrait<Factory=Self>>(&self, thread_builder: channel::ThreadBuilder<Self, EventOrStopThread<()>>, socket_addr: SocketAddr, tcp_connection_handler: T, join_call_back: impl AsyncJoinCallBackTrait<Self, T>) -> Result<Sender<Self, ()>, Error> {
         let tcp_listener = TcpListener::bind(socket_addr)?;
         let event_handler = TcpListenerEventHandler::new(tcp_listener, tcp_connection_handler);
         return thread_builder.spawn_event_handler(event_handler, join_call_back);

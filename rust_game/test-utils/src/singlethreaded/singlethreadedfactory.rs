@@ -57,8 +57,8 @@ impl SingleThreadedFactory {
 
 impl FactoryTrait for SingleThreadedFactory {
     type Sender<T: Send> = SingleThreadedSender<T>;
-    type TcpWriter = ChannelTcpWriter<Self>;
-    type TcpReader = ChannelTcpReader<Self>;
+    type TcpWriter = ChannelTcpWriter;
+    type TcpReader = ChannelTcpReader;
 
     fn now(&self) -> TimeValue {
         return self.simulated_time_source.now();
@@ -89,7 +89,7 @@ impl FactoryTrait for SingleThreadedFactory {
         return Ok(sender);
     }
 
-    fn spawn_tcp_listener<T: TcpConnectionHandlerTrait<TcpSender=Self::TcpWriter, TcpReceiver=Self::TcpReader>>(
+    fn spawn_tcp_listener<T: TcpConnectionHandlerTrait<Factory=Self>>(
         &self,
         thread_builder: channel::ThreadBuilder<Self, EventOrStopThread<()>>,
         socket_addr: SocketAddr,

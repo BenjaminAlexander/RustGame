@@ -5,15 +5,16 @@ use serde::Serialize;
 use commons::factory::FactoryTrait;
 use commons::net::TcpReaderTrait;
 use commons::threading::channel::Receiver;
+use crate::singlethreaded::SingleThreadedFactory;
 
-pub struct ChannelTcpReader<Factory: FactoryTrait> {
+pub struct ChannelTcpReader {
     local_addr: SocketAddr,
     peer_addr: SocketAddr,
-    receiver: Receiver<Factory, Vec<u8>>
+    receiver: Receiver<SingleThreadedFactory, Vec<u8>>
 }
 
-impl<Factory: FactoryTrait> ChannelTcpReader<Factory> {
-    pub fn new(local_addr: SocketAddr, peer_addr: SocketAddr, receiver: Receiver<Factory, Vec<u8>>) -> Self {
+impl ChannelTcpReader {
+    pub fn new(local_addr: SocketAddr, peer_addr: SocketAddr, receiver: Receiver<SingleThreadedFactory, Vec<u8>>) -> Self {
         return Self {
             local_addr,
             peer_addr,
@@ -22,7 +23,7 @@ impl<Factory: FactoryTrait> ChannelTcpReader<Factory> {
     }
 }
 
-impl<Factory: FactoryTrait> TcpReaderTrait for ChannelTcpReader<Factory> {
+impl TcpReaderTrait for ChannelTcpReader {
 
     fn read<T: Serialize + DeserializeOwned>(&mut self) -> Result<T, DecodeError> {
         match self.receiver.recv() {

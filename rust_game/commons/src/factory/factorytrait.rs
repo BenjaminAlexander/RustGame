@@ -29,7 +29,7 @@ pub trait FactoryTrait: Clone + Send + 'static {
         join_call_back: impl AsyncJoinCallBackTrait<Self, U::ThreadReturn>
     ) -> Result<eventhandling::Sender<Self, T>, Error>;
 
-    fn spawn_tcp_listener<T: TcpConnectionHandlerTrait<TcpSender=Self::TcpWriter, TcpReceiver=Self::TcpReader>>(
+    fn spawn_tcp_listener<T: TcpConnectionHandlerTrait<Factory=Self>>(
         &self,
         thread_builder: channel::ThreadBuilder<Self, EventOrStopThread<()>>,
         socket_addr: SocketAddr,

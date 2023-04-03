@@ -1,10 +1,9 @@
 use std::ops::ControlFlow;
+use crate::factory::FactoryTrait;
 use crate::net::{TcpReaderTrait, TcpWriterTrait};
 
 pub trait TcpConnectionHandlerTrait: Send + 'static {
-    //TODO: replace with factory
-    type TcpSender: TcpWriterTrait;
-    type TcpReceiver: TcpReaderTrait;
+    type Factory: FactoryTrait;
 
-    fn on_connection(&mut self, tcp_sender: Self::TcpSender, tcp_receiver: Self::TcpReceiver) -> ControlFlow<()>;
+    fn on_connection(&mut self, tcp_sender: <Self::Factory as FactoryTrait>::TcpWriter, tcp_receiver: <Self::Factory as FactoryTrait>::TcpReader) -> ControlFlow<()>;
 }

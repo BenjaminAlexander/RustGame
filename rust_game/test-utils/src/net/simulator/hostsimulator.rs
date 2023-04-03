@@ -30,7 +30,7 @@ impl HostSimulator {
         return &self.network_simulator;
     }
 
-    pub fn connect_tcp(&self, factory: &SingleThreadedFactory, socket_addr: SocketAddr) -> Result<(ChannelTcpWriter<SingleThreadedFactory>, ChannelTcpReader<SingleThreadedFactory>), Error> {
+    pub fn connect_tcp(&self, factory: &SingleThreadedFactory, socket_addr: SocketAddr) -> Result<(ChannelTcpWriter, ChannelTcpReader), Error> {
 
         let port;
         {

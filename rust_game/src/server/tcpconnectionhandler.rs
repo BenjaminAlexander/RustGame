@@ -23,10 +23,9 @@ impl<GameFactory: GameFactoryTrait> TcpConnectionHandler<GameFactory> {
 }
 
 impl<GameFactory: GameFactoryTrait> TcpConnectionHandlerTrait for TcpConnectionHandler<GameFactory> {
-    type TcpSender = TcpWriter<GameFactory>;
-    type TcpReceiver = TcpReader<GameFactory>;
+    type Factory = GameFactory::Factory;
 
-    fn on_connection(&mut self, tcp_sender: Self::TcpSender, tcp_receiver: Self::TcpReceiver) -> ControlFlow<()> {
+    fn on_connection(&mut self, tcp_sender: TcpWriter<GameFactory>, tcp_receiver: TcpReader<GameFactory>) -> ControlFlow<()> {
         info!("New TCP connection from {:?}", tcp_sender.get_peer_addr());
 
         match self.server_core_sender.send_event(TcpConnectionEvent(tcp_sender, tcp_receiver)) {

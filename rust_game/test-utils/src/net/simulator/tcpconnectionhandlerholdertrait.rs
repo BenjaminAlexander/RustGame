@@ -11,13 +11,13 @@ pub trait TcpConnectionHandlerHolderTrait: Send {
 
     fn on_send(self: Box<Self>) -> Option<Box<dyn TcpConnectionHandlerHolderTrait>>;
 
-    fn on_connection(self: Box<Self>, writer: ChannelTcpWriter<SingleThreadedFactory>, reader: ChannelTcpReader<SingleThreadedFactory>) -> Option<Box<dyn TcpConnectionHandlerHolderTrait>>;
+    fn on_connection(self: Box<Self>, writer: ChannelTcpWriter, reader: ChannelTcpReader) -> Option<Box<dyn TcpConnectionHandlerHolderTrait>>;
 
     fn stop(self: Box<Self>);
 }
 
 pub fn new<
-    TcpConnectionHandler: TcpConnectionHandlerTrait<TcpSender=ChannelTcpWriter<SingleThreadedFactory>, TcpReceiver=ChannelTcpReader<SingleThreadedFactory>>,
+    TcpConnectionHandler: TcpConnectionHandlerTrait<Factory=SingleThreadedFactory>,
     AsyncJoinCallBack: AsyncJoinCallBackTrait<SingleThreadedFactory, TcpConnectionHandler>
 >(
     thread_builder: ThreadBuilder<SingleThreadedFactory>,
@@ -37,7 +37,7 @@ pub fn new<
 }
 
 struct TcpConnectionHandlerHolder<
-    TcpConnectionHandler: TcpConnectionHandlerTrait<TcpSender=ChannelTcpWriter<SingleThreadedFactory>, TcpReceiver=ChannelTcpReader<SingleThreadedFactory>>,
+    TcpConnectionHandler: TcpConnectionHandlerTrait<Factory=SingleThreadedFactory>,
     AsyncJoinCallBack: AsyncJoinCallBackTrait<SingleThreadedFactory, TcpConnectionHandler>
 > {
     receiver: Receiver<SingleThreadedFactory, EventOrStopThread<()>>,
@@ -47,7 +47,7 @@ struct TcpConnectionHandlerHolder<
 }
 
 impl<
-    TcpConnectionHandler: TcpConnectionHandlerTrait<TcpSender=ChannelTcpWriter<SingleThreadedFactory>, TcpReceiver=ChannelTcpReader<SingleThreadedFactory>>,
+    TcpConnectionHandler: TcpConnectionHandlerTrait<Factory=SingleThreadedFactory>,
     AsyncJoinCallBack: AsyncJoinCallBackTrait<SingleThreadedFactory, TcpConnectionHandler>
 > TcpConnectionHandlerHolder<TcpConnectionHandler, AsyncJoinCallBack> {
 
@@ -59,7 +59,7 @@ impl<
 }
 
 impl<
-    TcpConnectionHandler: TcpConnectionHandlerTrait<TcpSender=ChannelTcpWriter<SingleThreadedFactory>, TcpReceiver=ChannelTcpReader<SingleThreadedFactory>>,
+    TcpConnectionHandler: TcpConnectionHandlerTrait<Factory=SingleThreadedFactory>,
     AsyncJoinCallBack: AsyncJoinCallBackTrait<SingleThreadedFactory, TcpConnectionHandler>
 > TcpConnectionHandlerHolderTrait for TcpConnectionHandlerHolder<TcpConnectionHandler, AsyncJoinCallBack> {
 
@@ -80,7 +80,7 @@ impl<
         }
     }
 
-    fn on_connection(mut self: Box<Self>, writer: ChannelTcpWriter<SingleThreadedFactory>, reader: ChannelTcpReader<SingleThreadedFactory>) -> Option<Box<dyn TcpConnectionHandlerHolderTrait>> {
+    fn on_connection(mut self: Box<Self>, writer: ChannelTcpWriter, reader: ChannelTcpReader) -> Option<Box<dyn TcpConnectionHandlerHolderTrait>> {
 
         return match self.connection_handler.on_connection(writer, reader) {
             ControlFlow::Continue(()) => Some(self),

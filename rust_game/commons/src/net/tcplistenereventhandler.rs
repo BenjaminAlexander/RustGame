@@ -1,6 +1,7 @@
 use std::net::TcpListener;
 use std::ops::ControlFlow::{Break, Continue};
 use log::error;
+use crate::factory::RealFactory;
 use crate::net::realtcpstream::RealTcpStream;
 use crate::net::tcpconnectionhandlertrait::TcpConnectionHandlerTrait;
 use crate::net::TcpWriterTrait;
@@ -8,13 +9,13 @@ use crate::threading::channel::ReceiveMetaData;
 use crate::threading::eventhandling::{ChannelEvent, ChannelEventResult, EventHandlerTrait};
 use crate::threading::eventhandling::WaitOrTryForNextEvent::TryForNextEvent;
 
-pub struct TcpListenerEventHandler<T: TcpConnectionHandlerTrait<TcpSender=RealTcpStream, TcpReceiver=RealTcpStream>> {
+pub struct TcpListenerEventHandler<T: TcpConnectionHandlerTrait<Factory=RealFactory>> {
     tcp_listener: TcpListener,
     tcp_connection_handler: T
 
 }
 
-impl<T: TcpConnectionHandlerTrait<TcpSender=RealTcpStream, TcpReceiver=RealTcpStream>> TcpListenerEventHandler<T> {
+impl<T: TcpConnectionHandlerTrait<Factory=RealFactory>> TcpListenerEventHandler<T> {
 
     pub fn new(tcp_listener: TcpListener, tcp_connection_handler: T) -> Self {
         return Self {
@@ -53,7 +54,7 @@ impl<T: TcpConnectionHandlerTrait<TcpSender=RealTcpStream, TcpReceiver=RealTcpSt
     }
 }
 
-impl<T: TcpConnectionHandlerTrait<TcpSender=RealTcpStream, TcpReceiver=RealTcpStream>> EventHandlerTrait for TcpListenerEventHandler<T> {
+impl<T: TcpConnectionHandlerTrait<Factory=RealFactory>> EventHandlerTrait for TcpListenerEventHandler<T> {
     type Event = ();
     type ThreadReturn = T;
 

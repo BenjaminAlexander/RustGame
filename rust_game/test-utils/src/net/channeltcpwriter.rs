@@ -6,16 +6,17 @@ use serde::Serialize;
 use commons::factory::FactoryTrait;
 use commons::net::TcpWriterTrait;
 use commons::threading::channel::SenderTrait;
+use crate::singlethreaded::SingleThreadedSender;
 
-pub struct ChannelTcpWriter<Factory: FactoryTrait> {
+pub struct ChannelTcpWriter {
     local_addr: SocketAddr,
     peer_addr: SocketAddr,
     has_been_closed: bool,
-    sender: Factory::Sender<Vec<u8>>
+    sender: SingleThreadedSender<Vec<u8>>
 }
 
-impl<Factory: FactoryTrait> ChannelTcpWriter<Factory> {
-    pub fn new(local_addr: SocketAddr, peer_addr: SocketAddr, sender: Factory::Sender<Vec<u8>>) -> Self {
+impl ChannelTcpWriter {
+    pub fn new(local_addr: SocketAddr, peer_addr: SocketAddr, sender: SingleThreadedSender<Vec<u8>>) -> Self {
         return Self {
             local_addr,
             peer_addr,
@@ -25,7 +26,7 @@ impl<Factory: FactoryTrait> ChannelTcpWriter<Factory> {
     }
 }
 
-impl<Factory: FactoryTrait> TcpWriterTrait for ChannelTcpWriter<Factory> {
+impl TcpWriterTrait for ChannelTcpWriter {
     fn write<T: Serialize + DeserializeOwned>(&mut self, write: &T) -> Result<(), EncodeError> {
 
         let vec = rmp_serde::encode::to_vec(write)?;
