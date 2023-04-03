@@ -62,7 +62,7 @@ impl NetworkSimulator {
     pub fn spawn_tcp_listener<TcpConnectionHandler: TcpConnectionHandlerTrait<Factory=SingleThreadedFactory>>(
         &self,
         socket_adder: SocketAddr,
-        thread_builder: channel::ThreadBuilder<SingleThreadedFactory, EventOrStopThread<()>>,
+        thread_builder: channel::ChannelThreadBuilder<SingleThreadedFactory, EventOrStopThread<()>>,
         connection_handler: TcpConnectionHandler,
         join_call_back: impl AsyncJoinCallBackTrait<SingleThreadedFactory, TcpConnectionHandler>
     ) -> Sender<SingleThreadedFactory, ()> {

@@ -1,3 +1,4 @@
+use std::fmt::Debug;
 use std::io::Error;
 use std::net::SocketAddr;
 use crate::factory::FactoryTrait;
@@ -8,13 +9,12 @@ use crate::threading::listener::{ListenerState, ListenerTrait};
 use crate::threading;
 use crate::threading::{AsyncJoinCallBackTrait, eventhandling};
 
-//TODO: rename to channel thread builder
-pub struct ThreadBuilder<Factory: FactoryTrait, T: Send + 'static> {
+pub struct ChannelThreadBuilder<Factory: FactoryTrait, T: Send + 'static> {
     thread_builder: threading::ThreadBuilder<Factory>,
     channel: Channel<Factory, T>
 }
 
-impl<Factory: FactoryTrait, T: Send + 'static> ThreadBuilder<Factory, T> {
+impl<Factory: FactoryTrait, T: Send + 'static> ChannelThreadBuilder<Factory, T> {
 
     pub fn new(thread_builder: threading::ThreadBuilder<Factory>) -> Self {
         return Self {
@@ -40,11 +40,11 @@ impl<Factory: FactoryTrait, T: Send + 'static> ThreadBuilder<Factory, T> {
     }
 }
 
-impl<Factory: FactoryTrait, T: Send + 'static> ThreadBuilder<Factory, EventOrStopThread<T>> {
+impl<Factory: FactoryTrait, T: Send + 'static> ChannelThreadBuilder<Factory, EventOrStopThread<T>> {
 
     pub fn spawn_event_handler<U: EventHandlerTrait<Event=T>>(self, event_handler: U, join_call_back: impl AsyncJoinCallBackTrait<Factory, U::ThreadReturn>) -> std::io::Result<eventhandling::Sender<Factory, T>> {
         let factory = self.thread_builder.get_factory().clone();
-        return factory.spawn_event_handler(self.thread_builder, self.channel, event_handler, join_call_back);
+        return factory.spawn_event_handler(self, event_handler, join_call_back);
     }
 
     //TODO: remove
@@ -54,7 +54,7 @@ impl<Factory: FactoryTrait, T: Send + 'static> ThreadBuilder<Factory, EventOrSto
     }
 }
 
-impl<Factory: FactoryTrait> ThreadBuilder<Factory, EventOrStopThread<()>> {
+impl<Factory: FactoryTrait> ChannelThreadBuilder<Factory, EventOrStopThread<()>> {
 
     pub fn spawn_tcp_listener<T: TcpConnectionHandlerTrait<Factory=Factory>>(self, socket_addr: SocketAddr, tcp_connection_handler: T, join_call_back: impl AsyncJoinCallBackTrait<Factory, T>) -> Result<eventhandling::Sender<Factory, ()>, Error> {
         let factory = self.thread_builder.get_factory().clone();

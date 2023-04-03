@@ -4,7 +4,7 @@ use std::sync::{mpsc, Mutex};
 use commons::factory::FactoryTrait;
 use commons::net::{TcpConnectionHandlerTrait, TcpReadHandlerTrait};
 use commons::threading::{AsyncJoinCallBackTrait, channel, ThreadBuilder};
-use commons::threading::channel::{Channel, RealSender, Receiver, SendMetaData};
+use commons::threading::channel::{Channel, ChannelThreadBuilder, RealSender, Receiver, SendMetaData};
 use commons::threading::eventhandling::{EventHandlerTrait, EventOrStopThread, Sender};
 use commons::time::TimeValue;
 use crate::net::{ChannelTcpReader, ChannelTcpWriter, HostSimulator, NetworkSimulator};
@@ -72,26 +72,18 @@ impl FactoryTrait for SingleThreadedFactory {
         return Channel::new(sender, receiver);
     }
 
-    fn spawn_event_handler<T: Send, U: EventHandlerTrait<Event=T>>(&self, thread_builder: ThreadBuilder<Self>, channel: Channel<Self, EventOrStopThread<T>>, event_handler: U, join_call_back: impl AsyncJoinCallBackTrait<Self, U::ThreadReturn>) -> Result<Sender<Self, T>, Error> {
-        let (sender, receiver) = channel.take();
+    fn spawn_event_handler< U: EventHandlerTrait>(&self, thread_builder: ChannelThreadBuilder<Self, EventOrStopThread<U::Event>>, event_handler: U, join_call_back: impl AsyncJoinCallBackTrait<Self, U::ThreadReturn>) -> Result<Sender<Self, U::Event>, Error> {
 
-        let event_handler_holder = EventHandlerHolder::new(
+        return Ok(EventHandlerHolder::spawn_event_handler(
             self.clone(),
             thread_builder,
-            receiver,
             event_handler,
-            join_call_back);
-
-        sender.set_on_send(move ||{
-            event_handler_holder.on_send();
-        });
-
-        return Ok(sender);
+            join_call_back));
     }
 
     fn spawn_tcp_listener<T: TcpConnectionHandlerTrait<Factory=Self>>(
         &self,
-        thread_builder: channel::ThreadBuilder<Self, EventOrStopThread<()>>,
+        thread_builder: channel::ChannelThreadBuilder<Self, EventOrStopThread<()>>,
         socket_addr: SocketAddr,
         tcp_connection_handler: T,
         join_call_back: impl AsyncJoinCallBackTrait<Self, T>) -> Result<Sender<Self, ()>, Error> {
@@ -108,7 +100,7 @@ impl FactoryTrait for SingleThreadedFactory {
         return self.host_simulator.connect_tcp(&self, socket_addr);
     }
 
-    fn spawn_tcp_reader<T: TcpReadHandlerTrait>(&self, thread_builder: channel::ThreadBuilder<Self, EventOrStopThread<()>>, tcp_reader: Self::TcpReader, read_handler: T, join_call_back: impl AsyncJoinCallBackTrait<Self, T>) -> Result<Sender<Self, ()>, Error> {
+    fn spawn_tcp_reader<T: TcpReadHandlerTrait>(&self, thread_builder: channel::ChannelThreadBuilder<Self, EventOrStopThread<()>>, tcp_reader: Self::TcpReader, read_handler: T, join_call_back: impl AsyncJoinCallBackTrait<Self, T>) -> Result<Sender<Self, ()>, Error> {
         todo!()
     }
 }

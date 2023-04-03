@@ -1,3 +1,4 @@
+use std::fmt::Debug;
 use crate::threading::eventhandling::SendResult;
 
 pub trait EventSenderTrait<T> {

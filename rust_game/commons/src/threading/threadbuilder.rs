@@ -41,11 +41,11 @@ impl<Factory: FactoryTrait> ThreadBuilder<Factory> {
         return self.name.as_ref();
     }
 
-    pub fn build_channel_thread<T: Send + 'static>(self) -> channel::ThreadBuilder<Factory, T> {
-        return channel::ThreadBuilder::new(self);
+    pub fn build_channel_thread<T: Send + 'static>(self) -> channel::ChannelThreadBuilder<Factory, T> {
+        return channel::ChannelThreadBuilder::new(self);
     }
 
-    pub fn build_channel_for_event_handler<T: EventHandlerTrait>(self) -> channel::ThreadBuilder<Factory, EventOrStopThread<T::Event>> {
+    pub fn build_channel_for_event_handler<T: EventHandlerTrait>(self) -> channel::ChannelThreadBuilder<Factory, EventOrStopThread<T::Event>> {
         return self.build_channel_thread();
     }
 

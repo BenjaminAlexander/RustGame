@@ -9,6 +9,8 @@ use commons::time::timerservice::{Schedule, TimerCallBack, TimerCreationCallBack
 use test_utils::singlethreaded::SingleThreadedFactory;
 use test_utils::utils::Counter;
 
+type TimerServiceAlias = TimeService<SingleThreadedFactory, Box<dyn TimerCreationCallBack>, Box<dyn TimerCallBack>>;
+
 #[test]
 fn timer_service_test() {
 
@@ -20,16 +22,14 @@ fn timer_service_test() {
 
     let factory = SingleThreadedFactory::new();
 
-    let timer_service = TimeService::<SingleThreadedFactory, Box<dyn TimerCreationCallBack>, Box<dyn TimerCallBack>>::new(factory.clone());
+    let timer_service = TimerServiceAlias::new(factory.clone());
 
     let timer_id_cell = Arc::new(Mutex::new(None::<TimerId>));
     let tick_count_cell = Counter::new(0);
     let join_counter = Counter::new(0);
 
     let join_counter_clone = join_counter.clone();
-    let sender = factory.new_thread_builder().spawn_event_handler(timer_service, move |_async_join|{
-        join_counter_clone.increment();
-    }).unwrap();
+    let channel_thread_builder = factory.new_thread_builder().build_channel_for_event_handler::<TimerServiceAlias>();
 
     let timer_id_cell_clone = timer_id_cell.clone();
     let timer_creation_call_back = Box::new(move |timer_id: &TimerId| {
@@ -42,8 +42,11 @@ fn timer_service_test() {
     });
 
     let time_value = factory.now().add(five_seconds);
+    channel_thread_builder.get_sender().send_event(TimerServiceEvent::CreateTimer(timer_creation_call_back, timer_tick_call_back, Some(Schedule::Once(time_value)))).unwrap();
 
-    sender.send_event(TimerServiceEvent::CreateTimer(timer_creation_call_back, timer_tick_call_back, Some(Schedule::Once(time_value)))).unwrap();
+    let sender = channel_thread_builder.spawn_event_handler(timer_service, move |_async_join|{
+        join_counter_clone.increment();
+    }).unwrap();
 
     assert_eq!(None, *timer_id_cell.lock().unwrap());
 

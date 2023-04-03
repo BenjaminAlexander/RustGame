@@ -1,6 +1,7 @@
 use crate::factory::FactoryTrait;
 use crate::time::TimeValue;
 
+#[derive(Debug)]
 pub struct SendMetaData {
     time_sent: TimeValue
 }

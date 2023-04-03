@@ -41,9 +41,13 @@ impl<T: Send> SenderTrait<T> for SingleThreadedSender<T> {
     fn send(&self, value: T) -> Result<(), SendError<T>> {
         let internal = self.internal.lock().unwrap();
         let result = internal.sender.send(value);
-        if let Some(on_send) = &internal.on_send {
-            on_send();
+
+        if result.is_ok() {
+            if let Some(on_send) = &internal.on_send {
+                on_send();
+            }
         }
+
         return result;
     }
 }

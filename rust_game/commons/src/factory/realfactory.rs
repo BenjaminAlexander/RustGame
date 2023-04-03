@@ -4,7 +4,7 @@ use std::sync::mpsc;
 use std::time::{SystemTime, UNIX_EPOCH};
 use crate::factory::FactoryTrait;
 use crate::net::{RealTcpStream, TcpConnectionHandlerTrait, TcpListenerEventHandler, TcpReaderEventHandler, TcpReadHandlerTrait};
-use crate::threading::channel::{Channel, RealSender, Receiver, SendMetaData};
+use crate::threading::channel::{Channel, ChannelThreadBuilder, RealSender, Receiver, SendMetaData};
 use crate::threading::eventhandling::{EventHandlerThread, EventHandlerTrait, EventOrStopThread, Sender};
 use crate::threading::{AsyncJoinCallBackTrait, channel, ThreadBuilder};
 use crate::time::TimeValue;
@@ -36,7 +36,8 @@ impl FactoryTrait for RealFactory {
         return Channel::new(sender, receiver);
     }
 
-    fn spawn_event_handler<T: Send, U: EventHandlerTrait<Event=T>>(&self, thread_builder: ThreadBuilder<Self>, channel: Channel<Self, EventOrStopThread<T>>, event_handler: U, join_call_back: impl AsyncJoinCallBackTrait<Self, U::ThreadReturn>) -> std::io::Result<Sender<Self, T>> {
+    fn spawn_event_handler<U: EventHandlerTrait>(&self, thread_builder: ChannelThreadBuilder<Self, EventOrStopThread<U::Event>>, event_handler: U, join_call_back: impl AsyncJoinCallBackTrait<Self, U::ThreadReturn>) -> std::io::Result<Sender<Self, U::Event>> {
+        let (thread_builder, channel) = thread_builder.take();
         let (sender, receiver) = channel.take();
 
         let thread = EventHandlerThread::new(
@@ -49,7 +50,7 @@ impl FactoryTrait for RealFactory {
         return Ok(sender);
     }
 
-    fn spawn_tcp_listener<T: TcpConnectionHandlerTrait<Factory=Self>>(&self, thread_builder: channel::ThreadBuilder<Self, EventOrStopThread<()>>, socket_addr: SocketAddr, tcp_connection_handler: T, join_call_back: impl AsyncJoinCallBackTrait<Self, T>) -> Result<Sender<Self, ()>, Error> {
+    fn spawn_tcp_listener<T: TcpConnectionHandlerTrait<Factory=Self>>(&self, thread_builder: channel::ChannelThreadBuilder<Self, EventOrStopThread<()>>, socket_addr: SocketAddr, tcp_connection_handler: T, join_call_back: impl AsyncJoinCallBackTrait<Self, T>) -> Result<Sender<Self, ()>, Error> {
         let tcp_listener = TcpListener::bind(socket_addr)?;
         let event_handler = TcpListenerEventHandler::new(tcp_listener, tcp_connection_handler);
         return thread_builder.spawn_event_handler(event_handler, join_call_back);
@@ -61,7 +62,7 @@ impl FactoryTrait for RealFactory {
         return Ok((real_tcp_stream.try_clone()?, real_tcp_stream));
     }
 
-    fn spawn_tcp_reader<T: TcpReadHandlerTrait>(&self, thread_builder: channel::ThreadBuilder<Self, EventOrStopThread<()>>, tcp_reader: Self::TcpReader, tcp_read_handler: T, join_call_back: impl AsyncJoinCallBackTrait<Self, T>) -> Result<Sender<Self, ()>, Error> {
+    fn spawn_tcp_reader<T: TcpReadHandlerTrait>(&self, thread_builder: channel::ChannelThreadBuilder<Self, EventOrStopThread<()>>, tcp_reader: Self::TcpReader, tcp_read_handler: T, join_call_back: impl AsyncJoinCallBackTrait<Self, T>) -> Result<Sender<Self, ()>, Error> {
         let event_handler = TcpReaderEventHandler::new(tcp_reader, tcp_read_handler);
         return thread_builder.spawn_event_handler(event_handler, join_call_back);
     }
