@@ -32,6 +32,10 @@ impl RealTcpStream {
             remote_peer_socket_addr: self.remote_peer_socket_addr.clone()
         });
     }
+
+    pub fn read<T: Serialize + DeserializeOwned>(&mut self) -> Result<T, DecodeError> {
+        return rmp_serde::from_read(&self.tcp_stream);
+    }
 }
 
 impl TcpWriterTrait for RealTcpStream {
@@ -47,17 +51,8 @@ impl TcpWriterTrait for RealTcpStream {
     fn get_peer_addr(&self) -> &SocketAddr {
         return RealTcpStream::get_peer_addr(self);
     }
-
-
 }
 
 impl TcpReaderTrait for RealTcpStream {
 
-    fn read<T: Serialize + DeserializeOwned>(&mut self) -> Result<T, DecodeError> {
-        return rmp_serde::from_read(&self.tcp_stream);
-    }
-
-    fn get_peer_addr(&self) -> &SocketAddr {
-        return RealTcpStream::get_peer_addr(self);
-    }
 }

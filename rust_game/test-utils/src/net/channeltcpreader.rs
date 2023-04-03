@@ -21,18 +21,19 @@ impl ChannelTcpReader {
             receiver
         }
     }
-}
 
-impl TcpReaderTrait for ChannelTcpReader {
-
-    fn read<T: Serialize + DeserializeOwned>(&mut self) -> Result<T, DecodeError> {
+    pub fn read<T: Serialize + DeserializeOwned>(&mut self) -> Result<T, DecodeError> {
         match self.receiver.recv() {
             Ok(vec) =>  rmp_serde::from_slice(&vec[..]),
             Err(_) =>  Err(DecodeError::Syntax("Channel has been closed".to_string()))
         }
     }
 
-    fn get_peer_addr(&self) -> &SocketAddr {
+    pub fn get_peer_addr(&self) -> &SocketAddr {
         return &self.peer_addr;
     }
+}
+
+impl TcpReaderTrait for ChannelTcpReader {
+
 }

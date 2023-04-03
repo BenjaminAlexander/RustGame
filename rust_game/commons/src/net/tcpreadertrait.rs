@@ -5,7 +5,4 @@ use rmp_serde::decode::Error as DecodeError;
 
 pub trait TcpReaderTrait: Send + Sized {
 
-    fn read<T: Serialize + DeserializeOwned>(&mut self) -> Result<T, DecodeError>;
-
-    fn get_peer_addr(&self) -> &SocketAddr;
 }
