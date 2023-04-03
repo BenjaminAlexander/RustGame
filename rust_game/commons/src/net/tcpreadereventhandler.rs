@@ -2,7 +2,6 @@ use std::ops::ControlFlow::{Break, Continue};
 use log::warn;
 use crate::net::realtcpstream::RealTcpStream;
 use crate::net::tcpreadhandlertrait::TcpReadHandlerTrait;
-use crate::net::TcpReaderTrait;
 use crate::threading::channel::ReceiveMetaData;
 use crate::threading::eventhandling::{ChannelEvent, ChannelEventResult, EventHandlerTrait};
 use crate::threading::eventhandling::WaitOrTryForNextEvent::TryForNextEvent;

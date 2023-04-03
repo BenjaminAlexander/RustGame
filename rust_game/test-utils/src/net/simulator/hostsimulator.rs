@@ -1,8 +1,6 @@
 use std::io::Error;
-use std::marker::PhantomData;
-use std::net::{IpAddr, SocketAddr, SocketAddrV4};
+use std::net::{IpAddr, SocketAddr};
 use std::sync::{Arc, Mutex};
-use commons::factory::FactoryTrait;
 use crate::net::{ChannelTcpReader, ChannelTcpWriter, NetworkSimulator};
 use crate::singlethreaded::SingleThreadedFactory;
 

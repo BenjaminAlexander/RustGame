@@ -1,14 +1,11 @@
 use std::ops::ControlFlow;
 use std::ops::ControlFlow::*;
-use log::{error, info, warn};
-use commons::factory::FactoryTrait;
+use log::{error, info};
 use commons::net::{TcpConnectionHandlerTrait, TcpWriterTrait};
 use crate::interface::{GameFactoryTrait, TcpReader, TcpWriter};
 use crate::server::servercore::ServerCoreEvent;
 use crate::server::servercore::ServerCoreEvent::TcpConnectionEvent;
-use commons::threading::channel::ReceiveMetaData;
 use commons::threading::eventhandling::{Sender, EventSenderTrait};
-use commons::threading::listener::{ListenedOrDidNotListen, ChannelEvent, ListenerEventResult, ListenerTrait, ListenResult};
 
 pub struct TcpConnectionHandler<GameFactory: GameFactoryTrait> {
     server_core_sender: Sender<GameFactory::Factory, ServerCoreEvent<GameFactory>>

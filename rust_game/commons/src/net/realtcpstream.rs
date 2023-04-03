@@ -5,7 +5,7 @@ use serde::de::DeserializeOwned;
 use serde::Serialize;
 use rmp_serde::decode::Error as DecodeError;
 use rmp_serde::encode::Error as EncodeError;
-use crate::net::{TcpReaderTrait, TcpWriterTrait};
+use crate::net::TcpWriterTrait;
 
 #[derive(Debug)]
 pub struct RealTcpStream {
@@ -51,8 +51,4 @@ impl TcpWriterTrait for RealTcpStream {
     fn get_peer_addr(&self) -> &SocketAddr {
         return RealTcpStream::get_peer_addr(self);
     }
-}
-
-impl TcpReaderTrait for RealTcpStream {
-
 }

@@ -1,6 +1,5 @@
 use std::ops::ControlFlow;
 use crate::factory::FactoryTrait;
-use crate::net::{TcpReaderTrait, TcpWriterTrait};
 
 pub trait TcpConnectionHandlerTrait: Send + 'static {
     type Factory: FactoryTrait;

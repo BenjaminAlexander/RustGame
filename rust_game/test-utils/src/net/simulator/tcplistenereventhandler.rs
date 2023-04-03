@@ -1,7 +1,6 @@
-use std::ops::ControlFlow;
 use std::ops::ControlFlow::{Break, Continue};
 use commons::net::TcpConnectionHandlerTrait;
-use commons::threading::{AsyncJoin, AsyncJoinCallBackTrait, ThreadBuilder};
+use commons::threading::{AsyncJoin, ThreadBuilder};
 use commons::threading::channel::ReceiveMetaData;
 use commons::threading::eventhandling::{ChannelEvent, ChannelEventResult, EventHandlerTrait};
 use commons::threading::eventhandling::WaitOrTryForNextEvent::{TryForNextEvent, WaitForNextEvent};
@@ -46,7 +45,7 @@ impl<TcpConnectionHandler: TcpConnectionHandlerTrait<Factory=SingleThreadedFacto
         };
     }
 
-    fn on_stop(self, receive_meta_data: ReceiveMetaData) -> Self::ThreadReturn {
+    fn on_stop(self, _receive_meta_data: ReceiveMetaData) -> Self::ThreadReturn {
         return self.connection_handler;
     }
 }

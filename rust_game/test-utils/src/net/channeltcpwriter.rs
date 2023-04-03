@@ -3,7 +3,6 @@ use std::net::SocketAddr;
 use rmp_serde::encode::Error as EncodeError;
 use serde::de::DeserializeOwned;
 use serde::Serialize;
-use commons::factory::FactoryTrait;
 use commons::net::TcpWriterTrait;
 use commons::threading::channel::SenderTrait;
 use crate::singlethreaded::SingleThreadedSender;

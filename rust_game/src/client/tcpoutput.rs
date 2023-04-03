@@ -1,5 +1,3 @@
-use std::net::TcpStream;
-use std::io;
 use std::ops::ControlFlow::{Break, Continue};
 use commons::threading::channel::ReceiveMetaData;
 use commons::threading::eventhandling::{ChannelEvent, ChannelEventResult, EventHandlerTrait};

@@ -1,21 +1,18 @@
 use std::cell::RefCell;
 use std::collections::HashMap;
 use std::io::{Error, ErrorKind};
-use std::marker::PhantomData;
 use std::net::{IpAddr, SocketAddr};
-use std::ops::ControlFlow;
 use std::sync::{Arc, Mutex};
 use log::info;
 use commons::factory::FactoryTrait;
 use commons::net::TcpConnectionHandlerTrait;
-use commons::threading::{AsyncJoin, AsyncJoinCallBackTrait, channel, ThreadBuilder};
-use commons::threading::channel::{ChannelThreadBuilder, Receiver, TryRecvError};
+use commons::threading::AsyncJoinCallBackTrait;
+use commons::threading::channel::{ChannelThreadBuilder, TryRecvError};
 use commons::threading::eventhandling::{EventOrStopThread, EventSenderTrait, Sender};
 use crate::net::{ChannelTcpReader, ChannelTcpWriter};
 use crate::net::simulator::hostsimulator::HostSimulator;
 use crate::net::simulator::tcplistenereventhandler::{TcpListenerEvent, TcpListenerEventHandler};
-use crate::singlethreaded::{SingleThreadedFactory, SingleThreadedSender, TimeQueue};
-use crate::singlethreaded::eventhandling::{EventHandlerHolder, NoOpEventHandler};
+use crate::singlethreaded::{SingleThreadedFactory, TimeQueue};
 
 #[derive(Clone)]
 pub struct NetworkSimulator {

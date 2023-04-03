@@ -1,9 +1,9 @@
 use std::io::Error;
 use std::net::{IpAddr, Ipv4Addr, SocketAddr};
-use std::sync::{mpsc, Mutex};
+use std::sync::mpsc;
 use commons::factory::FactoryTrait;
 use commons::net::{TcpConnectionHandlerTrait, TcpReadHandlerTrait};
-use commons::threading::{AsyncJoinCallBackTrait, channel, ThreadBuilder};
+use commons::threading::AsyncJoinCallBackTrait;
 use commons::threading::channel::{Channel, ChannelThreadBuilder, RealSender, Receiver, SendMetaData};
 use commons::threading::eventhandling::{EventHandlerTrait, EventOrStopThread, Sender};
 use commons::time::TimeValue;

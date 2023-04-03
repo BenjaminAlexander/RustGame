@@ -1,20 +1,16 @@
-use log::{error, info, warn};
-use std::net::TcpStream;
+use log::info;
 use commons::threading::eventhandling;
 use crate::messaging::ToClientMessageTCP;
-use std::io;
 use std::ops::ControlFlow;
 use std::ops::ControlFlow::*;
 use commons::factory::FactoryTrait;
-use commons::net::{TcpReaderTrait, TcpReadHandlerTrait};
+use commons::net::TcpReadHandlerTrait;
 use crate::client::clientcore::ClientCoreEvent;
 use crate::client::ClientCoreEvent::OnInitialInformation;
 use crate::gamemanager::{ManagerEvent, RenderReceiverMessage};
-use crate::interface::{GameFactoryTrait, TcpReader};
-use commons::threading::channel::{ReceiveMetaData, SenderTrait};
+use crate::interface::GameFactoryTrait;
+use commons::threading::channel::SenderTrait;
 use commons::threading::eventhandling::EventSenderTrait;
-use commons::threading::listener::{ChannelEvent, ListenerEventResult, ListenerTrait, ListenResult};
-use commons::threading::listener::ListenedOrDidNotListen::Listened;
 
 pub struct TcpInput <GameFactory: GameFactoryTrait> {
     factory: GameFactory::Factory,

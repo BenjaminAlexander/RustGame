@@ -1,6 +1,6 @@
 use std::io::Error;
 use std::net::SocketAddr;
-use crate::net::{TcpConnectionHandlerTrait, TcpReaderTrait, TcpReadHandlerTrait, TcpWriterTrait};
+use crate::net::{TcpConnectionHandlerTrait, TcpReadHandlerTrait, TcpWriterTrait};
 use crate::threading::channel::{Channel, ChannelThreadBuilder, SenderTrait};
 use crate::threading::{AsyncJoinCallBackTrait, channel, eventhandling, ThreadBuilder};
 use crate::threading::eventhandling::{EventHandlerTrait, EventOrStopThread};
@@ -9,7 +9,7 @@ use crate::time::TimeValue;
 pub trait FactoryTrait: Clone + Send + 'static {
     type Sender<T: Send>: SenderTrait<T>;
     type TcpWriter: TcpWriterTrait;
-    type TcpReader: TcpReaderTrait;
+    type TcpReader: Send + Sized;
 
     fn now(&self) -> TimeValue;
 

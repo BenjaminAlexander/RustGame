@@ -138,7 +138,6 @@ impl<T: EventHandlerTrait, U: AsyncJoinCallBackTrait<SingleThreadedFactory, T::T
         return sender;
     }
 
-    //TODO: don't return value
     fn schedule_channel_empty(&self) {
         trace!("Trying to schedule a ChannelEmpty");
         self.do_if_present(|mut internal|{
@@ -146,15 +145,6 @@ impl<T: EventHandlerTrait, U: AsyncJoinCallBackTrait<SingleThreadedFactory, T::T
             return Some(internal);
         });
         trace!("Done trying to schedule a ChannelEmpty");
-    }
-
-    fn schedule_timeout(&self, time_duration: TimeDuration)  {
-        trace!("Trying to schedule a Timeout");
-        self.do_if_present(|mut internal|{
-            internal.schedule_timeout(&self, time_duration);
-            return Some(internal);
-        });
-        trace!("Done trying to schedule a Timeout");
     }
 
     fn do_if_present(&self, func: impl FnOnce(EventHandlerHolderInternal<T, U>) -> Option<EventHandlerHolderInternal<T, U>>) {
@@ -226,7 +216,7 @@ impl<T: EventHandlerTrait, U: AsyncJoinCallBackTrait<SingleThreadedFactory, T::T
         };
     }
 
-    fn on_receive(mut self, holder: &EventHandlerHolder<T, U>, receive_meta_data: ReceiveMetaData, event_or_stop: EventOrStopThread<T::Event>) -> Option<Self> {
+    fn on_receive(self, holder: &EventHandlerHolder<T, U>, receive_meta_data: ReceiveMetaData, event_or_stop: EventOrStopThread<T::Event>) -> Option<Self> {
         match event_or_stop {
             EventOrStopThread::Event(event) => {
                 trace!("Executing a ReceivedEvent");

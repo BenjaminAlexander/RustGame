@@ -6,7 +6,7 @@ use crate::factory::FactoryTrait;
 use crate::net::{RealTcpStream, TcpConnectionHandlerTrait, TcpListenerEventHandler, TcpReaderEventHandler, TcpReadHandlerTrait};
 use crate::threading::channel::{Channel, ChannelThreadBuilder, RealSender, Receiver, SendMetaData};
 use crate::threading::eventhandling::{EventHandlerThread, EventHandlerTrait, EventOrStopThread, Sender};
-use crate::threading::{AsyncJoinCallBackTrait, channel, ThreadBuilder};
+use crate::threading::{AsyncJoinCallBackTrait, channel};
 use crate::time::TimeValue;
 
 #[derive(Clone, Copy)]

@@ -1,4 +1,4 @@
-use std::net::{Ipv4Addr, SocketAddrV4, SocketAddr, TcpStream, UdpSocket};
+use std::net::{Ipv4Addr, SocketAddrV4, SocketAddr, UdpSocket};
 use std::ops::ControlFlow::{Break, Continue};
 use crate::gametime::{GameTimer, TimeMessage, TimeReceived};
 use crate::client::tcpinput::TcpInput;

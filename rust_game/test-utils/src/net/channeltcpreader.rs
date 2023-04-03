@@ -2,8 +2,6 @@ use std::net::SocketAddr;
 use rmp_serde::decode::Error as DecodeError;
 use serde::de::DeserializeOwned;
 use serde::Serialize;
-use commons::factory::FactoryTrait;
-use commons::net::TcpReaderTrait;
 use commons::threading::channel::Receiver;
 use crate::singlethreaded::SingleThreadedFactory;
 
@@ -32,8 +30,4 @@ impl ChannelTcpReader {
     pub fn get_peer_addr(&self) -> &SocketAddr {
         return &self.peer_addr;
     }
-}
-
-impl TcpReaderTrait for ChannelTcpReader {
-
 }
