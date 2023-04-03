@@ -43,6 +43,8 @@ impl NetworkSimulator {
 
     fn new_tcp_channel(factory: &SingleThreadedFactory, src_socket_addr: SocketAddr, dest_socket_addr: SocketAddr) -> (ChannelTcpWriter, ChannelTcpReader) {
 
+        //TODO: make this an EventOrStop so it can be used for an event handler
+        //TODO: or, even better, make a channel thread builder and stash it in the reader
         let (sender, receiver) = factory.new_channel::<Vec<u8>>().take();
         let reader = ChannelTcpReader::new(dest_socket_addr, src_socket_addr, receiver);
         let writer = ChannelTcpWriter::new(src_socket_addr, dest_socket_addr, sender);
@@ -116,6 +118,7 @@ impl NetworkSimulator {
         let mut guard = self.internal.lock().unwrap();
 
         if let Some(sender) = guard.tcp_listeners.get(&server_socket_addr) {
+
 
             let (write_server_to_client, read_server_to_client) = Self::new_tcp_channel(factory, server_socket_addr, client_socket_addr);
             let (write_client_to_server, read_client_to_server) = Self::new_tcp_channel(factory, client_socket_addr, server_socket_addr);
