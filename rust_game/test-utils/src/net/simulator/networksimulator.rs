@@ -1,3 +1,4 @@
+use std::cell::RefCell;
 use std::collections::HashMap;
 use std::io::{Error, ErrorKind};
 use std::marker::PhantomData;
@@ -7,19 +8,23 @@ use std::sync::{Arc, Mutex};
 use log::info;
 use commons::factory::FactoryTrait;
 use commons::net::TcpConnectionHandlerTrait;
-use commons::threading::{AsyncJoinCallBackTrait, channel, ThreadBuilder};
-use commons::threading::channel::Receiver;
-use commons::threading::eventhandling::{EventOrStopThread, Sender};
+use commons::threading::{AsyncJoin, AsyncJoinCallBackTrait, channel, ThreadBuilder};
+use commons::threading::channel::{ChannelThreadBuilder, Receiver, TryRecvError};
+use commons::threading::eventhandling::{EventOrStopThread, EventSenderTrait, Sender};
 use crate::net::{ChannelTcpReader, ChannelTcpWriter};
 use crate::net::simulator::hostsimulator::HostSimulator;
-use crate::net::simulator::tcpconnectionhandlerholdertrait;
-use crate::net::simulator::tcpconnectionhandlerholdertrait::TcpConnectionHandlerHolderTrait;
+use crate::net::simulator::tcplistenereventhandler::{TcpListenerEvent, TcpListenerEventHandler};
 use crate::singlethreaded::{SingleThreadedFactory, SingleThreadedSender, TimeQueue};
+use crate::singlethreaded::eventhandling::{EventHandlerHolder, NoOpEventHandler};
 
 #[derive(Clone)]
 pub struct NetworkSimulator {
     internal: Arc<Mutex<Internal>>,
     time_queue: TimeQueue
+}
+
+struct Internal {
+    tcp_listeners: HashMap<SocketAddr, Sender<SingleThreadedFactory, TcpListenerEvent>>,
 }
 
 impl NetworkSimulator {
@@ -39,18 +44,6 @@ impl NetworkSimulator {
         return HostSimulator::new(self.clone(), ip_addr);
     }
 
-    fn insert_tcp_listener(&self, socket_adder: SocketAddr, tcp_connection_handler_holder: Box<dyn TcpConnectionHandlerHolderTrait>) {
-        self.internal.lock().unwrap().insert_tcp_listener(socket_adder, tcp_connection_handler_holder);
-    }
-
-    fn remove_tcp_listener(&self, socket_adder: &SocketAddr) -> Option<Box<dyn TcpConnectionHandlerHolderTrait>> {
-        return self.internal.lock().unwrap().remove_tcp_listener(socket_adder);
-    }
-
-    fn contains_tcp_listener(&self, socket_adder: &SocketAddr) -> bool {
-        return self.internal.lock().unwrap().contains_tcp_listener(socket_adder);
-    }
-
     fn new_tcp_channel(factory: &SingleThreadedFactory, src_socket_addr: SocketAddr, dest_socket_addr: SocketAddr) -> (ChannelTcpWriter, ChannelTcpReader) {
 
         let (sender, receiver) = factory.new_channel::<Vec<u8>>().take();
@@ -61,85 +54,83 @@ impl NetworkSimulator {
 
     pub fn spawn_tcp_listener<TcpConnectionHandler: TcpConnectionHandlerTrait<Factory=SingleThreadedFactory>>(
         &self,
+        factory: &SingleThreadedFactory,
         socket_adder: SocketAddr,
-        thread_builder: channel::ChannelThreadBuilder<SingleThreadedFactory, EventOrStopThread<()>>,
+        thread_builder: ChannelThreadBuilder<SingleThreadedFactory, EventOrStopThread<()>>,
         connection_handler: TcpConnectionHandler,
         join_call_back: impl AsyncJoinCallBackTrait<SingleThreadedFactory, TcpConnectionHandler>
-    ) -> Sender<SingleThreadedFactory, ()> {
+    ) -> Result<Sender<SingleThreadedFactory, ()>, Error> {
+
+        let mut guard = self.internal.lock().unwrap();
+
+        if guard.tcp_listeners.contains_key(&socket_adder) {
+            return Err(Error::from(ErrorKind::AddrInUse));
+        }
 
         let (thread_builder, channel) = thread_builder.take();
-        let (sender, receiver) = channel.take();
 
-        let tcp_connection_handler_holder = tcpconnectionhandlerholdertrait::new(
-            thread_builder,
-            receiver,
+        let tcp_listener_event_handler = TcpListenerEventHandler::new(
             connection_handler,
-            join_call_back
         );
 
-        self.insert_tcp_listener(socket_adder, tcp_connection_handler_holder);
+        let sender = thread_builder.spawn_event_handler(tcp_listener_event_handler, join_call_back).unwrap();
 
+        let (sender_to_return, mut receiver) = channel.take();
 
-        let self_clone = self.clone();
-        sender.set_on_send(move ||{
-            let self_clone_clone = self_clone.clone();
-            self_clone.time_queue.add_event_now(move ||{
-
-                let removed = self_clone_clone.remove_tcp_listener(&socket_adder);
-                if let Some(mut tcp_connection_handler_holder) = removed {
-                    if let Some(tcp_connection_handler_holder) = tcp_connection_handler_holder.on_send() {
-                        self_clone_clone.insert_tcp_listener(socket_adder, tcp_connection_handler_holder);
-                    }
+        loop {
+            match receiver.try_recv() {
+                Ok(EventOrStopThread::Event(())) => {}
+                Ok(EventOrStopThread::StopThread) => {
+                    sender.send_stop_thread().unwrap();
                 }
-            });
+                Err(TryRecvError::Empty) => {
+                    break;
+                }
+                Err(TryRecvError::Disconnected) => {
+                    sender.send_stop_thread().unwrap();
+                }
+            }
+        }
+
+        let receiver = RefCell::new(receiver);
+        let sender_clone = sender.clone();
+        sender_to_return.set_on_send(move ||{
+            match receiver.borrow_mut().try_recv() {
+                Ok(EventOrStopThread::Event(())) => {}
+                Ok(EventOrStopThread::StopThread) => {
+                    sender_clone.send_stop_thread().unwrap();
+                }
+                Err(TryRecvError::Empty) => {
+                    panic!("on_send was called when there is nothing in the channel")
+                }
+                Err(TryRecvError::Disconnected) => {
+                    sender_clone.send_stop_thread().unwrap();
+                }
+            }
         });
 
-        return sender;
+        guard.tcp_listeners.insert(socket_adder, sender);
+
+        return Ok(sender_to_return);
     }
 
     pub fn connect_tcp(&self, factory: &SingleThreadedFactory, client_socket_addr: SocketAddr, server_socket_addr: SocketAddr) -> Result<(ChannelTcpWriter, ChannelTcpReader), Error> {
 
-        if self.contains_tcp_listener(&server_socket_addr) {
+        let mut guard = self.internal.lock().unwrap();
+
+        if let Some(sender) = guard.tcp_listeners.get(&server_socket_addr) {
 
             let (write_server_to_client, read_server_to_client) = Self::new_tcp_channel(factory, server_socket_addr, client_socket_addr);
             let (write_client_to_server, read_client_to_server) = Self::new_tcp_channel(factory, client_socket_addr, server_socket_addr);
 
-            let self_clone = self.clone();
-            self.time_queue.add_event_now(move ||{
-                if let Some(holder) = self_clone.remove_tcp_listener(&server_socket_addr) {
-                    if let Some(holder) = holder.on_connection(write_server_to_client, read_client_to_server) {
-                        self_clone.insert_tcp_listener(server_socket_addr, holder);
-                    }
-                }
-            });
+            sender.send_event(TcpListenerEvent::Connection(write_server_to_client, read_client_to_server)).unwrap();
 
             return Ok((write_client_to_server, read_server_to_client));
+        } else {
+
+            info!("{:?} tried to connect (TCP) to {:?} but there is no listener at that SocketAddr.", client_socket_addr, server_socket_addr);
+            return Err(Error::from(ErrorKind::ConnectionRefused));
         }
-
-        info!("{:?} tried to connect (TCP) to {:?} but there is no listener at that SocketAddr.", client_socket_addr, server_socket_addr);
-        return Err(Error::from(ErrorKind::ConnectionRefused));
-    }
-
-
-}
-
-struct Internal {
-    tcp_listeners: HashMap<SocketAddr, Box<dyn TcpConnectionHandlerHolderTrait>>,
-}
-
-impl Internal {
-
-    fn insert_tcp_listener(&mut self, socket_adder: SocketAddr, tcp_connection_handler_holder: Box<dyn TcpConnectionHandlerHolderTrait>) {
-        //TODO: check if SocketAddr is already in use
-        self.tcp_listeners.insert(socket_adder, tcp_connection_handler_holder);
-    }
-
-    fn remove_tcp_listener(&mut self, socket_adder: &SocketAddr) -> Option<Box<dyn TcpConnectionHandlerHolderTrait>> {
-        return self.tcp_listeners.remove(socket_adder);
-    }
-
-    fn contains_tcp_listener(&mut self, socket_adder: &SocketAddr) -> bool {
-        return self.tcp_listeners.contains_key(socket_adder);
     }
 }
 

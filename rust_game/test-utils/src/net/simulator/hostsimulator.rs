@@ -30,7 +30,7 @@ impl HostSimulator {
         return &self.network_simulator;
     }
 
-    pub fn connect_tcp(&self, factory: &SingleThreadedFactory, socket_addr: SocketAddr) -> Result<(ChannelTcpWriter, ChannelTcpReader), Error> {
+    pub fn connect_tcp(&self, factory: &SingleThreadedFactory, server_socket_addr: SocketAddr) -> Result<(ChannelTcpWriter, ChannelTcpReader), Error> {
 
         let port;
         {
@@ -40,8 +40,8 @@ impl HostSimulator {
         }
 
         let ip_addr = self.ip_addr.as_ref().clone();
-        let socket_addr = SocketAddr::new(ip_addr, port);
+        let client_socket_addr = SocketAddr::new(ip_addr, port);
 
-        return self.network_simulator.connect_tcp(factory, socket_addr, socket_addr);
+        return self.network_simulator.connect_tcp(factory, client_socket_addr, server_socket_addr);
     }
 }

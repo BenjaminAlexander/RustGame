@@ -3,7 +3,7 @@ use std::ops::ControlFlow::{Break, Continue};
 use std::sync::{Arc, Mutex};
 use log::trace;
 use commons::threading::{AsyncJoin, AsyncJoinCallBackTrait, ThreadBuilder};
-use commons::threading::channel::{ChannelThreadBuilder, ReceiveMetaData, Receiver, TryRecvError};
+use commons::threading::channel::{Channel, ChannelThreadBuilder, ReceiveMetaData, Receiver, TryRecvError};
 use commons::threading::eventhandling::{ChannelEvent, EventHandlerTrait, EventOrStopThread, Sender, WaitOrTryForNextEvent};
 use commons::threading::eventhandling::ChannelEvent::{ChannelDisconnected, ChannelEmpty, ReceivedEvent, Timeout};
 use commons::time::TimeDuration;
@@ -34,9 +34,30 @@ impl<T: EventHandlerTrait, U: AsyncJoinCallBackTrait<SingleThreadedFactory, T::T
 
 impl<T: EventHandlerTrait, U: AsyncJoinCallBackTrait<SingleThreadedFactory, T::ThreadReturn>> EventHandlerHolder<T, U> {
 
-    pub fn spawn_event_handler(factory: SingleThreadedFactory, thread_builder: ChannelThreadBuilder<SingleThreadedFactory, EventOrStopThread<T::Event>>, event_handler: T, join_call_back: U) -> Sender<SingleThreadedFactory, T::Event> {
+    pub fn spawn_event_handler(
+        factory: SingleThreadedFactory,
+        thread_builder: ChannelThreadBuilder<SingleThreadedFactory, EventOrStopThread<T::Event>>,
+        event_handler: T,
+        join_call_back: U) -> Sender<SingleThreadedFactory, T::Event> {
 
         let (thread_builder, channel) = thread_builder.take();
+
+        return Self::spawn_event_handler_helper(
+            factory,
+            thread_builder,
+            channel,
+            event_handler,
+            join_call_back
+        );
+    }
+
+    pub fn spawn_event_handler_helper(
+        factory: SingleThreadedFactory,
+        thread_builder: ThreadBuilder<SingleThreadedFactory>,
+        channel: Channel<SingleThreadedFactory, EventOrStopThread<T::Event>>,
+        event_handler: T,
+        join_call_back: U) -> Sender<SingleThreadedFactory, T::Event> {
+
         let (sender, mut receiver) = channel.take();
 
         //Empty the channel
