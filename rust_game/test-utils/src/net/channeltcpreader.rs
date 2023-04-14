@@ -2,32 +2,30 @@ use std::net::SocketAddr;
 use rmp_serde::decode::Error as DecodeError;
 use serde::de::DeserializeOwned;
 use serde::Serialize;
-use commons::threading::channel::Receiver;
-use crate::singlethreaded::SingleThreadedFactory;
+use commons::threading::channel::{Receiver, TryRecvError};
+use crate::singlethreaded::{SingleThreadedFactory, SingleThreadedSender};
 
 pub struct ChannelTcpReader {
-    local_addr: SocketAddr,
-    peer_addr: SocketAddr,
+    sender: SingleThreadedSender<Vec<u8>>,
     receiver: Receiver<SingleThreadedFactory, Vec<u8>>
 }
 
 impl ChannelTcpReader {
-    pub fn new(local_addr: SocketAddr, peer_addr: SocketAddr, receiver: Receiver<SingleThreadedFactory, Vec<u8>>) -> Self {
+    pub fn new(sender: SingleThreadedSender<Vec<u8>>, receiver: Receiver<SingleThreadedFactory, Vec<u8>>) -> Self {
         return Self {
-            local_addr,
-            peer_addr,
+            sender,
             receiver
         }
     }
 
-    pub fn read<T: Serialize + DeserializeOwned>(&mut self) -> Result<T, DecodeError> {
-        match self.receiver.recv() {
-            Ok(vec) =>  rmp_serde::from_slice(&vec[..]),
-            Err(_) =>  Err(DecodeError::Syntax("Channel has been closed".to_string()))
-        }
+    pub fn take(self) -> (SingleThreadedSender<Vec<u8>>, Receiver<SingleThreadedFactory, Vec<u8>>) {
+        return (self.sender, self.receiver);
     }
 
-    pub fn get_peer_addr(&self) -> &SocketAddr {
-        return &self.peer_addr;
+    pub fn try_read(&mut self) -> Result<Vec<u8>, TryRecvError> {
+        match self.receiver.try_recv() {
+            Ok(buf) =>  Ok(buf),
+            Err(error) =>  Err(error)
+        }
     }
 }

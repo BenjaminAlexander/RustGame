@@ -46,14 +46,13 @@ impl NetworkSimulator {
         //TODO: make this an EventOrStop so it can be used for an event handler
         //TODO: or, even better, make a channel thread builder and stash it in the reader
         let (sender, receiver) = factory.new_channel::<Vec<u8>>().take();
-        let reader = ChannelTcpReader::new(dest_socket_addr, src_socket_addr, receiver);
+        let reader = ChannelTcpReader::new(sender.clone(), receiver);
         let writer = ChannelTcpWriter::new(src_socket_addr, dest_socket_addr, sender);
         return (writer, reader);
     }
 
     pub fn spawn_tcp_listener<TcpConnectionHandler: TcpConnectionHandlerTrait<Factory=SingleThreadedFactory>>(
         &self,
-        factory: &SingleThreadedFactory,
         socket_adder: SocketAddr,
         thread_builder: ChannelThreadBuilder<SingleThreadedFactory, EventOrStopThread<()>>,
         connection_handler: TcpConnectionHandler,

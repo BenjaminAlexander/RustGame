@@ -1,13 +1,14 @@
+use std::cell::RefCell;
 use std::io::Error;
 use std::net::{IpAddr, Ipv4Addr, SocketAddr};
-use std::sync::mpsc;
+use std::sync::{mpsc, Mutex};
 use commons::factory::FactoryTrait;
 use commons::net::{TcpConnectionHandlerTrait, TcpReadHandlerTrait};
 use commons::threading::AsyncJoinCallBackTrait;
-use commons::threading::channel::{Channel, ChannelThreadBuilder, RealSender, Receiver, SendMetaData};
-use commons::threading::eventhandling::{EventHandlerTrait, EventOrStopThread, Sender};
+use commons::threading::channel::{Channel, ChannelThreadBuilder, RealSender, Receiver, RecvError, SendMetaData, TryRecvError};
+use commons::threading::eventhandling::{EventHandlerTrait, EventOrStopThread, EventSenderTrait, Sender};
 use commons::time::TimeValue;
-use crate::net::{ChannelTcpReader, ChannelTcpWriter, HostSimulator, NetworkSimulator};
+use crate::net::{ChannelTcpReader, ChannelTcpWriter, HostSimulator, NetworkSimulator, TcpReaderEventHandler};
 use crate::singlethreaded::eventhandling::EventHandlerHolder;
 use crate::singlethreaded::{SingleThreadedSender, TimeQueue};
 use crate::time::SimulatedTimeSource;
@@ -89,7 +90,6 @@ impl FactoryTrait for SingleThreadedFactory {
         join_call_back: impl AsyncJoinCallBackTrait<Self, T>) -> Result<Sender<Self, ()>, Error> {
 
         return self.host_simulator.get_network_simulator().spawn_tcp_listener(
-            self,
             socket_addr,
             thread_builder,
             tcp_connection_handler,
@@ -108,6 +108,78 @@ impl FactoryTrait for SingleThreadedFactory {
         read_handler: T,
         join_call_back: impl AsyncJoinCallBackTrait<Self, T>) -> Result<Sender<Self, ()>, Error> {
 
-        todo!()
+        let (thread_builder, channel) = thread_builder.take();
+
+        let tcp_reader_event_handler = TcpReaderEventHandler::new(read_handler);
+
+        let sender = thread_builder.spawn_event_handler(tcp_reader_event_handler, join_call_back).unwrap();
+
+        let (tcp_writer, mut tcp_reader) = tcp_reader.take();
+
+        //Empty the tcp channel
+        loop {
+            match tcp_reader.try_recv() {
+                Ok(buf) => {
+                    sender.send_event(buf).unwrap();
+                }
+                Err(TryRecvError::Empty) => {
+                    break;
+                }
+                Err(TryRecvError::Disconnected) => {
+                    sender.send_stop_thread().unwrap();
+                }
+            }
+        }
+
+        let sender_clone = sender.clone();
+        let tcp_reader = RefCell::new(tcp_reader);
+        tcp_writer.set_on_send(move ||{
+
+            match tcp_reader.borrow_mut().try_recv() {
+                Ok(buf) => sender_clone.send_event(buf).unwrap(),
+                Err(TryRecvError::Disconnected) => sender_clone.send_stop_thread().unwrap(),
+                Err(TryRecvError::Empty) => {
+                    panic!("on_send was called when there is nothing in the channel (tcp_writer)")
+                }
+            }
+
+        });
+
+        let (sender_to_return, mut receiver) = channel.take();
+
+        //Empty the
+        loop {
+            match receiver.try_recv() {
+                Ok(EventOrStopThread::Event(())) => {}
+                Ok(EventOrStopThread::StopThread) => {
+                    sender.send_stop_thread().unwrap();
+                }
+                Err(TryRecvError::Empty) => {
+                    break;
+                }
+                Err(TryRecvError::Disconnected) => {
+                    sender.send_stop_thread().unwrap();
+                }
+            }
+        }
+
+        let receiver = RefCell::new(receiver);
+        let sender_clone = sender.clone();
+        sender_to_return.set_on_send(move ||{
+            match receiver.borrow_mut().try_recv() {
+                Ok(EventOrStopThread::Event(())) => {}
+                Ok(EventOrStopThread::StopThread) => {
+                    sender_clone.send_stop_thread().unwrap();
+                }
+                Err(TryRecvError::Empty) => {
+                    panic!("on_send was called when there is nothing in the channel")
+                }
+                Err(TryRecvError::Disconnected) => {
+                    sender_clone.send_stop_thread().unwrap();
+                }
+            }
+        });
+
+        return Ok(sender_to_return);
     }
 }
