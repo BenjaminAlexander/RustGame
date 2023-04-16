@@ -8,7 +8,7 @@ use commons::logging::LoggingConfigBuilder;
 use crate::client::ClientCoreEvent::Connect;
 use crate::gamemanager::RenderReceiver;
 use crate::simplegame::{SimpleInput, SimpleState, SimpleInputEvent, SimpleInputEventHandler, SimpleWindow, SimpleServerInput, SimpleGameImpl};
-use commons::threading::{AsyncJoin, ThreadBuilder};
+use commons::threading::AsyncJoin;
 use commons::threading::eventhandling::EventSenderTrait;
 use commons::time::TimeDuration;
 use crate::interface::RealGameFactory;

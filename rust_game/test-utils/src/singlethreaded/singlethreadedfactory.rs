@@ -1,11 +1,15 @@
+use std::io::Error;
+use std::net::{IpAddr, Ipv4Addr, SocketAddr};
 use std::sync::mpsc;
 use commons::factory::FactoryTrait;
-use commons::threading::{AsyncJoin, AsyncJoinCallBackTrait, ThreadBuilder};
-use commons::threading::channel::{Channel, RealSender, Receiver, SendMetaData};
-use commons::threading::eventhandling::{EventHandlerTrait, EventOrStopThread, Sender};
+use commons::net::{TcpConnectionHandlerTrait, TcpReadHandlerTrait};
+use commons::threading::AsyncJoinCallBackTrait;
+use commons::threading::channel::{Channel, ChannelThreadBuilder};
+use commons::threading::eventhandling::{EventHandlerTrait, EventOrStopThread, EventSenderTrait, Sender};
 use commons::time::TimeValue;
+use crate::net::{ChannelTcpWriter, HostSimulator, NetworkSimulator, TcpReaderEventHandler};
 use crate::singlethreaded::eventhandling::EventHandlerHolder;
-use crate::singlethreaded::{SingleThreadedSender, TimeQueue};
+use crate::singlethreaded::{ReceiveOrDisconnected, SingleThreadedReceiver, SingleThreadedSender, TimeQueue};
 use crate::time::SimulatedTimeSource;
 
 #[derive(Clone)]
@@ -13,7 +17,8 @@ pub struct SingleThreadedFactory {
     //TODO: don't let this SimulatedTimeSource escape SingleThreaded package
     simulated_time_source: SimulatedTimeSource,
     //TODO: don't let this TimeQueue escape SingleThreaded package
-    time_queue: TimeQueue
+    time_queue: TimeQueue,
+    host_simulator: HostSimulator
 }
 
 impl SingleThreadedFactory {
@@ -25,7 +30,8 @@ impl SingleThreadedFactory {
 
         return Self {
             simulated_time_source,
-            time_queue
+            host_simulator: NetworkSimulator::new().new_host(IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1))),
+            time_queue,
         }
     }
 
@@ -36,37 +42,110 @@ impl SingleThreadedFactory {
     pub fn get_time_queue(&self) -> &TimeQueue {
         return &self.time_queue;
     }
+
+    pub fn get_host_simulator(&self) -> &HostSimulator {
+        return &self.host_simulator;
+    }
+
+    pub fn clone_for_new_host(&self, ip_adder: IpAddr) -> Self {
+        let mut clone = self.clone();
+        clone.host_simulator = clone.host_simulator.get_network_simulator().new_host(ip_adder);
+        return clone;
+    }
+
 }
 
 impl FactoryTrait for SingleThreadedFactory {
     type Sender<T: Send> = SingleThreadedSender<T>;
+    type Receiver<T: Send> = SingleThreadedReceiver<T>;
+    type TcpWriter = ChannelTcpWriter;
+    type TcpReader = SingleThreadedReceiver<Vec<u8>>;
 
     fn now(&self) -> TimeValue {
         return self.simulated_time_source.now();
     }
 
     fn new_channel<T: Send>(&self) -> Channel<Self, T> {
-        let (sender, receiver) = mpsc::channel::<(SendMetaData, T)>();
-        let sender = RealSender::new(self.clone(), sender);
-        let sender = SingleThreadedSender::new(sender);
-        let receiver = Receiver::new(receiver);
+        let (sender, receiver) = SingleThreadedReceiver::new(self.clone());
         return Channel::new(sender, receiver);
     }
 
-    fn spawn_event_handler<T: Send, U: EventHandlerTrait<Event=T>>(&self, thread_builder: ThreadBuilder<Self>, channel: Channel<Self, EventOrStopThread<T>>, event_handler: U, join_call_back: impl AsyncJoinCallBackTrait<Self, U::ThreadReturn>) -> std::io::Result<Sender<Self, T>> {
-        let (sender, receiver) = channel.take();
+    fn spawn_event_handler< U: EventHandlerTrait>(&self, thread_builder: ChannelThreadBuilder<Self, EventOrStopThread<U::Event>>, event_handler: U, join_call_back: impl AsyncJoinCallBackTrait<Self, U::ThreadReturn>) -> Result<Sender<Self, U::Event>, Error> {
 
-        let event_handler_holder = EventHandlerHolder::new(
+        return Ok(EventHandlerHolder::spawn_event_handler(
             self.clone(),
             thread_builder,
-            receiver,
             event_handler,
+            join_call_back));
+    }
+
+    fn spawn_tcp_listener<T: TcpConnectionHandlerTrait<Factory=Self>>(
+        &self,
+        thread_builder: ChannelThreadBuilder<Self, EventOrStopThread<()>>,
+        socket_addr: SocketAddr,
+        tcp_connection_handler: T,
+        join_call_back: impl AsyncJoinCallBackTrait<Self, T>) -> Result<Sender<Self, ()>, Error> {
+
+        return self.host_simulator.get_network_simulator().spawn_tcp_listener(
+            socket_addr,
+            thread_builder,
+            tcp_connection_handler,
             join_call_back);
 
-        sender.set_on_send(move ||{
-            event_handler_holder.on_send();
+    }
+
+    fn connect_tcp(&self, socket_addr: SocketAddr) -> Result<(Self::TcpWriter, Self::TcpReader), Error> {
+        return self.host_simulator.connect_tcp(&self, socket_addr);
+    }
+
+    fn spawn_tcp_reader<T: TcpReadHandlerTrait>(
+        &self,
+        thread_builder: ChannelThreadBuilder<Self, EventOrStopThread<()>>,
+        tcp_reader: Self::TcpReader,
+        read_handler: T,
+        join_call_back: impl AsyncJoinCallBackTrait<Self, T>) -> Result<Sender<Self, ()>, Error> {
+
+        let (thread_builder, channel) = thread_builder.take();
+
+        let tcp_reader_event_handler = TcpReaderEventHandler::new(read_handler);
+
+        let sender = thread_builder.spawn_event_handler(tcp_reader_event_handler, join_call_back).unwrap();
+
+        let sender_clone = sender.clone();
+        tcp_reader.to_consumer(move |receive_or_disconnect|{
+
+            let result = match receive_or_disconnect {
+                ReceiveOrDisconnected::Receive(_, buf) => sender_clone.send_event(buf),
+                ReceiveOrDisconnected::Disconnected => sender_clone.send_stop_thread()
+            };
+
+            return match result {
+                Ok(()) => Ok(()),
+                Err(send_error) => {
+                    match send_error.0.1 {
+                        EventOrStopThread::Event(buf) => Err(mpsc::SendError((send_error.0.0, buf))),
+                        EventOrStopThread::StopThread => Ok(())
+                    }
+                }
+            };
         });
 
-        return Ok(sender);
+        let (sender_to_return, receiver) = channel.take();
+
+        receiver.to_consumer(move |receive_or_disconnect|{
+
+            let result = match receive_or_disconnect {
+                ReceiveOrDisconnected::Receive(_, EventOrStopThread::Event(())) => Ok(()),
+                ReceiveOrDisconnected::Receive(_, EventOrStopThread::StopThread) => sender.send_stop_thread(),
+                ReceiveOrDisconnected::Disconnected => sender.send_stop_thread()
+            };
+
+            return match result {
+                Ok(()) => Ok(()),
+                Err(send_error) => Err(mpsc::SendError((send_error.0.0, EventOrStopThread::StopThread)))
+            };
+        });
+
+        return Ok(sender_to_return);
     }
 }

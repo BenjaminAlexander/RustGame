@@ -1,14 +1,18 @@
 use std::path::Path;
+use std::sync::Mutex;
 use log4rs::append::console::ConsoleAppender;
 use log4rs::append::file::FileAppender;
 use log4rs::config::{Appender, Config, Root};
 use log4rs::encode::pattern::PatternEncoder;
 use log::*;
 use log4rs::config::runtime::{ConfigBuilder, RootBuilder};
+use log4rs::Handle;
 
 const CONSOLE_APPENDER: &str = "console_appender";
 const FILE_APPENDER: &str = "file_appender";
 const PATTERN: &str = "[{h({l})}][{T}-{I}][{M} {f}:{L}][{d}]{n}{m}{n}{n}";
+
+static LOGGER_HANDLE: Mutex<Option<Handle>> = Mutex::new(None);
 
 pub struct LoggingConfigBuilder {
     config_builder: ConfigBuilder,
@@ -49,7 +53,18 @@ impl LoggingConfigBuilder {
 
     pub fn init(self, level_filter: LevelFilter) {
         let config = self.config_builder.build(self.root_builder.build(level_filter)).unwrap();
-        log4rs::init_config(config).unwrap();
-        info!("Logging is set up");
+
+        let mut guard = LOGGER_HANDLE.lock().unwrap();
+
+        match *guard {
+            None => {
+                *guard = Some(log4rs::init_config(config).unwrap());
+                info!("Logging is set up");
+            }
+            Some(ref handle) => {
+                handle.set_config(config);
+                info!("Set logging config");
+            }
+        }
     }
 }

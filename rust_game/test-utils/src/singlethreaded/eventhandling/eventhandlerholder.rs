@@ -1,11 +1,12 @@
 use std::ops::ControlFlow::{Break, Continue};
 use std::sync::{Arc, Mutex};
+use log::trace;
 use commons::threading::{AsyncJoin, AsyncJoinCallBackTrait, ThreadBuilder};
-use commons::threading::channel::{Receiver, TryRecvError};
-use commons::threading::eventhandling::{ChannelEvent, EventHandlerTrait, EventOrStopThread, WaitOrTryForNextEvent};
+use commons::threading::channel::{Channel, ChannelThreadBuilder, ReceiveMetaData};
+use commons::threading::eventhandling::{ChannelEvent, EventHandlerTrait, EventOrStopThread, Sender, WaitOrTryForNextEvent};
 use commons::threading::eventhandling::ChannelEvent::{ChannelDisconnected, ChannelEmpty, ReceivedEvent, Timeout};
 use commons::time::TimeDuration;
-use crate::singlethreaded::SingleThreadedFactory;
+use crate::singlethreaded::{ReceiveOrDisconnected, ReceiverLink, SingleThreadedFactory};
 
 pub struct EventHandlerHolder<T: EventHandlerTrait, U: AsyncJoinCallBackTrait<SingleThreadedFactory, T::ThreadReturn>> {
     internal: Arc<Mutex<Option<EventHandlerHolderInternal<T, U>>>>,
@@ -13,7 +14,7 @@ pub struct EventHandlerHolder<T: EventHandlerTrait, U: AsyncJoinCallBackTrait<Si
 }
 
 struct EventHandlerHolderInternal<T: EventHandlerTrait, U: AsyncJoinCallBackTrait<SingleThreadedFactory, T::ThreadReturn>> {
-    receiver: Receiver<EventOrStopThread<T::Event>>,
+    receiver_link: ReceiverLink<EventOrStopThread<T::Event>>,
     event_handler: T,
     join_call_back: U,
     thread_builder: ThreadBuilder<SingleThreadedFactory>,
@@ -32,63 +33,85 @@ impl<T: EventHandlerTrait, U: AsyncJoinCallBackTrait<SingleThreadedFactory, T::T
 
 impl<T: EventHandlerTrait, U: AsyncJoinCallBackTrait<SingleThreadedFactory, T::ThreadReturn>> EventHandlerHolder<T, U> {
 
-    pub fn new(factory: SingleThreadedFactory, thread_builder: ThreadBuilder<SingleThreadedFactory>, receiver: Receiver<EventOrStopThread<T::Event>>, event_handler: T, join_call_back: U) -> Self {
+    pub fn spawn_event_handler(
+        factory: SingleThreadedFactory,
+        thread_builder: ChannelThreadBuilder<SingleThreadedFactory, EventOrStopThread<T::Event>>,
+        event_handler: T,
+        join_call_back: U) -> Sender<SingleThreadedFactory, T::Event> {
 
-        let internal = EventHandlerHolderInternal {
-            receiver,
+        let (thread_builder, channel) = thread_builder.take();
+
+        return Self::spawn_event_handler_helper(
+            factory,
+            thread_builder,
+            channel,
+            event_handler,
+            join_call_back
+        );
+    }
+
+    pub fn spawn_event_handler_helper(
+        factory: SingleThreadedFactory,
+        thread_builder: ThreadBuilder<SingleThreadedFactory>,
+        channel: Channel<SingleThreadedFactory, EventOrStopThread<T::Event>>,
+        event_handler: T,
+        join_call_back: U) -> Sender<SingleThreadedFactory, T::Event> {
+
+        let (sender, receiver) = channel.take();
+
+        let holder = Self {
+            internal: Arc::new(Mutex::new(None)),
+            factory: factory.clone()
+        };
+
+        let holder_clone = holder.clone();
+        let receiver_link = receiver.to_consumer(move |receive_or_disconnect|{
+
+            let holder_clone_clone = holder_clone.clone();
+
+            factory.get_time_queue().add_event_now(move || {
+                match receive_or_disconnect {
+                    ReceiveOrDisconnected::Receive(receive_meta_data, event_or_stop) => {
+                        holder_clone_clone.do_if_present(|internal| {
+                            return internal.on_receive(&holder_clone_clone, receive_meta_data, event_or_stop);
+                        });
+                    }
+                    ReceiveOrDisconnected::Disconnected => {
+                        holder_clone_clone.do_if_present(|internal| {
+                            return internal.on_channel_event(&holder_clone_clone, ChannelDisconnected);
+                        });
+                    }
+                }
+            });
+
+            return Ok(());
+        });
+
+        let mut internal = EventHandlerHolderInternal {
+            receiver_link,
             event_handler,
             join_call_back,
             thread_builder,
             pending_channel_event: None
         };
 
-        let result = Self {
-            internal: Arc::new(Mutex::new(Some(internal))),
-            factory
-        };
+        internal.schedule_channel_empty(&holder);
 
-        result.schedule_channel_empty();
+        *holder.internal.lock().unwrap() = Some(internal);
 
-        return result;
+        return sender;
     }
 
-    //TODO: maybe keep track of events in the TimeQueue and remove them when the handler joins
-    pub fn on_send(&self) {
-        let self_clone = self.clone();
-        self.factory.get_time_queue().add_event_now(move || {
-            let mut guard = self_clone.internal.lock().unwrap();
-            if let Some(mut internal) = guard.take() {
-
-                internal.cancel_pending_event(&self_clone);
-
-                if let Some(internal) = internal.try_receive(&self_clone) {
-                    *guard = Some(internal);
-                }
-            }
-        });
-    }
-
-    fn on_channel_event(&self, event: ChannelEvent<T::Event>) {
+    fn do_if_present(&self, func: impl FnOnce(EventHandlerHolderInternal<T, U>) -> Option<EventHandlerHolderInternal<T, U>>) {
         let mut guard = self.internal.lock().unwrap();
         if let Some(internal) = guard.take() {
-            if let Some(internal) = internal.on_channel_event(&self, event) {
+            trace!("Event Handler is still running");
+            if let Some(internal) = func(internal) {
                 *guard = Some(internal);
             }
+        } else {
+            trace!("Event Handler is not running");
         }
-    }
-
-    fn schedule_channel_empty(&self) -> usize {
-        let self_clone = self.clone();
-        return self.factory.get_time_queue().add_event_now(move ||{
-            self_clone.on_channel_event(ChannelEmpty);
-        });
-    }
-
-    fn schedule_timeout(&self, time_duration: TimeDuration) -> usize {
-        let self_clone = self.clone();
-        return self.factory.get_time_queue().add_event_at_duration_from_now(time_duration, move || {
-            self_clone.on_channel_event(Timeout);
-        });
     }
 }
 
@@ -101,42 +124,80 @@ impl<T: EventHandlerTrait, U: AsyncJoinCallBackTrait<SingleThreadedFactory, T::T
         }
     }
 
-    fn try_receive(mut self, holder: &EventHandlerHolder<T, U>) -> Option<Self> {
-        match self.receiver.try_recv_meta_data(&holder.factory) {
-            Ok((receive_meta_data, EventOrStopThread::Event(event))) => {
+    fn schedule_channel_empty(&mut self, holder: &EventHandlerHolder<T, U>) {
+        trace!("Scheduling a ChannelEmpty");
+        self.cancel_pending_event(holder);
+
+        let holder_clone = holder.clone();
+
+        let event_id = holder.factory.get_time_queue().add_event_now(move ||{
+            holder_clone.do_if_present(|mut internal|{
+                internal.pending_channel_event = None;
+                trace!("Executing the previously scheduled ChannelEmpty");
+                return internal.on_channel_event(&holder_clone, ChannelEmpty);
+            });
+        });
+
+        self.pending_channel_event = Some(event_id);
+    }
+
+    fn schedule_timeout(&mut self, holder: &EventHandlerHolder<T, U>, time_duration: TimeDuration)  {
+        trace!("Scheduling a Timeout");
+        self.cancel_pending_event(holder);
+
+        let holder_clone = holder.clone();
+
+        let event_id = holder.factory.get_time_queue().add_event_at_duration_from_now(time_duration, move || {
+            holder_clone.do_if_present(|mut internal|{
+                internal.pending_channel_event = None;
+                trace!("Executing the previously scheduled Timeout");
+                return internal.on_channel_event(&holder_clone, Timeout);
+            });
+        });
+
+        self.pending_channel_event = Some(event_id);
+    }
+
+    fn on_receive(self, holder: &EventHandlerHolder<T, U>, receive_meta_data: ReceiveMetaData, event_or_stop: EventOrStopThread<T::Event>) -> Option<Self> {
+        match event_or_stop {
+            EventOrStopThread::Event(event) => {
+                trace!("Executing a ReceivedEvent");
                 return self.on_channel_event(holder, ReceivedEvent(receive_meta_data, event));
             }
-            Ok((receive_meta_data, EventOrStopThread::StopThread)) => {
+            EventOrStopThread::StopThread => {
                 let result = self.event_handler.on_stop(receive_meta_data);
+                self.receiver_link.disconnect_receiver();
                 self.join_call_back.join(AsyncJoin::new(self.thread_builder, result));
                 return None;
             }
-            Err(TryRecvError::Empty) => panic!("on_send was called when there is nothing in the channel"),
-            Err(TryRecvError::Disconnected) => {
-                return self.on_channel_event(holder, ChannelDisconnected);
-            }
-        };
+        }
     }
 
     fn on_channel_event(mut self, holder: &EventHandlerHolder<T, U>, event: ChannelEvent<T::Event>) -> Option<Self> {
+
+        trace!("Event Handler: {:?}", self.thread_builder.get_name());
+
         match self.event_handler.on_channel_event(event) {
             Continue(WaitOrTryForNextEvent::WaitForNextEvent(event_handler)) => {
+                trace!("WaitForNextEvent");
                 self.event_handler = event_handler;
                 return Some(self);
             }
             Continue(WaitOrTryForNextEvent::WaitForNextEventOrTimeout(event_handler, timeout_duration)) => {
+                trace!("WaitForNextEventOrTimeout: {:?}", timeout_duration);
                 self.event_handler = event_handler;
-                let queue_event = holder.schedule_timeout(timeout_duration);
-                self.pending_channel_event = Some(queue_event);
+                self.schedule_timeout(&holder, timeout_duration);
                 return Some(self);
             }
             Continue(WaitOrTryForNextEvent::TryForNextEvent(event_handler)) => {
+                trace!("TryForNextEvent");
                 self.event_handler = event_handler;
-                let queue_event = holder.schedule_channel_empty();
-                self.pending_channel_event = Some(queue_event);
+                self.schedule_channel_empty(&holder);
                 return Some(self);
             }
             Break(result) => {
+                trace!("Join");
+                self.receiver_link.disconnect_receiver();
                 self.join_call_back.join(AsyncJoin::new(self.thread_builder, result));
                 return None;
             }

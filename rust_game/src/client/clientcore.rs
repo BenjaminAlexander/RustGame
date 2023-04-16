@@ -1,4 +1,4 @@
-use std::net::{Ipv4Addr, SocketAddrV4, SocketAddr, TcpStream, UdpSocket};
+use std::net::{Ipv4Addr, SocketAddrV4, SocketAddr, UdpSocket};
 use std::ops::ControlFlow::{Break, Continue};
 use crate::gametime::{GameTimer, TimeMessage, TimeReceived};
 use crate::client::tcpinput::TcpInput;
@@ -13,7 +13,7 @@ use crate::client::clientgametimeobserver::ClientGameTimerObserver;
 use crate::client::clientmanagerobserver::ClientManagerObserver;
 use crate::client::udpoutput::{UdpOutput, UdpOutputEvent};
 use crate::client::udpinput::UdpInput;
-use commons::threading::{ThreadBuilder, AsyncJoin};
+use commons::threading::AsyncJoin;
 use commons::threading::channel::{ReceiveMetaData, SenderTrait};
 use commons::threading::eventhandling;
 use commons::threading::eventhandling::{ChannelEvent, ChannelEventResult, EventHandlerTrait, EventSenderTrait};
@@ -69,26 +69,28 @@ impl<GameFactory: GameFactoryTrait> ClientCore<GameFactory> {
 
         let socket_addr_v4 = SocketAddrV4::new(self.server_ip, GameFactory::Game::TCP_PORT);
         let socket_addr = SocketAddr::from(socket_addr_v4);
-        let tcp_stream = TcpStream::connect(socket_addr).unwrap();
+
+        let (tcp_sender, tcp_receiver) = self.factory.connect_tcp(socket_addr).unwrap();
 
         let manager_sender = self.factory.new_thread_builder()
             .name("ClientManager")
             .spawn_event_handler(Manager::new(self.factory.clone(), ClientManagerObserver::<GameFactory>::new(self.factory.clone(), render_receiver_sender.clone())), AsyncJoin::log_async_join)
             .unwrap();
 
+        let tcp_input = TcpInput::<GameFactory>::new(
+            self.factory.clone(),
+            manager_sender.clone(),
+            self.sender.clone(),
+            render_receiver_sender.clone());
+
         let tcp_input_sender = self.factory.new_thread_builder()
             .name("ClientTcpInput")
-            .spawn_listener(TcpInput::<GameFactory>::new(
-                self.factory.clone(),
-                manager_sender.clone(),
-                self.sender.clone(),
-                render_receiver_sender.clone(),
-                &tcp_stream).unwrap(), AsyncJoin::log_async_join)
+            .spawn_tcp_reader(tcp_receiver, tcp_input, AsyncJoin::log_async_join)
             .unwrap();
 
         let tcp_output_join_handle = self.factory.new_thread_builder()
             .name("ClientTcpOutput")
-            .spawn_event_handler(TcpOutput::new(&tcp_stream).unwrap(), AsyncJoin::log_async_join)
+            .spawn_event_handler(TcpOutput::<GameFactory>::new(tcp_sender), AsyncJoin::log_async_join)
             .unwrap();
 
         self.render_receiver_sender = Some(render_receiver_sender);

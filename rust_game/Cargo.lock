@@ -202,6 +202,7 @@ dependencies = [
  "log",
  "log4rs",
  "num",
+ "rmp-serde",
  "serde",
 ]
 
@@ -1559,6 +1560,8 @@ dependencies = [
  "commons",
  "log",
  "log4rs",
+ "rmp-serde",
+ "serde",
 ]
 
 [[package]]

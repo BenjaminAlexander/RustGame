@@ -1,23 +1,20 @@
-use log::{error, info, warn};
-use std::net::TcpStream;
+use log::info;
 use commons::threading::eventhandling;
 use crate::messaging::ToClientMessageTCP;
-use std::io;
+use std::ops::ControlFlow;
 use std::ops::ControlFlow::*;
 use commons::factory::FactoryTrait;
+use commons::net::TcpReadHandlerTrait;
 use crate::client::clientcore::ClientCoreEvent;
 use crate::client::ClientCoreEvent::OnInitialInformation;
 use crate::gamemanager::{ManagerEvent, RenderReceiverMessage};
 use crate::interface::GameFactoryTrait;
-use commons::threading::channel::{ReceiveMetaData, SenderTrait};
+use commons::threading::channel::SenderTrait;
 use commons::threading::eventhandling::EventSenderTrait;
-use commons::threading::listener::{ChannelEvent, ListenerEventResult, ListenerTrait, ListenResult};
-use commons::threading::listener::ListenedOrDidNotListen::Listened;
 
 pub struct TcpInput <GameFactory: GameFactoryTrait> {
     factory: GameFactory::Factory,
     player_index: Option<usize>,
-    tcp_stream: TcpStream,
     manager_sender: eventhandling::Sender<GameFactory::Factory, ManagerEvent<GameFactory::Game>>,
     client_core_sender: eventhandling::Sender<GameFactory::Factory, ClientCoreEvent<GameFactory>>,
     render_data_sender: <GameFactory::Factory as FactoryTrait>::Sender<RenderReceiverMessage<GameFactory::Game>>
@@ -29,56 +26,22 @@ impl<GameFactory: GameFactoryTrait> TcpInput<GameFactory> {
         factory: GameFactory::Factory,
         manager_sender: eventhandling::Sender<GameFactory::Factory, ManagerEvent<GameFactory::Game>>,
         client_core_sender: eventhandling::Sender<GameFactory::Factory, ClientCoreEvent<GameFactory>>,
-        render_data_sender: <GameFactory::Factory as FactoryTrait>::Sender<RenderReceiverMessage<GameFactory::Game>>,
-        tcp_stream: &TcpStream) -> io::Result<Self> {
+        render_data_sender: <GameFactory::Factory as FactoryTrait>::Sender<RenderReceiverMessage<GameFactory::Game>>) -> Self {
 
-        Ok(Self {
+        return Self {
             factory,
             player_index: None,
-            tcp_stream: tcp_stream.try_clone()?,
             manager_sender,
             client_core_sender,
             render_data_sender
-        })
+        };
     }
 }
 
-impl<GameFactory: GameFactoryTrait> ListenerTrait for TcpInput<GameFactory> {
-    type Event = ();
-    type ThreadReturn = ();
-    type ListenFor = ToClientMessageTCP<GameFactory::Game>;
+impl <GameFactory: GameFactoryTrait> TcpReadHandlerTrait for TcpInput<GameFactory> {
+    type ReadType = ToClientMessageTCP<GameFactory::Game>;
 
-    fn listen(self) -> ListenResult<Self> {
-        return match rmp_serde::from_read(&self.tcp_stream) {
-            Ok(message) => Continue(Listened(self, message)),
-            Err(error) => {
-                error!("Error: {:?}", error);
-                Break(())
-            }
-        }
-    }
-
-    fn on_channel_event(mut self, event: ChannelEvent<Self>) -> ListenerEventResult<Self> {
-        match event {
-            ChannelEvent::ChannelEmptyAfterListen(_, value) => {
-                self.handle_received_message(value);
-                Continue(self)
-            }
-            ChannelEvent::ReceivedEvent(_, ()) => {
-                warn!("This handler does not have any meaningful messages");
-                Continue(self)
-            }
-            ChannelEvent::ChannelDisconnected => Break(())
-        }
-    }
-
-    fn on_stop(self, _: ReceiveMetaData) -> Self::ThreadReturn { () }
-}
-
-impl<GameFactory: GameFactoryTrait> TcpInput<GameFactory> {
-
-    fn handle_received_message(&mut self, message: ToClientMessageTCP<GameFactory::Game>) {
-
+    fn on_read(&mut self, message: Self::ReadType) -> ControlFlow<()> {
         match message {
             ToClientMessageTCP::InitialInformation(initial_information_message) => {
                 info!("InitialInformation Received.  Player Index: {:?}", initial_information_message.get_player_index());
@@ -89,5 +52,7 @@ impl<GameFactory: GameFactoryTrait> TcpInput<GameFactory> {
                 self.render_data_sender.send(RenderReceiverMessage::InitialInformation(initial_information_message)).unwrap();
             }
         }
+
+        return Continue(());
     }
 }
