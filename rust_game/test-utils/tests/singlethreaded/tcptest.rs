@@ -68,7 +68,7 @@ fn test_tcp() {
     server_factory.get_time_queue().run_events();
 
     //test_write(&server_factory, &server_side, &client_side, 5);
-    //test_write(&server_factory, &client_side, &server_side, 6);
+    test_write(&server_factory, &client_side, &server_side, 6);
 }
 
 fn test_write(factory: &SingleThreadedFactory, write_connection: &Arc<Mutex<Option<TestConnection>>>, read_connection: &Arc<Mutex<Option<TestConnection>>>, value: u32) {
