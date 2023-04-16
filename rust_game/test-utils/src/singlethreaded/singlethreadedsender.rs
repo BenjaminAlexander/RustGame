@@ -7,12 +7,17 @@ pub struct SingleThreadedSender<T: Send> {
 }
 
 struct Internal<T: Send> {
-    sender: RealSender<SingleThreadedFactory, T>,
+    sender: Option<RealSender<SingleThreadedFactory, T>>,
     on_send: Option<Box<dyn Fn() + Send >>
 }
 
 impl<T: Send> Drop for Internal<T> {
     fn drop(&mut self) {
+
+        if let Some(sender) = self.sender.take() {
+            drop(sender);
+        }
+
         if let Some(on_send) = &self.on_send {
             on_send();
         }
@@ -23,7 +28,7 @@ impl<T: Send> SingleThreadedSender<T> {
     pub fn new(sender: RealSender<SingleThreadedFactory, T>) -> Self {
 
         let internal = Internal {
-            sender,
+            sender: Some(sender),
             on_send: None
         };
 
@@ -40,7 +45,7 @@ impl<T: Send> SingleThreadedSender<T> {
 impl<T: Send> SenderTrait<T> for SingleThreadedSender<T> {
     fn send(&self, value: T) -> Result<(), SendError<T>> {
         let internal = self.internal.lock().unwrap();
-        let result = internal.sender.send(value);
+        let result = internal.sender.as_ref().unwrap().send(value);
 
         if result.is_ok() {
             if let Some(on_send) = &internal.on_send {

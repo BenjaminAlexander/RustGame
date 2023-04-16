@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use std::io::{Error, ErrorKind};
 use std::net::{IpAddr, SocketAddr};
 use std::sync::{Arc, Mutex};
-use log::info;
+use log::{info, trace};
 use commons::factory::FactoryTrait;
 use commons::net::TcpConnectionHandlerTrait;
 use commons::threading::AsyncJoinCallBackTrait;
@@ -90,21 +90,27 @@ impl NetworkSimulator {
             }
         }
 
-        let receiver = RefCell::new(receiver);
+        let receiver = Arc::new(Mutex::new(receiver));
         let sender_clone = sender.clone();
+        let time_queue_clone = self.time_queue.clone();
         sender_to_return.set_on_send(move ||{
-            match receiver.borrow_mut().try_recv() {
-                Ok(EventOrStopThread::Event(())) => {}
-                Ok(EventOrStopThread::StopThread) => {
-                    sender_clone.send_stop_thread().unwrap();
+            trace!("TcpListener Sender On Send");
+            let receiver_clone = receiver.clone();
+            let sender_clone_clone = sender_clone.clone();
+            time_queue_clone.add_event_now(move || {
+                match receiver_clone.lock().unwrap().try_recv() {
+                    Ok(EventOrStopThread::Event(())) => {}
+                    Ok(EventOrStopThread::StopThread) => {
+                        sender_clone_clone.send_stop_thread().unwrap();
+                    }
+                    Err(TryRecvError::Empty) => {
+                        panic!("on_send was called when there is nothing in the channel")
+                    }
+                    Err(TryRecvError::Disconnected) => {
+                        sender_clone_clone.send_stop_thread().unwrap();
+                    }
                 }
-                Err(TryRecvError::Empty) => {
-                    panic!("on_send was called when there is nothing in the channel")
-                }
-                Err(TryRecvError::Disconnected) => {
-                    sender_clone.send_stop_thread().unwrap();
-                }
-            }
+            });
         });
 
         guard.tcp_listeners.insert(socket_adder, sender);

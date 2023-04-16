@@ -2,11 +2,12 @@ use std::cell::RefCell;
 use std::io::Error;
 use std::net::{IpAddr, Ipv4Addr, SocketAddr};
 use std::sync::{mpsc, Mutex};
+use log::warn;
 use commons::factory::FactoryTrait;
 use commons::net::{TcpConnectionHandlerTrait, TcpReadHandlerTrait};
 use commons::threading::AsyncJoinCallBackTrait;
 use commons::threading::channel::{Channel, ChannelThreadBuilder, RealSender, Receiver, RecvError, SendMetaData, TryRecvError};
-use commons::threading::eventhandling::{EventHandlerTrait, EventOrStopThread, EventSenderTrait, Sender};
+use commons::threading::eventhandling::{EventHandlerTrait, EventOrStopThread, EventSenderTrait, Sender, SendResult};
 use commons::time::TimeValue;
 use crate::net::{ChannelTcpReader, ChannelTcpWriter, HostSimulator, NetworkSimulator, TcpReaderEventHandler};
 use crate::singlethreaded::eventhandling::EventHandlerHolder;
@@ -126,7 +127,7 @@ impl FactoryTrait for SingleThreadedFactory {
                     break;
                 }
                 Err(TryRecvError::Disconnected) => {
-                    sender.send_stop_thread().unwrap();
+                    send_stop_thread(&sender);
                 }
             }
         }
@@ -137,7 +138,7 @@ impl FactoryTrait for SingleThreadedFactory {
 
             match tcp_reader.borrow_mut().try_recv() {
                 Ok(buf) => sender_clone.send_event(buf).unwrap(),
-                Err(TryRecvError::Disconnected) => sender_clone.send_stop_thread().unwrap(),
+                Err(TryRecvError::Disconnected) => send_stop_thread(&sender_clone),
                 Err(TryRecvError::Empty) => {
                     panic!("on_send was called when there is nothing in the channel (tcp_writer)")
                 }
@@ -147,18 +148,18 @@ impl FactoryTrait for SingleThreadedFactory {
 
         let (sender_to_return, mut receiver) = channel.take();
 
-        //Empty the
+        //Empty the regular channel
         loop {
             match receiver.try_recv() {
                 Ok(EventOrStopThread::Event(())) => {}
                 Ok(EventOrStopThread::StopThread) => {
-                    sender.send_stop_thread().unwrap();
+                    send_stop_thread(&sender);
                 }
                 Err(TryRecvError::Empty) => {
                     break;
                 }
                 Err(TryRecvError::Disconnected) => {
-                    sender.send_stop_thread().unwrap();
+                    send_stop_thread(&sender);
                 }
             }
         }
@@ -169,17 +170,26 @@ impl FactoryTrait for SingleThreadedFactory {
             match receiver.borrow_mut().try_recv() {
                 Ok(EventOrStopThread::Event(())) => {}
                 Ok(EventOrStopThread::StopThread) => {
-                    sender_clone.send_stop_thread().unwrap();
+                    send_stop_thread(&sender_clone);
                 }
                 Err(TryRecvError::Empty) => {
                     panic!("on_send was called when there is nothing in the channel")
                 }
                 Err(TryRecvError::Disconnected) => {
-                    sender_clone.send_stop_thread().unwrap();
+                    send_stop_thread(&sender_clone);
                 }
             }
         });
 
         return Ok(sender_to_return);
     }
+}
+
+fn send_stop_thread<T: Send>(sender: &SingleThreadedSender<EventOrStopThread<T>>) {
+    match sender.send_stop_thread() {
+        Ok(()) => {}
+        Err(e) => {
+            warn!("SendError {:?}", e);
+        }
+    };
 }
