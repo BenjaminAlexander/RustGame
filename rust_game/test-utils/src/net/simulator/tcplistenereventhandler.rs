@@ -1,15 +1,14 @@
 use std::ops::ControlFlow::{Break, Continue};
 use commons::net::TcpConnectionHandlerTrait;
-use commons::threading::{AsyncJoin, ThreadBuilder};
 use commons::threading::channel::ReceiveMetaData;
 use commons::threading::eventhandling::{ChannelEvent, ChannelEventResult, EventHandlerTrait};
 use commons::threading::eventhandling::WaitOrTryForNextEvent::{TryForNextEvent, WaitForNextEvent};
-use crate::net::{ChannelTcpReader, ChannelTcpWriter};
+use crate::net::ChannelTcpWriter;
 use crate::net::simulator::tcplistenereventhandler::TcpListenerEvent::Connection;
-use crate::singlethreaded::SingleThreadedFactory;
+use crate::singlethreaded::{SingleThreadedFactory, SingleThreadedReceiver};
 
 pub enum TcpListenerEvent {
-    Connection(ChannelTcpWriter, ChannelTcpReader)
+    Connection(ChannelTcpWriter, SingleThreadedReceiver<Vec<u8>>)
 }
 
 pub struct TcpListenerEventHandler<TcpConnectionHandler: TcpConnectionHandlerTrait<Factory=SingleThreadedFactory>> {
@@ -24,7 +23,7 @@ impl<TcpConnectionHandler: TcpConnectionHandlerTrait<Factory=SingleThreadedFacto
         }
     }
 
-    fn on_connection(mut self, writer: ChannelTcpWriter, reader: ChannelTcpReader) -> ChannelEventResult<Self> {
+    fn on_connection(mut self, writer: ChannelTcpWriter, reader: SingleThreadedReceiver<Vec<u8>>) -> ChannelEventResult<Self> {
         return match self.connection_handler.on_connection(writer, reader) {
             Continue(()) => Continue(TryForNextEvent(self)),
             Break(()) => Break(self.connection_handler)

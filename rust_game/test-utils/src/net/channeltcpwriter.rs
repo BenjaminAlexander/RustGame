@@ -8,16 +8,14 @@ use commons::threading::channel::SenderTrait;
 use crate::singlethreaded::SingleThreadedSender;
 
 pub struct ChannelTcpWriter {
-    local_addr: SocketAddr,
     peer_addr: SocketAddr,
     has_been_closed: bool,
     sender: SingleThreadedSender<Vec<u8>>
 }
 
 impl ChannelTcpWriter {
-    pub fn new(local_addr: SocketAddr, peer_addr: SocketAddr, sender: SingleThreadedSender<Vec<u8>>) -> Self {
+    pub fn new(peer_addr: SocketAddr, sender: SingleThreadedSender<Vec<u8>>) -> Self {
         return Self {
-            local_addr,
             peer_addr,
             has_been_closed: false,
             sender

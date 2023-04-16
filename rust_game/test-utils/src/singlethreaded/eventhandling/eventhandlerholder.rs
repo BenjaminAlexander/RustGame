@@ -1,13 +1,12 @@
-use std::collections::VecDeque;
 use std::ops::ControlFlow::{Break, Continue};
 use std::sync::{Arc, Mutex};
 use log::trace;
 use commons::threading::{AsyncJoin, AsyncJoinCallBackTrait, ThreadBuilder};
-use commons::threading::channel::{Channel, ChannelThreadBuilder, ReceiveMetaData, Receiver, TryRecvError};
+use commons::threading::channel::{Channel, ChannelThreadBuilder, ReceiveMetaData};
 use commons::threading::eventhandling::{ChannelEvent, EventHandlerTrait, EventOrStopThread, Sender, WaitOrTryForNextEvent};
 use commons::threading::eventhandling::ChannelEvent::{ChannelDisconnected, ChannelEmpty, ReceivedEvent, Timeout};
 use commons::time::TimeDuration;
-use crate::singlethreaded::SingleThreadedFactory;
+use crate::singlethreaded::{ReceiveOrDisconnected, ReceiverLink, SingleThreadedFactory};
 
 pub struct EventHandlerHolder<T: EventHandlerTrait, U: AsyncJoinCallBackTrait<SingleThreadedFactory, T::ThreadReturn>> {
     internal: Arc<Mutex<Option<EventHandlerHolderInternal<T, U>>>>,
@@ -15,7 +14,7 @@ pub struct EventHandlerHolder<T: EventHandlerTrait, U: AsyncJoinCallBackTrait<Si
 }
 
 struct EventHandlerHolderInternal<T: EventHandlerTrait, U: AsyncJoinCallBackTrait<SingleThreadedFactory, T::ThreadReturn>> {
-    receiver: Receiver<SingleThreadedFactory, EventOrStopThread<T::Event>>,
+    receiver_link: ReceiverLink<EventOrStopThread<T::Event>>,
     event_handler: T,
     join_call_back: U,
     thread_builder: ThreadBuilder<SingleThreadedFactory>,
@@ -58,93 +57,49 @@ impl<T: EventHandlerTrait, U: AsyncJoinCallBackTrait<SingleThreadedFactory, T::T
         event_handler: T,
         join_call_back: U) -> Sender<SingleThreadedFactory, T::Event> {
 
-        let (sender, mut receiver) = channel.take();
+        let (sender, receiver) = channel.take();
 
-        //Empty the channel
-        let mut events = VecDeque::<(ReceiveMetaData, EventOrStopThread<T::Event>)>::new();
+        let holder = Self {
+            internal: Arc::new(Mutex::new(None)),
+            factory: factory.clone()
+        };
 
-        let try_recv_error;
-        loop {
-            match receiver.try_recv_meta_data() {
-                Ok(received) => events.push_back(received),
-                Err(error) => {
-                    try_recv_error = error;
-                    break
+        let holder_clone = holder.clone();
+        let receiver_link = receiver.to_consumer(move |receive_or_disconnect|{
+
+            let holder_clone_clone = holder_clone.clone();
+
+            factory.get_time_queue().add_event_now(move || {
+                match receive_or_disconnect {
+                    ReceiveOrDisconnected::Receive(receive_meta_data, event_or_stop) => {
+                        holder_clone_clone.do_if_present(|internal| {
+                            return internal.on_receive(&holder_clone_clone, receive_meta_data, event_or_stop);
+                        });
+                    }
+                    ReceiveOrDisconnected::Disconnected => {
+                        holder_clone_clone.do_if_present(|internal| {
+                            return internal.on_channel_event(&holder_clone_clone, ChannelDisconnected);
+                        });
+                    }
                 }
-            }
-        }
+            });
 
+            return Ok(());
+        });
 
-        let internal = EventHandlerHolderInternal {
-            receiver,
+        let mut internal = EventHandlerHolderInternal {
+            receiver_link,
             event_handler,
             join_call_back,
             thread_builder,
             pending_channel_event: None
         };
 
-        let holder = Self {
-            internal: Arc::new(Mutex::new(Some(internal))),
-            factory: factory.clone()
-        };
+        internal.schedule_channel_empty(&holder);
 
-        loop {
-            match events.pop_front() {
-                None => break,
-                Some((receive_meta_data, event_or_stop)) => {
-
-                    let holder_clone = holder.clone();
-
-                    //TODO: maybe keep track of these events and remove them if it joins
-                    factory.get_time_queue().add_event_now(move ||{
-                        holder_clone.do_if_present(|internal|{
-                            return internal.on_receive(&holder_clone, receive_meta_data, event_or_stop);
-                        });
-                    });
-
-                }
-            }
-        }
-
-        match try_recv_error {
-            TryRecvError::Empty => {
-                holder.schedule_channel_empty();
-            }
-            TryRecvError::Disconnected => {
-                let holder_clone = holder.clone();
-                //TODO: maybe keep track of these events and remove them if it joins
-                factory.get_time_queue().add_event_now(move||{
-                    holder_clone.do_if_present(|internal|{
-                        trace!("Executing ChannelDisconnected identified during spawn.");
-                        return internal.on_channel_event(&holder_clone, ChannelDisconnected);
-                    });
-                });
-            }
-        }
-
-
-        sender.set_on_send(move ||{
-
-            let holder_clone = holder.clone();
-            //TODO: maybe keep track of events in the TimeQueue and remove them when the handler joins
-            factory.get_time_queue().add_event_now(move || {
-                holder_clone.do_if_present(|mut internal| {
-                    internal.cancel_pending_event(&holder_clone);
-                    return internal.try_receive(&holder_clone);
-                });
-            });
-        });
+        *holder.internal.lock().unwrap() = Some(internal);
 
         return sender;
-    }
-
-    fn schedule_channel_empty(&self) {
-        trace!("Trying to schedule a ChannelEmpty");
-        self.do_if_present(|mut internal|{
-            internal.schedule_channel_empty(&self);
-            return Some(internal);
-        });
-        trace!("Done trying to schedule a ChannelEmpty");
     }
 
     fn do_if_present(&self, func: impl FnOnce(EventHandlerHolderInternal<T, U>) -> Option<EventHandlerHolderInternal<T, U>>) {
@@ -203,19 +158,6 @@ impl<T: EventHandlerTrait, U: AsyncJoinCallBackTrait<SingleThreadedFactory, T::T
         self.pending_channel_event = Some(event_id);
     }
 
-    fn try_receive(mut self, holder: &EventHandlerHolder<T, U>) -> Option<Self> {
-        match self.receiver.try_recv_meta_data() {
-            Ok((receive_meta_data, event_or_stop)) => {
-                return self.on_receive(holder, receive_meta_data, event_or_stop);
-            }
-            Err(TryRecvError::Empty) => panic!("on_send was called when there is nothing in the channel"),
-            Err(TryRecvError::Disconnected) => {
-                trace!("Channel Disconnected");
-                return self.on_channel_event(holder, ChannelDisconnected);
-            }
-        };
-    }
-
     fn on_receive(self, holder: &EventHandlerHolder<T, U>, receive_meta_data: ReceiveMetaData, event_or_stop: EventOrStopThread<T::Event>) -> Option<Self> {
         match event_or_stop {
             EventOrStopThread::Event(event) => {
@@ -224,6 +166,7 @@ impl<T: EventHandlerTrait, U: AsyncJoinCallBackTrait<SingleThreadedFactory, T::T
             }
             EventOrStopThread::StopThread => {
                 let result = self.event_handler.on_stop(receive_meta_data);
+                self.receiver_link.disconnect_receiver();
                 self.join_call_back.join(AsyncJoin::new(self.thread_builder, result));
                 return None;
             }
@@ -254,6 +197,7 @@ impl<T: EventHandlerTrait, U: AsyncJoinCallBackTrait<SingleThreadedFactory, T::T
             }
             Break(result) => {
                 trace!("Join");
+                self.receiver_link.disconnect_receiver();
                 self.join_call_back.join(AsyncJoin::new(self.thread_builder, result));
                 return None;
             }

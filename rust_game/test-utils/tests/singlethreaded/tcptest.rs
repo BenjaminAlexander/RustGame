@@ -8,8 +8,8 @@ use commons::logging::LoggingConfigBuilder;
 use commons::net::{TcpConnectionHandlerTrait, TcpReadHandlerTrait, TcpWriterTrait};
 use commons::threading::AsyncJoin;
 use commons::threading::eventhandling::{EventOrStopThread, EventSenderTrait};
-use test_utils::net::{ChannelTcpReader, ChannelTcpWriter, TcpReaderEventHandler};
-use test_utils::singlethreaded::{SingleThreadedFactory, SingleThreadedSender};
+use test_utils::net::ChannelTcpWriter;
+use test_utils::singlethreaded::{SingleThreadedFactory, SingleThreadedReceiver, SingleThreadedSender};
 
 const PORT: u16 = 1234;
 
@@ -99,7 +99,7 @@ struct ConnectionHandler {
 impl TcpConnectionHandlerTrait for ConnectionHandler {
     type Factory = SingleThreadedFactory;
 
-    fn on_connection(&mut self, tcp_sender: ChannelTcpWriter, tcp_receiver: ChannelTcpReader) -> ControlFlow<()> {
+    fn on_connection(&mut self, tcp_sender: ChannelTcpWriter, tcp_receiver: SingleThreadedReceiver<Vec<u8>>) -> ControlFlow<()> {
 
         info!("{:?} is handling a connection from {:?}", self.factory.get_host_simulator().get_ip_addr(), tcp_sender.get_peer_addr());
 

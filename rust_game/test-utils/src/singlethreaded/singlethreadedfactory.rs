@@ -1,17 +1,15 @@
-use std::cell::RefCell;
 use std::io::Error;
 use std::net::{IpAddr, Ipv4Addr, SocketAddr};
-use std::sync::{mpsc, Mutex};
-use log::warn;
+use std::sync::mpsc;
 use commons::factory::FactoryTrait;
 use commons::net::{TcpConnectionHandlerTrait, TcpReadHandlerTrait};
 use commons::threading::AsyncJoinCallBackTrait;
-use commons::threading::channel::{Channel, ChannelThreadBuilder, RealSender, Receiver, RecvError, SendMetaData, TryRecvError};
-use commons::threading::eventhandling::{EventHandlerTrait, EventOrStopThread, EventSenderTrait, Sender, SendResult};
+use commons::threading::channel::{Channel, ChannelThreadBuilder};
+use commons::threading::eventhandling::{EventHandlerTrait, EventOrStopThread, EventSenderTrait, Sender};
 use commons::time::TimeValue;
-use crate::net::{ChannelTcpReader, ChannelTcpWriter, HostSimulator, NetworkSimulator, TcpReaderEventHandler};
+use crate::net::{ChannelTcpWriter, HostSimulator, NetworkSimulator, TcpReaderEventHandler};
 use crate::singlethreaded::eventhandling::EventHandlerHolder;
-use crate::singlethreaded::{SingleThreadedSender, TimeQueue};
+use crate::singlethreaded::{ReceiveOrDisconnected, SingleThreadedReceiver, SingleThreadedSender, TimeQueue};
 use crate::time::SimulatedTimeSource;
 
 #[derive(Clone)]
@@ -32,7 +30,7 @@ impl SingleThreadedFactory {
 
         return Self {
             simulated_time_source,
-            host_simulator: NetworkSimulator::new(time_queue.clone()).new_host(IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1))),
+            host_simulator: NetworkSimulator::new().new_host(IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1))),
             time_queue,
         }
     }
@@ -59,18 +57,16 @@ impl SingleThreadedFactory {
 
 impl FactoryTrait for SingleThreadedFactory {
     type Sender<T: Send> = SingleThreadedSender<T>;
+    type Receiver<T: Send> = SingleThreadedReceiver<T>;
     type TcpWriter = ChannelTcpWriter;
-    type TcpReader = ChannelTcpReader;
+    type TcpReader = SingleThreadedReceiver<Vec<u8>>;
 
     fn now(&self) -> TimeValue {
         return self.simulated_time_source.now();
     }
 
     fn new_channel<T: Send>(&self) -> Channel<Self, T> {
-        let (sender, receiver) = mpsc::channel::<(SendMetaData, T)>();
-        let sender = RealSender::new(self.clone(), sender);
-        let sender = SingleThreadedSender::new(sender);
-        let receiver = Receiver::new(self.clone(), receiver);
+        let (sender, receiver) = SingleThreadedReceiver::new(self.clone());
         return Channel::new(sender, receiver);
     }
 
@@ -115,81 +111,41 @@ impl FactoryTrait for SingleThreadedFactory {
 
         let sender = thread_builder.spawn_event_handler(tcp_reader_event_handler, join_call_back).unwrap();
 
-        let (tcp_writer, mut tcp_reader) = tcp_reader.take();
-
-        //Empty the tcp channel
-        loop {
-            match tcp_reader.try_recv() {
-                Ok(buf) => {
-                    sender.send_event(buf).unwrap();
-                }
-                Err(TryRecvError::Empty) => {
-                    break;
-                }
-                Err(TryRecvError::Disconnected) => {
-                    send_stop_thread(&sender);
-                }
-            }
-        }
-
         let sender_clone = sender.clone();
-        let tcp_reader = RefCell::new(tcp_reader);
-        tcp_writer.set_on_send(move ||{
+        tcp_reader.to_consumer(move |receive_or_disconnect|{
 
-            match tcp_reader.borrow_mut().try_recv() {
-                Ok(buf) => sender_clone.send_event(buf).unwrap(),
-                Err(TryRecvError::Disconnected) => send_stop_thread(&sender_clone),
-                Err(TryRecvError::Empty) => {
-                    panic!("on_send was called when there is nothing in the channel (tcp_writer)")
+            let result = match receive_or_disconnect {
+                ReceiveOrDisconnected::Receive(_, buf) => sender_clone.send_event(buf),
+                ReceiveOrDisconnected::Disconnected => sender_clone.send_stop_thread()
+            };
+
+            return match result {
+                Ok(()) => Ok(()),
+                Err(send_error) => {
+                    match send_error.0.1 {
+                        EventOrStopThread::Event(buf) => Err(mpsc::SendError((send_error.0.0, buf))),
+                        EventOrStopThread::StopThread => Ok(())
+                    }
                 }
-            }
-
+            };
         });
 
-        let (sender_to_return, mut receiver) = channel.take();
+        let (sender_to_return, receiver) = channel.take();
 
-        //Empty the regular channel
-        loop {
-            match receiver.try_recv() {
-                Ok(EventOrStopThread::Event(())) => {}
-                Ok(EventOrStopThread::StopThread) => {
-                    send_stop_thread(&sender);
-                }
-                Err(TryRecvError::Empty) => {
-                    break;
-                }
-                Err(TryRecvError::Disconnected) => {
-                    send_stop_thread(&sender);
-                }
-            }
-        }
+        receiver.to_consumer(move |receive_or_disconnect|{
 
-        let receiver = RefCell::new(receiver);
-        let sender_clone = sender.clone();
-        sender_to_return.set_on_send(move ||{
-            match receiver.borrow_mut().try_recv() {
-                Ok(EventOrStopThread::Event(())) => {}
-                Ok(EventOrStopThread::StopThread) => {
-                    send_stop_thread(&sender_clone);
-                }
-                Err(TryRecvError::Empty) => {
-                    panic!("on_send was called when there is nothing in the channel")
-                }
-                Err(TryRecvError::Disconnected) => {
-                    send_stop_thread(&sender_clone);
-                }
-            }
+            let result = match receive_or_disconnect {
+                ReceiveOrDisconnected::Receive(_, EventOrStopThread::Event(())) => Ok(()),
+                ReceiveOrDisconnected::Receive(_, EventOrStopThread::StopThread) => sender.send_stop_thread(),
+                ReceiveOrDisconnected::Disconnected => sender.send_stop_thread()
+            };
+
+            return match result {
+                Ok(()) => Ok(()),
+                Err(send_error) => Err(mpsc::SendError((send_error.0.0, EventOrStopThread::StopThread)))
+            };
         });
 
         return Ok(sender_to_return);
     }
-}
-
-fn send_stop_thread<T: Send>(sender: &SingleThreadedSender<EventOrStopThread<T>>) {
-    match sender.send_stop_thread() {
-        Ok(()) => {}
-        Err(e) => {
-            warn!("SendError {:?}", e);
-        }
-    };
 }

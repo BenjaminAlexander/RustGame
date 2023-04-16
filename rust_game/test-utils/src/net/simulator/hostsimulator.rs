@@ -1,8 +1,8 @@
 use std::io::Error;
 use std::net::{IpAddr, SocketAddr};
 use std::sync::{Arc, Mutex};
-use crate::net::{ChannelTcpReader, ChannelTcpWriter, NetworkSimulator};
-use crate::singlethreaded::SingleThreadedFactory;
+use crate::net::{ChannelTcpWriter, NetworkSimulator};
+use crate::singlethreaded::{SingleThreadedFactory, SingleThreadedReceiver};
 
 #[derive(Clone)]
 pub struct HostSimulator {
@@ -28,7 +28,7 @@ impl HostSimulator {
         return &self.network_simulator;
     }
 
-    pub fn connect_tcp(&self, factory: &SingleThreadedFactory, server_socket_addr: SocketAddr) -> Result<(ChannelTcpWriter, ChannelTcpReader), Error> {
+    pub fn connect_tcp(&self, factory: &SingleThreadedFactory, server_socket_addr: SocketAddr) -> Result<(ChannelTcpWriter, SingleThreadedReceiver<Vec<u8>>), Error> {
 
         let port;
         {

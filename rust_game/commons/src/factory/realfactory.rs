@@ -4,7 +4,7 @@ use std::sync::mpsc;
 use std::time::{SystemTime, UNIX_EPOCH};
 use crate::factory::FactoryTrait;
 use crate::net::{RealTcpStream, TcpConnectionHandlerTrait, TcpListenerEventHandler, TcpReaderEventHandler, TcpReadHandlerTrait};
-use crate::threading::channel::{Channel, ChannelThreadBuilder, RealSender, Receiver, SendMetaData};
+use crate::threading::channel::{Channel, ChannelThreadBuilder, RealSender, RealReceiver, SendMetaData};
 use crate::threading::eventhandling::{EventHandlerThread, EventHandlerTrait, EventOrStopThread, Sender};
 use crate::threading::{AsyncJoinCallBackTrait, channel};
 use crate::time::TimeValue;
@@ -22,6 +22,7 @@ impl RealFactory {
 
 impl FactoryTrait for RealFactory {
     type Sender<T: Send> = RealSender<Self, T>;
+    type Receiver<T: Send> = RealReceiver<Self, T>;
     type TcpWriter = RealTcpStream;
     type TcpReader = RealTcpStream;
 
@@ -32,7 +33,7 @@ impl FactoryTrait for RealFactory {
     fn new_channel<T: Send>(&self) -> Channel<Self, T> {
         let (sender, receiver) = mpsc::channel::<(SendMetaData, T)>();
         let sender = RealSender::new(self.clone(), sender);
-        let receiver = Receiver::new(self.clone(), receiver);
+        let receiver = RealReceiver::new(self.clone(), receiver);
         return Channel::new(sender, receiver);
     }
 

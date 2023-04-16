@@ -1,7 +1,5 @@
 use std::io::Cursor;
-use std::ops::ControlFlow;
 use std::ops::ControlFlow::{Break, Continue};
-use rmp_serde::decode::Error;
 use commons::net::TcpReadHandlerTrait;
 use commons::threading::channel::ReceiveMetaData;
 use commons::threading::eventhandling::{ChannelEvent, ChannelEventResult, EventHandlerTrait};
@@ -34,7 +32,7 @@ impl<T: TcpReadHandlerTrait> EventHandlerTrait for TcpReaderEventHandler<T> {
     type Event = Vec<u8>;
     type ThreadReturn = T;
 
-    fn on_channel_event(mut self, channel_event: ChannelEvent<Self::Event>) -> ChannelEventResult<Self> {
+    fn on_channel_event(self, channel_event: ChannelEvent<Self::Event>) -> ChannelEventResult<Self> {
         match channel_event {
             ChannelEvent::ReceivedEvent(_, buf) => self.read(buf),
             ChannelEvent::Timeout => Continue(TryForNextEvent(self)),

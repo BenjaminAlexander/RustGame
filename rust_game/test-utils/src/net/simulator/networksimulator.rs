@@ -1,23 +1,21 @@
-use std::cell::RefCell;
 use std::collections::HashMap;
 use std::io::{Error, ErrorKind};
 use std::net::{IpAddr, SocketAddr};
-use std::sync::{Arc, Mutex};
-use log::{info, trace};
+use std::sync::{Arc, mpsc, Mutex};
+use log::info;
 use commons::factory::FactoryTrait;
 use commons::net::TcpConnectionHandlerTrait;
 use commons::threading::AsyncJoinCallBackTrait;
-use commons::threading::channel::{ChannelThreadBuilder, TryRecvError};
+use commons::threading::channel::ChannelThreadBuilder;
 use commons::threading::eventhandling::{EventOrStopThread, EventSenderTrait, Sender};
-use crate::net::{ChannelTcpReader, ChannelTcpWriter};
+use crate::net::ChannelTcpWriter;
 use crate::net::simulator::hostsimulator::HostSimulator;
 use crate::net::simulator::tcplistenereventhandler::{TcpListenerEvent, TcpListenerEventHandler};
-use crate::singlethreaded::{SingleThreadedFactory, TimeQueue};
+use crate::singlethreaded::{ReceiveOrDisconnected, SingleThreadedFactory, SingleThreadedReceiver};
 
 #[derive(Clone)]
 pub struct NetworkSimulator {
-    internal: Arc<Mutex<Internal>>,
-    time_queue: TimeQueue
+    internal: Arc<Mutex<Internal>>
 }
 
 struct Internal {
@@ -25,15 +23,14 @@ struct Internal {
 }
 
 impl NetworkSimulator {
-    pub fn new(time_queue: TimeQueue) -> Self {
+    pub fn new() -> Self {
 
         let internal = Internal {
             tcp_listeners: HashMap::new()
         };
 
         return Self {
-            internal: Arc::new(Mutex::new(internal)),
-            time_queue
+            internal: Arc::new(Mutex::new(internal))
         }
     }
 
@@ -41,13 +38,12 @@ impl NetworkSimulator {
         return HostSimulator::new(self.clone(), ip_addr);
     }
 
-    fn new_tcp_channel(factory: &SingleThreadedFactory, src_socket_addr: SocketAddr, dest_socket_addr: SocketAddr) -> (ChannelTcpWriter, ChannelTcpReader) {
+    fn new_tcp_channel(factory: &SingleThreadedFactory, dest_socket_addr: SocketAddr) -> (ChannelTcpWriter, SingleThreadedReceiver<Vec<u8>>) {
 
         //TODO: make this an EventOrStop so it can be used for an event handler
         //TODO: or, even better, make a channel thread builder and stash it in the reader
-        let (sender, receiver) = factory.new_channel::<Vec<u8>>().take();
-        let reader = ChannelTcpReader::new(sender.clone(), receiver);
-        let writer = ChannelTcpWriter::new(src_socket_addr, dest_socket_addr, sender);
+        let (sender, reader) = factory.new_channel::<Vec<u8>>().take();
+        let writer = ChannelTcpWriter::new(dest_socket_addr, sender);
         return (writer, reader);
     }
 
@@ -73,44 +69,21 @@ impl NetworkSimulator {
 
         let sender = thread_builder.spawn_event_handler(tcp_listener_event_handler, join_call_back).unwrap();
 
-        let (sender_to_return, mut receiver) = channel.take();
+        let (sender_to_return, receiver) = channel.take();
 
-        loop {
-            match receiver.try_recv() {
-                Ok(EventOrStopThread::Event(())) => {}
-                Ok(EventOrStopThread::StopThread) => {
-                    sender.send_stop_thread().unwrap();
-                }
-                Err(TryRecvError::Empty) => {
-                    break;
-                }
-                Err(TryRecvError::Disconnected) => {
-                    sender.send_stop_thread().unwrap();
-                }
-            }
-        }
-
-        let receiver = Arc::new(Mutex::new(receiver));
         let sender_clone = sender.clone();
-        let time_queue_clone = self.time_queue.clone();
-        sender_to_return.set_on_send(move ||{
-            trace!("TcpListener Sender On Send");
-            let receiver_clone = receiver.clone();
-            let sender_clone_clone = sender_clone.clone();
-            time_queue_clone.add_event_now(move || {
-                match receiver_clone.lock().unwrap().try_recv() {
-                    Ok(EventOrStopThread::Event(())) => {}
-                    Ok(EventOrStopThread::StopThread) => {
-                        sender_clone_clone.send_stop_thread().unwrap();
-                    }
-                    Err(TryRecvError::Empty) => {
-                        panic!("on_send was called when there is nothing in the channel")
-                    }
-                    Err(TryRecvError::Disconnected) => {
-                        sender_clone_clone.send_stop_thread().unwrap();
-                    }
-                }
-            });
+        receiver.to_consumer(move |receive_or_disconnect|{
+
+            let result = match receive_or_disconnect {
+                ReceiveOrDisconnected::Receive(_, EventOrStopThread::Event(())) => Ok(()),
+                ReceiveOrDisconnected::Receive(_, EventOrStopThread::StopThread) => sender_clone.send_stop_thread(),
+                ReceiveOrDisconnected::Disconnected => sender_clone.send_stop_thread()
+            };
+
+            return match result {
+                Ok(()) => Ok(()),
+                Err(send_error) => Err(mpsc::SendError((send_error.0.0, EventOrStopThread::StopThread)))
+            };
         });
 
         guard.tcp_listeners.insert(socket_adder, sender);
@@ -118,15 +91,15 @@ impl NetworkSimulator {
         return Ok(sender_to_return);
     }
 
-    pub fn connect_tcp(&self, factory: &SingleThreadedFactory, client_socket_addr: SocketAddr, server_socket_addr: SocketAddr) -> Result<(ChannelTcpWriter, ChannelTcpReader), Error> {
+    pub fn connect_tcp(&self, factory: &SingleThreadedFactory, client_socket_addr: SocketAddr, server_socket_addr: SocketAddr) -> Result<(ChannelTcpWriter, SingleThreadedReceiver<Vec<u8>>), Error> {
 
-        let mut guard = self.internal.lock().unwrap();
+        let guard = self.internal.lock().unwrap();
 
         if let Some(sender) = guard.tcp_listeners.get(&server_socket_addr) {
 
 
-            let (write_server_to_client, read_server_to_client) = Self::new_tcp_channel(factory, server_socket_addr, client_socket_addr);
-            let (write_client_to_server, read_client_to_server) = Self::new_tcp_channel(factory, client_socket_addr, server_socket_addr);
+            let (write_server_to_client, read_server_to_client) = Self::new_tcp_channel(factory, client_socket_addr);
+            let (write_client_to_server, read_client_to_server) = Self::new_tcp_channel(factory, server_socket_addr);
 
             sender.send_event(TcpListenerEvent::Connection(write_server_to_client, read_client_to_server)).unwrap();
 

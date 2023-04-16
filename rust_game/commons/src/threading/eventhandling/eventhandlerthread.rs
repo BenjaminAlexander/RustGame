@@ -2,14 +2,14 @@ use std::ops::ControlFlow::{Break, Continue};
 use log::info;
 use crate::factory::FactoryTrait;
 use crate::threading;
-use crate::threading::channel::{TryRecvError, Receiver, ReceiveMetaData, RecvTimeoutError};
+use crate::threading::channel::{TryRecvError, RealReceiver, ReceiveMetaData, RecvTimeoutError, ReceiverTrait};
 use crate::threading::eventhandling::{ChannelEventResult, EventHandlerTrait, EventOrStopThread};
 use crate::threading::eventhandling::EventOrStopThread::{Event, StopThread};
 use crate::threading::eventhandling::ChannelEvent::{ChannelDisconnected, ChannelEmpty, ReceivedEvent, Timeout};
 use crate::threading::eventhandling::WaitOrTryForNextEvent::{TryForNextEvent, WaitForNextEvent, WaitForNextEventOrTimeout};
 use crate::time::TimeDuration;
 
-type EventReceiver<Factory, T> = Receiver<Factory, EventOrStopThread<T>>;
+type EventReceiver<Factory, T> = RealReceiver<Factory, EventOrStopThread<T>>;
 
 pub struct EventHandlerThread<Factory: FactoryTrait, T: EventHandlerTrait> {
     receiver: EventReceiver<Factory, T::Event>,

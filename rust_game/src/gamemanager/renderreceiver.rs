@@ -5,7 +5,7 @@ use crate::interface::{InterpolationArg, GameTrait};
 use crate::gamemanager::stepmessage::StepMessage;
 use crate::gametime::TimeMessage;
 use crate::messaging::InitialInformation;
-use commons::threading::channel::{TryRecvError, Receiver};
+use commons::threading::channel::{TryRecvError, ReceiverTrait};
 
 pub enum RenderReceiverMessage<Game: GameTrait> {
     InitialInformation(InitialInformation<Game>),
@@ -17,7 +17,7 @@ pub enum RenderReceiverMessage<Game: GameTrait> {
 //TODO: make the difference between the render receiver and the Data more clear
 pub struct RenderReceiver<Factory: FactoryTrait, Game: GameTrait> {
     factory: Factory,
-    receiver: Receiver<Factory, RenderReceiverMessage<Game>>,
+    receiver: Factory::Receiver<RenderReceiverMessage<Game>>,
     data: Data<Factory, Game>
 }
 
