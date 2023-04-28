@@ -1,8 +1,10 @@
 use log::{info, error};
-use crate::interface::GameTrait;
-use std::net::{UdpSocket, SocketAddrV4};
+use crate::interface::{GameFactoryTrait, GameTrait, UdpSocket};
+use std::net::{SocketAddr, SocketAddrV4};
 use crate::messaging::{InputMessage, ToServerMessageUDP, InitialInformation, MAX_UDP_DATAGRAM_SIZE, Fragmenter};
 use std::ops::ControlFlow::{Continue, Break};
+use commons::factory::FactoryTrait;
+use commons::net::UdpSocketTrait;
 use commons::threading::channel::ReceiveMetaData;
 use commons::threading::eventhandling::{ChannelEvent, ChannelEventResult, EventHandlerTrait};
 use commons::threading::eventhandling::WaitOrTryForNextEvent::{TryForNextEvent, WaitForNextEvent};
@@ -12,23 +14,23 @@ pub enum UdpOutputEvent<Game: GameTrait> {
     InputMessageEvent(InputMessage<Game>)
 }
 
-pub struct UdpOutput<Game: GameTrait> {
-    server_address: SocketAddrV4,
-    socket: UdpSocket,
+pub struct UdpOutput<GameFactory: GameFactoryTrait> {
+    server_address: SocketAddr,
+    socket: UdpSocket<GameFactory>,
     fragmenter: Fragmenter,
-    input_queue: Vec<InputMessage<Game>>,
+    input_queue: Vec<InputMessage<GameFactory::Game>>,
     max_observed_input_queue: usize,
-    initial_information: InitialInformation<Game>
+    initial_information: InitialInformation<GameFactory::Game>
 }
 
-impl<Game: GameTrait> UdpOutput<Game> {
+impl<GameFactory: GameFactoryTrait> UdpOutput<GameFactory> {
 
-    pub fn new(server_socket_addr_v4: SocketAddrV4,
-               socket: UdpSocket,
-               initial_information: InitialInformation<Game>) -> Self {
+    pub fn new(server_address: SocketAddr,
+               socket: UdpSocket<GameFactory>,
+               initial_information: InitialInformation<GameFactory::Game>) -> Self {
 
         let mut udp_output = Self {
-            server_address: server_socket_addr_v4,
+            server_address,
             socket,
             //TODO: make max datagram size more configurable
             fragmenter: Fragmenter::new(MAX_UDP_DATAGRAM_SIZE),
@@ -37,13 +39,13 @@ impl<Game: GameTrait> UdpOutput<Game> {
             initial_information
         };
 
-        let message = ToServerMessageUDP::<Game>::Hello{player_index: udp_output.initial_information.get_player_index()};
+        let message = ToServerMessageUDP::<GameFactory::Game>::Hello{player_index: udp_output.initial_information.get_player_index()};
         udp_output.send_message(message);
 
         return udp_output;
     }
 
-    pub fn on_input_message(&mut self, input_message: InputMessage<Game>) {
+    pub fn on_input_message(&mut self, input_message: InputMessage<GameFactory::Game>) {
         //insert in reverse sorted order
         match self.input_queue.binary_search_by(|elem| { input_message.cmp(elem) }) {
             Ok(pos) => self.input_queue[pos] = input_message,
@@ -63,14 +65,14 @@ impl<Game: GameTrait> UdpOutput<Game> {
             match self.input_queue.pop() {
                 None => send_another_message = false,
                 Some(input_to_send) => {
-                    let message = ToServerMessageUDP::<Game>::Input(input_to_send);
+                    let message = ToServerMessageUDP::<GameFactory::Game>::Input(input_to_send);
                     self.send_message(message);
                 }
             }
         }
     }
 
-    fn send_message(&mut self, message: ToServerMessageUDP<Game>) {
+    fn send_message(&mut self, message: ToServerMessageUDP<GameFactory::Game>) {
 
         let buf = rmp_serde::to_vec(&message).unwrap();
         let fragments = self.fragmenter.make_fragments(buf);
@@ -86,8 +88,8 @@ impl<Game: GameTrait> UdpOutput<Game> {
     }
 }
 
-impl<Game: GameTrait> EventHandlerTrait for UdpOutput<Game> {
-    type Event = UdpOutputEvent<Game>;
+impl<GameFactory: GameFactoryTrait> EventHandlerTrait for UdpOutput<GameFactory> {
+    type Event = UdpOutputEvent<GameFactory::Game>;
     type ThreadReturn = ();
 
     fn on_channel_event(mut self, channel_event: ChannelEvent<Self::Event>) -> ChannelEventResult<Self> {

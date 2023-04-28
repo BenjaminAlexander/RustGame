@@ -2,7 +2,7 @@ use std::io::Error;
 use std::net::{IpAddr, Ipv4Addr, SocketAddr};
 use std::sync::mpsc;
 use commons::factory::FactoryTrait;
-use commons::net::{TcpConnectionHandlerTrait, TcpReadHandlerTrait};
+use commons::net::{RealUdpSocket, TcpConnectionHandlerTrait, TcpReadHandlerTrait, UdpReadHandlerTrait};
 use commons::threading::AsyncJoinCallBackTrait;
 use commons::threading::channel::{Channel, ChannelThreadBuilder};
 use commons::threading::eventhandling::{EventHandlerTrait, EventOrStopThread, EventSenderTrait, Sender};
@@ -56,10 +56,15 @@ impl SingleThreadedFactory {
 }
 
 impl FactoryTrait for SingleThreadedFactory {
+
     type Sender<T: Send> = SingleThreadedSender<T>;
     type Receiver<T: Send> = SingleThreadedReceiver<T>;
+
     type TcpWriter = ChannelTcpWriter;
     type TcpReader = SingleThreadedReceiver<Vec<u8>>;
+
+    //TODO: replace this
+    type UdpSocket = RealUdpSocket;
 
     fn now(&self) -> TimeValue {
         return self.simulated_time_source.now();
@@ -147,5 +152,13 @@ impl FactoryTrait for SingleThreadedFactory {
         });
 
         return Ok(sender_to_return);
+    }
+
+    fn bind_udp_socket(&self, socket_addr: SocketAddr) -> Result<Self::UdpSocket, Error> {
+        todo!()
+    }
+
+    fn spawn_udp_reader<T: UdpReadHandlerTrait>(&self, thread_builder: ChannelThreadBuilder<Self, EventOrStopThread<()>>, udp_socket: Self::UdpSocket, udp_read_handler: T, join_call_back: impl AsyncJoinCallBackTrait<Self, T>) -> Result<Sender<Self, ()>, Error> {
+        todo!()
     }
 }

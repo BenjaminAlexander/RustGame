@@ -3,7 +3,7 @@ use std::net::{SocketAddr, TcpListener, TcpStream};
 use std::sync::mpsc;
 use std::time::{SystemTime, UNIX_EPOCH};
 use crate::factory::FactoryTrait;
-use crate::net::{RealTcpStream, TcpConnectionHandlerTrait, TcpListenerEventHandler, TcpReaderEventHandler, TcpReadHandlerTrait};
+use crate::net::{RealTcpStream, RealUdpSocket, TcpConnectionHandlerTrait, TcpListenerEventHandler, TcpReaderEventHandler, TcpReadHandlerTrait, UdpReaderEventHandler, UdpReadHandlerTrait};
 use crate::threading::channel::{Channel, ChannelThreadBuilder, RealSender, RealReceiver, SendMetaData};
 use crate::threading::eventhandling::{EventHandlerThread, EventHandlerTrait, EventOrStopThread, Sender};
 use crate::threading::{AsyncJoinCallBackTrait, channel};
@@ -23,9 +23,12 @@ impl RealFactory {
 impl FactoryTrait for RealFactory {
     type Sender<T: Send> = RealSender<Self, T>;
     type Receiver<T: Send> = RealReceiver<Self, T>;
+
     type TcpWriter = RealTcpStream;
     type TcpReader = RealTcpStream;
 
+    type UdpSocket = RealUdpSocket;
+    
     fn now(&self) -> TimeValue {
         return TimeValue::from_seconds_since_epoch(SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs_f64());
     }
@@ -65,6 +68,15 @@ impl FactoryTrait for RealFactory {
 
     fn spawn_tcp_reader<T: TcpReadHandlerTrait>(&self, thread_builder: channel::ChannelThreadBuilder<Self, EventOrStopThread<()>>, tcp_reader: Self::TcpReader, tcp_read_handler: T, join_call_back: impl AsyncJoinCallBackTrait<Self, T>) -> Result<Sender<Self, ()>, Error> {
         let event_handler = TcpReaderEventHandler::new(tcp_reader, tcp_read_handler);
+        return thread_builder.spawn_event_handler(event_handler, join_call_back);
+    }
+
+    fn bind_udp_socket(&self, socket_addr: SocketAddr) -> Result<Self::UdpSocket, Error> {
+        return RealUdpSocket::bind(socket_addr);
+    }
+
+    fn spawn_udp_reader<T: UdpReadHandlerTrait>(&self, thread_builder: ChannelThreadBuilder<Self, EventOrStopThread<()>>, udp_socket: Self::UdpSocket, udp_read_handler: T, join_call_back: impl AsyncJoinCallBackTrait<Self, T>) -> Result<Sender<Self, ()>, Error> {
+        let event_handler = UdpReaderEventHandler::new(udp_socket, udp_read_handler);
         return thread_builder.spawn_event_handler(event_handler, join_call_back);
     }
 }
