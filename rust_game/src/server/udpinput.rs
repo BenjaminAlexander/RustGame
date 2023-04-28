@@ -5,7 +5,9 @@ use std::net::{UdpSocket, SocketAddr, IpAddr};
 use std::io;
 use crate::server::remoteudppeer::RemoteUdpPeer;
 use std::collections::{HashMap, HashSet};
+use std::ops::ControlFlow;
 use std::ops::ControlFlow::{Break, Continue};
+use commons::net::UdpReadHandlerTrait;
 use crate::server::clientaddress::ClientAddress;
 use crate::server::servercore::ServerCoreEvent;
 use commons::threading::channel::ReceiveMetaData;
@@ -134,6 +136,12 @@ impl<GameFactory: GameFactoryTrait> UdpInput<GameFactory> {
                 }
             }
         }
+    }
+}
+
+impl<Game: GameFactoryTrait> UdpReadHandlerTrait for UdpInput<Game> {
+    fn on_read(&mut self, peer_addr: SocketAddr, buff: &[u8]) -> ControlFlow<()> {
+        todo!()
     }
 }
 
