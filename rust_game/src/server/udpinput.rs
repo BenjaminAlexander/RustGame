@@ -1,5 +1,5 @@
 use log::{info, warn};
-use crate::messaging::{MAX_UDP_DATAGRAM_SIZE, ToServerMessageUDP, FragmentAssembler, MessageFragment};
+use crate::messaging::{ToServerMessageUDP, FragmentAssembler, MessageFragment};
 use crate::interface::GameFactoryTrait;
 use std::net::{UdpSocket, SocketAddr, IpAddr};
 use std::io;
@@ -7,20 +7,15 @@ use crate::server::remoteudppeer::RemoteUdpPeer;
 use std::collections::{HashMap, HashSet};
 use std::ops::ControlFlow;
 use std::ops::ControlFlow::{Break, Continue};
-use commons::net::UdpReadHandlerTrait;
+use commons::net::{MAX_UDP_DATAGRAM_SIZE, UdpReadHandlerTrait};
 use crate::server::clientaddress::ClientAddress;
 use crate::server::servercore::ServerCoreEvent;
-use commons::threading::channel::ReceiveMetaData;
+use commons::threading::channel::{ReceiveMetaData, SenderTrait};
 use commons::threading::eventhandling::{Sender, EventSenderTrait};
 use commons::threading::listener::{ChannelEvent, ListenerEventResult, ListenerTrait, ListenResult};
 use commons::threading::listener::ListenedOrDidNotListen::{DidNotListen, Listened};
 
 //TODO: timeout fragments or fragment assemblers
-
-#[derive(Debug)]
-pub enum UdpInputEvent {
-    ClientAddress(ClientAddress)
-}
 
 pub struct UdpInput<GameFactory: GameFactoryTrait> {
     factory: GameFactory::Factory,
@@ -52,90 +47,7 @@ impl<GameFactory: GameFactoryTrait> UdpInput<GameFactory> {
     }
 
     fn channel_empty_after_listen(&mut self, mut buf: [u8; MAX_UDP_DATAGRAM_SIZE], number_of_bytes: usize, source: SocketAddr) {
-        //TODO: check source against valid sources
-        let filled_buf = &mut buf[..number_of_bytes];
-
-        if !self.client_ip_set.contains(&source.ip()) {
-            warn!("Unexpected UDP packet received from {:?}", source);
-            return;
-        }
-
-        if let Some(assembled) = self.handle_fragment(source, filled_buf) {
-            match rmp_serde::from_read_ref(assembled.as_slice()) {
-                Ok(message) => {
-                    self.handle_message(message, source);
-                }
-                Err(error) => {
-
-                    //TODO: is removing the fragement assembler on error right?
-                    self.fragment_assemblers.remove(&source);
-                    warn!("Failed to deserialize a ToServerMessageUDP: {:?}", error);
-                }
-            }
-        }
-    }
-
-    fn handle_fragment(&mut self, source: SocketAddr, fragment: &mut [u8]) -> Option<Vec<u8>> {
-        let assembler = match self.fragment_assemblers.get_mut(&source) {
-            None => {
-                //TODO: make max_messages more configurable
-                self.fragment_assemblers.insert(source, FragmentAssembler::new(5));
-                self.fragment_assemblers.get_mut(&source).unwrap()
-            }
-            Some(assembler) => assembler
-        };
-
-        return assembler.add_fragment(&self.factory, MessageFragment::from_vec(fragment.to_vec()));
-    }
-
-    fn handle_message(&mut self, message: ToServerMessageUDP<GameFactory::Game>, source: SocketAddr) {
-
-        let player_index = message.get_player_index();
-
-        if self.client_addresses.len() <= player_index ||
-            self.client_addresses[player_index].is_none() ||
-            !self.client_addresses[player_index].as_ref().unwrap().get_ip_address().eq(&source.ip()) {
-
-            warn!("Received a message from an unexpected source. player_index: {:?}, source: {:?}",
-                  player_index, source.ip());
-            return;
-        }
-
-        self.handle_remote_peer(message.get_player_index(), source);
-
-        match message {
-            ToServerMessageUDP::Hello {player_index: _} => {
-
-            }
-            ToServerMessageUDP::Input(input_message) => {
-                self.core_sender.send_event(ServerCoreEvent::InputMessageEvent(input_message)).unwrap();
-            }
-        }
-    }
-
-    fn handle_remote_peer(&mut self, player_index: usize, remote_peer: SocketAddr) {
-        while self.remote_peers.len() <= player_index {
-            self.remote_peers.push(None);
-        }
-
-        let remote_peer = RemoteUdpPeer::new(player_index, remote_peer);
-
-        match &self.remote_peers[player_index] {
-            None => {
-                info!("First time UDP remote peer: {:?}", remote_peer);
-                self.core_sender.send_event(ServerCoreEvent::RemoteUdpPeerEvent(remote_peer.clone())).unwrap();
-                self.remote_peers[player_index] = Some(remote_peer);
-            }
-            Some(existing_remote_peer) => {
-                let existing_socket = existing_remote_peer.get_socket_addr();
-                if !existing_socket.eq(&remote_peer.get_socket_addr()) {
-                    info!("Change of UDP remote peer: {:?}", remote_peer);
-                    self.core_sender.send_event(ServerCoreEvent::RemoteUdpPeerEvent(remote_peer.clone())).unwrap();
-                    self.remote_peers[player_index] = Some(remote_peer);
-                    self.fragment_assemblers.remove(&existing_socket);
-                }
-            }
-        }
+        self.core_sender.send_event(ServerCoreEvent::UdpPacket(source, number_of_bytes, buf)).unwrap();
     }
 }
 
@@ -146,7 +58,7 @@ impl<Game: GameFactoryTrait> UdpReadHandlerTrait for UdpInput<Game> {
 }
 
 impl<Game: GameFactoryTrait> ListenerTrait for UdpInput<Game> {
-    type Event = UdpInputEvent;
+    type Event = ();
     type ThreadReturn = ();
     type ListenFor = ([u8; MAX_UDP_DATAGRAM_SIZE], usize, SocketAddr);
 
@@ -172,23 +84,8 @@ impl<Game: GameFactoryTrait> ListenerTrait for UdpInput<Game> {
                 self.channel_empty_after_listen(buf, number_of_bytes, source);
                 return Continue(self);
             }
-            ChannelEvent::ReceivedEvent(_, event) => {
-                match event {
-                    UdpInputEvent::ClientAddress(client_address) => {
-                        self.client_ip_set.insert(client_address.get_ip_address());
-
-                        let index = client_address.get_player_index();
-                        while self.client_addresses.len() <= index {
-                            self.client_addresses.push(None);
-                        }
-
-                        self.client_addresses[index] = Some(client_address);
-
-                        info!("Added Client: {:?}", self.client_addresses[index].as_ref().unwrap());
-
-                        return Continue(self);
-                    }
-                }
+            ChannelEvent::ReceivedEvent(_, ()) => {
+                return Continue(self);
             }
             ChannelEvent::ChannelDisconnected => Break(())
         }

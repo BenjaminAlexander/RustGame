@@ -21,7 +21,3 @@ mod messagefragment;
 mod fragmentassembler;
 mod fragmenter;
 mod serverinputmessage;
-
-//TODO: make this configurable
-//TODO: maybe remove?
-pub const MAX_UDP_DATAGRAM_SIZE: usize = 1000;

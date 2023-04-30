@@ -11,8 +11,8 @@ use crate::gamemanager::{Manager, ManagerEvent, RenderReceiverMessage};
 use crate::messaging::{InputMessage, InitialInformation};
 use std::str::FromStr;
 use commons::factory::FactoryTrait;
-use commons::net::TcpWriterTrait;
-use crate::server::udpinput::{UdpInput, UdpInputEvent};
+use commons::net::{MAX_UDP_DATAGRAM_SIZE, TcpWriterTrait};
+use crate::server::udpinput::UdpInput;
 use crate::server::udpoutput::{UdpOutput, UdpOutputEvent};
 use crate::server::clientaddress::ClientAddress;
 use crate::server::remoteudppeer::RemoteUdpPeer;
@@ -23,19 +23,19 @@ use commons::threading::AsyncJoin;
 use commons::threading::channel::{ReceiveMetaData, SenderTrait};
 use commons::threading::eventhandling::{ChannelEvent, ChannelEventResult, EventHandlerTrait, EventSenderTrait};
 use commons::threading::eventhandling::WaitOrTryForNextEvent::{TryForNextEvent, WaitForNextEvent};
-use self::ServerCoreEvent::{StartListenerEvent, RemoteUdpPeerEvent, StartGameEvent, TcpConnectionEvent, GameTimerTick, InputMessageEvent};
+use crate::server::ServerCoreEvent::UdpPacket;
+use crate::server::udphandler::UdpHandler;
+use self::ServerCoreEvent::{StartListenerEvent, StartGameEvent, TcpConnectionEvent, GameTimerTick};
 
 pub enum ServerCoreEvent<GameFactory: GameFactoryTrait> {
     //TODO: start listener before spawning event handler
     StartListenerEvent,
 
-    RemoteUdpPeerEvent(RemoteUdpPeer),
-
     //TODO: create render receiver sender before spawning event handler
     StartGameEvent(<GameFactory::Factory as FactoryTrait>::Sender<RenderReceiverMessage<GameFactory::Game>>),
     TcpConnectionEvent(TcpWriter<GameFactory>, TcpReader<GameFactory>),
     GameTimerTick,
-    InputMessageEvent(InputMessage<GameFactory::Game>)
+    UdpPacket(SocketAddr, usize, [u8; MAX_UDP_DATAGRAM_SIZE])
 }
 
 pub struct ServerCore<GameFactory: GameFactoryTrait> {
@@ -49,7 +49,8 @@ pub struct ServerCore<GameFactory: GameFactoryTrait> {
     tcp_outputs: Vec<eventhandling::Sender<GameFactory::Factory, TcpOutputEvent<GameFactory::Game>>>,
     udp_socket: Option<UdpSocket>,
     udp_outputs: Vec<eventhandling::Sender<GameFactory::Factory, UdpOutputEvent<GameFactory::Game>>>,
-    udp_input_sender_option: Option<eventhandling::Sender<GameFactory::Factory, UdpInputEvent>>,
+    udp_input_sender_option: Option<eventhandling::Sender<GameFactory::Factory, ()>>,
+    udp_handler: UdpHandler<GameFactory>,
     manager_sender_option: Option<eventhandling::Sender<GameFactory::Factory, ManagerEvent<GameFactory::Game>>>,
     render_receiver_sender: Option<<GameFactory::Factory as FactoryTrait>::Sender<RenderReceiverMessage<GameFactory::Game>>>,
     drop_steps_before: usize
@@ -62,11 +63,10 @@ impl<GameFactory: GameFactoryTrait> EventHandlerTrait for ServerCore<GameFactory
     fn on_channel_event(self, channel_event: ChannelEvent<Self::Event>) -> ChannelEventResult<Self> {
         match channel_event {
             ChannelEvent::ReceivedEvent(_, StartListenerEvent) => self.start_listener(),
-            ChannelEvent::ReceivedEvent(_, RemoteUdpPeerEvent(remote_udp_peer)) => self.on_remote_udp_peer(remote_udp_peer),
             ChannelEvent::ReceivedEvent(_, StartGameEvent(render_receiver_sender)) => self.start_game(render_receiver_sender),
             ChannelEvent::ReceivedEvent(_, TcpConnectionEvent(tcp_sender, tcp_receiver)) => self.on_tcp_connection(tcp_sender, tcp_receiver),
             ChannelEvent::ReceivedEvent(_, GameTimerTick) => self.on_game_timer_tick(),
-            ChannelEvent::ReceivedEvent(_, InputMessageEvent(input_message)) => self.on_input_message(input_message),
+            ChannelEvent::ReceivedEvent(_, UdpPacket(source, len, buf)) => self.on_udp_packet(source, len, buf),
             ChannelEvent::Timeout => Continue(WaitForNextEvent(self)),
             ChannelEvent::ChannelEmpty => Continue(WaitForNextEvent(self)),
             ChannelEvent::ChannelDisconnected => Break(()),
@@ -84,6 +84,8 @@ impl<GameFactory: GameFactoryTrait> ServerCore<GameFactory> {
             GameFactory::Game::STEP_PERIOD
         );
 
+        let udp_handler = UdpHandler::new(factory.clone());
+
         Self {
             factory,
             sender,
@@ -97,6 +99,7 @@ impl<GameFactory: GameFactoryTrait> ServerCore<GameFactory> {
             drop_steps_before: 0,
             udp_socket: None,
             udp_input_sender_option: None,
+            udp_handler,
             manager_sender_option: None,
             render_receiver_sender: None
         }
@@ -173,12 +176,10 @@ impl<GameFactory: GameFactoryTrait> ServerCore<GameFactory> {
         }
     }
 
-    fn on_remote_udp_peer(self, remote_udp_peer: RemoteUdpPeer) -> ChannelEventResult<Self> {
+    pub(super) fn on_remote_udp_peer(&self, remote_udp_peer: RemoteUdpPeer) {
         if let Some(udp_output_sender) = self.udp_outputs.get(remote_udp_peer.get_player_index()) {
             udp_output_sender.send_event(UdpOutputEvent::RemotePeer(remote_udp_peer)).unwrap();
         }
-
-        return Continue(TryForNextEvent(self));
     }
 
     fn start_game(mut self, render_receiver_sender: <GameFactory::Factory as FactoryTrait>::Sender<RenderReceiverMessage<GameFactory::Game>>) -> ChannelEventResult<Self> {
@@ -278,10 +279,7 @@ impl<GameFactory: GameFactoryTrait> ServerCore<GameFactory> {
                     AsyncJoin::log_async_join)
                 .unwrap();
 
-            self.udp_input_sender_option.as_ref()
-                .unwrap()
-                .send_event(UdpInputEvent::ClientAddress(client_address))
-                .unwrap();
+            self.udp_handler.on_client_address(client_address);
 
             let tcp_output_sender = self.factory.new_thread_builder()
                 .name("ServerTcpOutput")
@@ -296,6 +294,20 @@ impl<GameFactory: GameFactoryTrait> ServerCore<GameFactory> {
 
         } else {
             info!("TcpStream connected after the core has stated and will be dropped. {:?}", tcp_sender.get_peer_addr());
+        }
+
+        return Continue(TryForNextEvent(self));
+    }
+
+    fn on_udp_packet(mut self, source: SocketAddr, len: usize, buf: [u8; MAX_UDP_DATAGRAM_SIZE]) -> ChannelEventResult<Self> {
+        let (remote_peer, input_message) = self.udp_handler.on_udp_packet(len, buf, source);
+
+        if let Some(remote_peer) = remote_peer {
+            self.on_remote_udp_peer(remote_peer);
+        }
+
+        if let Some(input_message) = input_message {
+            self.on_input_message(input_message);
         }
 
         return Continue(TryForNextEvent(self));
@@ -333,7 +345,7 @@ impl<GameFactory: GameFactoryTrait> ServerCore<GameFactory> {
         return Continue(TryForNextEvent(self));
     }
 
-    fn on_input_message(self, input_message: InputMessage<GameFactory::Game>) -> ChannelEventResult<Self> {
+    pub(super) fn on_input_message(&self, input_message: InputMessage<GameFactory::Game>) {
 
         //TODO: is game started?
 
@@ -349,7 +361,5 @@ impl<GameFactory: GameFactoryTrait> ServerCore<GameFactory> {
                 udp_output.send_event(UdpOutputEvent::SendInputMessage(input_message.clone())).unwrap();
             }
         }
-
-        return Continue(TryForNextEvent(self));
     }
 }

@@ -16,6 +16,7 @@ pub use self::tcpreadhandlertrait::TcpReadHandlerTrait;
 pub use self::udpsockettrait::UdpSocketTrait;
 pub use self::udpreadhandlertrait::UdpReadHandlerTrait;
 pub use self::realudpsocket::RealUdpSocket;
+pub use self::udpreadereventhandler::MAX_UDP_DATAGRAM_SIZE;
 pub(crate) use self::tcplistenereventhandler::TcpListenerEventHandler;
 pub(crate) use self::tcpreadereventhandler::TcpReaderEventHandler;
 pub(crate) use self::udpreadereventhandler::UdpReaderEventHandler;
