@@ -2,12 +2,12 @@ use std::io::Error;
 use std::net::{IpAddr, Ipv4Addr, SocketAddr};
 use std::sync::mpsc;
 use commons::factory::FactoryTrait;
-use commons::net::{RealUdpSocket, TcpConnectionHandlerTrait, TcpReadHandlerTrait, UdpReadHandlerTrait};
+use commons::net::{TcpConnectionHandlerTrait, TcpReadHandlerTrait, UdpReadHandlerTrait};
 use commons::threading::AsyncJoinCallBackTrait;
 use commons::threading::channel::{Channel, ChannelThreadBuilder};
 use commons::threading::eventhandling::{EventHandlerTrait, EventOrStopThread, EventSenderTrait, Sender};
 use commons::time::TimeValue;
-use crate::net::{ChannelTcpWriter, HostSimulator, NetworkSimulator, TcpReaderEventHandler};
+use crate::net::{ChannelTcpWriter, HostSimulator, NetworkSimulator, TcpReaderEventHandler, UdpSocketSimulator};
 use crate::singlethreaded::eventhandling::EventHandlerHolder;
 use crate::singlethreaded::{ReceiveOrDisconnected, SingleThreadedReceiver, SingleThreadedSender, TimeQueue};
 use crate::time::SimulatedTimeSource;
@@ -63,8 +63,7 @@ impl FactoryTrait for SingleThreadedFactory {
     type TcpWriter = ChannelTcpWriter;
     type TcpReader = SingleThreadedReceiver<Vec<u8>>;
 
-    //TODO: replace this
-    type UdpSocket = RealUdpSocket;
+    type UdpSocket = UdpSocketSimulator;
 
     fn now(&self) -> TimeValue {
         return self.simulated_time_source.now();
@@ -75,7 +74,12 @@ impl FactoryTrait for SingleThreadedFactory {
         return Channel::new(sender, receiver);
     }
 
-    fn spawn_event_handler< U: EventHandlerTrait>(&self, thread_builder: ChannelThreadBuilder<Self, EventOrStopThread<U::Event>>, event_handler: U, join_call_back: impl AsyncJoinCallBackTrait<Self, U::ThreadReturn>) -> Result<Sender<Self, U::Event>, Error> {
+    fn spawn_event_handler< U: EventHandlerTrait>(
+        &self,
+        thread_builder: ChannelThreadBuilder<Self, EventOrStopThread<U::Event>>,
+        event_handler: U,
+        join_call_back: impl AsyncJoinCallBackTrait<Self, U::ThreadReturn>
+    ) -> Result<Sender<Self, U::Event>, Error> {
 
         return Ok(EventHandlerHolder::spawn_event_handler(
             self.clone(),
@@ -89,7 +93,8 @@ impl FactoryTrait for SingleThreadedFactory {
         thread_builder: ChannelThreadBuilder<Self, EventOrStopThread<()>>,
         socket_addr: SocketAddr,
         tcp_connection_handler: T,
-        join_call_back: impl AsyncJoinCallBackTrait<Self, T>) -> Result<Sender<Self, ()>, Error> {
+        join_call_back: impl AsyncJoinCallBackTrait<Self, T>
+    ) -> Result<Sender<Self, ()>, Error> {
 
         return self.host_simulator.get_network_simulator().spawn_tcp_listener(
             socket_addr,
@@ -108,7 +113,8 @@ impl FactoryTrait for SingleThreadedFactory {
         thread_builder: ChannelThreadBuilder<Self, EventOrStopThread<()>>,
         tcp_reader: Self::TcpReader,
         read_handler: T,
-        join_call_back: impl AsyncJoinCallBackTrait<Self, T>) -> Result<Sender<Self, ()>, Error> {
+        join_call_back: impl AsyncJoinCallBackTrait<Self, T>
+    ) -> Result<Sender<Self, ()>, Error> {
 
         let (thread_builder, channel) = thread_builder.take();
 
@@ -155,10 +161,22 @@ impl FactoryTrait for SingleThreadedFactory {
     }
 
     fn bind_udp_socket(&self, socket_addr: SocketAddr) -> Result<Self::UdpSocket, Error> {
-        todo!()
+        return self.host_simulator.bind_udp_socket(socket_addr);
     }
 
-    fn spawn_udp_reader<T: UdpReadHandlerTrait>(&self, thread_builder: ChannelThreadBuilder<Self, EventOrStopThread<()>>, udp_socket: Self::UdpSocket, udp_read_handler: T, join_call_back: impl AsyncJoinCallBackTrait<Self, T>) -> Result<Sender<Self, ()>, Error> {
-        todo!()
+    fn spawn_udp_reader<T: UdpReadHandlerTrait>(
+        &self,
+        thread_builder: ChannelThreadBuilder<Self, EventOrStopThread<()>>,
+        udp_socket: Self::UdpSocket,
+        udp_read_handler: T,
+        join_call_back: impl AsyncJoinCallBackTrait<Self, T>
+    ) -> Result<Sender<Self, ()>, Error> {
+
+        return self.host_simulator.get_network_simulator().spawn_udp_reader(
+            thread_builder,
+            udp_socket,
+            udp_read_handler,
+            join_call_back
+        );
     }
 }
