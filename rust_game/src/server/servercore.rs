@@ -1,7 +1,7 @@
-use std::net::{Ipv4Addr, SocketAddrV4, UdpSocket, SocketAddr};
+use std::net::{Ipv4Addr, SocketAddrV4, SocketAddr};
 use std::ops::ControlFlow::{Continue, Break};
 use log::{error, info};
-use crate::interface::{GameFactoryTrait, GameTrait, TcpReader, TcpWriter};
+use crate::interface::{GameFactoryTrait, GameTrait, TcpReader, TcpWriter, UdpSocket};
 use crate::server::tcpinput::TcpInput;
 use commons::threading::eventhandling;
 use crate::server::{TcpConnectionHandler, ServerConfig};
@@ -11,7 +11,7 @@ use crate::gamemanager::{Manager, ManagerEvent, RenderReceiverMessage};
 use crate::messaging::{InputMessage, InitialInformation};
 use std::str::FromStr;
 use commons::factory::FactoryTrait;
-use commons::net::{MAX_UDP_DATAGRAM_SIZE, TcpWriterTrait};
+use commons::net::{MAX_UDP_DATAGRAM_SIZE, TcpWriterTrait, UdpSocketTrait};
 use crate::server::udpinput::UdpInput;
 use crate::server::udpoutput::{UdpOutput, UdpOutputEvent};
 use crate::server::clientaddress::ClientAddress;
@@ -47,7 +47,7 @@ pub struct ServerCore<GameFactory: GameFactoryTrait> {
     game_timer: Option<GameTimer<GameFactory::Factory, ServerGameTimerObserver<GameFactory>>>,
     tcp_inputs: Vec<eventhandling::Sender<GameFactory::Factory, ()>>,
     tcp_outputs: Vec<eventhandling::Sender<GameFactory::Factory, TcpOutputEvent<GameFactory::Game>>>,
-    udp_socket: Option<UdpSocket>,
+    udp_socket: Option<UdpSocket<GameFactory>>,
     udp_outputs: Vec<eventhandling::Sender<GameFactory::Factory, UdpOutputEvent<GameFactory::Game>>>,
     udp_input_sender_option: Option<eventhandling::Sender<GameFactory::Factory, ()>>,
     udp_handler: UdpHandler<GameFactory>,
@@ -118,31 +118,23 @@ impl<GameFactory: GameFactoryTrait> ServerCore<GameFactory> {
             }
         };
 
-        let socket_addr_v4 = SocketAddrV4::new(ip_addr_v4, GameFactory::Game::UDP_PORT);
+        let socket_addr = SocketAddr::V4(SocketAddrV4::new(ip_addr_v4, GameFactory::Game::UDP_PORT));
 
-        self.udp_socket = match UdpSocket::bind(socket_addr_v4) {
-            Ok(udp_socket) => Some(udp_socket),
+        let udp_socket = match self.factory.bind_udp_socket(socket_addr) {
+            Ok(udp_socket) => udp_socket,
             Err(error) => {
                 error!("{:?}", error);
                 return Break(());
             }
         };
 
-        let udp_input = match UdpInput::<GameFactory>::new(
-            self.factory.clone(),
-            self.udp_socket.as_ref().unwrap(),
-            self.sender.clone()
-        ) {
-            Ok(udp_input) => udp_input,
-            Err(error) => {
-                error!("{:?}", error);
-                return Break(());
-            }
-        };
+        let udp_input = UdpInput::<GameFactory>::new(self.sender.clone()) ;
 
         let udp_input_builder = self.factory.new_thread_builder()
             .name("ServerUdpInput")
-            .spawn_listener(udp_input, AsyncJoin::log_async_join);
+            .spawn_udp_reader(udp_socket.try_clone().unwrap(), udp_input, AsyncJoin::log_async_join);
+
+        self.udp_socket = Some(udp_socket);
 
         self.udp_input_sender_option = Some(match udp_input_builder {
             Ok(udp_input_sender) => udp_input_sender,

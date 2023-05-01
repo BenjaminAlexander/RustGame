@@ -1,12 +1,11 @@
 use commons::stats::RollingAverage;
 use commons::time::{TimeDuration, TimeValue};
 use log::{info, warn, error, debug};
-use std::net::UdpSocket;
 use std::io;
 use std::ops::ControlFlow::{Break, Continue};
 use commons::factory::FactoryTrait;
-use commons::net::MAX_UDP_DATAGRAM_SIZE;
-use crate::interface::{GameFactoryTrait, GameTrait};
+use commons::net::{MAX_UDP_DATAGRAM_SIZE, UdpSocketTrait};
+use crate::interface::{GameFactoryTrait, GameTrait, UdpSocket};
 use crate::gametime::TimeMessage;
 use crate::messaging::{InputMessage, StateMessage, ToClientMessageUDP, Fragmenter, ServerInputMessage};
 use crate::server::remoteudppeer::RemoteUdpPeer;
@@ -26,7 +25,7 @@ pub enum UdpOutputEvent<Game: GameTrait> {
 pub struct UdpOutput<GameFactory: GameFactoryTrait> {
     factory: GameFactory::Factory,
     player_index: usize,
-    socket: UdpSocket,
+    socket: UdpSocket<GameFactory>,
     remote_peer: Option<RemoteUdpPeer>,
     fragmenter: Fragmenter,
     last_time_message: Option<TimeMessage>,
@@ -41,11 +40,12 @@ pub struct UdpOutput<GameFactory: GameFactoryTrait> {
 
 impl<GameFactory: GameFactoryTrait> UdpOutput<GameFactory> {
 
-    pub fn new(factory: GameFactory::Factory, player_index: usize, socket: &UdpSocket) -> io::Result<Self> {
+    pub fn new(factory: GameFactory::Factory, player_index: usize, socket: &UdpSocket<GameFactory>) -> io::Result<Self> {
 
         Ok(UdpOutput {
             player_index,
             remote_peer: None,
+            //TODO: move clone outside
             socket: socket.try_clone()?,
             //TODO: make max datagram size more configurable
             fragmenter: Fragmenter::new(MAX_UDP_DATAGRAM_SIZE),
@@ -191,7 +191,7 @@ impl<GameFactory: GameFactoryTrait> UdpOutput<GameFactory> {
                     error!("Datagram is larger than MAX_UDP_DATAGRAM_SIZE: {:?}", fragment.get_whole_buf().len());
                 }
 
-                self.socket.send_to(fragment.get_whole_buf(), remote_peer.get_socket_addr()).unwrap();
+                self.socket.send_to(fragment.get_whole_buf(), &remote_peer.get_socket_addr()).unwrap();
             }
         }
     }
