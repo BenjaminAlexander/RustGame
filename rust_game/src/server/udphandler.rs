@@ -6,7 +6,6 @@ use crate::interface::GameFactoryTrait;
 use crate::messaging::{FragmentAssembler, InputMessage, MessageFragment, ToServerMessageUDP};
 use crate::server::clientaddress::ClientAddress;
 use crate::server::remoteudppeer::RemoteUdpPeer;
-use crate::server::{ServerCore, ServerCoreEvent};
 
 pub struct UdpHandler<GameFactory: GameFactoryTrait> {
     factory: GameFactory::Factory,
@@ -55,7 +54,7 @@ impl<GameFactory: GameFactoryTrait> UdpHandler<GameFactory> {
         }
 
         if let Some(assembled) = self.handle_fragment(source, &mut filled_buf) {
-            match rmp_serde::from_read_ref(assembled.as_slice()) {
+            match rmp_serde::from_slice(assembled.as_slice()) {
                 Ok(message) => {
                     return self.handle_message(message, source);
                 }

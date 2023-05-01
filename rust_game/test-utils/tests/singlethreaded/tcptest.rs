@@ -87,6 +87,7 @@ fn test_write(factory: &SingleThreadedFactory, write_connection: &Arc<Mutex<Opti
 
 struct TestConnection {
     writer: ChannelTcpWriter,
+    #[allow(dead_code)]
     reader_sender: SingleThreadedSender<EventOrStopThread<()>>,
     last_value: Option<u32>
 }

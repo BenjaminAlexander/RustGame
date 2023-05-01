@@ -4,7 +4,6 @@ mod asyncjoin;
 mod asyncjoincallbacktrait;
 
 pub mod eventhandling;
-pub mod listener;
 pub mod channel;
 
 pub use self::asyncjoincallbacktrait::AsyncJoinCallBackTrait;

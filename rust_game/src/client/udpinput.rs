@@ -1,27 +1,23 @@
-use std::net::{UdpSocket, SocketAddrV4, SocketAddr};
+use std::net::SocketAddr;
 use commons::time::{TimeDuration, TimeValue};
 use crate::gametime::TimeReceived;
 use crate::messaging::{ToClientMessageUDP, MessageFragment, FragmentAssembler};
-use commons::threading::{eventhandling, listener};
 use crate::interface::GameFactoryTrait;
 use std::io;
 use std::ops::ControlFlow;
-use std::ops::ControlFlow::{Break, Continue};
-use log::{debug, error, warn};
+use std::ops::ControlFlow::Continue;
+use log::{debug, error};
 use commons::factory::FactoryTrait;
 use commons::net::UdpReadHandlerTrait;
 use crate::gamemanager::ManagerEvent;
-use commons::threading::channel::ReceiveMetaData;
-use commons::threading::eventhandling::EventSenderTrait;
-use commons::threading::listener::{ListenerEventResult, ListenerTrait, ListenMetaData, ListenResult};
-use commons::threading::listener::ListenedOrDidNotListen::{DidNotListen, Listened};
+use commons::threading::eventhandling::{EventSenderTrait, Sender};
 use crate::client::ClientCoreEvent;
 
 pub struct UdpInput<GameFactory: GameFactoryTrait> {
     factory: GameFactory::Factory,
     fragment_assembler: FragmentAssembler,
-    core_sender: eventhandling::Sender<GameFactory::Factory, ClientCoreEvent<GameFactory>>,
-    manager_sender: eventhandling::Sender<GameFactory::Factory, ManagerEvent<GameFactory::Game>>,
+    core_sender: Sender<GameFactory::Factory, ClientCoreEvent<GameFactory>>,
+    manager_sender: Sender<GameFactory::Factory, ManagerEvent<GameFactory::Game>>,
 
     //metrics
     time_of_last_state_receive: TimeValue,
@@ -33,8 +29,8 @@ impl<GameFactory: GameFactoryTrait> UdpInput<GameFactory> {
 
     pub fn new(
         factory: GameFactory::Factory,
-        core_sender: eventhandling::Sender<GameFactory::Factory, ClientCoreEvent<GameFactory>>,
-        manager_sender: eventhandling::Sender<GameFactory::Factory, ManagerEvent<GameFactory::Game>>) -> io::Result<Self> {
+        core_sender: Sender<GameFactory::Factory, ClientCoreEvent<GameFactory>>,
+        manager_sender: Sender<GameFactory::Factory, ManagerEvent<GameFactory::Game>>) -> io::Result<Self> {
 
         return Ok(Self{
             //TODO: make this more configurable
@@ -59,7 +55,7 @@ impl<GameFactory: GameFactoryTrait> UdpReadHandlerTrait for UdpInput<GameFactory
 
         if let Some(message_buf) = self.fragment_assembler.add_fragment(&self.factory, fragment) {
 
-            match rmp_serde::from_read_ref(&message_buf) {
+            match rmp_serde::from_slice(&message_buf) {
                 Ok(message) => {
 
                     //Why does this crash the client?
