@@ -1,4 +1,4 @@
-use std::net::{Ipv4Addr, SocketAddrV4, SocketAddr, UdpSocket};
+use std::net::{Ipv4Addr, SocketAddrV4, SocketAddr};
 use std::ops::ControlFlow::{Break, Continue};
 use crate::gametime::{GameTimer, TimeMessage, TimeReceived};
 use crate::client::tcpinput::TcpInput;
@@ -8,6 +8,7 @@ use crate::messaging::{InitialInformation, InputMessage};
 use crate::gamemanager::{Manager, ManagerEvent, RenderReceiverMessage};
 use log::{trace};
 use commons::factory::FactoryTrait;
+use commons::net::UdpSocketTrait;
 use crate::client::clientcore::ClientCoreEvent::{Connect, OnInitialInformation, OnInputEvent, GameTimerTick, RemoteTimeMessageEvent};
 use crate::client::clientgametimeobserver::ClientGameTimerObserver;
 use crate::client::clientmanagerobserver::ClientManagerObserver;
@@ -124,18 +125,19 @@ impl<GameFactory: GameFactoryTrait> ClientCore<GameFactory> {
             client_game_time_observer
         );
 
-        let server_udp_socket_addr_v4 = SocketAddrV4::new(self.server_ip, GameFactory::Game::UDP_PORT);
+        let server_udp_socket_addr = SocketAddr::V4(SocketAddrV4::new(self.server_ip, GameFactory::Game::UDP_PORT));
 
-        //TODO: pass in as a parameter
-        let udp_socket = UdpSocket::bind("127.0.0.1:0").unwrap();
+        let addr = Ipv4Addr::new(127, 0, 0, 1);
+        let socket_addr = SocketAddr::V4(SocketAddrV4::new(addr, 0));
+
+        let udp_socket = self.factory.bind_udp_socket(socket_addr).unwrap();
 
         let udp_input_join_handle = self.factory.new_thread_builder()
             .name("ClientUdpInput")
-            .spawn_listener(
+            .spawn_udp_reader(
+                udp_socket.try_clone().unwrap(),
                 UdpInput::<GameFactory>::new(
                     self.factory.clone(),
-                    server_udp_socket_addr_v4,
-                    &udp_socket,
                     self.sender.clone(),
                     self.manager_sender_option.as_ref().unwrap().clone()
                 ).unwrap(),
@@ -144,11 +146,11 @@ impl<GameFactory: GameFactoryTrait> ClientCore<GameFactory> {
 
         let udp_output_builder = self.factory.new_thread_builder()
             .name("ClientUdpOutput")
-            .build_channel_for_event_handler::<UdpOutput<GameFactory::Game>>();
+            .build_channel_for_event_handler::<UdpOutput<GameFactory>>();
 
         //TODO: unwrap after try_clone is not good
         let udp_output_join_handle = udp_output_builder.spawn_event_handler(
-            UdpOutput::<GameFactory::Game>::new(server_udp_socket_addr_v4, udp_socket.try_clone().unwrap(), initial_information.clone()),
+            UdpOutput::<GameFactory>::new(server_udp_socket_addr, udp_socket.try_clone().unwrap(), initial_information.clone()),
             AsyncJoin::log_async_join
         ).unwrap();
 

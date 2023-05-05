@@ -1,27 +1,23 @@
-use std::net::{UdpSocket, SocketAddrV4, SocketAddr};
+use std::net::SocketAddr;
 use commons::time::{TimeDuration, TimeValue};
 use crate::gametime::TimeReceived;
-use crate::messaging::{ToClientMessageUDP, MAX_UDP_DATAGRAM_SIZE, MessageFragment, FragmentAssembler};
-use commons::threading::{eventhandling, listener};
+use crate::messaging::{ToClientMessageUDP, MessageFragment, FragmentAssembler};
 use crate::interface::GameFactoryTrait;
 use std::io;
-use std::ops::ControlFlow::{Break, Continue};
-use log::{debug, error, warn};
+use std::ops::ControlFlow;
+use std::ops::ControlFlow::Continue;
+use log::{debug, error};
 use commons::factory::FactoryTrait;
+use commons::net::UdpReadHandlerTrait;
 use crate::gamemanager::ManagerEvent;
-use commons::threading::channel::ReceiveMetaData;
-use commons::threading::eventhandling::EventSenderTrait;
-use commons::threading::listener::{ListenerEventResult, ListenerTrait, ListenMetaData, ListenResult};
-use commons::threading::listener::ListenedOrDidNotListen::{DidNotListen, Listened};
+use commons::threading::eventhandling::{EventSenderTrait, Sender};
 use crate::client::ClientCoreEvent;
 
 pub struct UdpInput<GameFactory: GameFactoryTrait> {
     factory: GameFactory::Factory,
-    server_socket_addr: SocketAddr,
-    socket: UdpSocket,
     fragment_assembler: FragmentAssembler,
-    core_sender: eventhandling::Sender<GameFactory::Factory, ClientCoreEvent<GameFactory>>,
-    manager_sender: eventhandling::Sender<GameFactory::Factory, ManagerEvent<GameFactory::Game>>,
+    core_sender: Sender<GameFactory::Factory, ClientCoreEvent<GameFactory>>,
+    manager_sender: Sender<GameFactory::Factory, ManagerEvent<GameFactory::Game>>,
 
     //metrics
     time_of_last_state_receive: TimeValue,
@@ -33,16 +29,10 @@ impl<GameFactory: GameFactoryTrait> UdpInput<GameFactory> {
 
     pub fn new(
         factory: GameFactory::Factory,
-        server_socket_addr_v4: SocketAddrV4,
-        socket: &UdpSocket,
-        core_sender: eventhandling::Sender<GameFactory::Factory, ClientCoreEvent<GameFactory>>,
-        manager_sender: eventhandling::Sender<GameFactory::Factory, ManagerEvent<GameFactory::Game>>) -> io::Result<Self> {
-
-        let server_socket_addr = SocketAddr::from(server_socket_addr_v4);
+        core_sender: Sender<GameFactory::Factory, ClientCoreEvent<GameFactory>>,
+        manager_sender: Sender<GameFactory::Factory, ManagerEvent<GameFactory::Game>>) -> io::Result<Self> {
 
         return Ok(Self{
-            server_socket_addr,
-            socket: socket.try_clone()?,
             //TODO: make this more configurable
             fragment_assembler: FragmentAssembler::new(5),
             core_sender,
@@ -57,39 +47,21 @@ impl<GameFactory: GameFactoryTrait> UdpInput<GameFactory> {
     }
 }
 
-impl<GameFactory: GameFactoryTrait> ListenerTrait for UdpInput<GameFactory> {
-    type Event = ();
-    type ThreadReturn = ();
-    type ListenFor = ToClientMessageUDP<GameFactory::Game>;
+impl<GameFactory: GameFactoryTrait> UdpReadHandlerTrait for UdpInput<GameFactory> {
 
-    fn listen(mut self) -> ListenResult<Self> {
-        let mut buf = [0; MAX_UDP_DATAGRAM_SIZE];
+    fn on_read(&mut self, peer_addr: SocketAddr, buff: &[u8]) -> ControlFlow<()> {
 
-        let recv_result = self.socket.recv_from(&mut buf);
-        if recv_result.is_err() {
-            warn!("Error on socket recv: {:?}", recv_result);
-            return Continue(DidNotListen(self));
-        }
-
-        let (number_of_bytes, source) = recv_result.unwrap();
-
-        if !self.server_socket_addr.eq(&source) {
-            warn!("Received from wrong source. Expected: {:?}, Actual: {:?}", self.server_socket_addr, source);
-            return Continue(DidNotListen(self));
-        }
-
-        let filled_buf = &mut buf[..number_of_bytes];
-        let fragment = MessageFragment::from_vec(filled_buf.to_vec());
+        let fragment = MessageFragment::from_vec(buff.to_vec());
 
         if let Some(message_buf) = self.fragment_assembler.add_fragment(&self.factory, fragment) {
 
-            match rmp_serde::from_read_ref(&message_buf) {
+            match rmp_serde::from_slice(&message_buf) {
                 Ok(message) => {
 
                     //Why does this crash the client?
                     //info!("{:?}", message);
 
-                    return Continue(Listened(self, message));
+                    return self.handle_received_message(message);
                 }
                 Err(error) => {
                     error!("Error: {:?}", error);
@@ -97,28 +69,15 @@ impl<GameFactory: GameFactoryTrait> ListenerTrait for UdpInput<GameFactory> {
             }
         }
 
-        return Continue(DidNotListen(self));
+        return Continue(());
     }
-
-    fn on_channel_event(self, event: listener::ChannelEvent<Self>) -> ListenerEventResult<Self> {
-        return match event {
-            listener::ChannelEvent::ChannelEmptyAfterListen(listen_meta_data, value) => self.handle_received_message(listen_meta_data, value),
-            listener::ChannelEvent::ReceivedEvent(_, ()) => {
-                warn!("This listener doesn't have meaningful messages, but one was sent.");
-                Continue(self)
-            },
-            listener::ChannelEvent::ChannelDisconnected => Break(())
-        };
-    }
-
-    fn on_stop(self, _: ReceiveMetaData) -> Self::ThreadReturn { () }
 }
 
 impl<GameFactory: GameFactoryTrait> UdpInput<GameFactory> {
 
-    fn handle_received_message(mut self, listen_meta_data: ListenMetaData, value: ToClientMessageUDP<GameFactory::Game>) -> ListenerEventResult<Self> {
+    fn handle_received_message(&mut self, value: ToClientMessageUDP<GameFactory::Game>) -> ControlFlow<()> {
 
-        let time_received = listen_meta_data.get_time_received();
+        let time_received = self.factory.now();
 
         match value {
             ToClientMessageUDP::TimeMessage(time_message) => {
@@ -152,6 +111,6 @@ impl<GameFactory: GameFactoryTrait> UdpInput<GameFactory> {
             }
         };
 
-        return Continue(self);
+        return Continue(());
     }
 }

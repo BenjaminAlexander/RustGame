@@ -15,6 +15,4 @@ pub use self::realgamefactory::RealGameFactory;
 
 pub(crate) use self::types::TcpWriter;
 pub(crate) use self::types::TcpReader;
-
-
-
+pub(crate) use self::types::UdpSocket;

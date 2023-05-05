@@ -1,10 +1,9 @@
 use std::io::Error;
 use std::net::SocketAddr;
 use crate::factory::FactoryTrait;
-use crate::net::{TcpConnectionHandlerTrait, TcpReadHandlerTrait};
+use crate::net::{TcpConnectionHandlerTrait, TcpReadHandlerTrait, UdpReadHandlerTrait};
 use crate::threading::channel::Channel;
 use crate::threading::eventhandling::{EventHandlerTrait, EventOrStopThread};
-use crate::threading::listener::{ListenerState, ListenerTrait};
 use crate::threading;
 use crate::threading::{AsyncJoinCallBackTrait, eventhandling};
 
@@ -45,12 +44,6 @@ impl<Factory: FactoryTrait, T: Send + 'static> ChannelThreadBuilder<Factory, Eve
         let factory = self.thread_builder.get_factory().clone();
         return factory.spawn_event_handler(self, event_handler, join_call_back);
     }
-
-    //TODO: remove
-    pub fn spawn_listener<U: ListenerTrait<Event=T>>(self, listener: U, join_call_back: impl AsyncJoinCallBackTrait<Factory, U::ThreadReturn>) -> std::io::Result<eventhandling::Sender<Factory, T>> {
-        let event_handler = ListenerState::new(self.thread_builder.get_factory().clone(), listener);
-        return self.spawn_event_handler(event_handler, join_call_back);
-    }
 }
 
 impl<Factory: FactoryTrait> ChannelThreadBuilder<Factory, EventOrStopThread<()>> {
@@ -65,4 +58,8 @@ impl<Factory: FactoryTrait> ChannelThreadBuilder<Factory, EventOrStopThread<()>>
         return factory.spawn_tcp_reader(self, tcp_reader, tcp_read_handler, join_call_back);
     }
 
+    pub fn spawn_udp_reader<T: UdpReadHandlerTrait>(self, udp_socket: Factory::UdpSocket, udp_read_handler: T, join_call_back: impl AsyncJoinCallBackTrait<Factory, T>) -> Result<eventhandling::Sender<Factory, ()>, Error> {
+        let factory = self.thread_builder.get_factory().clone();
+        return factory.spawn_udp_reader(self, udp_socket, udp_read_handler, join_call_back);
+    }
 }
