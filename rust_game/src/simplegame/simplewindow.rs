@@ -1,38 +1,38 @@
 use opengl_graphics::{GlGraphics, OpenGL};
 use crate::gamemanager::RenderReceiver;
 use crate::simplegame::SimpleInputEvent;
-use crate::client::ClientCoreEvent;
+use crate::client::{Client, ClientCoreEvent};
 use piston::{RenderArgs, WindowSettings, Events, EventSettings, RenderEvent, Event};
 use piston::input::Input as PistonInput;
 use graphics::*;
 use glutin_window::GlutinWindow as Window;
 use log::info;
 use commons::factory::FactoryTrait;
-use commons::threading::eventhandling::{EventSender, EventSenderTrait};
+use commons::threading::eventhandling::EventSenderTrait;
 use crate::client::ClientCoreEvent::OnInputEvent;
-use crate::interface::RealGameFactory;
+use crate::interface::{EventSender, Factory, GameFactoryTrait, RealGameFactory};
 use crate::simplegame::simplegameimpl::SimpleGameImpl;
 
-pub struct SimpleWindow<Factory: FactoryTrait> {
-    factory: Factory,
+pub struct SimpleWindow<GameFactory: GameFactoryTrait<Game=SimpleGameImpl>> {
+    factory: Factory<GameFactory>,
     window_name: String,
-    render_receiver: RenderReceiver<Factory, SimpleGameImpl>,
+    render_receiver: RenderReceiver<GameFactory>,
     //TODO: don't expose eventhandling, sender or ClientCore, or ClientCoreEvent, or GameFactoryTrait, or RealGameFactory
-    client_core_sender_option: Option<EventSender<Factory, ClientCoreEvent<RealGameFactory<SimpleGameImpl>>>>
+    client_option: Option<Client<GameFactory>>
 }
 
-impl<Factory: FactoryTrait> SimpleWindow<Factory> {
+impl<GameFactory: GameFactoryTrait<Game=SimpleGameImpl>> SimpleWindow<GameFactory> {
 
-    pub fn new(factory: Factory,
+    pub fn new(factory: Factory<GameFactory>,
                window_name: String,
-               render_receiver: RenderReceiver<Factory, SimpleGameImpl>,
-               client_core_sender_option: Option<EventSender<Factory, ClientCoreEvent<RealGameFactory<SimpleGameImpl>>>>) -> Self {
+               render_receiver: RenderReceiver<GameFactory>,
+               client_option: Option<Client<GameFactory>>) -> Self {
 
-        return Self{
+        return Self {
             factory,
             window_name,
             render_receiver,
-            client_core_sender_option
+            client_option
         }
     }
 
@@ -56,7 +56,7 @@ impl<Factory: FactoryTrait> SimpleWindow<Factory> {
             factory: self.factory,
             window_name: self.window_name,
             render_receiver: self.render_receiver,
-            client_core_sender_option: self.client_core_sender_option
+            client_option: self.client_option
         };
 
 
@@ -101,8 +101,8 @@ impl<Factory: FactoryTrait> SimpleWindow<Factory> {
     }
 
     fn input(&mut self, input: PistonInput) {
-        if let Some(core_sender) = self.client_core_sender_option.as_ref() {
-            core_sender.send_event(OnInputEvent(SimpleInputEvent::new(input))).unwrap();
+        if let Some(client) = self.client_option.as_ref() {
+            //client.send_client_input_event(SimpleInputEvent::new(input)).unwrap();
         }
     }
 }
