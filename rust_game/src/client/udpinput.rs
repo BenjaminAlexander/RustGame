@@ -2,7 +2,7 @@ use std::net::SocketAddr;
 use commons::time::{TimeDuration, TimeValue};
 use crate::gametime::TimeReceived;
 use crate::messaging::{ToClientMessageUDP, MessageFragment, FragmentAssembler};
-use crate::interface::GameFactoryTrait;
+use crate::interface::{EventSender, GameFactoryTrait};
 use std::io;
 use std::ops::ControlFlow;
 use std::ops::ControlFlow::Continue;
@@ -10,14 +10,14 @@ use log::{debug, error};
 use commons::factory::FactoryTrait;
 use commons::net::UdpReadHandlerTrait;
 use crate::gamemanager::ManagerEvent;
-use commons::threading::eventhandling::{EventSenderTrait, Sender};
+use commons::threading::eventhandling::EventSenderTrait;
 use crate::client::ClientCoreEvent;
 
 pub struct UdpInput<GameFactory: GameFactoryTrait> {
     factory: GameFactory::Factory,
     fragment_assembler: FragmentAssembler,
-    core_sender: Sender<GameFactory::Factory, ClientCoreEvent<GameFactory>>,
-    manager_sender: Sender<GameFactory::Factory, ManagerEvent<GameFactory::Game>>,
+    core_sender: EventSender<GameFactory, ClientCoreEvent<GameFactory>>,
+    manager_sender: EventSender<GameFactory, ManagerEvent<GameFactory::Game>>,
 
     //metrics
     time_of_last_state_receive: TimeValue,
@@ -29,8 +29,8 @@ impl<GameFactory: GameFactoryTrait> UdpInput<GameFactory> {
 
     pub fn new(
         factory: GameFactory::Factory,
-        core_sender: Sender<GameFactory::Factory, ClientCoreEvent<GameFactory>>,
-        manager_sender: Sender<GameFactory::Factory, ManagerEvent<GameFactory::Game>>) -> io::Result<Self> {
+        core_sender: EventSender<GameFactory, ClientCoreEvent<GameFactory>>,
+        manager_sender: EventSender<GameFactory, ManagerEvent<GameFactory::Game>>) -> io::Result<Self> {
 
         return Ok(Self{
             //TODO: make this more configurable

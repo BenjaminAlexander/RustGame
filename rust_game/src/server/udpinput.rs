@@ -1,18 +1,18 @@
-use crate::interface::GameFactoryTrait;
+use crate::interface::{EventSender, GameFactoryTrait};
 use std::net::SocketAddr;
 use std::ops::ControlFlow;
 use std::ops::ControlFlow::Continue;
 use commons::net::{MAX_UDP_DATAGRAM_SIZE, UdpReadHandlerTrait};
 use crate::server::servercore::ServerCoreEvent;
-use commons::threading::eventhandling::{Sender, EventSenderTrait};
+use commons::threading::eventhandling::EventSenderTrait;
 
 pub struct UdpInput<GameFactory: GameFactoryTrait> {
-    core_sender: Sender<GameFactory::Factory, ServerCoreEvent<GameFactory>>
+    core_sender: EventSender<GameFactory, ServerCoreEvent<GameFactory>>
 }
 
 impl<GameFactory: GameFactoryTrait> UdpInput<GameFactory> {
 
-    pub fn new(core_sender: Sender<GameFactory::Factory, ServerCoreEvent<GameFactory>>) -> Self {
+    pub fn new(core_sender: EventSender<GameFactory, ServerCoreEvent<GameFactory>>) -> Self {
         return Self {
             core_sender
         };

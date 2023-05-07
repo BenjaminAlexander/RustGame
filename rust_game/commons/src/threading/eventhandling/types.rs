@@ -9,5 +9,4 @@ pub type SendError<T> = channel::SendError<EventOrStopThread<T>>;
 
 pub type SendResult<T> = Result<(), SendError<T>>;
 
-//TODO: make this more simple
-pub type Sender<Factory, T> = <Factory as FactoryTrait>::Sender<EventOrStopThread<T>>;
+pub type EventSender<Factory, T> = <Factory as FactoryTrait>::Sender<EventOrStopThread<T>>;

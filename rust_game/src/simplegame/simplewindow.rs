@@ -2,14 +2,13 @@ use opengl_graphics::{GlGraphics, OpenGL};
 use crate::gamemanager::RenderReceiver;
 use crate::simplegame::SimpleInputEvent;
 use crate::client::ClientCoreEvent;
-use commons::threading::eventhandling;
 use piston::{RenderArgs, WindowSettings, Events, EventSettings, RenderEvent, Event};
 use piston::input::Input as PistonInput;
 use graphics::*;
 use glutin_window::GlutinWindow as Window;
 use log::info;
 use commons::factory::FactoryTrait;
-use commons::threading::eventhandling::EventSenderTrait;
+use commons::threading::eventhandling::{EventSender, EventSenderTrait};
 use crate::client::ClientCoreEvent::OnInputEvent;
 use crate::interface::RealGameFactory;
 use crate::simplegame::simplegameimpl::SimpleGameImpl;
@@ -19,7 +18,7 @@ pub struct SimpleWindow<Factory: FactoryTrait> {
     window_name: String,
     render_receiver: RenderReceiver<Factory, SimpleGameImpl>,
     //TODO: don't expose eventhandling, sender or ClientCore, or ClientCoreEvent, or GameFactoryTrait, or RealGameFactory
-    client_core_sender_option: Option<eventhandling::Sender<Factory, ClientCoreEvent<RealGameFactory<SimpleGameImpl>>>>
+    client_core_sender_option: Option<EventSender<Factory, ClientCoreEvent<RealGameFactory<SimpleGameImpl>>>>
 }
 
 impl<Factory: FactoryTrait> SimpleWindow<Factory> {
@@ -27,7 +26,7 @@ impl<Factory: FactoryTrait> SimpleWindow<Factory> {
     pub fn new(factory: Factory,
                window_name: String,
                render_receiver: RenderReceiver<Factory, SimpleGameImpl>,
-               client_core_sender_option: Option<eventhandling::Sender<Factory, ClientCoreEvent<RealGameFactory<SimpleGameImpl>>>>) -> Self {
+               client_core_sender_option: Option<EventSender<Factory, ClientCoreEvent<RealGameFactory<SimpleGameImpl>>>>) -> Self {
 
         return Self{
             factory,

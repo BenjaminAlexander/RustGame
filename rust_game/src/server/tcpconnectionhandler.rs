@@ -2,17 +2,17 @@ use std::ops::ControlFlow;
 use std::ops::ControlFlow::*;
 use log::{error, info};
 use commons::net::{TcpConnectionHandlerTrait, TcpWriterTrait};
-use crate::interface::{GameFactoryTrait, TcpReader, TcpWriter};
+use crate::interface::{EventSender, GameFactoryTrait, TcpReader, TcpWriter};
 use crate::server::servercore::ServerCoreEvent;
 use crate::server::servercore::ServerCoreEvent::TcpConnectionEvent;
-use commons::threading::eventhandling::{Sender, EventSenderTrait};
+use commons::threading::eventhandling::EventSenderTrait;
 
 pub struct TcpConnectionHandler<GameFactory: GameFactoryTrait> {
-    server_core_sender: Sender<GameFactory::Factory, ServerCoreEvent<GameFactory>>
+    server_core_sender: EventSender<GameFactory, ServerCoreEvent<GameFactory>>
 }
 
 impl<GameFactory: GameFactoryTrait> TcpConnectionHandler<GameFactory> {
-    pub fn new(server_core_sender: Sender<GameFactory::Factory, ServerCoreEvent<GameFactory>>) -> Self {
+    pub fn new(server_core_sender: EventSender<GameFactory, ServerCoreEvent<GameFactory>>) -> Self {
         return Self {
             server_core_sender
         };

@@ -2,7 +2,7 @@ use std::net::{Ipv4Addr, SocketAddrV4, SocketAddr};
 use std::ops::ControlFlow::{Break, Continue};
 use crate::gametime::{GameTimer, TimeMessage, TimeReceived};
 use crate::client::tcpinput::TcpInput;
-use crate::interface::{GameFactoryTrait, GameTrait};
+use crate::interface::{EventSender, GameFactoryTrait, GameTrait};
 use crate::client::tcpoutput::TcpOutput;
 use crate::messaging::{InitialInformation, InputMessage};
 use crate::gamemanager::{Manager, ManagerEvent, RenderReceiverMessage};
@@ -16,7 +16,6 @@ use crate::client::udpoutput::{UdpOutput, UdpOutputEvent};
 use crate::client::udpinput::UdpInput;
 use commons::threading::AsyncJoin;
 use commons::threading::channel::{ReceiveMetaData, SenderTrait};
-use commons::threading::eventhandling;
 use commons::threading::eventhandling::{ChannelEvent, ChannelEventResult, EventHandlerTrait, EventSenderTrait};
 use commons::threading::eventhandling::WaitOrTryForNextEvent::{TryForNextEvent, WaitForNextEvent};
 
@@ -31,15 +30,15 @@ pub enum ClientCoreEvent<GameFactory: GameFactoryTrait> {
 //TODO: make this an enum, get rid of all the options
 pub struct ClientCore<GameFactory: GameFactoryTrait> {
     factory: GameFactory::Factory,
-    sender: eventhandling::Sender<GameFactory::Factory, ClientCoreEvent<GameFactory>>,
+    sender: EventSender<GameFactory, ClientCoreEvent<GameFactory>>,
     server_ip: Ipv4Addr,
     input_event_handler: <GameFactory::Game as GameTrait>::ClientInputEventHandler,
-    manager_sender_option: Option<eventhandling::Sender<GameFactory::Factory, ManagerEvent<GameFactory::Game>>>,
+    manager_sender_option: Option<EventSender<GameFactory, ManagerEvent<GameFactory::Game>>>,
     game_timer: Option<GameTimer<GameFactory::Factory, ClientGameTimerObserver<GameFactory>>>,
-    udp_input_sender_option: Option<eventhandling::Sender<GameFactory::Factory, ()>>,
-    udp_output_sender_option: Option<eventhandling::Sender<GameFactory::Factory, UdpOutputEvent<GameFactory::Game>>>,
-    tcp_input_sender_option: Option<eventhandling::Sender<GameFactory::Factory, ()>>,
-    tcp_output_sender_option: Option<eventhandling::Sender<GameFactory::Factory, ()>>,
+    udp_input_sender_option: Option<EventSender<GameFactory, ()>>,
+    udp_output_sender_option: Option<EventSender<GameFactory, UdpOutputEvent<GameFactory::Game>>>,
+    tcp_input_sender_option: Option<EventSender<GameFactory, ()>>,
+    tcp_output_sender_option: Option<EventSender<GameFactory, ()>>,
     render_receiver_sender: Option<<GameFactory::Factory as FactoryTrait>::Sender<RenderReceiverMessage<GameFactory::Game>>>,
     initial_information: Option<InitialInformation<GameFactory::Game>>,
     last_time_message: Option<TimeMessage>
@@ -47,7 +46,7 @@ pub struct ClientCore<GameFactory: GameFactoryTrait> {
 
 impl<GameFactory: GameFactoryTrait> ClientCore<GameFactory> {
 
-    pub fn new(factory: GameFactory::Factory, server_ip: Ipv4Addr, sender: eventhandling::Sender<GameFactory::Factory, ClientCoreEvent<GameFactory>>) -> Self {
+    pub fn new(factory: GameFactory::Factory, server_ip: Ipv4Addr, sender: EventSender<GameFactory, ClientCoreEvent<GameFactory>>) -> Self {
 
         ClientCore {
             factory,

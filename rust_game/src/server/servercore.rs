@@ -1,9 +1,8 @@
 use std::net::{Ipv4Addr, SocketAddrV4, SocketAddr};
 use std::ops::ControlFlow::{Continue, Break};
 use log::{error, info};
-use crate::interface::{GameFactoryTrait, GameTrait, TcpReader, TcpWriter, UdpSocket};
+use crate::interface::{EventSender, GameFactoryTrait, GameTrait, TcpReader, TcpWriter, UdpSocket};
 use crate::server::tcpinput::TcpInput;
-use commons::threading::eventhandling;
 use crate::server::{TcpConnectionHandler, ServerConfig};
 use crate::server::tcpoutput::{TcpOutput, TcpOutputEvent};
 use crate::gametime::GameTimer;
@@ -40,18 +39,18 @@ pub enum ServerCoreEvent<GameFactory: GameFactoryTrait> {
 
 pub struct ServerCore<GameFactory: GameFactoryTrait> {
     factory: GameFactory::Factory,
-    sender: eventhandling::Sender<GameFactory::Factory, ServerCoreEvent<GameFactory>>,
+    sender: EventSender<GameFactory, ServerCoreEvent<GameFactory>>,
     game_is_started: bool,
     server_config: ServerConfig,
-    tcp_listener_sender_option: Option<eventhandling::Sender<GameFactory::Factory, ()>>,
+    tcp_listener_sender_option: Option<EventSender<GameFactory, ()>>,
     game_timer: Option<GameTimer<GameFactory::Factory, ServerGameTimerObserver<GameFactory>>>,
-    tcp_inputs: Vec<eventhandling::Sender<GameFactory::Factory, ()>>,
-    tcp_outputs: Vec<eventhandling::Sender<GameFactory::Factory, TcpOutputEvent<GameFactory::Game>>>,
+    tcp_inputs: Vec<EventSender<GameFactory, ()>>,
+    tcp_outputs: Vec<EventSender<GameFactory, TcpOutputEvent<GameFactory::Game>>>,
     udp_socket: Option<UdpSocket<GameFactory>>,
-    udp_outputs: Vec<eventhandling::Sender<GameFactory::Factory, UdpOutputEvent<GameFactory::Game>>>,
-    udp_input_sender_option: Option<eventhandling::Sender<GameFactory::Factory, ()>>,
+    udp_outputs: Vec<EventSender<GameFactory, UdpOutputEvent<GameFactory::Game>>>,
+    udp_input_sender_option: Option<EventSender<GameFactory, ()>>,
     udp_handler: UdpHandler<GameFactory>,
-    manager_sender_option: Option<eventhandling::Sender<GameFactory::Factory, ManagerEvent<GameFactory::Game>>>,
+    manager_sender_option: Option<EventSender<GameFactory, ManagerEvent<GameFactory::Game>>>,
     render_receiver_sender: Option<<GameFactory::Factory as FactoryTrait>::Sender<RenderReceiverMessage<GameFactory::Game>>>,
     drop_steps_before: usize
 }
@@ -78,7 +77,7 @@ impl<GameFactory: GameFactoryTrait> EventHandlerTrait for ServerCore<GameFactory
 
 impl<GameFactory: GameFactoryTrait> ServerCore<GameFactory> {
 
-    pub fn new(factory: GameFactory::Factory, sender: eventhandling::Sender<GameFactory::Factory, ServerCoreEvent<GameFactory>>) -> Self {
+    pub fn new(factory: GameFactory::Factory, sender: EventSender<GameFactory, ServerCoreEvent<GameFactory>>) -> Self {
 
         let server_config = ServerConfig::new(
             GameFactory::Game::STEP_PERIOD
@@ -183,7 +182,7 @@ impl<GameFactory: GameFactoryTrait> ServerCore<GameFactory> {
 
             let initial_state = GameFactory::Game::get_initial_state(self.tcp_outputs.len());
 
-            let mut udp_output_senders: Vec<eventhandling::Sender<GameFactory::Factory, UdpOutputEvent<GameFactory::Game>>> = Vec::new();
+            let mut udp_output_senders: Vec<EventSender<GameFactory, UdpOutputEvent<GameFactory::Game>>> = Vec::new();
 
             for udp_output_sender in self.udp_outputs.iter() {
                 udp_output_senders.push(udp_output_sender.clone());
