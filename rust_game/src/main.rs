@@ -31,7 +31,7 @@ pub fn main() {
 
     let args: Vec<String> = std::env::args().collect();
 
-    let mut current_arg = 0;
+    let mut current_arg = 1;
 
     while current_arg < args.len() {
 
@@ -40,8 +40,7 @@ pub fn main() {
         match arg.as_str() {
             "-s" => {
                 run_client = false;
-                window_name = String::from(&args[current_arg + 1]);
-                current_arg = current_arg + 2;
+                current_arg = current_arg + 1;
             }
             "-c" =>{
                 run_server = false;
@@ -89,7 +88,7 @@ pub fn main() {
             factory.clone(),
             window_name,
             render_receiver,
-            client_core_join_handle_option
+            Some(client)
         );
 
         client_window.run();

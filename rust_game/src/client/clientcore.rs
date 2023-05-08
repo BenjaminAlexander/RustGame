@@ -2,7 +2,7 @@ use std::net::{Ipv4Addr, SocketAddrV4, SocketAddr};
 use std::ops::ControlFlow::{Break, Continue};
 use crate::gametime::{GameTimer, TimeMessage, TimeReceived};
 use crate::client::tcpinput::TcpInput;
-use crate::interface::{EventSender, GameFactoryTrait, GameTrait};
+use crate::interface::{EventSender, GameFactoryTrait, GameTrait, Sender};
 use crate::client::tcpoutput::TcpOutput;
 use crate::messaging::{InitialInformation, InputMessage};
 use crate::gamemanager::{Manager, ManagerEvent, RenderReceiverMessage};
@@ -20,7 +20,7 @@ use commons::threading::eventhandling::{ChannelEvent, ChannelEventResult, EventH
 use commons::threading::eventhandling::WaitOrTryForNextEvent::{TryForNextEvent, WaitForNextEvent};
 
 pub enum ClientCoreEvent<GameFactory: GameFactoryTrait> {
-    Connect(<GameFactory::Factory as FactoryTrait>::Sender<RenderReceiverMessage<GameFactory::Game>>),
+    Connect(Sender<GameFactory, RenderReceiverMessage<GameFactory::Game>>),
     OnInitialInformation(InitialInformation<GameFactory::Game>),
     OnInputEvent(<GameFactory::Game as GameTrait>::ClientInputEvent),
     GameTimerTick,
@@ -33,7 +33,7 @@ pub struct ClientCore<GameFactory: GameFactoryTrait> {
     sender: EventSender<GameFactory, ClientCoreEvent<GameFactory>>,
     server_ip: Ipv4Addr,
     input_event_handler: <GameFactory::Game as GameTrait>::ClientInputEventHandler,
-    manager_sender_option: Option<EventSender<GameFactory, ManagerEvent<GameFactory::Game>>>,
+    manager_sender: EventSender<GameFactory, ManagerEvent<GameFactory::Game>>,
     game_timer: Option<GameTimer<GameFactory::Factory, ClientGameTimerObserver<GameFactory>>>,
     udp_input_sender_option: Option<EventSender<GameFactory, ()>>,
     udp_output_sender_option: Option<EventSender<GameFactory, UdpOutputEvent<GameFactory::Game>>>,
@@ -46,14 +46,24 @@ pub struct ClientCore<GameFactory: GameFactoryTrait> {
 
 impl<GameFactory: GameFactoryTrait> ClientCore<GameFactory> {
 
-    pub fn new(factory: GameFactory::Factory, server_ip: Ipv4Addr, sender: EventSender<GameFactory, ClientCoreEvent<GameFactory>>) -> Self {
+    pub fn new(
+        factory: GameFactory::Factory,
+        server_ip: Ipv4Addr,
+        sender: EventSender<GameFactory, ClientCoreEvent<GameFactory>>,
+        render_receiver_sender: Sender<GameFactory, RenderReceiverMessage<GameFactory::Game>>
+    ) -> Self {
+
+        let manager_sender = factory.new_thread_builder()
+            .name("ClientManager")
+            .spawn_event_handler(Manager::new(factory.clone(), ClientManagerObserver::<GameFactory>::new(factory.clone(), render_receiver_sender.clone())), AsyncJoin::log_async_join)
+            .unwrap();
 
         ClientCore {
             factory,
             sender,
             server_ip,
             input_event_handler: GameFactory::Game::new_input_event_handler(),
-            manager_sender_option: None,
+            manager_sender,
             game_timer: None,
             udp_input_sender_option: None,
             udp_output_sender_option: None,
@@ -72,14 +82,9 @@ impl<GameFactory: GameFactoryTrait> ClientCore<GameFactory> {
 
         let (tcp_sender, tcp_receiver) = self.factory.connect_tcp(socket_addr).unwrap();
 
-        let manager_sender = self.factory.new_thread_builder()
-            .name("ClientManager")
-            .spawn_event_handler(Manager::new(self.factory.clone(), ClientManagerObserver::<GameFactory>::new(self.factory.clone(), render_receiver_sender.clone())), AsyncJoin::log_async_join)
-            .unwrap();
-
         let tcp_input = TcpInput::<GameFactory>::new(
             self.factory.clone(),
-            manager_sender.clone(),
+            self.manager_sender.clone(),
             self.sender.clone(),
             render_receiver_sender.clone());
 
@@ -94,7 +99,6 @@ impl<GameFactory: GameFactoryTrait> ClientCore<GameFactory> {
             .unwrap();
 
         self.render_receiver_sender = Some(render_receiver_sender);
-        self.manager_sender_option = Some(manager_sender);
         self.tcp_output_sender_option = Some(tcp_output_join_handle);
         self.tcp_input_sender_option = Some(tcp_input_sender);
 
@@ -103,8 +107,7 @@ impl<GameFactory: GameFactoryTrait> ClientCore<GameFactory> {
 
     fn on_input_event(mut self, input_event: <GameFactory::Game as GameTrait>::ClientInputEvent) -> ChannelEventResult<Self> {
 
-        if self.manager_sender_option.is_some() &&
-            self.last_time_message.is_some() &&
+        if self.last_time_message.is_some() &&
             self.initial_information.is_some() {
 
             GameFactory::Game::handle_input_event(&mut self.input_event_handler, input_event);
@@ -138,7 +141,7 @@ impl<GameFactory: GameFactoryTrait> ClientCore<GameFactory> {
                 UdpInput::<GameFactory>::new(
                     self.factory.clone(),
                     self.sender.clone(),
-                    self.manager_sender_option.as_ref().unwrap().clone()
+                    self.manager_sender.clone()
                 ).unwrap(),
                 AsyncJoin::log_async_join)
             .unwrap();
@@ -171,10 +174,8 @@ impl<GameFactory: GameFactoryTrait> ClientCore<GameFactory> {
         //TODO: log a warn if a tick is missed or out of order
         if self.last_time_message.is_some() &&
             self.tcp_output_sender_option.is_some() &&
-            self.initial_information.is_some() &&
-            self.manager_sender_option.is_some() {
+            self.initial_information.is_some() {
 
-            let manager_sender = self.manager_sender_option.as_ref().unwrap();
             let last_time_message = self.last_time_message.as_ref().unwrap();
             let initial_information = self.initial_information.as_ref().unwrap();
 
@@ -187,16 +188,16 @@ impl<GameFactory: GameFactoryTrait> ClientCore<GameFactory> {
                     GameFactory::Game::get_input(& mut self.input_event_handler)
                 );
 
-                manager_sender.send_event(ManagerEvent::InputEvent(message.clone())).unwrap();
+                self.manager_sender.send_event(ManagerEvent::InputEvent(message.clone())).unwrap();
                 self.udp_output_sender_option.as_ref().unwrap().send_event(UdpOutputEvent::InputMessageEvent(message)).unwrap();
 
                 let client_drop_time = time_message.get_scheduled_time().subtract(GameFactory::Game::GRACE_PERIOD * 2.0);
                 let drop_step = time_message.get_step_from_actual_time(client_drop_time).ceil() as usize;
 
-                manager_sender.send_event(ManagerEvent::DropStepsBeforeEvent(drop_step)).unwrap();
+                self.manager_sender.send_event(ManagerEvent::DropStepsBeforeEvent(drop_step)).unwrap();
                 //TODO: message or last message or next?
                 //TODO: define strict and consistent rules for how real time relates to ticks, input deadlines and display states
-                manager_sender.send_event(ManagerEvent::SetRequestedStepEvent(time_message.get_step() + 1)).unwrap();
+                self.manager_sender.send_event(ManagerEvent::SetRequestedStepEvent(time_message.get_step() + 1)).unwrap();
             }
         }
 

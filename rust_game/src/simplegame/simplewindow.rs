@@ -102,7 +102,7 @@ impl<GameFactory: GameFactoryTrait<Game=SimpleGameImpl>> SimpleWindow<GameFactor
 
     fn input(&mut self, input: PistonInput) {
         if let Some(client) = self.client_option.as_ref() {
-            //client.send_client_input_event(SimpleInputEvent::new(input)).unwrap();
+            client.send_client_input_event(SimpleInputEvent::new(input)).unwrap();
         }
     }
 }

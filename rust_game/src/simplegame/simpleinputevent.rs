@@ -1,5 +1,6 @@
 use piston::input::Input as PistonInput;
 
+#[derive(Debug)]
 pub struct SimpleInputEvent(PistonInput);
 
 impl SimpleInputEvent {

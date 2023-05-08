@@ -15,7 +15,6 @@ pub struct Client<GameFactory: GameFactoryTrait> {
 
 impl<GameFactory: GameFactoryTrait> Client<GameFactory> {
 
-    //TODO: move RenderReceiver inside Client
     pub fn new(factory: Factory<GameFactory>) -> (Self, RenderReceiver<GameFactory>) {
 
         let client_core_thread_builder = factory.new_thread_builder()
@@ -24,7 +23,7 @@ impl<GameFactory: GameFactoryTrait> Client<GameFactory> {
 
         let (render_receiver_sender, render_receiver) = RenderReceiver::<GameFactory>::new(factory.clone());
 
-        client_core_thread_builder.get_sender().send_event(Connect(render_receiver_sender)).unwrap();
+        client_core_thread_builder.get_sender().send_event(Connect(render_receiver_sender.clone())).unwrap();
 
         let core_sender = client_core_thread_builder.get_sender().clone();
 
@@ -32,7 +31,8 @@ impl<GameFactory: GameFactoryTrait> Client<GameFactory> {
             ClientCore::<GameFactory>::new(
                 factory,
                 Ipv4Addr::from_str("127.0.0.1").unwrap(),
-                core_sender.clone()
+                core_sender.clone(),
+                render_receiver_sender
             ),
             AsyncJoin::log_async_join
         ).unwrap();
