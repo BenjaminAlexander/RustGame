@@ -1,11 +1,9 @@
-use std::{thread, time, io, process};
-use std::net::Ipv4Addr;
+use std::io::stdin;
+use std::process;
 use std::path::PathBuf;
-use std::str::FromStr;
 use log::{error, info, LevelFilter};
 use commons::factory::{FactoryTrait, RealFactory};
 use commons::logging::LoggingConfigBuilder;
-use crate::client::ClientCoreEvent::Connect;
 use crate::gamemanager::RenderReceiver;
 use crate::simplegame::{SimpleInput, SimpleState, SimpleInputEvent, SimpleInputEventHandler, SimpleWindow, SimpleServerInput, SimpleGameImpl};
 use commons::threading::AsyncJoin;
@@ -113,7 +111,7 @@ pub fn main() {
 
 
         info!("Hit enter to start the game.");
-        let stdin = io::stdin();
+        let stdin = stdin();
         let mut line = String::new();
         stdin.read_line(&mut line).unwrap();
 
