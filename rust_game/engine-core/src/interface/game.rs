@@ -4,7 +4,7 @@ use serde::de::DeserializeOwned;
 use crate::interface::{ClientUpdateArg, InterpolationArg};
 use crate::interface::serverupdatearg::ServerUpdateArg;
 use crate::messaging::InitialInformation;
-use crate::TimeDuration;
+use commons::time::TimeDuration;
 
 //TODO: can Serialize + DeserializeOwned be removed
 pub trait GameTrait: 'static + Send + Sized {

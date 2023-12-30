@@ -1,6 +1,6 @@
 use crate::{SimpleInput, SimpleInputEvent, SimpleInputEventHandler, SimpleServerInput, SimpleState, TimeDuration};
-use crate::interface::{ClientUpdateArg, GameTrait, InterpolationArg, ServerUpdateArg};
-use crate::messaging::InitialInformation;
+use engine_core::interface::{ClientUpdateArg, GameTrait, InterpolationArg, ServerUpdateArg};
+use engine_core::messaging::InitialInformation;
 use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize, Debug, Clone)]

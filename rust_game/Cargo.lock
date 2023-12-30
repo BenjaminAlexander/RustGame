@@ -367,6 +367,13 @@ checksum = "e78d4f1cc4ae33bbfc157ed5d5a5ef3bc29227303d595861deb238fcec4e9457"
 [[package]]
 name = "engine-core"
 version = "0.1.0"
+dependencies = [
+ "commons",
+ "log",
+ "rmp-serde",
+ "serde",
+ "timer",
+]
 
 [[package]]
 name = "exr"
@@ -1360,6 +1367,7 @@ version = "0.1.0"
 dependencies = [
  "chrono",
  "commons",
+ "engine-core",
  "log",
  "log4rs",
  "num",

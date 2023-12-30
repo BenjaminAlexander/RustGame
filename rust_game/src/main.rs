@@ -4,22 +4,16 @@ use std::path::PathBuf;
 use log::{error, info, LevelFilter};
 use commons::factory::{FactoryTrait, RealFactory};
 use commons::logging::LoggingConfigBuilder;
-use crate::gamemanager::RenderReceiver;
+use engine_core::gamemanager::RenderReceiver;
 use crate::simplegame::{SimpleInput, SimpleState, SimpleInputEvent, SimpleInputEventHandler, SimpleWindow, SimpleServerInput, SimpleGameImpl};
 use commons::threading::AsyncJoin;
 use commons::threading::eventhandling::EventSenderTrait;
 use commons::time::TimeDuration;
-use crate::client::Client;
-use crate::interface::RealGameFactory;
-use crate::server::ServerCoreEvent;
+use engine_core::client::Client;
+use engine_core::interface::RealGameFactory;
+use engine_core::server::ServerCoreEvent;
 
 mod simplegame;
-mod messaging;
-mod server;
-mod interface;
-mod gametime;
-mod client;
-mod gamemanager;
 
 pub fn main() {
 
@@ -95,9 +89,9 @@ pub fn main() {
 
         let server_core_thread_builder = factory.new_thread_builder()
             .name("ServerCore")
-            .build_channel_for_event_handler::<server::ServerCore<RealGameFactory<SimpleGameImpl>>>();
+            .build_channel_for_event_handler::<engine_core::server::ServerCore<RealGameFactory<SimpleGameImpl>>>();
 
-        let server_core  = server::ServerCore::<RealGameFactory<SimpleGameImpl>>::new(factory.clone(), server_core_thread_builder.get_sender().clone());
+        let server_core  = engine_core::server::ServerCore::<RealGameFactory<SimpleGameImpl>>::new(factory.clone(), server_core_thread_builder.get_sender().clone());
 
         if let Err(error) = server_core_thread_builder.get_sender().send_event(ServerCoreEvent::StartListenerEvent) {
             error!("{:?}", error);

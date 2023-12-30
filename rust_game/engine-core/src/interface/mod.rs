@@ -17,7 +17,8 @@ pub(crate) use self::types::TcpWriter;
 pub(crate) use self::types::TcpReader;
 pub(crate) use self::types::UdpSocket;
 pub(crate) use self::types::EventSender;
-pub(crate) use self::types::Factory;
+//TODO: I'm not sure this should be exposed
+pub use self::types::Factory;
 pub(crate) use self::types::Sender;
 pub(crate) use self::types::Receiver;
 pub(crate) use self::types::Game;

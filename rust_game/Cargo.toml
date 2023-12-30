@@ -6,6 +6,7 @@ edition = "2021"
 
 [dependencies]
 commons = { path = "commons" }
+engine-core = { path = "engine-core" }
 serde = { version = "1", features = ["derive"] }
 rmp-serde = "1.1.1"
 log = { version = "0.4", features = ["std", "serde"] }

@@ -5,7 +5,7 @@ use opengl_graphics::GlGraphics;
 use graphics::{Context, rectangle};
 use graphics::*;
 use crate::simplegame::bullet::Bullet;
-use crate::interface::{ClientUpdateArg, GameTrait};
+use engine_core::interface::{ClientUpdateArg, GameTrait};
 use commons::time::TimeDuration;
 use crate::simplegame::simplegameimpl::SimpleGameImpl;
 

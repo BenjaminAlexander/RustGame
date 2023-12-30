@@ -5,7 +5,7 @@ use opengl_graphics::GlGraphics;
 use graphics::{Context, rectangle};
 use graphics::*;
 use commons::time::TimeDuration;
-use crate::interface::GameTrait;
+use engine_core::interface::GameTrait;
 use crate::SimpleGameImpl;
 
 const MAX_RANGE: f64 = 5000 as f64;
