@@ -5,9 +5,10 @@ use crate::threading::eventhandling::{EventHandlerTrait, EventOrStopThread, Wait
 
 pub type ChannelEventResult<T> = ControlFlow<<T as EventHandlerTrait>::ThreadReturn, WaitOrTryForNextEvent<T>>;
 
+//TODO: rename
 pub type SendError<T> = channel::SendError<EventOrStopThread<T>>;
 
+//TODO: rename
 pub type SendResult<T> = Result<(), SendError<T>>;
 
-//TODO: make this more simple
-pub type Sender<Factory, T> = <Factory as FactoryTrait>::Sender<EventOrStopThread<T>>;
+pub type EventSender<Factory, T> = <Factory as FactoryTrait>::Sender<EventOrStopThread<T>>;
