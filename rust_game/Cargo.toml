@@ -1,24 +1,22 @@
 [package]
 name = "rust_game"
 version = "0.1.0"
-authors = ["benal"]
-edition = "2021"
 
 [dependencies]
-commons = { path = "commons" }
-engine-core = { path = "engine-core" }
-serde = { version = "1", features = ["derive"] }
-rmp-serde = "1.1.1"
-log = { version = "0.4", features = ["std", "serde"] }
-log4rs = { version = "1.2.0"}
-timer = "0.2.0"
-chrono = "0.4.19"
-num = "0.4.0"
+commons = { workspace = true }
+engine-core = { workspace = true }
 
-piston = "0.53.2"
-piston2d-graphics = "0.43.0"
-pistoncore-glutin_window = "0.71.0"
-piston2d-opengl_graphics = "0.82.0"
+chrono = { workspace = true }
+log = { workspace = true }
+log4rs = { workspace = true }
+num = { workspace = true }
+piston = { workspace = true }
+piston2d-graphics = { workspace = true }
+pistoncore-glutin_window = { workspace = true }
+piston2d-opengl_graphics = { workspace = true }
+rmp-serde = { workspace = true }
+serde = { workspace = true }
+timer = { workspace = true }
 
 [workspace]
 members = [
@@ -26,3 +24,26 @@ members = [
     "engine-core",
     "test-utils"
 ]
+
+[workspace.package]
+authors = ["Benjamin A. Alexander"]
+edition = "2021"
+
+[workspace.dependencies]
+
+#Dependencies withing the workspace
+commons = { path = "./commons" }
+engine-core = { path = "./engine-core" }
+
+#Dependencies on crates outside the workspace
+chrono = "0.4.19"
+log = { version = "0.4", features = ["std", "serde"] }
+log4rs = { version = "1.2.0"}
+num = "0.4.0"
+piston = "0.53.2"
+piston2d-graphics = "0.43.0"
+pistoncore-glutin_window = "0.71.0"
+piston2d-opengl_graphics = "0.82.0"
+rmp-serde = "1.1.1"
+serde = { version = "1", features = ["derive"] }
+timer = "0.2.0"

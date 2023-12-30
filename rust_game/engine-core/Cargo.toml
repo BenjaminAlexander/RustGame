@@ -1,11 +1,11 @@
 [package]
 name = "engine-core"
 version = "0.1.0"
-edition = "2021"
 
 [dependencies]
-commons = { path = "../commons" }
-log = { version = "0.4", features = ["std", "serde"] }
-serde = { version = "1", features = ["derive"] }
-rmp-serde = "1.1.1"
-timer = "0.2.0"
+commons = { workspace = true }
+
+log = { workspace = true }
+rmp-serde = { workspace = true }
+serde = { workspace = true }
+timer = { workspace = true }
