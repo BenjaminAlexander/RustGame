@@ -1,5 +1,5 @@
 use serde::{Deserialize, Serialize};
-use crate::simplegame::SimpleState;
+use crate::simplestate::SimpleState;
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct SimpleServerInput {

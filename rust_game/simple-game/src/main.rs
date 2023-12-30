@@ -5,7 +5,13 @@ use log::{error, info, LevelFilter};
 use commons::factory::{FactoryTrait, RealFactory};
 use commons::logging::LoggingConfigBuilder;
 use engine_core::gamemanager::RenderReceiver;
-use crate::simplegame::{SimpleInput, SimpleState, SimpleInputEvent, SimpleInputEventHandler, SimpleWindow, SimpleServerInput, SimpleGameImpl};
+use crate::simpleinputevent::SimpleInputEvent;
+use crate::simpleinput::SimpleInput;
+use crate::simpleinputeventhandler::SimpleInputEventHandler;
+use crate::simplewindow::SimpleWindow;
+use crate::simplestate::*;
+use crate::simpleserverinput::SimpleServerInput;
+use crate::simplegameimpl::SimpleGameImpl;
 use commons::threading::AsyncJoin;
 use commons::threading::eventhandling::EventSenderTrait;
 use commons::time::TimeDuration;
@@ -13,7 +19,15 @@ use engine_core::client::Client;
 use engine_core::interface::RealGameFactory;
 use engine_core::server::ServerCoreEvent;
 
-mod simplegame;
+mod simpleinputevent;
+mod simpleinput;
+mod simplestate;
+mod character;
+mod simpleinputeventhandler;
+mod simplewindow;
+mod bullet;
+mod simpleserverinput;
+mod simplegameimpl;
 
 pub fn main() {
 

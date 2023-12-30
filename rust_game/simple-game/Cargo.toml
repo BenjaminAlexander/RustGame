@@ -1,0 +1,16 @@
+[package]
+name = "simple-game"
+edition.workspace = true
+version.workspace = true
+authors.workspace = true
+
+[dependencies]
+commons.workspace = true
+engine-core.workspace = true
+
+log.workspace = true
+piston.workspace = true
+piston2d-graphics.workspace = true
+pistoncore-glutin_window.workspace = true
+piston2d-opengl_graphics.workspace = true
+serde.workspace = true

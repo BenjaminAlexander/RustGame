@@ -1380,25 +1380,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "rust_game"
-version = "0.1.0"
-dependencies = [
- "chrono",
- "commons",
- "engine-core",
- "log",
- "log4rs",
- "num",
- "piston",
- "piston2d-graphics",
- "piston2d-opengl_graphics",
- "pistoncore-glutin_window",
- "rmp-serde",
- "serde",
- "timer",
-]
-
-[[package]]
 name = "rusttype"
 version = "0.9.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1506,6 +1487,20 @@ name = "simd-adler32"
 version = "0.3.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d66dc143e6b11c1eddc06d5c423cfc97062865baf299914ab64caa38182078fe"
+
+[[package]]
+name = "simple-game"
+version = "0.1.0"
+dependencies = [
+ "commons",
+ "engine-core",
+ "log",
+ "piston",
+ "piston2d-graphics",
+ "piston2d-opengl_graphics",
+ "pistoncore-glutin_window",
+ "serde",
+]
 
 [[package]]
 name = "slotmap"
