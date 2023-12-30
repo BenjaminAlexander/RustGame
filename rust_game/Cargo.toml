@@ -5,20 +5,20 @@ version.workspace = true
 authors.workspace = true
 
 [dependencies]
-commons = { workspace = true }
-engine-core = { workspace = true }
+commons.workspace = true
+engine-core.workspace = true
 
-chrono = { workspace = true }
-log = { workspace = true }
-log4rs = { workspace = true }
-num = { workspace = true }
-piston = { workspace = true }
-piston2d-graphics = { workspace = true }
-pistoncore-glutin_window = { workspace = true }
-piston2d-opengl_graphics = { workspace = true }
-rmp-serde = { workspace = true }
-serde = { workspace = true }
-timer = { workspace = true }
+chrono.workspace = true
+log.workspace = true
+log4rs.workspace = true
+num.workspace = true
+piston.workspace = true
+piston2d-graphics.workspace = true
+pistoncore-glutin_window.workspace = true
+piston2d-opengl_graphics.workspace = true
+rmp-serde.workspace = true
+serde.workspace = true
+timer.workspace = true
 
 [workspace]
 members = [

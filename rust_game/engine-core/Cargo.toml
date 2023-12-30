@@ -5,9 +5,9 @@ version.workspace = true
 authors.workspace = true
 
 [dependencies]
-commons = { workspace = true }
+commons.workspace = true
 
-log = { workspace = true }
-rmp-serde = { workspace = true }
-serde = { workspace = true }
-timer = { workspace = true }
+log.workspace = true
+rmp-serde.workspace = true
+serde.workspace = true
+timer.workspace = true
