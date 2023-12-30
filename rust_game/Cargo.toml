@@ -1,6 +1,8 @@
 [package]
 name = "rust_game"
-version = "0.1.0"
+edition.workspace = true
+version.workspace = true
+authors.workspace = true
 
 [dependencies]
 commons = { workspace = true }
@@ -26,8 +28,9 @@ members = [
 ]
 
 [workspace.package]
-authors = ["Benjamin A. Alexander"]
 edition = "2021"
+version = "0.1.0"
+authors = ["Benjamin A. Alexander"]
 
 [workspace.dependencies]
 
