@@ -11,7 +11,7 @@ use crate::messaging::{InputMessage, StateMessage, ToClientMessageUDP, Fragmente
 use crate::server::remoteudppeer::RemoteUdpPeer;
 use crate::server::udpoutput::UdpOutputEvent::{RemotePeer, SendCompletedStep, SendInputMessage, SendServerInputMessage, SendTimeMessage};
 use commons::threading::channel::ReceiveMetaData;
-use commons::threading::eventhandling::{ChannelEvent, ChannelEventResult, EventHandlerTrait};
+use commons::threading::eventhandling::{ChannelEvent, EventHandleResult, EventHandlerTrait};
 use commons::threading::eventhandling::WaitOrTryForNextEvent::{TryForNextEvent, WaitForNextEvent};
 
 pub enum UdpOutputEvent<Game: GameTrait> {
@@ -62,7 +62,7 @@ impl<GameFactory: GameFactoryTrait> UdpOutput<GameFactory> {
         })
     }
 
-    fn on_remote_peer(mut self, remote_peer: RemoteUdpPeer) -> ChannelEventResult<Self> {
+    fn on_remote_peer(mut self, remote_peer: RemoteUdpPeer) -> EventHandleResult<Self> {
         //TODO: could this be checked before calling udpoutput?
         if self.player_index == remote_peer.get_player_index() {
             info!("Setting remote peer: {:?}", remote_peer);
@@ -72,7 +72,7 @@ impl<GameFactory: GameFactoryTrait> UdpOutput<GameFactory> {
         return Continue(TryForNextEvent(self));
     }
 
-    fn on_completed_step(mut self, receive_meta_data: ReceiveMetaData, state_message: StateMessage<GameFactory::Game>) -> ChannelEventResult<Self> {
+    fn on_completed_step(mut self, receive_meta_data: ReceiveMetaData, state_message: StateMessage<GameFactory::Game>) -> EventHandleResult<Self> {
 
         let time_in_queue = receive_meta_data.get_send_meta_data().get_time_sent();
 
@@ -93,7 +93,7 @@ impl<GameFactory: GameFactoryTrait> UdpOutput<GameFactory> {
         return Continue(TryForNextEvent(self));
     }
 
-    pub fn on_time_message(mut self, receive_meta_data: ReceiveMetaData, time_message: TimeMessage) -> ChannelEventResult<Self> {
+    pub fn on_time_message(mut self, receive_meta_data: ReceiveMetaData, time_message: TimeMessage) -> EventHandleResult<Self> {
 
         let time_in_queue = receive_meta_data.get_send_meta_data().get_time_sent();
 
@@ -123,7 +123,7 @@ impl<GameFactory: GameFactoryTrait> UdpOutput<GameFactory> {
         return Continue(TryForNextEvent(self));
     }
 
-    fn on_input_message(mut self, receive_meta_data: ReceiveMetaData, input_message: InputMessage<GameFactory::Game>) -> ChannelEventResult<Self> {
+    fn on_input_message(mut self, receive_meta_data: ReceiveMetaData, input_message: InputMessage<GameFactory::Game>) -> EventHandleResult<Self> {
 
         let time_in_queue = receive_meta_data.get_send_meta_data().get_time_sent();
 
@@ -145,7 +145,7 @@ impl<GameFactory: GameFactoryTrait> UdpOutput<GameFactory> {
         return Continue(TryForNextEvent(self));
     }
 
-    pub fn on_server_input_message(mut self, receive_meta_data: ReceiveMetaData, server_input_message: ServerInputMessage<GameFactory::Game>) -> ChannelEventResult<Self> {
+    pub fn on_server_input_message(mut self, receive_meta_data: ReceiveMetaData, server_input_message: ServerInputMessage<GameFactory::Game>) -> EventHandleResult<Self> {
 
         let time_in_queue = receive_meta_data.get_send_meta_data().get_time_sent();
 
@@ -201,7 +201,7 @@ impl<GameFactory: GameFactoryTrait> EventHandlerTrait for UdpOutput<GameFactory>
     type Event = UdpOutputEvent<GameFactory::Game>;
     type ThreadReturn = ();
 
-    fn on_channel_event(self, channel_event: ChannelEvent<Self::Event>) -> ChannelEventResult<Self> {
+    fn on_channel_event(self, channel_event: ChannelEvent<Self::Event>) -> EventHandleResult<Self> {
 
         let now = self.factory.now();
 

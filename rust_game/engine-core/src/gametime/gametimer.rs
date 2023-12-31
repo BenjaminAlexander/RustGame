@@ -5,7 +5,7 @@ use timer::Timer;
 use log::{trace, info, warn};
 use commons::factory::FactoryTrait;
 use crate::server::ServerConfig;
-use commons::threading::eventhandling::{EventSender, EventSenderTrait};
+use commons::threading::eventhandling::{EventHandlerSender, EventSenderTrait};
 use commons::threading::AsyncJoin;
 use commons::time::timerservice::{Schedule, TimerCallBack, TimerCreationCallBack, TimerId, TimerServiceEvent, TimeService};
 
@@ -20,7 +20,7 @@ pub struct GameTimer<Factory: FactoryTrait, T: TimerCallBack> {
     start: Option<TimeValue>,
     rolling_average: RollingAverage,
     new_timer_id: TimerId,
-    new_timer_sender: EventSender<Factory, TimerServiceEvent<GameTimerCreationCallBack, T>>
+    new_timer_sender: EventHandlerSender<Factory, TimerServiceEvent<GameTimerCreationCallBack, T>>
 }
 
 impl<Factory: FactoryTrait, T: TimerCallBack> GameTimer<Factory, T> {

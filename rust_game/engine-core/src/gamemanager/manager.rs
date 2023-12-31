@@ -10,7 +10,7 @@ use crate::gamemanager::{ManagerObserverTrait};
 use crate::gamemanager::manager::ManagerEvent::{DropStepsBeforeEvent, InitialInformationEvent, InputEvent, ServerInputEvent, SetRequestedStepEvent, StateEvent};
 use crate::interface::GameTrait;
 use commons::threading::channel::ReceiveMetaData;
-use commons::threading::eventhandling::{ChannelEvent, ChannelEventResult, EventHandlerTrait};
+use commons::threading::eventhandling::{ChannelEvent, EventHandleResult, EventHandlerTrait};
 use commons::threading::eventhandling::WaitOrTryForNextEvent::{TryForNextEvent, WaitForNextEvent};
 
 pub enum ManagerEvent<Game: GameTrait> {
@@ -94,7 +94,7 @@ impl<ManagerObserver: ManagerObserverTrait> Manager<ManagerObserver> {
         }
     }
 
-    fn drop_steps_before(mut self, step :usize) -> ChannelEventResult<Self> {
+    fn drop_steps_before(mut self, step :usize) -> EventHandleResult<Self> {
         trace!("Setting drop_steps_before: {:?}", step);
         self.drop_steps_before = step;
         if self.requested_step < self.drop_steps_before {
@@ -105,7 +105,7 @@ impl<ManagerObserver: ManagerObserverTrait> Manager<ManagerObserver> {
         return Continue(TryForNextEvent(self));
     }
 
-    fn set_requested_step(mut self, step: usize) -> ChannelEventResult<Self> {
+    fn set_requested_step(mut self, step: usize) -> EventHandleResult<Self> {
         trace!("Setting requested_step: {:?}", step);
         self.requested_step = step;
         return Continue(TryForNextEvent(self));
@@ -129,7 +129,7 @@ impl<ManagerObserver: ManagerObserverTrait> Manager<ManagerObserver> {
         }
     }
 
-    fn on_none_pending(mut self) -> ChannelEventResult<Self> {
+    fn on_none_pending(mut self) -> EventHandleResult<Self> {
 
         let now = self.factory.now();
         let duration_since_last_state = now.duration_since(&self.time_of_last_state_receive);
@@ -197,7 +197,7 @@ impl<ManagerObserver: ManagerObserverTrait> Manager<ManagerObserver> {
         return Continue(WaitForNextEvent(self));
     }
 
-    fn on_initial_information(mut self, initial_information: InitialInformation<ManagerObserver::Game>) -> ChannelEventResult<Self> {
+    fn on_initial_information(mut self, initial_information: InitialInformation<ManagerObserver::Game>) -> EventHandleResult<Self> {
         //TODO: move Arc outside lambda
         self.initial_information = Some(Arc::new(initial_information));
         let state = self.initial_information.as_ref().unwrap().get_state().clone();
@@ -208,7 +208,7 @@ impl<ManagerObserver: ManagerObserverTrait> Manager<ManagerObserver> {
         return Continue(TryForNextEvent(self));
     }
 
-    fn on_input_message(mut self, input_message: InputMessage<ManagerObserver::Game>) -> ChannelEventResult<Self> {
+    fn on_input_message(mut self, input_message: InputMessage<ManagerObserver::Game>) -> EventHandleResult<Self> {
         if let Some(step) = self.get_state(input_message.get_step()) {
             step.set_input(input_message);
             self.time_of_last_input_receive = self.factory.now();
@@ -216,7 +216,7 @@ impl<ManagerObserver: ManagerObserverTrait> Manager<ManagerObserver> {
         return Continue(TryForNextEvent(self));
     }
 
-    fn on_server_input_message(mut self, server_input_message: ServerInputMessage<ManagerObserver::Game>) -> ChannelEventResult<Self> {
+    fn on_server_input_message(mut self, server_input_message: ServerInputMessage<ManagerObserver::Game>) -> EventHandleResult<Self> {
         //info!("Server Input received: {:?}", server_input_message.get_step());
         if let Some(step) = self.get_state(server_input_message.get_step()) {
             step.set_server_input(server_input_message.get_server_input());
@@ -224,7 +224,7 @@ impl<ManagerObserver: ManagerObserverTrait> Manager<ManagerObserver> {
         return Continue(TryForNextEvent(self));
     }
 
-    fn on_state_message(mut self, state_message: StateMessage<ManagerObserver::Game>) -> ChannelEventResult<Self> {
+    fn on_state_message(mut self, state_message: StateMessage<ManagerObserver::Game>) -> EventHandleResult<Self> {
         self.handle_state_message(state_message);
 
         self.time_of_last_state_receive = self.factory.now();
@@ -237,7 +237,7 @@ impl<ManagerObserver: ManagerObserverTrait> EventHandlerTrait for Manager<Manage
     type Event = ManagerEvent<ManagerObserver::Game>;
     type ThreadReturn = ();
 
-    fn on_channel_event(self, channel_event: ChannelEvent<Self::Event>) -> ChannelEventResult<Self> {
+    fn on_channel_event(self, channel_event: ChannelEvent<Self::Event>) -> EventHandleResult<Self> {
         match channel_event {
             ChannelEvent::ReceivedEvent(_, DropStepsBeforeEvent(step)) => self.drop_steps_before(step),
             ChannelEvent::ReceivedEvent(_, SetRequestedStepEvent(step)) => self.set_requested_step(step),

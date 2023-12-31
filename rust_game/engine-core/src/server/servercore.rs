@@ -20,7 +20,7 @@ use crate::server::servermanagerobserver::ServerManagerObserver;
 use crate::server::tcpoutput::TcpOutputEvent::SendInitialInformation;
 use commons::threading::AsyncJoin;
 use commons::threading::channel::{ReceiveMetaData, SenderTrait};
-use commons::threading::eventhandling::{ChannelEvent, ChannelEventResult, EventHandlerTrait, EventSenderTrait};
+use commons::threading::eventhandling::{ChannelEvent, EventHandleResult, EventHandlerTrait, EventSenderTrait};
 use commons::threading::eventhandling::WaitOrTryForNextEvent::{TryForNextEvent, WaitForNextEvent};
 use crate::server::ServerCoreEvent::UdpPacket;
 use crate::server::udphandler::UdpHandler;
@@ -59,7 +59,7 @@ impl<GameFactory: GameFactoryTrait> EventHandlerTrait for ServerCore<GameFactory
     type Event = ServerCoreEvent<GameFactory>;
     type ThreadReturn = ();
 
-    fn on_channel_event(self, channel_event: ChannelEvent<Self::Event>) -> ChannelEventResult<Self> {
+    fn on_channel_event(self, channel_event: ChannelEvent<Self::Event>) -> EventHandleResult<Self> {
         match channel_event {
             ChannelEvent::ReceivedEvent(_, StartListenerEvent) => self.start_listener(),
             ChannelEvent::ReceivedEvent(_, StartGameEvent(render_receiver_sender)) => self.start_game(render_receiver_sender),
@@ -104,7 +104,7 @@ impl<GameFactory: GameFactoryTrait> ServerCore<GameFactory> {
         }
     }
 
-    fn start_listener(mut self) -> ChannelEventResult<Self> {
+    fn start_listener(mut self) -> EventHandleResult<Self> {
 
         //TODO: on error, make sure other threads are closed
         //TODO: could these other threads be started somewhere else?
@@ -173,7 +173,7 @@ impl<GameFactory: GameFactoryTrait> ServerCore<GameFactory> {
         }
     }
 
-    fn start_game(mut self, render_receiver_sender: <GameFactory::Factory as FactoryTrait>::Sender<RenderReceiverMessage<GameFactory::Game>>) -> ChannelEventResult<Self> {
+    fn start_game(mut self, render_receiver_sender: <GameFactory::Factory as FactoryTrait>::Sender<RenderReceiverMessage<GameFactory::Game>>) -> EventHandleResult<Self> {
         //TODO: remove this line
         //let (render_receiver_sender, render_receiver) = RenderReceiver::<Game>::new();
 
@@ -247,7 +247,7 @@ impl<GameFactory: GameFactoryTrait> ServerCore<GameFactory> {
     Tcp Hello ->
         <- UdpHello
      */
-    fn on_tcp_connection(mut self, tcp_sender: TcpWriter<GameFactory>, tcp_receiver: TcpReader<GameFactory>) -> ChannelEventResult<Self> {
+    fn on_tcp_connection(mut self, tcp_sender: TcpWriter<GameFactory>, tcp_receiver: TcpReader<GameFactory>) -> EventHandleResult<Self> {
         if !self.game_is_started {
 
             info!("TcpStream accepted: {:?}", tcp_sender.get_peer_addr());
@@ -290,7 +290,7 @@ impl<GameFactory: GameFactoryTrait> ServerCore<GameFactory> {
         return Continue(TryForNextEvent(self));
     }
 
-    fn on_udp_packet(mut self, source: SocketAddr, len: usize, buf: [u8; MAX_UDP_DATAGRAM_SIZE]) -> ChannelEventResult<Self> {
+    fn on_udp_packet(mut self, source: SocketAddr, len: usize, buf: [u8; MAX_UDP_DATAGRAM_SIZE]) -> EventHandleResult<Self> {
         let (remote_peer, input_message) = self.udp_handler.on_udp_packet(len, buf, source);
 
         if let Some(remote_peer) = remote_peer {
@@ -304,7 +304,7 @@ impl<GameFactory: GameFactoryTrait> ServerCore<GameFactory> {
         return Continue(TryForNextEvent(self));
     }
 
-    fn on_game_timer_tick(mut self) -> ChannelEventResult<Self> {
+    fn on_game_timer_tick(mut self) -> EventHandleResult<Self> {
 
         let time_message = self.game_timer.as_ref().unwrap().create_timer_message();
 

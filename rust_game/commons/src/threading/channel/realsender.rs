@@ -2,7 +2,6 @@ use std::sync::mpsc;
 use crate::factory::FactoryTrait;
 use crate::threading::channel::{SendError, SenderTrait, SendMetaData};
 
-//TODO: rename as RealSender
 pub struct RealSender<Factory: FactoryTrait, T: Send> {
     factory: Factory,
     sender: mpsc::Sender<(SendMetaData, T)>,

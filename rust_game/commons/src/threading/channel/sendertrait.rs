@@ -1,6 +1,6 @@
 use std::sync::mpsc;
 use crate::threading::channel::SendMetaData;
-use crate::threading::eventhandling::{EventOrStopThread, EventSenderTrait, SendResult};
+use crate::threading::eventhandling::{EventOrStopThread, EventSenderTrait, EventHandlerSendResult};
 use crate::threading::eventhandling::EventOrStopThread::{Event, StopThread};
 
 pub type SendError<T> = mpsc::SendError<(SendMetaData, T)>;
@@ -10,11 +10,11 @@ pub trait SenderTrait<T>: Clone + Send {
 }
 
 impl<T, U: SenderTrait<EventOrStopThread<T>>> EventSenderTrait<T> for U {
-    fn send_event(&self, event: T) -> SendResult<T> {
+    fn send_event(&self, event: T) -> EventHandlerSendResult<T> {
         return self.send(Event(event));
     }
 
-    fn send_stop_thread(&self) -> SendResult<T> {
+    fn send_stop_thread(&self) -> EventHandlerSendResult<T> {
         return self.send(StopThread);
     }
 }

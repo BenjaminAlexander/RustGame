@@ -1,6 +1,6 @@
 use std::ops::ControlFlow::{Break, Continue};
 use commons::threading::channel::ReceiveMetaData;
-use commons::threading::eventhandling::{ChannelEvent, ChannelEventResult, EventHandlerTrait};
+use commons::threading::eventhandling::{ChannelEvent, EventHandleResult, EventHandlerTrait};
 use commons::threading::eventhandling::ChannelEvent::{ReceivedEvent, ChannelEmpty, ChannelDisconnected, Timeout};
 use commons::threading::eventhandling::WaitOrTryForNextEvent::{TryForNextEvent, WaitForNextEvent};
 use crate::interface::{GameFactoryTrait, TcpWriter};
@@ -23,7 +23,7 @@ impl<GameFactory: GameFactoryTrait> EventHandlerTrait for TcpOutput<GameFactory>
     type Event = ();
     type ThreadReturn = ();
 
-    fn on_channel_event(self, channel_event: ChannelEvent<Self::Event>) -> ChannelEventResult<Self> {
+    fn on_channel_event(self, channel_event: ChannelEvent<Self::Event>) -> EventHandleResult<Self> {
         match channel_event {
             ReceivedEvent(_, ()) => Continue(TryForNextEvent(self)),
             Timeout => Continue(WaitForNextEvent(self)),

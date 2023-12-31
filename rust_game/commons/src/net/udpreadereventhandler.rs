@@ -3,7 +3,7 @@ use log::warn;
 use crate::net::RealUdpSocket;
 use crate::net::udpreadhandlertrait::UdpReadHandlerTrait;
 use crate::threading::channel::ReceiveMetaData;
-use crate::threading::eventhandling::{ChannelEvent, ChannelEventResult, EventHandlerTrait};
+use crate::threading::eventhandling::{ChannelEvent, EventHandleResult, EventHandlerTrait};
 use crate::threading::eventhandling::WaitOrTryForNextEvent::TryForNextEvent;
 
 pub const MAX_UDP_DATAGRAM_SIZE: usize = 1500;
@@ -22,7 +22,7 @@ impl<T: UdpReadHandlerTrait> UdpReaderEventHandler<T> {
         };
     }
 
-    fn read(mut self) -> ChannelEventResult<Self> {
+    fn read(mut self) -> EventHandleResult<Self> {
 
         let mut buf = [0; MAX_UDP_DATAGRAM_SIZE];
 
@@ -45,7 +45,7 @@ impl<T: UdpReadHandlerTrait> EventHandlerTrait for UdpReaderEventHandler<T> {
     type Event = ();
     type ThreadReturn = T;
 
-    fn on_channel_event(self, channel_event: ChannelEvent<Self::Event>) -> ChannelEventResult<Self> {
+    fn on_channel_event(self, channel_event: ChannelEvent<Self::Event>) -> EventHandleResult<Self> {
         return match channel_event {
             ChannelEvent::ReceivedEvent(_, ()) => Continue(TryForNextEvent(self)),
             ChannelEvent::Timeout => Continue(TryForNextEvent(self)),

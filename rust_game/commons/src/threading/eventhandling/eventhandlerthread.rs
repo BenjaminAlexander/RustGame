@@ -3,7 +3,7 @@ use log::info;
 use crate::factory::FactoryTrait;
 use crate::threading;
 use crate::threading::channel::{TryRecvError, RealReceiver, ReceiveMetaData, RecvTimeoutError, ReceiverTrait};
-use crate::threading::eventhandling::{ChannelEventResult, EventHandlerTrait, EventOrStopThread};
+use crate::threading::eventhandling::{EventHandleResult, EventHandlerTrait, EventOrStopThread};
 use crate::threading::eventhandling::EventOrStopThread::{Event, StopThread};
 use crate::threading::eventhandling::ChannelEvent::{ChannelDisconnected, ChannelEmpty, ReceivedEvent, Timeout};
 use crate::threading::eventhandling::WaitOrTryForNextEvent::{TryForNextEvent, WaitForNextEvent, WaitForNextEventOrTimeout};
@@ -25,7 +25,7 @@ impl<Factory: FactoryTrait, T: EventHandlerTrait> EventHandlerThread<Factory, T>
         };
     }
 
-    fn wait_for_message_or_timeout(message_handler: T, receiver: &mut EventReceiver<Factory, T::Event>, time_duration: TimeDuration) -> ChannelEventResult<T> {
+    fn wait_for_message_or_timeout(message_handler: T, receiver: &mut EventReceiver<Factory, T::Event>, time_duration: TimeDuration) -> EventHandleResult<T> {
 
         return match receiver.recv_timeout_meta_data(time_duration) {
             Ok((receive_meta_data, Event(event))) => Self::on_message(message_handler, receive_meta_data, event),
@@ -35,7 +35,7 @@ impl<Factory: FactoryTrait, T: EventHandlerTrait> EventHandlerThread<Factory, T>
         };
     }
 
-    fn wait_for_message(message_handler: T, receiver: &mut EventReceiver<Factory, T::Event>) -> ChannelEventResult<T> {
+    fn wait_for_message(message_handler: T, receiver: &mut EventReceiver<Factory, T::Event>) -> EventHandleResult<T> {
 
         return match receiver.recv_meta_data() {
             Ok((receive_meta_data, Event(event))) => Self::on_message(message_handler, receive_meta_data, event),
@@ -44,7 +44,7 @@ impl<Factory: FactoryTrait, T: EventHandlerTrait> EventHandlerThread<Factory, T>
         };
     }
 
-    fn try_for_message(message_handler: T, receiver: &mut EventReceiver<Factory, T::Event>) -> ChannelEventResult<T> {
+    fn try_for_message(message_handler: T, receiver: &mut EventReceiver<Factory, T::Event>) -> EventHandleResult<T> {
 
         return match receiver.try_recv_meta_data() {
             Ok((receive_meta_data, Event(event))) => Self::on_message(message_handler, receive_meta_data, event),
@@ -54,19 +54,19 @@ impl<Factory: FactoryTrait, T: EventHandlerTrait> EventHandlerThread<Factory, T>
         };
     }
 
-    fn on_message(message_handler: T, receive_meta_data: ReceiveMetaData, event: T::Event) -> ChannelEventResult<T> {
+    fn on_message(message_handler: T, receive_meta_data: ReceiveMetaData, event: T::Event) -> EventHandleResult<T> {
         return message_handler.on_channel_event(ReceivedEvent(receive_meta_data, event));
     }
 
-    fn on_channel_empty(message_handler: T) -> ChannelEventResult<T> {
+    fn on_channel_empty(message_handler: T) -> EventHandleResult<T> {
         return message_handler.on_channel_event(ChannelEmpty);
     }
 
-    fn on_timeout(message_handler: T) -> ChannelEventResult<T> {
+    fn on_timeout(message_handler: T) -> EventHandleResult<T> {
         return message_handler.on_channel_event(Timeout);
     }
 
-    fn on_channel_disconnected(message_handler: T) -> ChannelEventResult<T> {
+    fn on_channel_disconnected(message_handler: T) -> EventHandleResult<T> {
         info!("The receiver channel has been disconnected.");
         return message_handler.on_channel_event(ChannelDisconnected);
     }

@@ -3,7 +3,7 @@ use std::sync::{Arc, Mutex};
 use log::trace;
 use commons::threading::{AsyncJoin, AsyncJoinCallBackTrait, ThreadBuilder};
 use commons::threading::channel::{Channel, ChannelThreadBuilder, ReceiveMetaData};
-use commons::threading::eventhandling::{ChannelEvent, EventHandlerTrait, EventOrStopThread, EventSender, WaitOrTryForNextEvent};
+use commons::threading::eventhandling::{ChannelEvent, EventHandlerTrait, EventOrStopThread, EventHandlerSender, WaitOrTryForNextEvent};
 use commons::threading::eventhandling::ChannelEvent::{ChannelDisconnected, ChannelEmpty, ReceivedEvent, Timeout};
 use commons::time::TimeDuration;
 use crate::singlethreaded::{ReceiveOrDisconnected, ReceiverLink, SingleThreadedFactory};
@@ -37,7 +37,7 @@ impl<T: EventHandlerTrait, U: AsyncJoinCallBackTrait<SingleThreadedFactory, T::T
         factory: SingleThreadedFactory,
         thread_builder: ChannelThreadBuilder<SingleThreadedFactory, EventOrStopThread<T::Event>>,
         event_handler: T,
-        join_call_back: U) -> EventSender<SingleThreadedFactory, T::Event> {
+        join_call_back: U) -> EventHandlerSender<SingleThreadedFactory, T::Event> {
 
         let (thread_builder, channel) = thread_builder.take();
 
@@ -55,7 +55,7 @@ impl<T: EventHandlerTrait, U: AsyncJoinCallBackTrait<SingleThreadedFactory, T::T
         thread_builder: ThreadBuilder<SingleThreadedFactory>,
         channel: Channel<SingleThreadedFactory, EventOrStopThread<T::Event>>,
         event_handler: T,
-        join_call_back: U) -> EventSender<SingleThreadedFactory, T::Event> {
+        join_call_back: U) -> EventHandlerSender<SingleThreadedFactory, T::Event> {
 
         let (sender, receiver) = channel.take();
 

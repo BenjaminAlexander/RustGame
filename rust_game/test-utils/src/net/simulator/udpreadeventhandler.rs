@@ -2,7 +2,7 @@ use std::net::SocketAddr;
 use std::ops::ControlFlow::{Break, Continue};
 use commons::net::UdpReadHandlerTrait;
 use commons::threading::channel::ReceiveMetaData;
-use commons::threading::eventhandling::{ChannelEvent, ChannelEventResult, EventHandlerTrait};
+use commons::threading::eventhandling::{ChannelEvent, EventHandleResult, EventHandlerTrait};
 use commons::threading::eventhandling::WaitOrTryForNextEvent::{TryForNextEvent, WaitForNextEvent};
 use crate::net::NetworkSimulator;
 
@@ -21,7 +21,7 @@ impl<T: UdpReadHandlerTrait> UdpReadEventHandler<T> {
         };
     }
 
-    fn read(mut self, source: SocketAddr, buf: Vec<u8>) -> ChannelEventResult<Self> {
+    fn read(mut self, source: SocketAddr, buf: Vec<u8>) -> EventHandleResult<Self> {
 
         return match self.read_handler.on_read(source, &buf) {
             Continue(()) => Continue(TryForNextEvent(self)),
@@ -34,7 +34,7 @@ impl<T: UdpReadHandlerTrait> EventHandlerTrait for UdpReadEventHandler<T> {
     type Event = (SocketAddr, Vec<u8>);
     type ThreadReturn = T;
 
-    fn on_channel_event(self, channel_event: ChannelEvent<Self::Event>) -> ChannelEventResult<Self> {
+    fn on_channel_event(self, channel_event: ChannelEvent<Self::Event>) -> EventHandleResult<Self> {
         match channel_event {
             ChannelEvent::ReceivedEvent(_, (source, buf)) => self.read(source, buf),
             ChannelEvent::Timeout => Continue(TryForNextEvent(self)),

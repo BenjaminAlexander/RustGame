@@ -6,7 +6,7 @@ use crate::net::realtcpstream::RealTcpStream;
 use crate::net::tcpconnectionhandlertrait::TcpConnectionHandlerTrait;
 use crate::net::TcpWriterTrait;
 use crate::threading::channel::ReceiveMetaData;
-use crate::threading::eventhandling::{ChannelEvent, ChannelEventResult, EventHandlerTrait};
+use crate::threading::eventhandling::{ChannelEvent, EventHandleResult, EventHandlerTrait};
 use crate::threading::eventhandling::WaitOrTryForNextEvent::TryForNextEvent;
 
 pub struct TcpListenerEventHandler<T: TcpConnectionHandlerTrait<Factory=RealFactory>> {
@@ -24,7 +24,7 @@ impl<T: TcpConnectionHandlerTrait<Factory=RealFactory>> TcpListenerEventHandler<
         };
     }
 
-    fn accept(mut self) -> ChannelEventResult<Self> {
+    fn accept(mut self) -> EventHandleResult<Self> {
 
         match self.tcp_listener.accept() {
             Ok((tcp_stream, remote_peer_socket_addr)) => {
@@ -58,7 +58,7 @@ impl<T: TcpConnectionHandlerTrait<Factory=RealFactory>> EventHandlerTrait for Tc
     type Event = ();
     type ThreadReturn = T;
 
-    fn on_channel_event(self, channel_event: ChannelEvent<Self::Event>) -> ChannelEventResult<Self> {
+    fn on_channel_event(self, channel_event: ChannelEvent<Self::Event>) -> EventHandleResult<Self> {
         return match channel_event {
             ChannelEvent::ReceivedEvent(_, ()) => Continue(TryForNextEvent(self)),
             ChannelEvent::Timeout => Continue(TryForNextEvent(self)),

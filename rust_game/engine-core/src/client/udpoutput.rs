@@ -5,7 +5,7 @@ use crate::messaging::{InputMessage, ToServerMessageUDP, InitialInformation, Fra
 use std::ops::ControlFlow::{Continue, Break};
 use commons::net::{MAX_UDP_DATAGRAM_SIZE, UdpSocketTrait};
 use commons::threading::channel::ReceiveMetaData;
-use commons::threading::eventhandling::{ChannelEvent, ChannelEventResult, EventHandlerTrait};
+use commons::threading::eventhandling::{ChannelEvent, EventHandleResult, EventHandlerTrait};
 use commons::threading::eventhandling::WaitOrTryForNextEvent::{TryForNextEvent, WaitForNextEvent};
 
 //TODO: combine server/client and tcp/udp inputs/outputs to shared listener/eventhandler types
@@ -91,7 +91,7 @@ impl<GameFactory: GameFactoryTrait> EventHandlerTrait for UdpOutput<GameFactory>
     type Event = UdpOutputEvent<GameFactory::Game>;
     type ThreadReturn = ();
 
-    fn on_channel_event(mut self, channel_event: ChannelEvent<Self::Event>) -> ChannelEventResult<Self> {
+    fn on_channel_event(mut self, channel_event: ChannelEvent<Self::Event>) -> EventHandleResult<Self> {
         match channel_event {
             ChannelEvent::ReceivedEvent(_, event) => {
                 match event {

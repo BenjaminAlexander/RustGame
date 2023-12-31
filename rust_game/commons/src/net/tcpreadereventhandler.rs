@@ -3,7 +3,7 @@ use log::warn;
 use crate::net::realtcpstream::RealTcpStream;
 use crate::net::tcpreadhandlertrait::TcpReadHandlerTrait;
 use crate::threading::channel::ReceiveMetaData;
-use crate::threading::eventhandling::{ChannelEvent, ChannelEventResult, EventHandlerTrait};
+use crate::threading::eventhandling::{ChannelEvent, EventHandleResult, EventHandlerTrait};
 use crate::threading::eventhandling::WaitOrTryForNextEvent::TryForNextEvent;
 
 pub struct TcpReaderEventHandler<T: TcpReadHandlerTrait> {
@@ -20,7 +20,7 @@ impl<T: TcpReadHandlerTrait> TcpReaderEventHandler<T> {
         };
     }
 
-    fn read(mut self) -> ChannelEventResult<Self> {
+    fn read(mut self) -> EventHandleResult<Self> {
 
         match self.tcp_reader.read::<T::ReadType>() {
             Ok(read_value) => {
@@ -41,7 +41,7 @@ impl<T: TcpReadHandlerTrait> EventHandlerTrait for TcpReaderEventHandler<T> {
     type Event = ();
     type ThreadReturn = T;
 
-    fn on_channel_event(self, channel_event: ChannelEvent<Self::Event>) -> ChannelEventResult<Self> {
+    fn on_channel_event(self, channel_event: ChannelEvent<Self::Event>) -> EventHandleResult<Self> {
         return match channel_event {
             ChannelEvent::ReceivedEvent(_, ()) => Continue(TryForNextEvent(self)),
             ChannelEvent::Timeout => Continue(TryForNextEvent(self)),

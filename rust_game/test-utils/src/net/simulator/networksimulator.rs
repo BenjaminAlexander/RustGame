@@ -7,7 +7,7 @@ use commons::factory::FactoryTrait;
 use commons::net::{TcpConnectionHandlerTrait, UdpReadHandlerTrait};
 use commons::threading::AsyncJoinCallBackTrait;
 use commons::threading::channel::ChannelThreadBuilder;
-use commons::threading::eventhandling::{EventOrStopThread, EventSenderTrait, EventSender};
+use commons::threading::eventhandling::{EventOrStopThread, EventSenderTrait, EventHandlerSender};
 use crate::net::{ChannelTcpWriter, UdpSocketSimulator};
 use crate::net::simulator::hostsimulator::HostSimulator;
 use crate::net::simulator::tcplistenereventhandler::{TcpListenerEvent, TcpListenerEventHandler};
@@ -21,8 +21,8 @@ pub struct NetworkSimulator {
 
 struct Internal {
     //TODO: add a way to remove TCP listeners when they stop listening
-    tcp_listeners: HashMap<SocketAddr, EventSender<SingleThreadedFactory, TcpListenerEvent>>,
-    udp_readers: HashMap<SocketAddr, EventSender<SingleThreadedFactory, (SocketAddr, Vec<u8>)>>,
+    tcp_listeners: HashMap<SocketAddr, EventHandlerSender<SingleThreadedFactory, TcpListenerEvent>>,
+    udp_readers: HashMap<SocketAddr, EventHandlerSender<SingleThreadedFactory, (SocketAddr, Vec<u8>)>>,
 }
 
 impl NetworkSimulator {
@@ -57,7 +57,7 @@ impl NetworkSimulator {
         thread_builder: ChannelThreadBuilder<SingleThreadedFactory, EventOrStopThread<()>>,
         connection_handler: TcpConnectionHandler,
         join_call_back: impl AsyncJoinCallBackTrait<SingleThreadedFactory, TcpConnectionHandler>
-    ) -> Result<EventSender<SingleThreadedFactory, ()>, Error> {
+    ) -> Result<EventHandlerSender<SingleThreadedFactory, ()>, Error> {
 
         let mut guard = self.internal.lock().unwrap();
 
@@ -118,7 +118,7 @@ impl NetworkSimulator {
         udp_socket: UdpSocketSimulator,
         udp_read_handler: T,
         join_call_back: impl AsyncJoinCallBackTrait<SingleThreadedFactory, T>
-    ) -> Result<EventSender<SingleThreadedFactory, ()>, Error> {
+    ) -> Result<EventHandlerSender<SingleThreadedFactory, ()>, Error> {
 
         let mut guard = self.internal.lock().unwrap();
 

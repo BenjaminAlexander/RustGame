@@ -1,8 +1,8 @@
-use crate::threading::eventhandling::SendResult;
+use crate::threading::eventhandling::EventHandlerSendResult;
 
 pub trait EventSenderTrait<T> {
 
-    fn send_event(&self, event: T) -> SendResult<T>;
+    fn send_event(&self, event: T) -> EventHandlerSendResult<T>;
 
-    fn send_stop_thread(&self) -> SendResult<T>;
+    fn send_stop_thread(&self) -> EventHandlerSendResult<T>;
 }

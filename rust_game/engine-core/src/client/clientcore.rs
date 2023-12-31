@@ -16,7 +16,7 @@ use crate::client::udpoutput::{UdpOutput, UdpOutputEvent};
 use crate::client::udpinput::UdpInput;
 use commons::threading::AsyncJoin;
 use commons::threading::channel::{ReceiveMetaData, SenderTrait};
-use commons::threading::eventhandling::{ChannelEvent, ChannelEventResult, EventHandlerTrait, EventSenderTrait};
+use commons::threading::eventhandling::{ChannelEvent, EventHandleResult, EventHandlerTrait, EventSenderTrait};
 use commons::threading::eventhandling::WaitOrTryForNextEvent::{TryForNextEvent, WaitForNextEvent};
 
 pub enum ClientCoreEvent<GameFactory: GameFactoryTrait> {
@@ -107,7 +107,7 @@ impl<GameFactory: GameFactoryTrait> ClientCore<GameFactory> {
         }
     }
 
-    fn on_input_event(mut self, input_event: <GameFactory::Game as GameTrait>::ClientInputEvent) -> ChannelEventResult<Self> {
+    fn on_input_event(mut self, input_event: <GameFactory::Game as GameTrait>::ClientInputEvent) -> EventHandleResult<Self> {
 
         if self.last_time_message.is_some() &&
             self.initial_information.is_some() {
@@ -118,7 +118,7 @@ impl<GameFactory: GameFactoryTrait> ClientCore<GameFactory> {
         return Continue(TryForNextEvent(self));
     }
 
-    fn on_initial_information(mut self, initial_information: InitialInformation<GameFactory::Game>) -> ChannelEventResult<Self> {
+    fn on_initial_information(mut self, initial_information: InitialInformation<GameFactory::Game>) -> EventHandleResult<Self> {
 
         let client_game_time_observer = ClientGameTimerObserver::new(self.factory.clone(), self.sender.clone());
 
@@ -166,7 +166,7 @@ impl<GameFactory: GameFactoryTrait> ClientCore<GameFactory> {
         return Continue(TryForNextEvent(self));
     }
 
-    fn on_game_timer_tick(mut self) -> ChannelEventResult<Self> {
+    fn on_game_timer_tick(mut self) -> EventHandleResult<Self> {
 
         let time_message = self.game_timer.as_ref().unwrap().create_timer_message();
 
@@ -209,7 +209,7 @@ impl<GameFactory: GameFactoryTrait> ClientCore<GameFactory> {
         return Continue(TryForNextEvent(self));
     }
 
-    fn on_remote_timer_message(mut self, time_message: TimeReceived<TimeMessage>) -> ChannelEventResult<Self> {
+    fn on_remote_timer_message(mut self, time_message: TimeReceived<TimeMessage>) -> EventHandleResult<Self> {
         self.game_timer.as_mut().unwrap().on_time_message(time_message);
         return Continue(TryForNextEvent(self));
     }
@@ -219,7 +219,7 @@ impl<GameFactory: GameFactoryTrait> EventHandlerTrait for ClientCore<GameFactory
     type Event = ClientCoreEvent<GameFactory>;
     type ThreadReturn = ();
 
-    fn on_channel_event(self, channel_event: ChannelEvent<Self::Event>) -> ChannelEventResult<Self> {
+    fn on_channel_event(self, channel_event: ChannelEvent<Self::Event>) -> EventHandleResult<Self> {
         match channel_event {
             ChannelEvent::ReceivedEvent(_, OnInitialInformation(initial_information)) => self.on_initial_information(initial_information),
             ChannelEvent::ReceivedEvent(_, OnInputEvent(client_input_event)) => self.on_input_event(client_input_event),
