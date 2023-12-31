@@ -1,24 +1,8 @@
-#[package]
-#name = "rust_game"
-#edition.workspace = true
-#version.workspace = true
-#authors.workspace = true
-
-#[dependencies]
-#commons.workspace = true
-#engine-core.workspace = true
-
-#chrono.workspace = true
-#log.workspace = true
-#log4rs.workspace = true
-#num.workspace = true
-#piston.workspace = true
-#piston2d-graphics.workspace = true
-#pistoncore-glutin_window.workspace = true
-#piston2d-opengl_graphics.workspace = true
-#mp-serde.workspace = true
-#serde.workspace = true
-#timer.workspace = true
+[package]
+name = "rust_game"
+edition.workspace = true
+version.workspace = true
+authors.workspace = true
 
 [workspace]
 members = [
@@ -39,6 +23,7 @@ authors = ["Benjamin A. Alexander"]
 commons = { path = "./commons" }
 engine-core = { path = "./engine-core" }
 simple-game = { path = "./simple-game" }
+test-utils = { path = "./test-utils" }
 
 #Dependencies on crates outside the workspace
 chrono = "0.4.19"

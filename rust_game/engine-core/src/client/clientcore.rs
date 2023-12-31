@@ -6,7 +6,7 @@ use crate::interface::{EventSender, GameFactoryTrait, GameTrait, Sender};
 use crate::client::tcpoutput::TcpOutput;
 use crate::messaging::{InitialInformation, InputMessage};
 use crate::gamemanager::{Manager, ManagerEvent, RenderReceiverMessage};
-use log::{trace};
+use log::trace;
 use commons::factory::FactoryTrait;
 use commons::net::UdpSocketTrait;
 use crate::client::clientcore::ClientCoreEvent::{OnInitialInformation, OnInputEvent, GameTimerTick, RemoteTimeMessageEvent};

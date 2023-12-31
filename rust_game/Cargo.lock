@@ -1380,6 +1380,10 @@ dependencies = [
 ]
 
 [[package]]
+name = "rust_game"
+version = "0.1.0"
+
+[[package]]
 name = "rusttype"
 version = "0.9.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
