@@ -4,6 +4,12 @@ edition.workspace = true
 version.workspace = true
 authors.workspace = true
 
+[dependencies]
+commons.workspace = true
+engine-core.workspace = true
+simple-game.workspace = true
+test-utils.workspace = true
+
 [workspace]
 members = [
     "commons",
