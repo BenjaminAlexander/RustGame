@@ -1,8 +1,12 @@
 #!/bin/bash
 
+RUST_GAME_DIR="$(readlink -f $(dirname $0))"
+
+cd $RUST_GAME_DIR
+
 export CARGO_INCREMENTAL=0
 export RUSTFLAGS='-Cinstrument-coverage'
-export LLVM_PROFILE_FILE="$PWD/target/coverage/cargo-test-%p-%m.profraw"
+export LLVM_PROFILE_FILE="$RUST_GAME_DIR/target/coverage/cargo-test-%p-%m.profraw"
 
 cargo clean
 cargo test
