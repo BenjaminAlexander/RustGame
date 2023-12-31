@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::collections::{HashMap, VecDeque};
 use std::marker::PhantomData;
 use log::{trace, warn};
 use crate::factory::FactoryTrait;
@@ -17,9 +17,7 @@ use crate::time::TimeValue;
 pub struct TimeService<Factory: FactoryTrait, T: TimerCreationCallBack, U: TimerCallBack> {
     factory: Factory,
     next_timer_id: usize,
-
-    //TODO: make this a vec deque
-    timers: Vec<Timer<U>>,
+    timers: VecDeque<Timer<U>>,
     unscheduled_timers: HashMap<TimerId, Timer<U>>,
     phantom: PhantomData<T>
 }
@@ -30,7 +28,7 @@ impl<Factory: FactoryTrait, T: TimerCreationCallBack, U: TimerCallBack> TimeServ
         return Self {
             factory,
             next_timer_id: 0,
-            timers: Vec::new(),
+            timers: VecDeque::new(),
             unscheduled_timers: HashMap::new(),
             phantom: PhantomData::default()
         }
@@ -56,7 +54,7 @@ impl<Factory: FactoryTrait, T: TimerCreationCallBack, U: TimerCallBack> TimeServ
             for i in 0..self.timers.len() {
                 if let Some(timer) = self.timers.get(i) {
                     if timer.get_id() == timer_id {
-                        return Some(self.timers.remove(i));
+                        return Some(self.timers.remove(i).unwrap());
                     }
                 }
             }
@@ -72,7 +70,7 @@ impl<Factory: FactoryTrait, T: TimerCreationCallBack, U: TimerCallBack> TimeServ
             if let Some(timer) = self.timers.get(0) {
 
                 if timer.should_trigger(&now) {
-                    let mut timer = self.timers.remove(0);
+                    let mut timer = self.timers.pop_front().unwrap();
                     timer.trigger(&self.factory);
 
                     if timer.get_trigger_time().is_some() {
@@ -103,7 +101,7 @@ impl<Factory: FactoryTrait, T: TimerCreationCallBack, U: TimerCallBack> TimeServ
 
             } else {
                 warn!("An unscheduled timer was left in the queue!");
-                let timer = self.timers.remove(0);
+                let timer = self.timers.pop_front().unwrap();
                 self.unscheduled_timers.insert(*timer.get_id(), timer);
                 return self.trigger_timers();
             }
