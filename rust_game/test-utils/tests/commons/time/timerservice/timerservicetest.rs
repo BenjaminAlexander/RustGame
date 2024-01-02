@@ -16,8 +16,8 @@ fn timer_service_test() {
 
     LoggingConfigBuilder::new().add_console_appender().init(LevelFilter::Trace);
 
-    let two_seconds = TimeDuration::from_seconds(2.0);
-    let five_seconds = TimeDuration::from_seconds(5.0);
+    let two_seconds = TimeDuration::from_secs_f64(2.0);
+    let five_seconds = TimeDuration::from_secs_f64(5.0);
     let seven_seconds = two_seconds.add(five_seconds);
 
     let factory = SingleThreadedFactory::new();

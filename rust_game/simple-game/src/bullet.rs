@@ -30,10 +30,10 @@ impl Bullet {
     }
 
     pub fn get_position(&self, duration_since_game_start: TimeDuration) -> Option<Vector2> {
-        let duration_since_bullet_start = duration_since_game_start - (SimpleGameImpl::STEP_PERIOD * self.start_step as f64);
-        if duration_since_bullet_start.get_seconds() >= 0.0 {
+        let duration_since_bullet_start = duration_since_game_start - (SimpleGameImpl::STEP_PERIOD.mul_f64(self.start_step as f64));
+        if duration_since_bullet_start.as_secs_f64() >= 0.0 {
             //TODO: move div by 1000
-            return Some(self.start_position + self.velocity * (duration_since_bullet_start.get_seconds() * 1000.0));
+            return Some(self.start_position + self.velocity * (duration_since_bullet_start.as_secs_f64() * 1000.0));
         } else {
             return None;
         }

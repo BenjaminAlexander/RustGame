@@ -2,6 +2,7 @@ use commons::stats::RollingAverage;
 use commons::time::{TimeDuration, TimeValue};
 use log::{info, warn, error, debug};
 use std::io;
+use std::ops::Add;
 use std::ops::ControlFlow::{Break, Continue};
 use commons::factory::FactoryTrait;
 use commons::net::{MAX_UDP_DATAGRAM_SIZE, UdpSocketTrait};
@@ -171,7 +172,7 @@ impl<GameFactory: GameFactoryTrait> UdpOutput<GameFactory> {
         let now = self.factory.now();
         let duration_in_queue = now.duration_since(&time_in_queue);
 
-        self.time_in_queue_rolling_average.add_value(duration_in_queue.get_seconds());
+        self.time_in_queue_rolling_average.add_value(duration_in_queue.as_secs_f64());
         let average = self.time_in_queue_rolling_average.get_average();
 
         if average > 500.0 {

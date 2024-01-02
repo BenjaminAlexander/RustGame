@@ -10,7 +10,7 @@ impl SimulatedTimeSource {
 
     pub fn new() -> Self {
         return Self {
-            simulated_time: Arc::new(Mutex::new(TimeValue::from_seconds_since_epoch(0.0)))
+            simulated_time: Arc::new(Mutex::new(TimeValue::from_secs_f64(0.0)))
         };
     }
 

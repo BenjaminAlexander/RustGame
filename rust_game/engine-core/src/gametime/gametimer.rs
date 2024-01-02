@@ -1,3 +1,5 @@
+use std::ops::{Add, Sub};
+
 use commons::stats::RollingAverage;
 use commons::time::{TimeValue, TimeDuration};
 use crate::gametime::{TimeMessage, TimeReceived};
@@ -9,8 +11,8 @@ use commons::threading::eventhandling::{EventHandlerSender, EventSenderTrait};
 use commons::threading::AsyncJoin;
 use commons::time::timerservice::{Schedule, TimerCallBack, TimerCreationCallBack, TimerId, TimerServiceEvent, TimeService};
 
-const TICK_LATENESS_WARN_DURATION: TimeDuration = TimeDuration::from_seconds(0.02);
-const CLIENT_ERROR_WARN_DURATION: TimeDuration = TimeDuration::from_seconds(0.02);
+const TICK_LATENESS_WARN_DURATION: TimeDuration = TimeDuration::new(0, 20_000_000);
+const CLIENT_ERROR_WARN_DURATION: TimeDuration = TimeDuration::new(0, 20_000_000);
 
 pub struct GameTimer<Factory: FactoryTrait, T: TimerCallBack> {
     factory: Factory,
@@ -70,29 +72,29 @@ impl<Factory: FactoryTrait, T: TimerCallBack> GameTimer<Factory, T> {
 
         //Calculate the start time of the remote clock in local time and add it to the rolling average
         let remote_start = time_message.get_time_received()
-            .subtract(time_message.get().get_lateness())
-            .subtract(step_duration * time_message.get().get_step() as f64);
+            .sub(time_message.get().get_lateness())
+            .sub(step_duration.mul_f64(time_message.get().get_step() as f64));
 
-        self.rolling_average.add_value(remote_start.get_seconds_since_epoch());
+        self.rolling_average.add_value(remote_start.as_secs_f64());
 
         let average = self.rolling_average.get_average();
 
         if self.start.is_none() ||
-            (self.start.unwrap().get_seconds_since_epoch() - average).abs() > 1.0  {
+            (self.start.unwrap().as_secs_f64() - average).abs() > 1.0  {
 
             if self.start.is_none() {
                 info!("Start client clock from signal from server clock.");
             } else {
-                let error = self.start.unwrap().get_seconds_since_epoch() - average;
-                if error > CLIENT_ERROR_WARN_DURATION.get_seconds() {
+                let error = self.start.unwrap().as_secs_f64() - average;
+                if error > CLIENT_ERROR_WARN_DURATION.as_secs_f64() {
                     warn!("High client error (millis): {:?}", error);
                 }
             }
 
-            self.start = Some(TimeValue::from_seconds_since_epoch(average));
+            self.start = Some(TimeValue::from_secs_f64(average));
 
             let next_tick = self.start.unwrap()
-                .add(step_duration * ((self.factory.now().duration_since(&self.start.unwrap()) / step_duration)
+                .add(step_duration.mul_f64((self.factory.now().duration_since(&self.start.unwrap()).as_secs_f64() / step_duration.as_secs_f64())
                     .floor() as f64 + 1.0));
 
             let schedule = Schedule::Repeating(self.start.unwrap(), self.server_config.get_step_duration());

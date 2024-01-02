@@ -1,4 +1,5 @@
 use std::sync::mpsc;
+use std::time::Duration;
 use crate::factory::FactoryTrait;
 use crate::threading::channel::{ReceiveMetaData, ReceiverTrait, SendMetaData, TryRecvError};
 use crate::time::TimeDuration;
@@ -42,7 +43,7 @@ impl<Factory: FactoryTrait, T: Send> RealReceiver<Factory, T> {
     }
 
     pub fn recv_timeout_meta_data(&mut self, duration: TimeDuration) -> Result<(ReceiveMetaData, T), RecvTimeoutError> {
-        let (send_meta_data, value) = self.receiver.recv_timeout(duration.to_std())?;
+        let (send_meta_data, value) = self.receiver.recv_timeout(Duration::from(duration))?;
         return Ok((self.make_receive_meta_data(send_meta_data), value));
     }
 

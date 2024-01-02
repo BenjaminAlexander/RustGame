@@ -1,7 +1,7 @@
 use std::io::Error;
 use std::net::{SocketAddr, TcpListener, TcpStream};
 use std::sync::mpsc;
-use std::time::{SystemTime, UNIX_EPOCH};
+use std::time::SystemTime;
 use crate::factory::FactoryTrait;
 use crate::net::{RealTcpStream, RealUdpSocket, TcpConnectionHandlerTrait, TcpListenerEventHandler, TcpReaderEventHandler, TcpReadHandlerTrait, UdpReaderEventHandler, UdpReadHandlerTrait};
 use crate::threading::channel::{Channel, ChannelThreadBuilder, RealSender, RealReceiver, SendMetaData};
@@ -30,7 +30,7 @@ impl FactoryTrait for RealFactory {
     type UdpSocket = RealUdpSocket;
     
     fn now(&self) -> TimeValue {
-        return TimeValue::from_seconds_since_epoch(SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs_f64());
+        return TimeValue::from(SystemTime::now());
     }
 
     fn new_channel<T: Send>(&self) -> Channel<Self, T> {

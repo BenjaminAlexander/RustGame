@@ -1,3 +1,5 @@
+use std::ops::Add;
+
 use serde::{Deserialize, Serialize};
 use commons::time::{TimeValue, TimeDuration};
 
@@ -27,7 +29,7 @@ impl TimeMessage {
 
     pub fn get_step_from_actual_time(&self, actual_time: TimeValue) -> f64 {
         let duration_since_start = actual_time.duration_since(&self.start);
-        return duration_since_start / self.step_duration;
+        return duration_since_start.as_secs_f64() / self.step_duration.as_secs_f64();
     }
 
     pub fn get_step(&self) -> usize {
@@ -35,7 +37,7 @@ impl TimeMessage {
     }
 
     pub fn get_scheduled_time(&self) -> TimeValue {
-        self.start.add(self.step_duration * self.get_step() as f64)
+        self.start.add(self.step_duration.mul_f64(self.get_step() as f64))
     }
 
     pub fn get_lateness(&self) -> TimeDuration {

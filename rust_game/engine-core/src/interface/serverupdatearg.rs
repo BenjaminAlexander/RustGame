@@ -36,10 +36,10 @@ impl<'a, 'b, Game: GameTrait> ServerUpdateArg<'a, 'b, Game> {
     }
 
     pub fn get_current_duration_since_start(&self) -> TimeDuration {
-        return self.initial_information.get_server_config().get_step_duration() * self.step as f64;
+        return self.initial_information.get_server_config().get_step_duration().mul_f64(self.step as f64);
     }
 
     pub fn get_next_step_duration_since_start(&self) -> TimeDuration {
-        return self.initial_information.get_server_config().get_step_duration() * self.get_next_step() as f64;
+        return self.initial_information.get_server_config().get_step_duration().mul_f64(self.get_next_step() as f64);
     }
 }
