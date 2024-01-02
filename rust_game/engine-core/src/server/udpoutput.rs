@@ -213,7 +213,7 @@ impl<GameFactory: GameFactoryTrait> EventHandlerTrait for UdpOutput<GameFactory>
         // }
 
         let duration_since_last_state = now.duration_since(&self.time_of_last_state_send);
-        if duration_since_last_state > TimeDuration::one_second() {
+        if duration_since_last_state > TimeDuration::ONE_SECOND {
             //TODO: this should probably be a warn when it happens less often
             debug!("It has been {:?} since last state message was sent. Now: {:?}, Last: {:?}",
                       duration_since_last_state, now, self.time_of_last_state_send);

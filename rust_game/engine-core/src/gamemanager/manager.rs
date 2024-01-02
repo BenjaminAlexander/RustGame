@@ -6,7 +6,7 @@ use crate::gamemanager::step::Step;
 use commons::time::{TimeDuration, TimeValue};
 use std::sync::Arc;
 use commons::factory::FactoryTrait;
-use crate::gamemanager::{ManagerObserverTrait};
+use crate::gamemanager::ManagerObserverTrait;
 use crate::gamemanager::manager::ManagerEvent::{DropStepsBeforeEvent, InitialInformationEvent, InputEvent, ServerInputEvent, SetRequestedStepEvent, StateEvent};
 use crate::interface::GameTrait;
 use commons::threading::channel::ReceiveMetaData;
@@ -133,7 +133,7 @@ impl<ManagerObserver: ManagerObserverTrait> Manager<ManagerObserver> {
 
         let now = self.factory.now();
         let duration_since_last_state = now.duration_since(&self.time_of_last_state_receive);
-        if duration_since_last_state > TimeDuration::one_second() {
+        if duration_since_last_state > TimeDuration::ONE_SECOND {
             //warn!("It has been {:?} since last state message was received. Now: {:?}, Last: {:?}",
             //      duration_since_last_state, now, self.time_of_last_state_receive);
         }

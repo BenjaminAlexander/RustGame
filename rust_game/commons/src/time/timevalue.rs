@@ -5,10 +5,6 @@ use core::time::Duration;
 use std::cmp::Ordering;
 use crate::time::TimeDuration;
 
-pub const EPOCH: TimeValue = TimeValue::new(0, 0);
-pub const NANOS_PER_SEC: u32 = 1_000_000_000;
-
-//TODO: use nanos
 #[derive(Serialize, Deserialize, Clone, Copy, Debug)]
 pub struct TimeValue {
     seconds_since_epoch: u64,
@@ -17,14 +13,17 @@ pub struct TimeValue {
 
 impl TimeValue {
 
+    pub const EPOCH: TimeValue = TimeValue::new(0, 0);
+    pub const NANOS_PER_SEC: u32 = 1_000_000_000;
+
     const fn debug_assert(self) {
-        debug_assert!(self.nanos < NANOS_PER_SEC);
+        debug_assert!(self.nanos < TimeValue::NANOS_PER_SEC);
     }
 
     pub const fn new(seconds_since_epoch: u64, nanos: u32) -> Self {
 
-        let normalized_seconds = seconds_since_epoch + (nanos / NANOS_PER_SEC) as u64;
-        let normalized_nanos = nanos % NANOS_PER_SEC;
+        let normalized_seconds = seconds_since_epoch + (nanos / TimeValue::NANOS_PER_SEC) as u64;
+        let normalized_nanos = nanos % TimeValue::NANOS_PER_SEC;
 
         let time_value = Self {
             seconds_since_epoch: normalized_seconds,
@@ -38,12 +37,12 @@ impl TimeValue {
 
     const fn from_signed_nanos(seconds_since_epoch: u64, nanos: i32) -> Self {
 
-        let mut normalized_seconds = (seconds_since_epoch as i64 + (nanos as i64 / NANOS_PER_SEC as i64)) as u64;
-        let mut normalized_nanos = nanos % NANOS_PER_SEC as i32;
+        let mut normalized_seconds = (seconds_since_epoch as i64 + (nanos as i64 / TimeValue::NANOS_PER_SEC as i64)) as u64;
+        let mut normalized_nanos = nanos % TimeValue::NANOS_PER_SEC as i32;
 
         if normalized_nanos.is_negative() {
             normalized_seconds = normalized_seconds - 1;
-            normalized_nanos = NANOS_PER_SEC as i32 - normalized_nanos;
+            normalized_nanos = TimeValue::NANOS_PER_SEC as i32 - normalized_nanos;
         };
 
         let time_value = Self {
@@ -59,7 +58,7 @@ impl TimeValue {
     pub fn from_secs_f64(value: f64) -> Self {
 
         let seconds_since_epoch = value.trunc() as u64;
-        let nanos = ((value - seconds_since_epoch as f64) / NANOS_PER_SEC as f64) as u32;
+        let nanos = ((value - seconds_since_epoch as f64) * TimeValue::NANOS_PER_SEC as f64).round() as u32;
 
         let time_value = Self {
             seconds_since_epoch,
@@ -72,7 +71,7 @@ impl TimeValue {
     }
 
     pub fn as_secs_f64(&self) -> f64 {
-        return (self.seconds_since_epoch as f64) + (self.nanos as f64) / (NANOS_PER_SEC as f64);
+        return (self.seconds_since_epoch as f64) + (self.nanos as f64) / (TimeValue::NANOS_PER_SEC as f64);
     }
 
     pub fn is_after(&self, other: &TimeValue) -> bool {
