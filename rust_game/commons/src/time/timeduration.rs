@@ -84,7 +84,7 @@ impl TimeDuration {
         return Self::from_secs_f64(self.as_secs_f64() / rhs);
     }
 
-    pub fn to_std(&self) -> Option<Duration> {
+    pub fn to_duration(&self) -> Option<Duration> {
 
         self.debug_assert();
 
@@ -104,30 +104,24 @@ impl TimeDuration {
     }
 }
 
-impl From<Duration> for TimeDuration {
-    fn from(duration: Duration) -> TimeDuration {
+impl From<&Duration> for TimeDuration {
+    fn from(duration: &Duration) -> TimeDuration {
         return TimeDuration::new_with_assertions(duration.as_secs() as i64, duration.subsec_nanos() as i32);
     }
 }
 
-impl From<TimeDuration> for Duration {
-    fn from(time_duration: TimeDuration) -> Duration {
-        return Duration::new(time_duration.seconds as u64, time_duration.nanos as u32);
-    }
-}
-
-impl Sub for TimeDuration {
+impl Sub<&Self> for TimeDuration {
     type Output = Self;
 
-    fn sub(self, rhs: Self) -> Self::Output {
+    fn sub(self, rhs: &Self) -> Self::Output {
         return Self::new(self.seconds - rhs.seconds, self.nanos - rhs.nanos);
     }
 }
 
-impl Add for TimeDuration {
+impl Add<&Self> for TimeDuration {
     type Output = Self;
 
-    fn add(self, rhs: Self) -> Self::Output {
+    fn add(self, rhs: &Self) -> Self::Output {
         return Self::new(self.seconds + rhs.seconds, self.nanos + rhs.nanos);
     }
 }
@@ -204,6 +198,74 @@ mod tests {
 
         let time_duration = TimeDuration::new(1, 0).div_f64(2.5);
         assert_time_duration(0, 400_000_000, time_duration);
+
+        let time_duration = TimeDuration::new(23, 750_000_000);
+        let duration = time_duration.to_duration().unwrap();
+        assert_eq!(23, duration.as_secs());
+        assert_eq!(750_000_000, duration.subsec_nanos());
+
+        let time_duration = TimeDuration::new(-23, 750_000_000);
+        assert_eq!(None, time_duration.to_duration());
+
+        let time_duration = TimeDuration::new(23, 0);
+        assert_eq!(true, time_duration.is_positive());
+        assert_eq!(false, time_duration.is_negetive());
+
+        let time_duration = TimeDuration::new(0, 750_000_000);
+        assert_eq!(true, time_duration.is_positive());
+        assert_eq!(false, time_duration.is_negetive());
+
+        let time_duration = TimeDuration::new(0, -750_000_000);
+        assert_eq!(false, time_duration.is_positive());
+        assert_eq!(true, time_duration.is_negetive());
+
+        let time_duration = TimeDuration::new(-1, 0);
+        assert_eq!(false, time_duration.is_positive());
+        assert_eq!(true, time_duration.is_negetive());
+
+        let time_duration = TimeDuration::new(0, 0);
+        assert_eq!(false, time_duration.is_positive());
+        assert_eq!(false, time_duration.is_negetive());
+
+        let duration = Duration::new(23, 750_000_000);
+        let time_duration = TimeDuration::from(&duration);
+        assert_time_duration(23, 750_000_000, time_duration);
+
+        let time_duration1 = TimeDuration::new(23, 750_000_000);
+        let time_duration2 = TimeDuration::new(1, 500_000_000);
+        assert_time_duration(25, 250_000_000, time_duration1.add(&time_duration2));
+
+        let time_duration1 = TimeDuration::new(23, 750_000_000);
+        let time_duration2 = TimeDuration::new(-1, -500_000_000);
+        assert_time_duration(22, 250_000_000, time_duration1.add(&time_duration2));
+
+        let time_duration1 = TimeDuration::new(23, 750_000_000);
+        let time_duration2 = TimeDuration::new(1, 500_000_000);
+        assert_time_duration(22, 250_000_000, time_duration1.sub(&time_duration2));
+
+        let time_duration1 = TimeDuration::new(23, 750_000_000);
+        let time_duration2 = TimeDuration::new(-1, -500_000_000);
+        assert_time_duration(25, 250_000_000, time_duration1.sub(&time_duration2));
+
+        let time_duration1 = TimeDuration::new(23, 750_000_000);
+        let time_duration2 = TimeDuration::new(23, 500_000_000);
+        assert_eq!(false, time_duration1.eq(&time_duration2));
+
+        let time_duration1 = TimeDuration::new(23, 750_000_000);
+        let time_duration2 = TimeDuration::new(22, 750_000_000);
+        assert_eq!(false, time_duration1.eq(&time_duration2));
+
+        let time_duration1 = TimeDuration::new(23, 750_000_000);
+        let time_duration2 = TimeDuration::new(23, 750_000_000);
+        assert_eq!(true, time_duration1.eq(&time_duration2));
+
+        let time_duration1 = TimeDuration::new(23, 750_000_000);
+        let time_duration2 = TimeDuration::new(22, 750_000_000);
+        assert_eq!(Some(Ordering::Greater), time_duration1.partial_cmp(&time_duration2));
+
+        let time_duration1 = TimeDuration::new(23, 750_000_000);
+        let time_duration2 = TimeDuration::new(23, 500_000_000);
+        assert_eq!(Some(Ordering::Greater), time_duration1.partial_cmp(&time_duration2));
 
     }
 

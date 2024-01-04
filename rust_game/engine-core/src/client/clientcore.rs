@@ -193,7 +193,7 @@ impl<GameFactory: GameFactoryTrait> ClientCore<GameFactory> {
                 self.manager_sender.send_event(ManagerEvent::InputEvent(message.clone())).unwrap();
                 self.udp_output_sender_option.as_ref().unwrap().send_event(UdpOutputEvent::InputMessageEvent(message)).unwrap();
 
-                let client_drop_time = time_message.get_scheduled_time().sub(GameFactory::Game::GRACE_PERIOD.mul_f64(2.0));
+                let client_drop_time = time_message.get_scheduled_time().sub(&GameFactory::Game::GRACE_PERIOD.mul_f64(2.0));
                 let drop_step = time_message.get_step_from_actual_time(client_drop_time).ceil() as usize;
 
                 self.manager_sender.send_event(ManagerEvent::DropStepsBeforeEvent(drop_step)).unwrap();

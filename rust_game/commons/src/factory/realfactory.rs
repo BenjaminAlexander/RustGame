@@ -30,7 +30,7 @@ impl FactoryTrait for RealFactory {
     type UdpSocket = RealUdpSocket;
     
     fn now(&self) -> TimeValue {
-        return TimeValue::from(SystemTime::now());
+        return TimeValue::from_system_time(&SystemTime::now()).unwrap();
     }
 
     fn new_channel<T: Send>(&self) -> Channel<Self, T> {

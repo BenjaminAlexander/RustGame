@@ -82,22 +82,30 @@ impl TimeValue {
         return self < other;
     }
 
-    pub fn to_system_time(&self) -> SystemTime {
-        return UNIX_EPOCH.add(Duration::new(self.seconds_since_epoch, self.nanos));
-    }
-
     pub fn duration_since(&self, time_before: &TimeValue) -> TimeDuration {
 
         let seconds = self.seconds_since_epoch as i64 - time_before.seconds_since_epoch as i64;
         let nanos = self.nanos as i32 - time_before.nanos as i32;
         return TimeDuration::new(seconds, nanos);
     }
+
+    pub fn to_system_time(&self) -> SystemTime {
+        return UNIX_EPOCH.add(Duration::new(self.seconds_since_epoch, self.nanos));
+    }
+
+    pub fn from_system_time(system_time: &SystemTime) -> Option<TimeValue> {
+        return match system_time.duration_since(UNIX_EPOCH) {
+            Ok(duration) => Some(TimeValue::new(duration.as_secs(), duration.subsec_nanos())),
+            Err(_) => None
+        }
+    }
+
 }
 
-impl Add<TimeDuration> for TimeValue {
+impl Add<&TimeDuration> for TimeValue {
     type Output = Self;
 
-    fn add(self, rhs: TimeDuration) -> Self::Output {
+    fn add(self, rhs: &TimeDuration) -> Self::Output {
 
         let seconds_since_epoch = self.seconds_since_epoch as i64 + rhs.as_secs();
         let nanos = self.nanos as i32 + rhs.subsec_nanos();
@@ -106,10 +114,10 @@ impl Add<TimeDuration> for TimeValue {
     }
 }
 
-impl Sub<TimeDuration> for TimeValue {
+impl Sub<&TimeDuration> for TimeValue {
     type Output = Self;
 
-    fn sub(self, rhs: TimeDuration) -> Self::Output {
+    fn sub(self, rhs: &TimeDuration) -> Self::Output {
 
         let seconds_since_epoch = self.seconds_since_epoch as i64 - rhs.as_secs();
         let nanos = self.nanos as i32 - rhs.subsec_nanos();
@@ -118,33 +126,13 @@ impl Sub<TimeDuration> for TimeValue {
     }
 }
 
-impl From<&TimeValue> for f64 {
-    fn from(value: &TimeValue) -> f64 {
-        return Duration::new(value.seconds_since_epoch, value.nanos).as_secs_f64();
-    }
-}
-
-impl From<f64> for TimeValue {
-    fn from(value: f64) -> Self {
-        return TimeValue::from(Duration::from_secs_f64(value));
-    }
-}
-
-impl From<SystemTime> for TimeValue {
-    fn from(value: SystemTime) -> Self {
-        return TimeValue::from(value.duration_since(UNIX_EPOCH).unwrap());
-    }
-}
-
-impl From<Duration> for TimeValue {
-    fn from(value: Duration) -> Self {
-        return TimeValue::new(value.as_secs(), value.subsec_nanos());
-    }
-}
-
 impl PartialEq<Self> for TimeValue {
     fn eq(&self, other: &Self) -> bool {
-        return self.seconds_since_epoch.eq(&other.seconds_since_epoch);
+
+        self.debug_assert();
+        other.debug_assert();
+
+        return self.seconds_since_epoch.eq(&other.seconds_since_epoch) && self.nanos.eq(&other.nanos);
     }
 }
 
@@ -175,15 +163,44 @@ impl Ord for TimeValue {
 mod tests {
     use super::*;
 
+    fn assert_time_value(seconds: i64, nanos: i32, time_value: &TimeValue) {
+        let time_duration = time_value.duration_since(&TimeValue::EPOCH);
+        assert_eq!(seconds, time_duration.as_secs());
+        assert_eq!(nanos, time_duration.subsec_nanos());
+    }
+
     #[test]
     fn timer_value_test() {
-        //let time_value1 = TimeValue::from_seconds_since_epoch(100.0);
-        //let time_value2 = TimeValue::from_seconds_since_epoch(200.0);
+        let time_value = TimeValue::new(23, 1_750_000_000);
+        assert_time_value(24, 750_000_000, &time_value);
+        assert_eq!(24.75, time_value.as_secs_f64());
+        
+        let time_value = TimeValue::from_secs_f64(1.5);
+        assert_time_value(1, 500_000_000, &time_value);
 
-        //assert_eq!(true, time_value1.is_before(&time_value2));
-        //assert_eq!(true, time_value2.is_after(&time_value1));
+        let time_value1 = TimeValue::new(24, 1_750_000_000);
+        let time_value2 = TimeValue::new(23, 1_750_000_000);
+        assert_eq!(true, time_value1.is_after(&time_value2));
+        assert_eq!(false, time_value1.is_before(&time_value2));
+        assert_eq!(false, time_value2.is_after(&time_value1));
+        assert_eq!(true, time_value2.is_before(&time_value1));
 
-        //SystemTime::now();
+        let time_value1 = TimeValue::new(23, 750_000_000);
+        let time_value2 = TimeValue::new(23, 500_000_000);
+        assert_eq!(true, time_value1.is_after(&time_value2));
+        assert_eq!(false, time_value1.is_before(&time_value2));
+        assert_eq!(false, time_value2.is_after(&time_value1));
+        assert_eq!(true, time_value2.is_before(&time_value1));
+        assert_eq!(false, time_value2.eq(&time_value1));
+
+        let time_value1 = TimeValue::new(23, 500_000_000);
+        let time_value2 = TimeValue::new(23, 500_000_000);
+        assert_eq!(false, time_value1.is_after(&time_value2));
+        assert_eq!(false, time_value1.is_before(&time_value2));
+        assert_eq!(false, time_value2.is_after(&time_value1));
+        assert_eq!(false, time_value2.is_before(&time_value1));
+        assert_eq!(true, time_value2.eq(&time_value1));
+
     }
 
 }

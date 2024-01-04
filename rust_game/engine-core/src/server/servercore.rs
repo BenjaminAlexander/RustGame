@@ -317,7 +317,7 @@ impl<GameFactory: GameFactoryTrait> ServerCore<GameFactory> {
         }
         */
 
-        self.drop_steps_before = time_message.get_step_from_actual_time(time_message.get_scheduled_time().sub(GameFactory::Game::GRACE_PERIOD)).ceil() as usize;
+        self.drop_steps_before = time_message.get_step_from_actual_time(time_message.get_scheduled_time().sub(&GameFactory::Game::GRACE_PERIOD)).ceil() as usize;
 
         if let Some(manager_sender) = self.manager_sender_option.as_ref() {
 

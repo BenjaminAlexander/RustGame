@@ -10,6 +10,6 @@ export LLVM_PROFILE_FILE="$RUST_GAME_DIR/target/coverage/cargo-test-%p-%m.profra
 export RUST_BACKTRACE=1
 
 cargo clean
-cargo test #-p commons
+cargo test -p commons
 grcov . --binary-path ./target/debug/ -s . -t html -o target/coverage/html
 

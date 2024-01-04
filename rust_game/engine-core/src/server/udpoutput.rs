@@ -101,7 +101,7 @@ impl<GameFactory: GameFactoryTrait> UdpOutput<GameFactory> {
         let mut send_it = false;
 
         if let Some(last_time_message) = &self.last_time_message {
-            if time_message.get_scheduled_time().is_after(&last_time_message.get_scheduled_time().add(GameFactory::Game::TIME_SYNC_MESSAGE_PERIOD)) {
+            if time_message.get_scheduled_time().is_after(&last_time_message.get_scheduled_time().add(&GameFactory::Game::TIME_SYNC_MESSAGE_PERIOD)) {
                 send_it = true;
             }
         } else {

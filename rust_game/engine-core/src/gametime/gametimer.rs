@@ -59,7 +59,7 @@ impl<Factory: FactoryTrait, T: TimerCallBack> GameTimer<Factory, T> {
 
         let now = self.factory.now();
 
-        self.start = Some(now.add(self.server_config.get_step_duration()));
+        self.start = Some(now.add(&self.server_config.get_step_duration()));
 
         let schedule = Schedule::Repeating(self.start.unwrap(), self.server_config.get_step_duration());
         self.new_timer_sender.send_event(TimerServiceEvent::RescheduleTimer(self.new_timer_id, Some(schedule))).unwrap();
@@ -72,8 +72,8 @@ impl<Factory: FactoryTrait, T: TimerCallBack> GameTimer<Factory, T> {
 
         //Calculate the start time of the remote clock in local time and add it to the rolling average
         let remote_start = time_message.get_time_received()
-            .sub(time_message.get().get_lateness())
-            .sub(step_duration.mul_f64(time_message.get().get_step() as f64));
+            .sub(&time_message.get().get_lateness())
+            .sub(&step_duration.mul_f64(time_message.get().get_step() as f64));
 
         self.rolling_average.add_value(remote_start.as_secs_f64());
 
@@ -94,7 +94,7 @@ impl<Factory: FactoryTrait, T: TimerCallBack> GameTimer<Factory, T> {
             self.start = Some(TimeValue::from_secs_f64(average));
 
             let next_tick = self.start.unwrap()
-                .add(step_duration.mul_f64((self.factory.now().duration_since(&self.start.unwrap()).as_secs_f64() / step_duration.as_secs_f64())
+                .add(&step_duration.mul_f64((self.factory.now().duration_since(&self.start.unwrap()).as_secs_f64() / step_duration.as_secs_f64())
                     .floor() as f64 + 1.0));
 
             let schedule = Schedule::Repeating(self.start.unwrap(), self.server_config.get_step_duration());

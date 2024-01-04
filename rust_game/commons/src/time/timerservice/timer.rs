@@ -55,7 +55,7 @@ impl<T: TimerCallBack> Timer<T> {
         self.schedule = match self.schedule {
             None => None,
             Some(Schedule::Once(_)) => None,
-            Some(Schedule::Repeating(trigger_time, duration)) => Some(Schedule::Repeating(trigger_time.add(duration), duration))
+            Some(Schedule::Repeating(trigger_time, duration)) => Some(Schedule::Repeating(trigger_time.add(&duration), duration))
         };
     }
 }
