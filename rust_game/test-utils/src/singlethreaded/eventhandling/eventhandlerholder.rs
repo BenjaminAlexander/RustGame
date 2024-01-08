@@ -1,9 +1,8 @@
-use std::ops::ControlFlow::{Break, Continue};
 use std::sync::{Arc, Mutex};
 use log::trace;
 use commons::threading::{AsyncJoin, AsyncJoinCallBackTrait, ThreadBuilder};
 use commons::threading::channel::{Channel, ChannelThreadBuilder, ReceiveMetaData};
-use commons::threading::eventhandling::{ChannelEvent, EventHandlerTrait, EventOrStopThread, EventHandlerSender, WaitOrTryForNextEvent};
+use commons::threading::eventhandling::{ChannelEvent, EventHandlerTrait, EventOrStopThread, EventHandlerSender, EventHandleResult};
 use commons::threading::eventhandling::ChannelEvent::{ChannelDisconnected, ChannelEmpty, ReceivedEvent, Timeout};
 use commons::time::TimeDuration;
 use crate::singlethreaded::{ReceiveOrDisconnected, ReceiverLink, SingleThreadedFactory};
@@ -178,24 +177,24 @@ impl<T: EventHandlerTrait, U: AsyncJoinCallBackTrait<SingleThreadedFactory, T::T
         trace!("Event Handler: {:?}", self.thread_builder.get_name());
 
         match self.event_handler.on_channel_event(event) {
-            Continue(WaitOrTryForNextEvent::WaitForNextEvent(event_handler)) => {
+            EventHandleResult::WaitForNextEvent(event_handler) => {
                 trace!("WaitForNextEvent");
                 self.event_handler = event_handler;
                 return Some(self);
             }
-            Continue(WaitOrTryForNextEvent::WaitForNextEventOrTimeout(event_handler, timeout_duration)) => {
+            EventHandleResult::WaitForNextEventOrTimeout(event_handler, timeout_duration) => {
                 trace!("WaitForNextEventOrTimeout: {:?}", timeout_duration);
                 self.event_handler = event_handler;
                 self.schedule_timeout(&holder, timeout_duration);
                 return Some(self);
             }
-            Continue(WaitOrTryForNextEvent::TryForNextEvent(event_handler)) => {
+            EventHandleResult::TryForNextEvent(event_handler) => {
                 trace!("TryForNextEvent");
                 self.event_handler = event_handler;
                 self.schedule_channel_empty(&holder);
                 return Some(self);
             }
-            Break(result) => {
+            EventHandleResult::StopThread(result) => {
                 trace!("Join");
                 self.receiver_link.disconnect_receiver();
                 self.join_call_back.join(AsyncJoin::new(self.thread_builder, result));

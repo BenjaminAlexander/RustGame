@@ -83,10 +83,11 @@ impl TimeValue {
     }
 
     pub fn duration_since(&self, time_before: &TimeValue) -> TimeDuration {
-
+        
         let seconds = self.seconds_since_epoch as i64 - time_before.seconds_since_epoch as i64;
         let nanos = self.nanos as i32 - time_before.nanos as i32;
-        return TimeDuration::new(seconds, nanos);
+        let t = TimeDuration::new(seconds as i64, nanos as i32);
+        return t;
     }
 
     pub fn to_system_time(&self) -> SystemTime {
@@ -214,7 +215,6 @@ mod tests {
         let time_duration = TimeDuration::new(0, 750_000_000);
         assert_time_value(24, 250_000_000, &time_value.add(&time_duration));
         assert_time_value(22, 750_000_000, &time_value.sub(&time_duration));
-
     }
 
 }

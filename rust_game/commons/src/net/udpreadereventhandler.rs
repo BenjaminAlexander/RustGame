@@ -4,7 +4,6 @@ use crate::net::RealUdpSocket;
 use crate::net::udpreadhandlertrait::UdpReadHandlerTrait;
 use crate::threading::channel::ReceiveMetaData;
 use crate::threading::eventhandling::{ChannelEvent, EventHandleResult, EventHandlerTrait};
-use crate::threading::eventhandling::WaitOrTryForNextEvent::TryForNextEvent;
 
 pub const MAX_UDP_DATAGRAM_SIZE: usize = 1500;
 
@@ -29,13 +28,13 @@ impl<T: UdpReadHandlerTrait> UdpReaderEventHandler<T> {
         match self.udp_socket.recv_from(&mut buf) {
             Ok((len, peer_addr)) => {
                 return match self.udp_read_handler.on_read(peer_addr, &buf[..len]) {
-                    Continue(()) => Continue(TryForNextEvent(self)),
-                    Break(()) =>  Break(self.udp_read_handler)
+                    Continue(()) => EventHandleResult::TryForNextEvent(self),
+                    Break(()) =>  EventHandleResult::StopThread(self.udp_read_handler)
                 };
             }
             Err(error) => {
                 warn!("Error on UDP read: {:?}", error);
-                return Continue(TryForNextEvent(self));
+                return EventHandleResult::TryForNextEvent(self);
             }
         }
     }
@@ -47,10 +46,10 @@ impl<T: UdpReadHandlerTrait> EventHandlerTrait for UdpReaderEventHandler<T> {
 
     fn on_channel_event(self, channel_event: ChannelEvent<Self::Event>) -> EventHandleResult<Self> {
         return match channel_event {
-            ChannelEvent::ReceivedEvent(_, ()) => Continue(TryForNextEvent(self)),
-            ChannelEvent::Timeout => Continue(TryForNextEvent(self)),
+            ChannelEvent::ReceivedEvent(_, ()) => EventHandleResult::TryForNextEvent(self),
+            ChannelEvent::Timeout => EventHandleResult::TryForNextEvent(self),
             ChannelEvent::ChannelEmpty => self.read(),
-            ChannelEvent::ChannelDisconnected => Break(self.udp_read_handler)
+            ChannelEvent::ChannelDisconnected => EventHandleResult::StopThread(self.udp_read_handler)
         };
     }
 

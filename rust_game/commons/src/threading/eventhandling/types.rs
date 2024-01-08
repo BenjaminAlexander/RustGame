@@ -1,10 +1,6 @@
-use std::ops::ControlFlow;
 use crate::factory::FactoryTrait;
 use crate::threading::channel;
-use crate::threading::eventhandling::{EventHandlerTrait, EventOrStopThread, WaitOrTryForNextEvent};
-
-//TODO: maybe make this its own enum
-pub type EventHandleResult<T> = ControlFlow<<T as EventHandlerTrait>::ThreadReturn, WaitOrTryForNextEvent<T>>;
+use crate::threading::eventhandling::EventOrStopThread;
 
 pub type EventHandlerSendError<T> = channel::SendError<EventOrStopThread<T>>;
 

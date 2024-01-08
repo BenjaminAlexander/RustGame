@@ -1,5 +1,4 @@
 use std::net::{Ipv4Addr, SocketAddrV4, SocketAddr};
-use std::ops::ControlFlow::{Break, Continue};
 use std::ops::Sub;
 use crate::gametime::{GameTimer, TimeMessage, TimeReceived};
 use crate::client::tcpinput::TcpInput;
@@ -18,7 +17,6 @@ use crate::client::udpinput::UdpInput;
 use commons::threading::AsyncJoin;
 use commons::threading::channel::{ReceiveMetaData, SenderTrait};
 use commons::threading::eventhandling::{ChannelEvent, EventHandleResult, EventHandlerTrait, EventSenderTrait};
-use commons::threading::eventhandling::WaitOrTryForNextEvent::{TryForNextEvent, WaitForNextEvent};
 
 pub enum ClientCoreEvent<GameFactory: GameFactoryTrait> {
     OnInitialInformation(InitialInformation<GameFactory::Game>),
@@ -116,7 +114,7 @@ impl<GameFactory: GameFactoryTrait> ClientCore<GameFactory> {
             GameFactory::Game::handle_input_event(&mut self.input_event_handler, input_event);
         }
 
-        return Continue(TryForNextEvent(self));
+        return EventHandleResult::TryForNextEvent(self);
     }
 
     fn on_initial_information(mut self, initial_information: InitialInformation<GameFactory::Game>) -> EventHandleResult<Self> {
@@ -164,7 +162,7 @@ impl<GameFactory: GameFactoryTrait> ClientCore<GameFactory> {
         self.udp_input_sender_option = Some(udp_input_join_handle);
         self.udp_output_sender_option = Some(udp_output_join_handle);
 
-        return Continue(TryForNextEvent(self));
+        return EventHandleResult::TryForNextEvent(self);
     }
 
     fn on_game_timer_tick(mut self) -> EventHandleResult<Self> {
@@ -207,12 +205,12 @@ impl<GameFactory: GameFactoryTrait> ClientCore<GameFactory> {
 
         self.last_time_message = Some(time_message);
 
-        return Continue(TryForNextEvent(self));
+        return EventHandleResult::TryForNextEvent(self);
     }
 
     fn on_remote_timer_message(mut self, time_message: TimeReceived<TimeMessage>) -> EventHandleResult<Self> {
         self.game_timer.as_mut().unwrap().on_time_message(time_message);
-        return Continue(TryForNextEvent(self));
+        return EventHandleResult::TryForNextEvent(self);
     }
 }
 
@@ -226,9 +224,9 @@ impl<GameFactory: GameFactoryTrait> EventHandlerTrait for ClientCore<GameFactory
             ChannelEvent::ReceivedEvent(_, OnInputEvent(client_input_event)) => self.on_input_event(client_input_event),
             ChannelEvent::ReceivedEvent(_, GameTimerTick) => self.on_game_timer_tick(),
             ChannelEvent::ReceivedEvent(_, RemoteTimeMessageEvent(time_message)) => self.on_remote_timer_message(time_message),
-            ChannelEvent::Timeout => Continue(WaitForNextEvent(self)),
-            ChannelEvent::ChannelEmpty => Continue(WaitForNextEvent(self)),
-            ChannelEvent::ChannelDisconnected => Break(())
+            ChannelEvent::Timeout => EventHandleResult::WaitForNextEvent(self),
+            ChannelEvent::ChannelEmpty => EventHandleResult::WaitForNextEvent(self),
+            ChannelEvent::ChannelDisconnected => EventHandleResult::StopThread(())
         }
     }
 

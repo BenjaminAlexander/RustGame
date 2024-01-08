@@ -4,7 +4,6 @@ use crate::net::realtcpstream::RealTcpStream;
 use crate::net::tcpreadhandlertrait::TcpReadHandlerTrait;
 use crate::threading::channel::ReceiveMetaData;
 use crate::threading::eventhandling::{ChannelEvent, EventHandleResult, EventHandlerTrait};
-use crate::threading::eventhandling::WaitOrTryForNextEvent::TryForNextEvent;
 
 pub struct TcpReaderEventHandler<T: TcpReadHandlerTrait> {
     tcp_reader: RealTcpStream,
@@ -25,13 +24,13 @@ impl<T: TcpReadHandlerTrait> TcpReaderEventHandler<T> {
         match self.tcp_reader.read::<T::ReadType>() {
             Ok(read_value) => {
                 return match self.tcp_read_handler.on_read(read_value) {
-                    Continue(()) => Continue(TryForNextEvent(self)),
-                    Break(()) =>  Break(self.tcp_read_handler)
+                    Continue(()) => EventHandleResult::TryForNextEvent(self),
+                    Break(()) =>  EventHandleResult::StopThread(self.tcp_read_handler)
                 };
             }
             Err(error) => {
                 warn!("Error on TCP read: {:?}", error);
-                return Break(self.tcp_read_handler);
+                return EventHandleResult::StopThread(self.tcp_read_handler);
             }
         }
     }
@@ -43,10 +42,10 @@ impl<T: TcpReadHandlerTrait> EventHandlerTrait for TcpReaderEventHandler<T> {
 
     fn on_channel_event(self, channel_event: ChannelEvent<Self::Event>) -> EventHandleResult<Self> {
         return match channel_event {
-            ChannelEvent::ReceivedEvent(_, ()) => Continue(TryForNextEvent(self)),
-            ChannelEvent::Timeout => Continue(TryForNextEvent(self)),
+            ChannelEvent::ReceivedEvent(_, ()) => EventHandleResult::TryForNextEvent(self),
+            ChannelEvent::Timeout => EventHandleResult::TryForNextEvent(self),
             ChannelEvent::ChannelEmpty => self.read(),
-            ChannelEvent::ChannelDisconnected => Break(self.tcp_read_handler)
+            ChannelEvent::ChannelDisconnected => EventHandleResult::StopThread(self.tcp_read_handler)
         };
     }
 

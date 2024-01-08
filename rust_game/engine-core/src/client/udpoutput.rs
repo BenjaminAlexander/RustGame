@@ -2,11 +2,9 @@ use log::{info, error};
 use crate::interface::{GameFactoryTrait, GameTrait, UdpSocket};
 use std::net::SocketAddr;
 use crate::messaging::{InputMessage, ToServerMessageUDP, InitialInformation, Fragmenter};
-use std::ops::ControlFlow::{Continue, Break};
 use commons::net::{MAX_UDP_DATAGRAM_SIZE, UdpSocketTrait};
 use commons::threading::channel::ReceiveMetaData;
 use commons::threading::eventhandling::{ChannelEvent, EventHandleResult, EventHandlerTrait};
-use commons::threading::eventhandling::WaitOrTryForNextEvent::{TryForNextEvent, WaitForNextEvent};
 
 //TODO: combine server/client and tcp/udp inputs/outputs to shared listener/eventhandler types
 pub enum UdpOutputEvent<Game: GameTrait> {
@@ -98,18 +96,18 @@ impl<GameFactory: GameFactoryTrait> EventHandlerTrait for UdpOutput<GameFactory>
                     UdpOutputEvent::InputMessageEvent(input_message) => self.on_input_message(input_message)
                 };
 
-                return Continue(TryForNextEvent(self));
+                return EventHandleResult::TryForNextEvent(self);
             }
             ChannelEvent::Timeout => {
                 self.send_all_messages();
-                return Continue(WaitForNextEvent(self));
+                return EventHandleResult::WaitForNextEvent(self);
             },
             ChannelEvent::ChannelEmpty => {
                 self.send_all_messages();
-                return Continue(WaitForNextEvent(self));
+                return EventHandleResult::WaitForNextEvent(self);
             }
             ChannelEvent::ChannelDisconnected => {
-                return Break(());
+                return EventHandleResult::StopThread(());
             }
         }
     }

@@ -1,5 +1,4 @@
 use std::net::{Ipv4Addr, SocketAddrV4, SocketAddr};
-use std::ops::ControlFlow::{Continue, Break};
 use std::ops::Sub;
 use log::{error, info};
 use crate::interface::{EventSender, GameFactoryTrait, GameTrait, TcpReader, TcpWriter, UdpSocket};
@@ -22,7 +21,6 @@ use crate::server::tcpoutput::TcpOutputEvent::SendInitialInformation;
 use commons::threading::AsyncJoin;
 use commons::threading::channel::{ReceiveMetaData, SenderTrait};
 use commons::threading::eventhandling::{ChannelEvent, EventHandleResult, EventHandlerTrait, EventSenderTrait};
-use commons::threading::eventhandling::WaitOrTryForNextEvent::{TryForNextEvent, WaitForNextEvent};
 use crate::server::ServerCoreEvent::UdpPacket;
 use crate::server::udphandler::UdpHandler;
 use self::ServerCoreEvent::{StartListenerEvent, StartGameEvent, TcpConnectionEvent, GameTimerTick};
@@ -67,9 +65,9 @@ impl<GameFactory: GameFactoryTrait> EventHandlerTrait for ServerCore<GameFactory
             ChannelEvent::ReceivedEvent(_, TcpConnectionEvent(tcp_sender, tcp_receiver)) => self.on_tcp_connection(tcp_sender, tcp_receiver),
             ChannelEvent::ReceivedEvent(_, GameTimerTick) => self.on_game_timer_tick(),
             ChannelEvent::ReceivedEvent(_, UdpPacket(source, len, buf)) => self.on_udp_packet(source, len, buf),
-            ChannelEvent::Timeout => Continue(WaitForNextEvent(self)),
-            ChannelEvent::ChannelEmpty => Continue(WaitForNextEvent(self)),
-            ChannelEvent::ChannelDisconnected => Break(()),
+            ChannelEvent::Timeout => EventHandleResult::WaitForNextEvent(self),
+            ChannelEvent::ChannelEmpty => EventHandleResult::WaitForNextEvent(self),
+            ChannelEvent::ChannelDisconnected => EventHandleResult::StopThread(()),
         }
     }
 
@@ -114,7 +112,7 @@ impl<GameFactory: GameFactoryTrait> ServerCore<GameFactory> {
             Ok(ip_addr_v4) => ip_addr_v4,
             Err(error) => {
                 error!("{:?}", error);
-                return Break(());
+                return EventHandleResult::StopThread(());
             }
         };
 
@@ -124,7 +122,7 @@ impl<GameFactory: GameFactoryTrait> ServerCore<GameFactory> {
             Ok(udp_socket) => udp_socket,
             Err(error) => {
                 error!("{:?}", error);
-                return Break(());
+                return EventHandleResult::StopThread(());
             }
         };
 
@@ -140,7 +138,7 @@ impl<GameFactory: GameFactoryTrait> ServerCore<GameFactory> {
             Ok(udp_input_sender) => udp_input_sender,
             Err(error) => {
                 error!("{:?}", error);
-                return Break(());
+                return EventHandleResult::StopThread(());
             }
         });
 
@@ -159,11 +157,11 @@ impl<GameFactory: GameFactoryTrait> ServerCore<GameFactory> {
         match tcp_listener_sender_result {
             Ok(tcp_listener_sender) => {
                 self.tcp_listener_sender_option = Some(tcp_listener_sender);
-                return Continue(TryForNextEvent(self));
+                return EventHandleResult::TryForNextEvent(self);
             }
             Err(error) => {
                 error!("Error starting Tcp Listener Thread: {:?}", error);
-                return Break(());
+                return EventHandleResult::StopThread(());
             }
         }
     }
@@ -239,7 +237,7 @@ impl<GameFactory: GameFactoryTrait> ServerCore<GameFactory> {
             self.render_receiver_sender = Some(render_receiver_sender);
         }
 
-        return Continue(TryForNextEvent(self));
+        return EventHandleResult::TryForNextEvent(self);
     }
 
     /*
@@ -288,7 +286,7 @@ impl<GameFactory: GameFactoryTrait> ServerCore<GameFactory> {
             info!("TcpStream connected after the core has stated and will be dropped. {:?}", tcp_sender.get_peer_addr());
         }
 
-        return Continue(TryForNextEvent(self));
+        return EventHandleResult::TryForNextEvent(self);
     }
 
     fn on_udp_packet(mut self, source: SocketAddr, len: usize, buf: [u8; MAX_UDP_DATAGRAM_SIZE]) -> EventHandleResult<Self> {
@@ -302,7 +300,7 @@ impl<GameFactory: GameFactoryTrait> ServerCore<GameFactory> {
             self.on_input_message(input_message);
         }
 
-        return Continue(TryForNextEvent(self));
+        return EventHandleResult::TryForNextEvent(self);
     }
 
     fn on_game_timer_tick(mut self) -> EventHandleResult<Self> {
@@ -334,7 +332,7 @@ impl<GameFactory: GameFactoryTrait> ServerCore<GameFactory> {
 
         self.render_receiver_sender.as_ref().unwrap().send(RenderReceiverMessage::TimeMessage(time_message.clone())).unwrap();
 
-        return Continue(TryForNextEvent(self));
+        return EventHandleResult::TryForNextEvent(self);
     }
 
     pub(super) fn on_input_message(&self, input_message: InputMessage<GameFactory::Game>) {

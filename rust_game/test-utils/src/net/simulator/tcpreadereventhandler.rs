@@ -3,7 +3,6 @@ use std::ops::ControlFlow::{Break, Continue};
 use commons::net::TcpReadHandlerTrait;
 use commons::threading::channel::ReceiveMetaData;
 use commons::threading::eventhandling::{ChannelEvent, EventHandleResult, EventHandlerTrait};
-use commons::threading::eventhandling::WaitOrTryForNextEvent::{TryForNextEvent, WaitForNextEvent};
 
 pub struct TcpReaderEventHandler<T: TcpReadHandlerTrait> {
     read_handler: T
@@ -20,10 +19,10 @@ impl<T: TcpReadHandlerTrait> TcpReaderEventHandler<T> {
     fn read(mut self, buf: Vec<u8>) -> EventHandleResult<Self> {
         return match rmp_serde::from_read::<Cursor<Vec<u8>>, T::ReadType>(Cursor::new(buf)) {
             Ok(read) => match self.read_handler.on_read(read) {
-                    Continue(()) => Continue(TryForNextEvent(self)),
-                    Break(()) => Break(self.read_handler)
+                    Continue(()) => EventHandleResult::TryForNextEvent(self),
+                    Break(()) => EventHandleResult::StopThread(self.read_handler)
                 }
-            Err(_) => Break(self.read_handler)
+            Err(_) => EventHandleResult::StopThread(self.read_handler)
         };
     }
 }
@@ -35,9 +34,9 @@ impl<T: TcpReadHandlerTrait> EventHandlerTrait for TcpReaderEventHandler<T> {
     fn on_channel_event(self, channel_event: ChannelEvent<Self::Event>) -> EventHandleResult<Self> {
         match channel_event {
             ChannelEvent::ReceivedEvent(_, buf) => self.read(buf),
-            ChannelEvent::Timeout => Continue(TryForNextEvent(self)),
-            ChannelEvent::ChannelEmpty => Continue(WaitForNextEvent(self)),
-            ChannelEvent::ChannelDisconnected => Break(self.read_handler)
+            ChannelEvent::Timeout => EventHandleResult::TryForNextEvent(self),
+            ChannelEvent::ChannelEmpty => EventHandleResult::WaitForNextEvent(self),
+            ChannelEvent::ChannelDisconnected => EventHandleResult::StopThread(self.read_handler)
         }
     }
 

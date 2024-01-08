@@ -5,7 +5,7 @@ mod types;
 mod eventsendertrait;
 
 pub use self::eventhandlertrait::EventHandlerTrait;
-pub use self::enums::{ChannelEvent, EventOrStopThread, WaitOrTryForNextEvent};
+pub use self::enums::{ChannelEvent, EventOrStopThread, EventHandleResult};
 pub(crate) use self::eventhandlerthread::EventHandlerThread;
-pub use self::types::{EventHandleResult, EventHandlerSendError, EventHandlerSendResult, EventHandlerSender};
+pub use self::types::{EventHandlerSendError, EventHandlerSendResult, EventHandlerSender};
 pub use self::eventsendertrait::EventSenderTrait;

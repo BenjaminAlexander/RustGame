@@ -7,7 +7,6 @@ use crate::net::tcpconnectionhandlertrait::TcpConnectionHandlerTrait;
 use crate::net::TcpWriterTrait;
 use crate::threading::channel::ReceiveMetaData;
 use crate::threading::eventhandling::{ChannelEvent, EventHandleResult, EventHandlerTrait};
-use crate::threading::eventhandling::WaitOrTryForNextEvent::TryForNextEvent;
 
 pub struct TcpListenerEventHandler<T: TcpConnectionHandlerTrait<Factory=RealFactory>> {
     tcp_listener: TcpListener,
@@ -34,21 +33,21 @@ impl<T: TcpConnectionHandlerTrait<Factory=RealFactory>> TcpListenerEventHandler<
 
                     match self.tcp_connection_handler.on_connection(tcp_stream, tcp_stream_clone) {
                         Continue(()) => {
-                            return Continue(TryForNextEvent(self));
+                            return EventHandleResult::TryForNextEvent(self);
                         }
                         Break(()) => {
-                            return Break(self.tcp_connection_handler);
+                            return EventHandleResult::StopThread(self.tcp_connection_handler);
                         }
                     }
                 } else {
                     error!("Failed to clone RealTcpStream for : {:?}", tcp_stream.get_peer_addr());
-                    return Continue(TryForNextEvent(self));
+                    return EventHandleResult::TryForNextEvent(self);
                 }
 
             }
             Err(error) => {
                 error!("Error while trying to accept a TCP connection: {:?}", error);
-                return Continue(TryForNextEvent(self));
+                return EventHandleResult::TryForNextEvent(self);
             }
         }
     }
@@ -60,10 +59,10 @@ impl<T: TcpConnectionHandlerTrait<Factory=RealFactory>> EventHandlerTrait for Tc
 
     fn on_channel_event(self, channel_event: ChannelEvent<Self::Event>) -> EventHandleResult<Self> {
         return match channel_event {
-            ChannelEvent::ReceivedEvent(_, ()) => Continue(TryForNextEvent(self)),
-            ChannelEvent::Timeout => Continue(TryForNextEvent(self)),
+            ChannelEvent::ReceivedEvent(_, ()) => EventHandleResult::TryForNextEvent(self),
+            ChannelEvent::Timeout => EventHandleResult::TryForNextEvent(self),
             ChannelEvent::ChannelEmpty => self.accept(),
-            ChannelEvent::ChannelDisconnected => Break(self.tcp_connection_handler)
+            ChannelEvent::ChannelDisconnected => EventHandleResult::StopThread(self.tcp_connection_handler)
         };
     }
 

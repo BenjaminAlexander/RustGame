@@ -45,8 +45,9 @@ impl TimeDuration {
                 nanos.signum() != 0 && 
                 seconds.signum() != nanos.signum() as i64 {
 
-            seconds = seconds - seconds.signum();
-            nanos = (TimeDuration::NANOS_PER_SEC as i32 - nanos.abs()) * (seconds.signum() as i32);
+            let original_seconds_signum = seconds.signum();
+            seconds = seconds - original_seconds_signum;
+            nanos = (TimeDuration::NANOS_PER_SEC as i32 - nanos.abs()) * (original_seconds_signum as i32);
         }
         
         return Self::new_with_assertions(seconds, nanos);
@@ -267,6 +268,7 @@ mod tests {
         let time_duration2 = TimeDuration::new(23, 500_000_000);
         assert_eq!(Some(Ordering::Greater), time_duration1.partial_cmp(&time_duration2));
 
+        assert_time_duration(0, 82_921_124, TimeDuration::new(1, -917_078_876));
     }
 
 

@@ -1,5 +1,4 @@
 use std::collections::vec_deque::VecDeque;
-use std::ops::ControlFlow::{Break, Continue};
 use log::{warn, trace};
 use crate::messaging::{StateMessage, InputMessage, InitialInformation, ServerInputMessage};
 use crate::gamemanager::step::Step;
@@ -11,7 +10,6 @@ use crate::gamemanager::manager::ManagerEvent::{DropStepsBeforeEvent, InitialInf
 use crate::interface::GameTrait;
 use commons::threading::channel::ReceiveMetaData;
 use commons::threading::eventhandling::{ChannelEvent, EventHandleResult, EventHandlerTrait};
-use commons::threading::eventhandling::WaitOrTryForNextEvent::{TryForNextEvent, WaitForNextEvent};
 
 pub enum ManagerEvent<Game: GameTrait> {
     DropStepsBeforeEvent(usize),
@@ -102,13 +100,13 @@ impl<ManagerObserver: ManagerObserverTrait> Manager<ManagerObserver> {
             return self.set_requested_step(step);
         }
 
-        return Continue(TryForNextEvent(self));
+        return EventHandleResult::TryForNextEvent(self);
     }
 
     fn set_requested_step(mut self, step: usize) -> EventHandleResult<Self> {
         trace!("Setting requested_step: {:?}", step);
         self.requested_step = step;
-        return Continue(TryForNextEvent(self));
+        return EventHandleResult::TryForNextEvent(self);
     }
 
     fn send_messages(&mut self, step_index: usize) {
@@ -140,11 +138,11 @@ impl<ManagerObserver: ManagerObserverTrait> Manager<ManagerObserver> {
 
         if self.steps.is_empty() {
             trace!("Steps is empty");
-            return Continue(WaitForNextEvent(self));
+            return EventHandleResult::WaitForNextEvent(self);
         }
 
         if self.initial_information.is_none() {
-            return Continue(WaitForNextEvent(self));
+            return EventHandleResult::WaitForNextEvent(self);
         }
 
         let mut current: usize = 0;
@@ -194,7 +192,7 @@ impl<ManagerObserver: ManagerObserverTrait> Manager<ManagerObserver> {
 
         self.send_messages(current);
 
-        return Continue(WaitForNextEvent(self));
+        return EventHandleResult::WaitForNextEvent(self);
     }
 
     fn on_initial_information(mut self, initial_information: InitialInformation<ManagerObserver::Game>) -> EventHandleResult<Self> {
@@ -205,7 +203,7 @@ impl<ManagerObserver: ManagerObserverTrait> Manager<ManagerObserver> {
             0,
             state
         ));
-        return Continue(TryForNextEvent(self));
+        return EventHandleResult::TryForNextEvent(self);
     }
 
     fn on_input_message(mut self, input_message: InputMessage<ManagerObserver::Game>) -> EventHandleResult<Self> {
@@ -213,7 +211,7 @@ impl<ManagerObserver: ManagerObserverTrait> Manager<ManagerObserver> {
             step.set_input(input_message);
             self.time_of_last_input_receive = self.factory.now();
         }
-        return Continue(TryForNextEvent(self));
+        return EventHandleResult::TryForNextEvent(self);
     }
 
     fn on_server_input_message(mut self, server_input_message: ServerInputMessage<ManagerObserver::Game>) -> EventHandleResult<Self> {
@@ -221,7 +219,7 @@ impl<ManagerObserver: ManagerObserverTrait> Manager<ManagerObserver> {
         if let Some(step) = self.get_state(server_input_message.get_step()) {
             step.set_server_input(server_input_message.get_server_input());
         }
-        return Continue(TryForNextEvent(self));
+        return EventHandleResult::TryForNextEvent(self);
     }
 
     fn on_state_message(mut self, state_message: StateMessage<ManagerObserver::Game>) -> EventHandleResult<Self> {
@@ -229,7 +227,7 @@ impl<ManagerObserver: ManagerObserverTrait> Manager<ManagerObserver> {
 
         self.time_of_last_state_receive = self.factory.now();
 
-        return Continue(TryForNextEvent(self));
+        return EventHandleResult::TryForNextEvent(self);
     }
 }
 
@@ -247,7 +245,7 @@ impl<ManagerObserver: ManagerObserverTrait> EventHandlerTrait for Manager<Manage
             ChannelEvent::ReceivedEvent(_, StateEvent(state_message)) => self.on_state_message(state_message),
             ChannelEvent::Timeout => self.on_none_pending(),
             ChannelEvent::ChannelEmpty => self.on_none_pending(),
-            ChannelEvent::ChannelDisconnected => Break(())
+            ChannelEvent::ChannelDisconnected => EventHandleResult::StopThread(())
         }
     }
 

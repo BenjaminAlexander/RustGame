@@ -14,8 +14,9 @@ pub enum EventOrStopThread<T> {
     StopThread
 }
 
-pub enum WaitOrTryForNextEvent<T: EventHandlerTrait> {
+pub enum EventHandleResult<T: EventHandlerTrait> {
     WaitForNextEvent(T),
     WaitForNextEventOrTimeout(T, TimeDuration),
-    TryForNextEvent(T)
+    TryForNextEvent(T),
+    StopThread(T::ThreadReturn)
 }
