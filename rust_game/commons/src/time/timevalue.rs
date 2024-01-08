@@ -42,7 +42,7 @@ impl TimeValue {
 
         if normalized_nanos.is_negative() {
             normalized_seconds = normalized_seconds - 1;
-            normalized_nanos = TimeValue::NANOS_PER_SEC as i32 - normalized_nanos;
+            normalized_nanos = TimeValue::NANOS_PER_SEC as i32 + normalized_nanos;
         };
 
         let time_value = Self {
@@ -200,6 +200,20 @@ mod tests {
         assert_eq!(false, time_value2.is_after(&time_value1));
         assert_eq!(false, time_value2.is_before(&time_value1));
         assert_eq!(true, time_value2.eq(&time_value1));
+
+        let time_value = TimeValue::new(23, 750_000_000);
+        let system_time_duration_since_epoch = time_value.to_system_time().duration_since(SystemTime::UNIX_EPOCH).unwrap();
+        assert_eq!(23, system_time_duration_since_epoch.as_secs());
+        assert_eq!(750_000_000, system_time_duration_since_epoch.subsec_nanos());
+
+
+        let time_value = TimeValue::from_system_time(&SystemTime::UNIX_EPOCH.add(Duration::new(23, 750_000_000))).unwrap();
+        assert_time_value(23, 750_000_000, &time_value);
+
+        let time_value = TimeValue::new(23, 500_000_000);
+        let time_duration = TimeDuration::new(0, 750_000_000);
+        assert_time_value(24, 250_000_000, &time_value.add(&time_duration));
+        assert_time_value(22, 750_000_000, &time_value.sub(&time_duration));
 
     }
 
