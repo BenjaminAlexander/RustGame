@@ -24,6 +24,7 @@ pub trait GameTrait: 'static + Send + Sized {
     type ClientInputEvent:
         Send + 'static;
 
+    //TODO: make input event handler its own trait
     type ClientInputEventHandler:
         Send + 'static;
 

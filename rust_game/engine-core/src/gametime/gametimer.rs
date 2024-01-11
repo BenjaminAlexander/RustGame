@@ -65,7 +65,7 @@ impl<Factory: FactoryTrait, T: TimerCallBack> GameTimer<Factory, T> {
         self.new_timer_sender.send_event(TimerServiceEvent::RescheduleTimer(self.new_timer_id, Some(schedule))).unwrap();
     }
 
-    pub fn on_time_message(&mut self, time_message: TimeReceived<TimeMessage>) {
+    pub fn on_remote_timer_message(&mut self, time_message: TimeReceived<TimeMessage>) {
         trace!("Handling TimeMessage: {:?}", time_message);
 
         let step_duration = self.server_config.get_step_duration();

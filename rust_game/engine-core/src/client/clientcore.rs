@@ -6,10 +6,9 @@ use crate::interface::{EventSender, GameFactoryTrait, GameTrait, Sender};
 use crate::client::tcpoutput::TcpOutput;
 use crate::messaging::{InitialInformation, InputMessage};
 use crate::gamemanager::{Manager, ManagerEvent, RenderReceiverMessage};
-use log::trace;
+use log::{trace, warn};
 use commons::factory::FactoryTrait;
 use commons::net::UdpSocketTrait;
-use crate::client::clientcore::ClientCoreEvent::{OnInitialInformation, OnInputEvent, GameTimerTick, RemoteTimeMessageEvent};
 use crate::client::clientgametimeobserver::ClientGameTimerObserver;
 use crate::client::clientmanagerobserver::ClientManagerObserver;
 use crate::client::udpoutput::{UdpOutput, UdpOutputEvent};
@@ -27,19 +26,7 @@ pub enum ClientCoreEvent<GameFactory: GameFactoryTrait> {
 
 //TODO: make this an enum, get rid of all the options
 pub struct ClientCore<GameFactory: GameFactoryTrait> {
-    factory: GameFactory::Factory,
-    sender: EventSender<GameFactory, ClientCoreEvent<GameFactory>>,
-    server_ip: Ipv4Addr,
-    input_event_handler: <GameFactory::Game as GameTrait>::ClientInputEventHandler,
-    manager_sender: EventSender<GameFactory, ManagerEvent<GameFactory::Game>>,
-    game_timer: Option<GameTimer<GameFactory::Factory, ClientGameTimerObserver<GameFactory>>>,
-    udp_input_sender_option: Option<EventSender<GameFactory, ()>>,
-    udp_output_sender_option: Option<EventSender<GameFactory, UdpOutputEvent<GameFactory::Game>>>,
-    tcp_input_sender: EventSender<GameFactory, ()>,
-    tcp_output_sender: EventSender<GameFactory, ()>,
-    render_receiver_sender: Sender<GameFactory, RenderReceiverMessage<GameFactory::Game>>,
-    initial_information: Option<InitialInformation<GameFactory::Game>>,
-    last_time_message: Option<TimeMessage>
+    state: State<GameFactory>
 }
 
 impl<GameFactory: GameFactoryTrait> ClientCore<GameFactory> {
@@ -89,35 +76,100 @@ impl<GameFactory: GameFactoryTrait> ClientCore<GameFactory> {
             .spawn_event_handler(TcpOutput::<GameFactory>::new(tcp_sender), AsyncJoin::log_async_join)
             .unwrap();
 
-        return Self {
+        let waiting_for_hello_client_core = WaitingForHelloCore {
             factory,
             sender,
             server_ip,
             input_event_handler: GameFactory::Game::new_input_event_handler(),
             manager_sender,
-            game_timer: None,
-            udp_input_sender_option: None,
-            udp_output_sender_option: None,
             tcp_input_sender,
             tcp_output_sender,
             render_receiver_sender,
-            initial_information: None,
-            last_time_message: None
+        };
+
+        return Self {
+            state: State::WaitingForHello(waiting_for_hello_client_core)
+        };
+    }
+}
+
+impl<GameFactory: GameFactoryTrait> EventHandlerTrait for ClientCore<GameFactory> {
+    type Event = ClientCoreEvent<GameFactory>;
+    type ThreadReturn = ();
+
+    fn on_channel_event(self, channel_event: ChannelEvent<Self::Event>) -> EventHandleResult<Self> {
+        match channel_event {
+            ChannelEvent::ReceivedEvent(_, core_event) => self.state.on_event(core_event),
+            ChannelEvent::Timeout => EventHandleResult::WaitForNextEvent(self),
+            ChannelEvent::ChannelEmpty => EventHandleResult::WaitForNextEvent(self),
+            ChannelEvent::ChannelDisconnected => EventHandleResult::StopThread(())
         }
     }
 
-    fn on_input_event(mut self, input_event: <GameFactory::Game as GameTrait>::ClientInputEvent) -> EventHandleResult<Self> {
+    fn on_stop(self, _receive_meta_data: ReceiveMetaData) -> Self::ThreadReturn { () }
+}
 
-        if self.last_time_message.is_some() &&
-            self.initial_information.is_some() {
+enum State<GameFactory: GameFactoryTrait> {
+    WaitingForHello(WaitingForHelloCore<GameFactory>),
+    Running(RunningCore<GameFactory>)
+}
 
-            GameFactory::Game::handle_input_event(&mut self.input_event_handler, input_event);
+impl<GameFactory: GameFactoryTrait> State<GameFactory> {
+
+    fn on_event(self, event: ClientCoreEvent<GameFactory>) -> EventHandleResult<ClientCore<GameFactory>> {
+        match self {
+            State::WaitingForHello(waiting_core) => waiting_core.on_event(event),
+            State::Running(running_core) => running_core.on_event(event),
         }
+    }
+}
 
-        return EventHandleResult::TryForNextEvent(self);
+struct WaitingForHelloCore<GameFactory: GameFactoryTrait> {
+    factory: GameFactory::Factory,
+    sender: EventSender<GameFactory, ClientCoreEvent<GameFactory>>,
+    server_ip: Ipv4Addr,
+    //TODO: can this be moved to after Hello struct only
+    input_event_handler: <GameFactory::Game as GameTrait>::ClientInputEventHandler,
+    manager_sender: EventSender<GameFactory, ManagerEvent<GameFactory::Game>>,
+    tcp_input_sender: EventSender<GameFactory, ()>,
+    tcp_output_sender: EventSender<GameFactory, ()>,
+    render_receiver_sender: Sender<GameFactory, RenderReceiverMessage<GameFactory::Game>>
+}
+
+impl<GameFactory: GameFactoryTrait> WaitingForHelloCore<GameFactory> {
+
+    fn try_for_next_event(self) -> EventHandleResult<ClientCore<GameFactory>> {
+        let client_core = ClientCore {
+            state: State::WaitingForHello(self)
+        };
+
+        return EventHandleResult::TryForNextEvent(client_core);
     }
 
-    fn on_initial_information(mut self, initial_information: InitialInformation<GameFactory::Game>) -> EventHandleResult<Self> {
+    fn on_event(self, event: ClientCoreEvent<GameFactory>) -> EventHandleResult<ClientCore<GameFactory>> {
+        match event {
+            ClientCoreEvent::OnInitialInformation(initial_information) => self.on_initial_information(initial_information),
+            ClientCoreEvent::OnInputEvent(_) => self.on_input_event(),
+            ClientCoreEvent::GameTimerTick => self.on_game_timer_tick(),
+            ClientCoreEvent::RemoteTimeMessageEvent(_) => self.on_remote_timer_message(), 
+        }
+    }
+
+    fn on_input_event(self) -> EventHandleResult<ClientCore<GameFactory>> {
+        return self.try_for_next_event();
+    }
+
+    fn on_game_timer_tick(self) -> EventHandleResult<ClientCore<GameFactory>> {
+        warn!("Received a game timer tick while waiting for the hello from the server");
+        return self.try_for_next_event();
+    }
+
+    fn on_remote_timer_message(self) -> EventHandleResult<ClientCore<GameFactory>> {
+        warn!("Received a remote timer message while waiting for the hello from the server");
+        return self.try_for_next_event();
+    }
+
+    fn on_initial_information(self, initial_information: InitialInformation<GameFactory::Game>) -> EventHandleResult<ClientCore<GameFactory>> {
 
         let client_game_time_observer = ClientGameTimerObserver::new(self.factory.clone(), self.sender.clone());
 
@@ -135,7 +187,7 @@ impl<GameFactory: GameFactoryTrait> ClientCore<GameFactory> {
 
         let udp_socket = self.factory.bind_udp_socket(socket_addr).unwrap();
 
-        let udp_input_join_handle = self.factory.new_thread_builder()
+        let udp_input_sender = self.factory.new_thread_builder()
             .name("ClientUdpInput")
             .spawn_udp_reader(
                 udp_socket.try_clone().unwrap(),
@@ -152,44 +204,98 @@ impl<GameFactory: GameFactoryTrait> ClientCore<GameFactory> {
             .build_channel_for_event_handler::<UdpOutput<GameFactory>>();
 
         //TODO: unwrap after try_clone is not good
-        let udp_output_join_handle = udp_output_builder.spawn_event_handler(
+        let udp_output_sender = udp_output_builder.spawn_event_handler(
             UdpOutput::<GameFactory>::new(server_udp_socket_addr, udp_socket.try_clone().unwrap(), initial_information.clone()),
             AsyncJoin::log_async_join
         ).unwrap();
 
-        self.initial_information = Some(initial_information);
-        self.game_timer = Some(game_timer);
-        self.udp_input_sender_option = Some(udp_input_join_handle);
-        self.udp_output_sender_option = Some(udp_output_join_handle);
+        let running_core = RunningCore {
+            factory: self.factory,
+            sender: self.sender,
+            server_ip: self.server_ip,
+            input_event_handler: self.input_event_handler,
+            manager_sender: self.manager_sender,
+            game_timer,
+            udp_input_sender,
+            udp_output_sender,
+            tcp_input_sender: self.tcp_input_sender,
+            tcp_output_sender: self.tcp_output_sender,
+            render_receiver_sender: self.render_receiver_sender,
+            initial_information,
+            last_time_message: None
+        };
 
-        return EventHandleResult::TryForNextEvent(self);
+        return running_core.try_for_next_event();
+    }
+}
+
+struct RunningCore<GameFactory: GameFactoryTrait> {
+    factory: GameFactory::Factory,
+    sender: EventSender<GameFactory, ClientCoreEvent<GameFactory>>,
+    server_ip: Ipv4Addr,
+    input_event_handler: <GameFactory::Game as GameTrait>::ClientInputEventHandler,
+    manager_sender: EventSender<GameFactory, ManagerEvent<GameFactory::Game>>,
+    game_timer: GameTimer<GameFactory::Factory, ClientGameTimerObserver<GameFactory>>,
+    udp_input_sender: EventSender<GameFactory, ()>,
+    udp_output_sender: EventSender<GameFactory, UdpOutputEvent<GameFactory::Game>>,
+    tcp_input_sender: EventSender<GameFactory, ()>,
+    tcp_output_sender: EventSender<GameFactory, ()>,
+    render_receiver_sender: Sender<GameFactory, RenderReceiverMessage<GameFactory::Game>>,
+    initial_information: InitialInformation<GameFactory::Game>,
+    last_time_message: Option<TimeMessage>
+}
+
+impl<GameFactory: GameFactoryTrait> RunningCore<GameFactory> {
+
+    fn try_for_next_event(self) -> EventHandleResult<ClientCore<GameFactory>> {
+        let client_core = ClientCore {
+            state: State::Running(self)
+        };
+
+        return EventHandleResult::TryForNextEvent(client_core);
     }
 
-    fn on_game_timer_tick(mut self) -> EventHandleResult<Self> {
+    fn on_event(self, event: ClientCoreEvent<GameFactory>) -> EventHandleResult<ClientCore<GameFactory>> {
+        match event {
+            ClientCoreEvent::OnInitialInformation(_) => self.on_initial_information(),
+            ClientCoreEvent::OnInputEvent(client_input_event) => self.on_input_event(client_input_event),
+            ClientCoreEvent::GameTimerTick => self.on_game_timer_tick(),
+            ClientCoreEvent::RemoteTimeMessageEvent(time_message) => self.on_remote_timer_message(time_message), 
+        }
+    }
 
-        let time_message = self.game_timer.as_ref().unwrap().create_timer_message();
+    fn on_input_event(mut self, input_event: <GameFactory::Game as GameTrait>::ClientInputEvent) -> EventHandleResult<ClientCore<GameFactory>> {
+
+        if self.last_time_message.is_some() {
+            GameFactory::Game::handle_input_event(&mut self.input_event_handler, input_event);
+        }
+
+        return self.try_for_next_event();
+    }
+
+    fn on_game_timer_tick(mut self) -> EventHandleResult<ClientCore<GameFactory>> {
+
+        let time_message = self.game_timer.create_timer_message();
 
         trace!("TimeMessage step_index: {:?}", time_message.get_step());
 
         //TODO: check if this tick is really the next tick?
         //TODO: log a warn if a tick is missed or out of order
-        if self.last_time_message.is_some() &&
-            self.initial_information.is_some() {
+        if self.last_time_message.is_some() {
 
             let last_time_message = self.last_time_message.as_ref().unwrap();
-            let initial_information = self.initial_information.as_ref().unwrap();
 
             if time_message.get_step() > last_time_message.get_step() {
                 let message = InputMessage::<GameFactory::Game>::new(
                     //TODO: message or last message?
                     //TODO: define strict and consistent rules for how real time relates to ticks, input deadlines and display states
                     time_message.get_step(),
-                    initial_information.get_player_index(),
+                    self.initial_information.get_player_index(),
                     GameFactory::Game::get_input(& mut self.input_event_handler)
                 );
 
                 self.manager_sender.send_event(ManagerEvent::InputEvent(message.clone())).unwrap();
-                self.udp_output_sender_option.as_ref().unwrap().send_event(UdpOutputEvent::InputMessageEvent(message)).unwrap();
+                self.udp_output_sender.send_event(UdpOutputEvent::InputMessageEvent(message)).unwrap();
 
                 let client_drop_time = time_message.get_scheduled_time().sub(&GameFactory::Game::GRACE_PERIOD.mul_f64(2.0));
                 let drop_step = time_message.get_step_from_actual_time(client_drop_time).ceil() as usize;
@@ -205,30 +311,16 @@ impl<GameFactory: GameFactoryTrait> ClientCore<GameFactory> {
 
         self.last_time_message = Some(time_message);
 
-        return EventHandleResult::TryForNextEvent(self);
+        return self.try_for_next_event();
     }
 
-    fn on_remote_timer_message(mut self, time_message: TimeReceived<TimeMessage>) -> EventHandleResult<Self> {
-        self.game_timer.as_mut().unwrap().on_time_message(time_message);
-        return EventHandleResult::TryForNextEvent(self);
-    }
-}
-
-impl<GameFactory: GameFactoryTrait> EventHandlerTrait for ClientCore<GameFactory> {
-    type Event = ClientCoreEvent<GameFactory>;
-    type ThreadReturn = ();
-
-    fn on_channel_event(self, channel_event: ChannelEvent<Self::Event>) -> EventHandleResult<Self> {
-        match channel_event {
-            ChannelEvent::ReceivedEvent(_, OnInitialInformation(initial_information)) => self.on_initial_information(initial_information),
-            ChannelEvent::ReceivedEvent(_, OnInputEvent(client_input_event)) => self.on_input_event(client_input_event),
-            ChannelEvent::ReceivedEvent(_, GameTimerTick) => self.on_game_timer_tick(),
-            ChannelEvent::ReceivedEvent(_, RemoteTimeMessageEvent(time_message)) => self.on_remote_timer_message(time_message),
-            ChannelEvent::Timeout => EventHandleResult::WaitForNextEvent(self),
-            ChannelEvent::ChannelEmpty => EventHandleResult::WaitForNextEvent(self),
-            ChannelEvent::ChannelDisconnected => EventHandleResult::StopThread(())
-        }
+    fn on_remote_timer_message(mut self, time_message: TimeReceived<TimeMessage>) -> EventHandleResult<ClientCore<GameFactory>> {
+        self.game_timer.on_remote_timer_message(time_message);
+        return self.try_for_next_event();
     }
 
-    fn on_stop(self, _receive_meta_data: ReceiveMetaData) -> Self::ThreadReturn { () }
+    fn on_initial_information(self) -> EventHandleResult<ClientCore<GameFactory>> {
+        warn!("Received a hello from the server after the client has already received a hello");
+        return self.try_for_next_event();
+    }
 }
