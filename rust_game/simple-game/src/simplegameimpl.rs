@@ -1,12 +1,14 @@
-use crate::{SimpleInput, SimpleInputEvent, SimpleInputEventHandler, SimpleServerInput, SimpleState, TimeDuration};
-use engine_core::interface::{ClientUpdateArg, GameTrait, InterpolationArg, ServerUpdateArg};
-use engine_core::messaging::InitialInformation;
+use crate::{
+    SimpleInput, SimpleInputEvent, SimpleInputEventHandler, SimpleServerInput, SimpleState,
+    TimeDuration,
+};
+use engine_core::interface::{
+    ClientUpdateArg, GameTrait, InitialInformation, InterpolationArg, ServerUpdateArg,
+};
 use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
-pub struct SimpleGameImpl {
-
-}
+pub struct SimpleGameImpl {}
 
 impl GameTrait for SimpleGameImpl {
     type State = SimpleState;
@@ -35,7 +37,12 @@ impl GameTrait for SimpleGameImpl {
         return SimpleState::get_next_state(state, arg);
     }
 
-    fn interpolate(initial_information: &InitialInformation<Self>, first: &Self::State, second: &Self::State, arg: &InterpolationArg) -> Self::InterpolationResult {
+    fn interpolate(
+        initial_information: &InitialInformation<Self>,
+        first: &Self::State,
+        second: &Self::State,
+        arg: &InterpolationArg,
+    ) -> Self::InterpolationResult {
         return SimpleState::interpolate(initial_information, first, second, arg);
     }
 
@@ -43,7 +50,10 @@ impl GameTrait for SimpleGameImpl {
         SimpleInputEventHandler::new()
     }
 
-    fn handle_input_event(input_event_handler: &mut Self::ClientInputEventHandler, input_event: Self::ClientInputEvent) {
+    fn handle_input_event(
+        input_event_handler: &mut Self::ClientInputEventHandler,
+        input_event: Self::ClientInputEvent,
+    ) {
         input_event_handler.handle_event(input_event);
     }
 

@@ -1,14 +1,14 @@
-use log::{info, error};
-use crate::interface::{GameFactoryTrait, GameTrait, UdpSocket};
-use std::net::SocketAddr;
-use crate::messaging::{InputMessage, ToServerMessageUDP, InitialInformation, Fragmenter};
-use commons::net::{MAX_UDP_DATAGRAM_SIZE, UdpSocketTrait};
+use crate::interface::{GameFactoryTrait, GameTrait, InitialInformation, UdpSocket};
+use crate::messaging::{Fragmenter, InputMessage, ToServerMessageUDP};
+use commons::net::{UdpSocketTrait, MAX_UDP_DATAGRAM_SIZE};
 use commons::threading::channel::ReceiveMetaData;
 use commons::threading::eventhandling::{ChannelEvent, EventHandleResult, EventHandlerTrait};
+use log::{error, info};
+use std::net::SocketAddr;
 
 //TODO: combine server/client and tcp/udp inputs/outputs to shared listener/eventhandler types
 pub enum UdpOutputEvent<Game: GameTrait> {
-    InputMessageEvent(InputMessage<Game>)
+    InputMessageEvent(InputMessage<Game>),
 }
 
 pub struct UdpOutput<GameFactory: GameFactoryTrait> {
@@ -17,15 +17,15 @@ pub struct UdpOutput<GameFactory: GameFactoryTrait> {
     fragmenter: Fragmenter,
     input_queue: Vec<InputMessage<GameFactory::Game>>,
     max_observed_input_queue: usize,
-    initial_information: InitialInformation<GameFactory::Game>
+    initial_information: InitialInformation<GameFactory::Game>,
 }
 
 impl<GameFactory: GameFactoryTrait> UdpOutput<GameFactory> {
-
-    pub fn new(server_address: SocketAddr,
-               socket: UdpSocket<GameFactory>,
-               initial_information: InitialInformation<GameFactory::Game>) -> Self {
-
+    pub fn new(
+        server_address: SocketAddr,
+        socket: UdpSocket<GameFactory>,
+        initial_information: InitialInformation<GameFactory::Game>,
+    ) -> Self {
         let mut udp_output = Self {
             server_address,
             socket,
@@ -33,10 +33,12 @@ impl<GameFactory: GameFactoryTrait> UdpOutput<GameFactory> {
             fragmenter: Fragmenter::new(MAX_UDP_DATAGRAM_SIZE),
             input_queue: Vec::new(),
             max_observed_input_queue: 0,
-            initial_information
+            initial_information,
         };
 
-        let message = ToServerMessageUDP::<GameFactory::Game>::Hello{player_index: udp_output.initial_information.get_player_index()};
+        let message = ToServerMessageUDP::<GameFactory::Game>::Hello {
+            player_index: udp_output.initial_information.get_player_index(),
+        };
         udp_output.send_message(message);
 
         return udp_output;
@@ -44,19 +46,24 @@ impl<GameFactory: GameFactoryTrait> UdpOutput<GameFactory> {
 
     pub fn on_input_message(&mut self, input_message: InputMessage<GameFactory::Game>) {
         //insert in reverse sorted order
-        match self.input_queue.binary_search_by(|elem| { input_message.cmp(elem) }) {
+        match self
+            .input_queue
+            .binary_search_by(|elem| input_message.cmp(elem))
+        {
             Ok(pos) => self.input_queue[pos] = input_message,
-            Err(pos) => self.input_queue.insert(pos, input_message)
+            Err(pos) => self.input_queue.insert(pos, input_message),
         }
     }
 
     fn send_all_messages(&mut self) {
         let mut send_another_message = true;
         while send_another_message {
-
             if self.input_queue.len() > self.max_observed_input_queue {
                 self.max_observed_input_queue = self.input_queue.len();
-                info!("Outbound input queue has hit a max size of {:?}", self.max_observed_input_queue);
+                info!(
+                    "Outbound input queue has hit a max size of {:?}",
+                    self.max_observed_input_queue
+                );
             }
 
             match self.input_queue.pop() {
@@ -70,17 +77,20 @@ impl<GameFactory: GameFactoryTrait> UdpOutput<GameFactory> {
     }
 
     fn send_message(&mut self, message: ToServerMessageUDP<GameFactory::Game>) {
-
         let buf = rmp_serde::to_vec(&message).unwrap();
         let fragments = self.fragmenter.make_fragments(buf);
 
         for fragment in fragments {
-
             if fragment.get_whole_buf().len() > MAX_UDP_DATAGRAM_SIZE {
-                error!("Datagram is larger than MAX_UDP_DATAGRAM_SIZE: {:?}", fragment.get_whole_buf().len());
+                error!(
+                    "Datagram is larger than MAX_UDP_DATAGRAM_SIZE: {:?}",
+                    fragment.get_whole_buf().len()
+                );
             }
 
-            self.socket.send_to(fragment.get_whole_buf(), &self.server_address).unwrap();
+            self.socket
+                .send_to(fragment.get_whole_buf(), &self.server_address)
+                .unwrap();
         }
     }
 }
@@ -89,11 +99,16 @@ impl<GameFactory: GameFactoryTrait> EventHandlerTrait for UdpOutput<GameFactory>
     type Event = UdpOutputEvent<GameFactory::Game>;
     type ThreadReturn = ();
 
-    fn on_channel_event(mut self, channel_event: ChannelEvent<Self::Event>) -> EventHandleResult<Self> {
+    fn on_channel_event(
+        mut self,
+        channel_event: ChannelEvent<Self::Event>,
+    ) -> EventHandleResult<Self> {
         match channel_event {
             ChannelEvent::ReceivedEvent(_, event) => {
                 match event {
-                    UdpOutputEvent::InputMessageEvent(input_message) => self.on_input_message(input_message)
+                    UdpOutputEvent::InputMessageEvent(input_message) => {
+                        self.on_input_message(input_message)
+                    }
                 };
 
                 return EventHandleResult::TryForNextEvent(self);
@@ -101,7 +116,7 @@ impl<GameFactory: GameFactoryTrait> EventHandlerTrait for UdpOutput<GameFactory>
             ChannelEvent::Timeout => {
                 self.send_all_messages();
                 return EventHandleResult::WaitForNextEvent(self);
-            },
+            }
             ChannelEvent::ChannelEmpty => {
                 self.send_all_messages();
                 return EventHandleResult::WaitForNextEvent(self);
@@ -112,5 +127,7 @@ impl<GameFactory: GameFactoryTrait> EventHandlerTrait for UdpOutput<GameFactory>
         }
     }
 
-    fn on_stop(self, _: ReceiveMetaData) -> Self::ThreadReturn { () }
+    fn on_stop(self, _: ReceiveMetaData) -> Self::ThreadReturn {
+        ()
+    }
 }

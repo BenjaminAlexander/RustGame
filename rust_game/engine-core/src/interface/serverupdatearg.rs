@@ -1,6 +1,6 @@
-use crate::messaging::InitialInformation;
-use commons::time::TimeDuration;
 use crate::interface::game::GameTrait;
+use crate::interface::InitialInformation;
+use commons::time::TimeDuration;
 
 #[derive(Debug)]
 pub struct ServerUpdateArg<'a, 'b, Game: GameTrait> {
@@ -10,13 +10,16 @@ pub struct ServerUpdateArg<'a, 'b, Game: GameTrait> {
 }
 
 impl<'a, 'b, Game: GameTrait> ServerUpdateArg<'a, 'b, Game> {
-
-    pub fn new(initial_information: &'a InitialInformation<Game>, step: usize, inputs: &'b Vec<Option<Game::ClientInput>>) -> Self {
-        return Self{
+    pub fn new(
+        initial_information: &'a InitialInformation<Game>,
+        step: usize,
+        inputs: &'b Vec<Option<Game::ClientInput>>,
+    ) -> Self {
+        return Self {
             initial_information,
             step,
             inputs,
-        }
+        };
     }
 
     pub fn get_input(&self, player_index: usize) -> Option<&Game::ClientInput> {
@@ -36,10 +39,18 @@ impl<'a, 'b, Game: GameTrait> ServerUpdateArg<'a, 'b, Game> {
     }
 
     pub fn get_current_duration_since_start(&self) -> TimeDuration {
-        return self.initial_information.get_server_config().get_step_duration().mul_f64(self.step as f64);
+        return self
+            .initial_information
+            .get_server_config()
+            .get_step_duration()
+            .mul_f64(self.step as f64);
     }
 
     pub fn get_next_step_duration_since_start(&self) -> TimeDuration {
-        return self.initial_information.get_server_config().get_step_duration().mul_f64(self.get_next_step() as f64);
+        return self
+            .initial_information
+            .get_server_config()
+            .get_step_duration()
+            .mul_f64(self.get_next_step() as f64);
     }
 }

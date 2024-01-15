@@ -1,5 +1,4 @@
-//TODO: pull public pieces from messaging into the interface
-pub mod messaging;
+mod messaging;
 //TODO: pull public pieces from messaging into the interface
 pub mod server;
 //TODO: maybe move the interface out of a module and place it directly under the crate
