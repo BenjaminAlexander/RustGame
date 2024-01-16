@@ -3,6 +3,7 @@ mod gamefactorytrait;
 mod initialinformation;
 mod interpolationarg;
 mod realgamefactory;
+mod server;
 mod serverupdatearg;
 mod types;
 mod updatearg;
@@ -12,6 +13,7 @@ pub use self::gamefactorytrait::GameFactoryTrait;
 pub use self::initialinformation::InitialInformation;
 pub use self::interpolationarg::InterpolationArg;
 pub use self::realgamefactory::RealGameFactory;
+pub use self::server::Server;
 pub use self::serverupdatearg::ServerUpdateArg;
 pub use self::updatearg::ClientUpdateArg;
 
