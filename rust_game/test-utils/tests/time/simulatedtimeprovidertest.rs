@@ -3,7 +3,6 @@ use test_utils::time::SimulatedTimeSource;
 
 #[test]
 fn test_simulated_time_provider() {
-
     let time_source = SimulatedTimeSource::new();
     let time_source_clone = time_source.clone();
 

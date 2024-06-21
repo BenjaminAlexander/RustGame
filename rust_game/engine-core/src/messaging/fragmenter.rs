@@ -3,15 +3,14 @@ use crate::messaging::MessageFragment;
 
 pub struct Fragmenter {
     next_id: u32,
-    max_datagram_size: usize
+    max_datagram_size: usize,
 }
 
 impl Fragmenter {
-
     pub fn new(max_datagram_size: usize) -> Self {
         return Self {
             next_id: 0,
-            max_datagram_size
+            max_datagram_size,
         };
     }
 
@@ -39,12 +38,8 @@ impl Fragmenter {
 
             let fragment_buf = buf[start..end].to_vec().clone();
 
-            let fragment = MessageFragment::new(
-                id,
-                i as u16,
-                number_of_fragments as u16,
-                fragment_buf
-            );
+            let fragment =
+                MessageFragment::new(id, i as u16, number_of_fragments as u16, fragment_buf);
 
             fragments.push(fragment);
         }

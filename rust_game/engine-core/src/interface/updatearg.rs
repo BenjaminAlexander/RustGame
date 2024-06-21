@@ -1,20 +1,21 @@
-use crate::interface::ServerUpdateArg;
 use crate::interface::game::GameTrait;
+use crate::interface::ServerUpdateArg;
 
 #[derive(Debug)]
 pub struct ClientUpdateArg<'a, 'b, 'c, Game: GameTrait> {
     server_update_arg: ServerUpdateArg<'a, 'b, Game>,
-    server_input: Option<&'c Game::ServerInput>
+    server_input: Option<&'c Game::ServerInput>,
 }
 
 impl<'a, 'b, 'c, Game: GameTrait> ClientUpdateArg<'a, 'b, 'c, Game> {
-
-    pub fn new(server_update_arg: ServerUpdateArg<'a, 'b, Game>,
-               server_input: Option<&'c Game::ServerInput>) -> Self {
-        return Self{
+    pub fn new(
+        server_update_arg: ServerUpdateArg<'a, 'b, Game>,
+        server_input: Option<&'c Game::ServerInput>,
+    ) -> Self {
+        return Self {
             server_update_arg,
-            server_input
-        }
+            server_input,
+        };
     }
 
     pub fn get_input(&self, player_index: usize) -> Option<&Game::ClientInput> {

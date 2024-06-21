@@ -1,10 +1,10 @@
-use std::cmp::Ordering;
 use commons::time::TimeValue;
+use std::cmp::Ordering;
 
 pub struct Event {
     time: TimeValue,
     id: usize,
-    function: Box<dyn FnOnce() + Send>
+    function: Box<dyn FnOnce() + Send>,
 }
 
 impl Event {
@@ -12,7 +12,7 @@ impl Event {
         return Self {
             time,
             id,
-            function: Box::new(function)
+            function: Box::new(function),
         };
     }
 
@@ -46,7 +46,6 @@ impl PartialOrd<Self> for Event {
         } else {
             return time_ord;
         }
-
     }
 }
 

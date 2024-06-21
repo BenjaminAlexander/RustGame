@@ -1,5 +1,5 @@
-use serde::{Deserialize, Serialize};
 use crate::geometry::twod::{Intersection, Line2, Vector2};
+use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize, Debug, Clone, Copy)]
 pub struct LineSegment2 {
@@ -8,18 +8,11 @@ pub struct LineSegment2 {
 }
 
 impl LineSegment2 {
-
     pub fn new(start: Vector2, end: Vector2) -> Self {
         if start.get_x() <= end.get_x() {
-            return Self {
-                start,
-                end
-            };
+            return Self { start, end };
         } else {
-            return Self {
-                end,
-                start
-            };
+            return Self { end, start };
         }
     }
 
@@ -28,9 +21,7 @@ impl LineSegment2 {
     }
 
     pub fn get_y(&self, x: f64) -> Intersection {
-        if self.start.get_x() <= x &&
-            x <= self.end.get_x() {
-
+        if self.start.get_x() <= x && x <= self.end.get_x() {
             return self.get_line2().get_y(x);
         } else {
             return Intersection::None;
@@ -44,12 +35,11 @@ impl LineSegment2 {
         return match self_line2.get_intersection(&other_line2) {
             Intersection::All => Intersection::All,
             Intersection::None => Intersection::None,
-            Intersection::Point (x) =>
-                match self.get_y(x) {
-                    Intersection::All => Intersection::Point(x),
-                    Intersection::None => Intersection::None,
-                    Intersection::Point(_y) => Intersection::Point(x),
-                }
-        }
+            Intersection::Point(x) => match self.get_y(x) {
+                Intersection::All => Intersection::Point(x),
+                Intersection::None => Intersection::None,
+                Intersection::Point(_y) => Intersection::Point(x),
+            },
+        };
     }
 }

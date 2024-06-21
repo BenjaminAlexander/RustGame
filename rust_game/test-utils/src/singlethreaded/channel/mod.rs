@@ -1,8 +1,8 @@
-mod singlethreadedreceiver;
 mod receiverlink;
 mod senderlink;
+mod singlethreadedreceiver;
 mod singlethreadedsender;
 
-pub use receiverlink::{ReceiverLink, ReceiveOrDisconnected};
-pub use singlethreadedsender::SingleThreadedSender;
+pub use receiverlink::{ReceiveOrDisconnected, ReceiverLink};
 pub use singlethreadedreceiver::SingleThreadedReceiver;
+pub use singlethreadedsender::SingleThreadedSender;

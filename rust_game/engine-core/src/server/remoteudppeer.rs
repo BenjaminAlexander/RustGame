@@ -7,11 +7,10 @@ pub struct RemoteUdpPeer {
 }
 
 impl RemoteUdpPeer {
-
     pub fn new(player_index: usize, remote_peer: SocketAddr) -> Self {
-        return Self{
+        return Self {
             player_index,
-            remote_peer
+            remote_peer,
         };
     }
 

@@ -6,5 +6,5 @@ use crate::time::timerservice::timerid::TimerId;
 pub enum TimerServiceEvent<T: TimerCreationCallBack, U: TimerCallBack> {
     CreateTimer(T, U, Option<Schedule>),
     RescheduleTimer(TimerId, Option<Schedule>),
-    CancelTimer(TimerId)
+    CancelTimer(TimerId),
 }

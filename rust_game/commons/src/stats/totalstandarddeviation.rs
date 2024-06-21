@@ -1,22 +1,19 @@
 use crate::stats::TotalAverage;
 
 pub struct TotalStandardDeviation {
-
     average: TotalAverage,
-    sum_of_squares: f64
+    sum_of_squares: f64,
 }
 
 impl TotalStandardDeviation {
-
     pub fn new() -> Self {
         Self {
             average: TotalAverage::new(),
-            sum_of_squares: 0 as f64
+            sum_of_squares: 0 as f64,
         }
     }
 
     pub fn add_value(&mut self, value: f64) {
-
         let old_average = self.average.get_average();
         self.average.add_value(value);
         let new_average = self.average.get_average();

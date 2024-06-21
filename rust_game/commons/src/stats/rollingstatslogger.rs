@@ -1,9 +1,9 @@
-use std::fmt::Write;
-use std::marker::PhantomData;
-use log::info;
 use crate::factory::FactoryTrait;
 use crate::stats::RollingStats;
 use crate::time::{TimeDuration, TimeValue};
+use log::info;
+use std::fmt::Write;
+use std::marker::PhantomData;
 
 pub struct RollingStatsLogger<T: Into<f64>, U: FactoryTrait> {
     time_source: U,
@@ -11,13 +11,16 @@ pub struct RollingStatsLogger<T: Into<f64>, U: FactoryTrait> {
     last_log: TimeValue,
     need_to_log: bool,
     rolling_stats: RollingStats,
-    phantom: PhantomData<T>
+    phantom: PhantomData<T>,
 }
 
 impl<T: Into<f64>, U: FactoryTrait> RollingStatsLogger<T, U> {
-
-    pub fn new(size: usize, standard_deviation_ration: f64, min_log_interval: TimeDuration, time_source: U) -> Self {
-
+    pub fn new(
+        size: usize,
+        standard_deviation_ration: f64,
+        min_log_interval: TimeDuration,
+        time_source: U,
+    ) -> Self {
         let last_log = time_source.now();
 
         Self {
@@ -26,7 +29,7 @@ impl<T: Into<f64>, U: FactoryTrait> RollingStatsLogger<T, U> {
             last_log,
             need_to_log: false,
             rolling_stats: RollingStats::new(size, standard_deviation_ration),
-            phantom: PhantomData::default()
+            phantom: PhantomData::default(),
         }
     }
 
@@ -35,7 +38,6 @@ impl<T: Into<f64>, U: FactoryTrait> RollingStatsLogger<T, U> {
 
         if let Some(value_of_interest) = self.rolling_stats.add_value(value.into()) {
             if now.duration_since(&self.last_log) > self.min_log_interval {
-
                 // log now
                 let mut string = String::new();
 
@@ -43,12 +45,26 @@ impl<T: Into<f64>, U: FactoryTrait> RollingStatsLogger<T, U> {
                     writeln!(string, "Individual Outlier: {}", *individual_outlier).unwrap();
                 }
 
-                if let Some(rolling_average_outlier) = value_of_interest.get_rolling_average_outlier() {
-                    writeln!(string, "Rolling Average Outlier: {}", *rolling_average_outlier).unwrap();
+                if let Some(rolling_average_outlier) =
+                    value_of_interest.get_rolling_average_outlier()
+                {
+                    writeln!(
+                        string,
+                        "Rolling Average Outlier: {}",
+                        *rolling_average_outlier
+                    )
+                    .unwrap();
                 }
 
-                if let Some(rolling_average_min_max_change) = value_of_interest.get_rolling_average_min_max_change() {
-                    writeln!(string, "Rolling Average Min/Max Change: {}", *rolling_average_min_max_change).unwrap();
+                if let Some(rolling_average_min_max_change) =
+                    value_of_interest.get_rolling_average_min_max_change()
+                {
+                    writeln!(
+                        string,
+                        "Rolling Average Min/Max Change: {}",
+                        *rolling_average_min_max_change
+                    )
+                    .unwrap();
                 }
 
                 self.get_stats_as_string(&mut string);
@@ -57,12 +73,10 @@ impl<T: Into<f64>, U: FactoryTrait> RollingStatsLogger<T, U> {
 
                 self.last_log = now;
                 self.need_to_log = false;
-
             } else {
                 self.need_to_log = true;
             }
         } else if self.need_to_log && now.duration_since(&self.last_log) > self.min_log_interval {
-
             let mut string = String::new();
 
             self.get_stats_as_string(&mut string);
@@ -75,18 +89,19 @@ impl<T: Into<f64>, U: FactoryTrait> RollingStatsLogger<T, U> {
     }
 
     fn get_stats_as_string(&self, string: &mut String) {
-
         let rolling_average_min = match self.rolling_stats.get_rolling_average_min() {
             Some(f) => format!("{}", f),
-            None => String::new()
+            None => String::new(),
         };
 
         let rolling_average_max = match self.rolling_stats.get_rolling_average_max() {
             Some(f) => format!("{}", f),
-            None => String::new()
+            None => String::new(),
         };
 
-        writeln!(string, "Rolling Average: {}\n\
+        writeln!(
+            string,
+            "Rolling Average: {}\n\
             Rolling Standard Deviation: {}\n\
             Rolling Average Min: {}\n\
             Rolling Average Max: {}\n\
@@ -98,6 +113,7 @@ impl<T: Into<f64>, U: FactoryTrait> RollingStatsLogger<T, U> {
             rolling_average_max,
             self.rolling_stats.get_average(),
             self.rolling_stats.get_standard_deviation()
-        ).unwrap();
+        )
+        .unwrap();
     }
 }

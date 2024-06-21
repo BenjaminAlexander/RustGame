@@ -1,6 +1,6 @@
-use serde::{Deserialize, Serialize};
 use crate::interface::GameTrait;
 use crate::server::ServerConfig;
+use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct InitialInformation<Game: GameTrait> {
@@ -11,17 +11,17 @@ pub struct InitialInformation<Game: GameTrait> {
 }
 
 impl<Game: GameTrait> InitialInformation<Game> {
-
-    pub fn new(server_config: ServerConfig,
-               player_count: usize,
-               player_index: usize,
-               state: Game::State) -> Self {
-
-        return Self{
+    pub fn new(
+        server_config: ServerConfig,
+        player_count: usize,
+        player_index: usize,
+        state: Game::State,
+    ) -> Self {
+        return Self {
             server_config,
             player_count,
             player_index,
-            state
+            state,
         };
     }
 
@@ -51,9 +51,8 @@ impl<Game: GameTrait> InitialInformation<Game> {
 }
 
 impl<Game: GameTrait> Clone for InitialInformation<Game> {
-
     fn clone(&self) -> Self {
-        Self{
+        Self {
             server_config: self.server_config.clone(),
             player_count: self.player_count,
             player_index: self.player_index,

@@ -1,29 +1,29 @@
-use commons::geometry::twod::Vector2;
-use serde::{Deserialize, Serialize};
-use piston::RenderArgs;
-use opengl_graphics::GlGraphics;
-use graphics::{Context, rectangle};
-use graphics::*;
 use crate::bullet::Bullet;
-use engine_core::{ClientUpdateArg, GameTrait};
-use commons::time::TimeDuration;
 use crate::simplegameimpl::SimpleGameImpl;
+use commons::geometry::twod::Vector2;
+use commons::time::TimeDuration;
+use engine_core::{ClientUpdateArg, GameTrait};
+use graphics::*;
+use graphics::{rectangle, Context};
+use opengl_graphics::GlGraphics;
+use piston::RenderArgs;
+use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Character {
     player_index: usize,
     velocity: Vector2,
     position: Vector2,
-    health: u8
+    health: u8,
 }
 
 impl Character {
     pub fn new(player_index: usize, position: Vector2) -> Self {
-        return Self{
+        return Self {
             player_index,
             velocity: Vector2::new(0 as f64, 0 as f64),
             position,
-            health: 10
+            health: 10,
         };
     }
 
@@ -55,12 +55,12 @@ impl Character {
     }
 
     pub fn move_character(&mut self, arg: &ClientUpdateArg<SimpleGameImpl>) {
-
         if let Some(input) = arg.get_input(self.player_index) {
             self.velocity = input.get_velocity();
         }
 
-        self.position = self.position + self.velocity * SimpleGameImpl::STEP_PERIOD.as_secs_f64() * 500.0;
+        self.position =
+            self.position + self.velocity * SimpleGameImpl::STEP_PERIOD.as_secs_f64() * 500.0;
     }
 
     pub fn get_fired_bullet(&self, arg: &ClientUpdateArg<SimpleGameImpl>) -> Option<Bullet> {
@@ -69,7 +69,7 @@ impl Character {
                 return Some(Bullet::new(
                     arg.get_current_step(),
                     self.position,
-                    input.get_aim_point()
+                    input.get_aim_point(),
                 ));
             }
         }
@@ -97,9 +97,9 @@ impl Character {
 
         //draw health bar
         let base = self.player_index as f64 * 10.0;
-        let health_rectangle = rectangle::rectangle_by_corners(0.0, base, 10.0 * self.health as f64, base + 10.0);
+        let health_rectangle =
+            rectangle::rectangle_by_corners(0.0, base, 10.0 * self.health as f64, base + 10.0);
         let health_trasform = context.transform;
         rectangle(RED, health_rectangle, health_trasform, gl);
-
     }
 }

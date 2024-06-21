@@ -4,7 +4,8 @@ use self::ServerCoreEvent::{
 use crate::gamemanager::{Manager, ManagerEvent};
 use crate::gametime::GameTimer;
 use crate::interface::{
-    EventSender, GameFactoryTrait, GameTrait, InitialInformation, TcpReader, TcpWriter, UdpSocket, RenderReceiverMessage
+    EventSender, GameFactoryTrait, GameTrait, InitialInformation, RenderReceiverMessage, TcpReader,
+    TcpWriter, UdpSocket,
 };
 use crate::messaging::InputMessage;
 use crate::server::clientaddress::ClientAddress;

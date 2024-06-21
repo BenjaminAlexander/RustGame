@@ -1,27 +1,30 @@
-use commons::factory::FactoryTrait;
 use crate::gamemanager::{ManagerObserverTrait, StepMessage};
 use crate::interface::{EventSender, GameFactoryTrait, RenderReceiverMessage};
 use crate::messaging::{ServerInputMessage, StateMessage};
 use crate::server::udpoutput::UdpOutputEvent;
+use commons::factory::FactoryTrait;
 use commons::threading::channel::SenderTrait;
 use commons::threading::eventhandling::EventSenderTrait;
 
 pub struct ServerManagerObserver<GameFactory: GameFactoryTrait> {
     factory: GameFactory::Factory,
     udp_outputs: Vec<EventSender<GameFactory, UdpOutputEvent<GameFactory::Game>>>,
-    render_receiver_sender: <GameFactory::Factory as FactoryTrait>::Sender<RenderReceiverMessage<GameFactory::Game>>
+    render_receiver_sender:
+        <GameFactory::Factory as FactoryTrait>::Sender<RenderReceiverMessage<GameFactory::Game>>,
 }
 
 impl<GameFactory: GameFactoryTrait> ServerManagerObserver<GameFactory> {
-
-    pub fn new(factory: GameFactory::Factory,
-               udp_outputs: Vec<EventSender<GameFactory, UdpOutputEvent<GameFactory::Game>>>,
-               render_receiver_sender: <GameFactory::Factory as FactoryTrait>::Sender<RenderReceiverMessage<GameFactory::Game>>) -> Self {
-
+    pub fn new(
+        factory: GameFactory::Factory,
+        udp_outputs: Vec<EventSender<GameFactory, UdpOutputEvent<GameFactory::Game>>>,
+        render_receiver_sender: <GameFactory::Factory as FactoryTrait>::Sender<
+            RenderReceiverMessage<GameFactory::Game>,
+        >,
+    ) -> Self {
         return Self {
             factory,
             udp_outputs,
-            render_receiver_sender
+            render_receiver_sender,
         };
     }
 }
@@ -33,20 +36,26 @@ impl<GameFactory: GameFactoryTrait> ManagerObserverTrait for ServerManagerObserv
     const IS_SERVER: bool = true;
 
     fn on_step_message(&self, step_message: StepMessage<GameFactory::Game>) {
-        self.render_receiver_sender.send(RenderReceiverMessage::StepMessage(step_message)).unwrap();
+        self.render_receiver_sender
+            .send(RenderReceiverMessage::StepMessage(step_message))
+            .unwrap();
     }
 
     fn on_completed_step(&self, state_message: StateMessage<GameFactory::Game>) {
-
         for udp_output in self.udp_outputs.iter() {
-            udp_output.send_event(UdpOutputEvent::SendCompletedStep(state_message.clone())).unwrap();
+            udp_output
+                .send_event(UdpOutputEvent::SendCompletedStep(state_message.clone()))
+                .unwrap();
         }
     }
 
     fn on_server_input_message(&self, server_input_message: ServerInputMessage<GameFactory::Game>) {
-
         for udp_output in self.udp_outputs.iter() {
-            udp_output.send_event(UdpOutputEvent::SendServerInputMessage(server_input_message.clone())).unwrap();
+            udp_output
+                .send_event(UdpOutputEvent::SendServerInputMessage(
+                    server_input_message.clone(),
+                ))
+                .unwrap();
         }
     }
 }

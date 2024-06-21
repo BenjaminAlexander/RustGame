@@ -8,7 +8,7 @@ use crate::simplewindow::SimpleWindow;
 use commons::factory::RealFactory;
 use commons::logging::LoggingConfigBuilder;
 use commons::time::TimeDuration;
-use engine_core::{RealGameFactory, Server, Client};
+use engine_core::{Client, RealGameFactory, Server};
 use log::{info, LevelFilter};
 use std::io::stdin;
 use std::path::PathBuf;
@@ -37,7 +37,6 @@ pub fn main() {
 
         match arg.as_str() {
             "-s" => {
-
                 if let Some(true) = run_client {
                     panic!("This execution cannot run both a server and a client");
                 }
@@ -46,7 +45,6 @@ pub fn main() {
                 current_arg = current_arg + 1;
             }
             "-c" => {
-
                 if let Some(false) = run_client {
                     panic!("This execution cannot run both a server and a client");
                 }

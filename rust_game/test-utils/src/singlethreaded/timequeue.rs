@@ -1,15 +1,15 @@
+use crate::singlethreaded::event::Event;
+use crate::time::SimulatedTimeSource;
+use commons::time::{TimeDuration, TimeValue};
 use log::warn;
 use std::collections::VecDeque;
 use std::ops::Add;
 use std::sync::{Arc, Mutex};
-use commons::time::{TimeDuration, TimeValue};
-use crate::singlethreaded::event::Event;
-use crate::time::SimulatedTimeSource;
 
 #[derive(Clone)]
 pub struct TimeQueue {
     simulated_time_source: SimulatedTimeSource,
-    internal: Arc<Mutex<TimeQueueInternal>>
+    internal: Arc<Mutex<TimeQueueInternal>>,
 }
 
 struct TimeQueueInternal {
@@ -18,17 +18,15 @@ struct TimeQueueInternal {
 }
 
 impl TimeQueue {
-
     pub fn new(simulated_time_source: SimulatedTimeSource) -> Self {
-
         let internal = TimeQueueInternal {
             next_event_id: 0,
-            queue: VecDeque::new()
+            queue: VecDeque::new(),
         };
 
         return Self {
             simulated_time_source,
-            internal: Arc::new(Mutex::new(internal))
+            internal: Arc::new(Mutex::new(internal)),
         };
     }
 
@@ -36,8 +34,16 @@ impl TimeQueue {
         return &self.simulated_time_source;
     }
 
-    pub fn add_event_at_time(&self, time: TimeValue, function: impl FnOnce() + Send + 'static) -> usize {
-        return self.internal.lock().unwrap().add_event_at_time(time, function);
+    pub fn add_event_at_time(
+        &self,
+        time: TimeValue,
+        function: impl FnOnce() + Send + 'static,
+    ) -> usize {
+        return self
+            .internal
+            .lock()
+            .unwrap()
+            .add_event_at_time(time, function);
     }
 
     pub fn add_event_now(&self, function: impl FnOnce() + Send + 'static) -> usize {
@@ -45,7 +51,11 @@ impl TimeQueue {
         return self.add_event_at_time(time, function);
     }
 
-    pub fn add_event_at_duration_from_now(&self, duration: TimeDuration, function: impl FnOnce() + Send + 'static) -> usize {
+    pub fn add_event_at_duration_from_now(
+        &self,
+        duration: TimeDuration,
+        function: impl FnOnce() + Send + 'static,
+    ) -> usize {
         let time = self.simulated_time_source.now().add(&duration);
         return self.add_event_at_time(time, function);
     }
@@ -60,16 +70,19 @@ impl TimeQueue {
     }
 
     pub fn advance_time_until(&self, time_value: TimeValue) {
-
         loop {
-
-            let event = self.internal.lock().unwrap().pop_next_event_at_or_before(time_value);
+            let event = self
+                .internal
+                .lock()
+                .unwrap()
+                .pop_next_event_at_or_before(time_value);
 
             match event {
                 Some(event) => {
-                    self.simulated_time_source.set_simulated_time(*event.get_time());
+                    self.simulated_time_source
+                        .set_simulated_time(*event.get_time());
                     event.run();
-                },
+                }
                 None => {
                     break;
                 }
@@ -86,8 +99,11 @@ impl TimeQueue {
 }
 
 impl TimeQueueInternal {
-
-    fn add_event_at_time(&mut self, time: TimeValue, function: impl FnOnce() + Send + 'static) -> usize {
+    fn add_event_at_time(
+        &mut self,
+        time: TimeValue,
+        function: impl FnOnce() + Send + 'static,
+    ) -> usize {
         let event_id = self.next_event_id;
         self.next_event_id = event_id + 1;
 
@@ -98,7 +114,7 @@ impl TimeQueueInternal {
                 warn!("Found a duplicate Event index");
                 index
             }
-            Err(index) => index
+            Err(index) => index,
         };
 
         self.queue.insert(index, event);
@@ -109,7 +125,6 @@ impl TimeQueueInternal {
     fn remove_event(&mut self, id: usize) {
         let mut index = 0;
         while index < self.queue.len() {
-
             let mut remove = false;
 
             if let Some(event) = self.queue.get(index) {

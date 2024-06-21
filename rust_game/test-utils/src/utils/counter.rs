@@ -2,14 +2,14 @@ use std::sync::{Arc, Mutex};
 
 #[derive(Clone)]
 pub struct Counter {
-    count: Arc<Mutex<usize>>
+    count: Arc<Mutex<usize>>,
 }
 
 impl Counter {
     pub fn new(value: usize) -> Self {
         return Self {
-            count: Arc::new(Mutex::new(value))
-        }
+            count: Arc::new(Mutex::new(value)),
+        };
     }
 
     pub fn increment(&self) {

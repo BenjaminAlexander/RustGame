@@ -1,6 +1,6 @@
-use std::sync::mpsc;
 use crate::factory::FactoryTrait;
-use crate::threading::channel::{SendError, SenderTrait, SendMetaData};
+use crate::threading::channel::{SendError, SendMetaData, SenderTrait};
+use std::sync::mpsc;
 
 pub struct RealSender<Factory: FactoryTrait, T: Send> {
     factory: Factory,
@@ -8,12 +8,8 @@ pub struct RealSender<Factory: FactoryTrait, T: Send> {
 }
 
 impl<Factory: FactoryTrait, T: Send> RealSender<Factory, T> {
-
     pub fn new(factory: Factory, sender: mpsc::Sender<(SendMetaData, T)>) -> Self {
-        return Self {
-            factory,
-            sender
-        };
+        return Self { factory, sender };
     }
 }
 
@@ -27,7 +23,7 @@ impl<Factory: FactoryTrait, T: Send> Clone for RealSender<Factory, T> {
     fn clone(&self) -> Self {
         return Self {
             factory: self.factory.clone(),
-            sender: self.sender.clone()
+            sender: self.sender.clone(),
         };
     }
 }

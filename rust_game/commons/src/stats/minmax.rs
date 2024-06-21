@@ -1,23 +1,20 @@
+use crate::stats::minmax::MinMax::{MinAndMax, NoValues, SingleValue};
+use crate::stats::minmax::MinMaxChange::{FirstMinAndMax, NewMax, NewMin};
 use std::fmt::{Display, Formatter};
 use std::mem;
-use crate::stats::minmax::MinMax::{NoValues, MinAndMax, SingleValue};
-use crate::stats::minmax::MinMaxChange::{FirstMinAndMax, NewMax, NewMin};
 
 #[derive(Debug)]
 pub enum MinMax<T> {
     NoValues,
     SingleValue(T),
-    MinAndMax{
-        min: T,
-        max: T
-    }
+    MinAndMax { min: T, max: T },
 }
 
 #[derive(Debug)]
 pub enum MinMaxChange<T> {
     FirstMinAndMax(T),
     NewMin(T),
-    NewMax(T)
+    NewMax(T),
 }
 
 impl<T: Display> Display for MinMaxChange<T> {
@@ -25,20 +22,17 @@ impl<T: Display> Display for MinMaxChange<T> {
         match self {
             FirstMinAndMax(value) => write!(f, "FirstMinAndMax({})", value),
             NewMin(value) => write!(f, "NewMin({})", value),
-            NewMax(value) => write!(f, "NewMax({})", value)
+            NewMax(value) => write!(f, "NewMax({})", value),
         }
-
     }
 }
 
 impl<T: PartialOrd<T>> MinMax<T> {
-
     fn take(&mut self) -> Self {
         return mem::replace(self, NoValues);
     }
 
     pub fn add_value(&mut self, value: T) -> Option<MinMaxChange<&T>> {
-
         match self.take() {
             NoValues => {
                 *self = SingleValue(value);
@@ -48,14 +42,14 @@ impl<T: PartialOrd<T>> MinMax<T> {
                 if first_value < value {
                     *self = MinAndMax {
                         min: first_value,
-                        max: value
+                        max: value,
                     };
 
                     return Some(NewMax(self.get_max().unwrap()));
                 } else {
                     *self = MinAndMax {
                         min: value,
-                        max: first_value
+                        max: first_value,
                     };
 
                     return Some(NewMin(self.get_min().unwrap()));
@@ -63,24 +57,15 @@ impl<T: PartialOrd<T>> MinMax<T> {
             }
             MinAndMax { min, max } => {
                 if value < min {
-                    *self = MinAndMax {
-                        min: value,
-                        max
-                    };
+                    *self = MinAndMax { min: value, max };
 
                     return Some(NewMin(self.get_min().unwrap()));
                 } else if value > max {
-                    *self = MinAndMax {
-                        min,
-                        max: value
-                    };
+                    *self = MinAndMax { min, max: value };
 
                     return Some(NewMax(self.get_max().unwrap()));
                 } else {
-                    *self = MinAndMax {
-                        min,
-                        max
-                    };
+                    *self = MinAndMax { min, max };
 
                     return None;
                 }
@@ -92,7 +77,7 @@ impl<T: PartialOrd<T>> MinMax<T> {
         match self {
             NoValues => None,
             SingleValue(value) => Some(value),
-            MinAndMax { min, .. } => Some(min)
+            MinAndMax { min, .. } => Some(min),
         }
     }
 
@@ -100,7 +85,7 @@ impl<T: PartialOrd<T>> MinMax<T> {
         match self {
             NoValues => None,
             SingleValue(value) => Some(value),
-            MinAndMax { max, .. } => Some(max)
+            MinAndMax { max, .. } => Some(max),
         }
     }
 }

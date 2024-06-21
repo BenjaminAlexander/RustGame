@@ -1,37 +1,35 @@
-use std::net::TcpListener;
-use std::ops::ControlFlow::{Break, Continue};
-use log::error;
 use crate::factory::RealFactory;
 use crate::net::realtcpstream::RealTcpStream;
 use crate::net::tcpconnectionhandlertrait::TcpConnectionHandlerTrait;
 use crate::net::TcpWriterTrait;
 use crate::threading::channel::ReceiveMetaData;
 use crate::threading::eventhandling::{ChannelEvent, EventHandleResult, EventHandlerTrait};
+use log::error;
+use std::net::TcpListener;
+use std::ops::ControlFlow::{Break, Continue};
 
-pub struct TcpListenerEventHandler<T: TcpConnectionHandlerTrait<Factory=RealFactory>> {
+pub struct TcpListenerEventHandler<T: TcpConnectionHandlerTrait<Factory = RealFactory>> {
     tcp_listener: TcpListener,
-    tcp_connection_handler: T
-
+    tcp_connection_handler: T,
 }
 
-impl<T: TcpConnectionHandlerTrait<Factory=RealFactory>> TcpListenerEventHandler<T> {
-
+impl<T: TcpConnectionHandlerTrait<Factory = RealFactory>> TcpListenerEventHandler<T> {
     pub fn new(tcp_listener: TcpListener, tcp_connection_handler: T) -> Self {
         return Self {
             tcp_listener,
-            tcp_connection_handler
+            tcp_connection_handler,
         };
     }
 
     fn accept(mut self) -> EventHandleResult<Self> {
-
         match self.tcp_listener.accept() {
             Ok((tcp_stream, remote_peer_socket_addr)) => {
-
                 let tcp_stream = RealTcpStream::new(tcp_stream, remote_peer_socket_addr);
                 if let Ok(tcp_stream_clone) = tcp_stream.try_clone() {
-
-                    match self.tcp_connection_handler.on_connection(tcp_stream, tcp_stream_clone) {
+                    match self
+                        .tcp_connection_handler
+                        .on_connection(tcp_stream, tcp_stream_clone)
+                    {
                         Continue(()) => {
                             return EventHandleResult::TryForNextEvent(self);
                         }
@@ -40,10 +38,12 @@ impl<T: TcpConnectionHandlerTrait<Factory=RealFactory>> TcpListenerEventHandler<
                         }
                     }
                 } else {
-                    error!("Failed to clone RealTcpStream for : {:?}", tcp_stream.get_peer_addr());
+                    error!(
+                        "Failed to clone RealTcpStream for : {:?}",
+                        tcp_stream.get_peer_addr()
+                    );
                     return EventHandleResult::TryForNextEvent(self);
                 }
-
             }
             Err(error) => {
                 error!("Error while trying to accept a TCP connection: {:?}", error);
@@ -53,7 +53,9 @@ impl<T: TcpConnectionHandlerTrait<Factory=RealFactory>> TcpListenerEventHandler<
     }
 }
 
-impl<T: TcpConnectionHandlerTrait<Factory=RealFactory>> EventHandlerTrait for TcpListenerEventHandler<T> {
+impl<T: TcpConnectionHandlerTrait<Factory = RealFactory>> EventHandlerTrait
+    for TcpListenerEventHandler<T>
+{
     type Event = ();
     type ThreadReturn = T;
 
@@ -62,7 +64,9 @@ impl<T: TcpConnectionHandlerTrait<Factory=RealFactory>> EventHandlerTrait for Tc
             ChannelEvent::ReceivedEvent(_, ()) => EventHandleResult::TryForNextEvent(self),
             ChannelEvent::Timeout => EventHandleResult::TryForNextEvent(self),
             ChannelEvent::ChannelEmpty => self.accept(),
-            ChannelEvent::ChannelDisconnected => EventHandleResult::StopThread(self.tcp_connection_handler)
+            ChannelEvent::ChannelDisconnected => {
+                EventHandleResult::StopThread(self.tcp_connection_handler)
+            }
         };
     }
 

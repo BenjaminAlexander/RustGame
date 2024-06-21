@@ -6,17 +6,17 @@ pub enum ChannelEvent<T> {
     ReceivedEvent(ReceiveMetaData, T),
     Timeout,
     ChannelEmpty,
-    ChannelDisconnected
+    ChannelDisconnected,
 }
 
 pub enum EventOrStopThread<T> {
     Event(T),
-    StopThread
+    StopThread,
 }
 
 pub enum EventHandleResult<T: EventHandlerTrait> {
     WaitForNextEvent(T),
     WaitForNextEventOrTimeout(T, TimeDuration),
     TryForNextEvent(T),
-    StopThread(T::ThreadReturn)
+    StopThread(T::ThreadReturn),
 }

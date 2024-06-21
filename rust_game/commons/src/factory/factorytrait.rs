@@ -1,10 +1,13 @@
+use crate::net::{
+    TcpConnectionHandlerTrait, TcpReadHandlerTrait, TcpWriterTrait, UdpReadHandlerTrait,
+    UdpSocketTrait,
+};
+use crate::threading::channel::{Channel, ChannelThreadBuilder, ReceiverTrait, SenderTrait};
+use crate::threading::eventhandling::{EventHandlerSender, EventHandlerTrait, EventOrStopThread};
+use crate::threading::{AsyncJoinCallBackTrait, ThreadBuilder};
+use crate::time::TimeValue;
 use std::io::Error;
 use std::net::SocketAddr;
-use crate::net::{TcpConnectionHandlerTrait, TcpReadHandlerTrait, TcpWriterTrait, UdpReadHandlerTrait, UdpSocketTrait};
-use crate::threading::channel::{Channel, ChannelThreadBuilder, ReceiverTrait, SenderTrait};
-use crate::threading::{AsyncJoinCallBackTrait, ThreadBuilder};
-use crate::threading::eventhandling::{EventHandlerTrait, EventOrStopThread, EventHandlerSender};
-use crate::time::TimeValue;
 
 pub trait FactoryTrait: Clone + Send + 'static {
     type Sender<T: Send>: SenderTrait<T>;
@@ -27,25 +30,28 @@ pub trait FactoryTrait: Clone + Send + 'static {
         &self,
         thread_builder: ChannelThreadBuilder<Self, EventOrStopThread<U::Event>>,
         event_handler: U,
-        join_call_back: impl AsyncJoinCallBackTrait<Self, U::ThreadReturn>
+        join_call_back: impl AsyncJoinCallBackTrait<Self, U::ThreadReturn>,
     ) -> Result<EventHandlerSender<Self, U::Event>, Error>;
 
-    fn spawn_tcp_listener<T: TcpConnectionHandlerTrait<Factory=Self>>(
+    fn spawn_tcp_listener<T: TcpConnectionHandlerTrait<Factory = Self>>(
         &self,
         thread_builder: ChannelThreadBuilder<Self, EventOrStopThread<()>>,
         socket_addr: SocketAddr,
         tcp_connection_handler: T,
-        join_call_back: impl AsyncJoinCallBackTrait<Self, T>
+        join_call_back: impl AsyncJoinCallBackTrait<Self, T>,
     ) -> Result<EventHandlerSender<Self, ()>, Error>;
 
-    fn connect_tcp(&self, socket_addr: SocketAddr) -> Result<(Self::TcpWriter, Self::TcpReader), Error>;
+    fn connect_tcp(
+        &self,
+        socket_addr: SocketAddr,
+    ) -> Result<(Self::TcpWriter, Self::TcpReader), Error>;
 
     fn spawn_tcp_reader<T: TcpReadHandlerTrait>(
         &self,
         thread_builder: ChannelThreadBuilder<Self, EventOrStopThread<()>>,
         tcp_reader: Self::TcpReader,
         tcp_read_handler: T,
-        join_call_back: impl AsyncJoinCallBackTrait<Self, T>
+        join_call_back: impl AsyncJoinCallBackTrait<Self, T>,
     ) -> Result<EventHandlerSender<Self, ()>, Error>;
 
     fn bind_udp_socket(&self, socket_addr: SocketAddr) -> Result<Self::UdpSocket, Error>;
@@ -55,6 +61,6 @@ pub trait FactoryTrait: Clone + Send + 'static {
         thread_builder: ChannelThreadBuilder<Self, EventOrStopThread<()>>,
         udp_socket: Self::UdpSocket,
         udp_read_handler: T,
-        join_call_back: impl AsyncJoinCallBackTrait<Self, T>
+        join_call_back: impl AsyncJoinCallBackTrait<Self, T>,
     ) -> Result<EventHandlerSender<Self, ()>, Error>;
 }

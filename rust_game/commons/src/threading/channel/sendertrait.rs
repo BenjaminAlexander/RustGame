@@ -1,7 +1,9 @@
-use std::sync::mpsc;
 use crate::threading::channel::SendMetaData;
-use crate::threading::eventhandling::{EventOrStopThread, EventSenderTrait, EventHandlerSendResult};
 use crate::threading::eventhandling::EventOrStopThread::{Event, StopThread};
+use crate::threading::eventhandling::{
+    EventHandlerSendResult, EventOrStopThread, EventSenderTrait,
+};
+use std::sync::mpsc;
 
 pub type SendError<T> = mpsc::SendError<(SendMetaData, T)>;
 

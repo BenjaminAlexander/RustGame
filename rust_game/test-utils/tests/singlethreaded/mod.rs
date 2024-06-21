@@ -1,3 +1,3 @@
-mod sendertest;
 mod queuetest;
+mod sendertest;
 mod tcptest;
