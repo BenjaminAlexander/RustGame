@@ -8,6 +8,7 @@ mod serverupdatearg;
 mod types;
 mod updatearg;
 mod renderreceiver;
+mod client;
 
 pub use self::game::GameTrait;
 pub use self::gamefactorytrait::GameFactoryTrait;
@@ -18,6 +19,7 @@ pub use self::server::Server;
 pub use self::serverupdatearg::ServerUpdateArg;
 pub use self::updatearg::ClientUpdateArg;
 pub use self::renderreceiver::RenderReceiver;
+pub use self::client::Client;
 
 pub(crate) use self::types::EventSender;
 pub(crate) use self::types::TcpReader;
