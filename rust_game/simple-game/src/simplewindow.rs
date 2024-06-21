@@ -5,7 +5,7 @@ use piston::input::Input as PistonInput;
 use graphics::*;
 use glutin_window::GlutinWindow as Window;
 use log::info;
-use engine_core::interface::{Factory, GameFactoryTrait, RenderReceiver, Client};
+use engine_core::{Factory, GameFactoryTrait, RenderReceiver, Client};
 use crate::simplegameimpl::SimpleGameImpl;
 
 pub struct SimpleWindow<GameFactory: GameFactoryTrait<Game=SimpleGameImpl>> {

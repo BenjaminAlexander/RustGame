@@ -8,7 +8,7 @@ use crate::simplewindow::SimpleWindow;
 use commons::factory::RealFactory;
 use commons::logging::LoggingConfigBuilder;
 use commons::time::TimeDuration;
-use engine_core::interface::{RealGameFactory, Server, Client};
+use engine_core::{RealGameFactory, Server, Client};
 use log::{info, LevelFilter};
 use std::io::stdin;
 use std::path::PathBuf;

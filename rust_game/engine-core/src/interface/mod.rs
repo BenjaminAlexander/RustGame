@@ -20,16 +20,14 @@ pub use self::serverupdatearg::ServerUpdateArg;
 pub use self::updatearg::ClientUpdateArg;
 pub use self::renderreceiver::RenderReceiver;
 pub use self::client::Client;
-
-pub(crate) use self::types::EventSender;
-pub(crate) use self::types::TcpReader;
-pub(crate) use self::types::TcpWriter;
-pub(crate) use self::types::UdpSocket;
-//TODO: I'm not sure this should be exposed
-pub(crate) use self::types::ClientInputEvent;
 pub use self::types::Factory;
-pub(crate) use self::types::Game;
-pub(crate) use self::types::InterpolationResult;
-pub(crate) use self::types::Receiver;
-pub(crate) use self::types::Sender;
-pub(crate) use self::renderreceiver::RenderReceiverMessage;
+pub use self::types::EventSender;
+pub use self::types::TcpReader;
+pub use self::types::TcpWriter;
+pub use self::types::UdpSocket;
+pub use self::types::ClientInputEvent;
+pub use self::types::Game;
+pub use self::types::InterpolationResult;
+pub use self::types::Receiver;
+pub use self::types::Sender;
+pub use self::renderreceiver::RenderReceiverMessage;

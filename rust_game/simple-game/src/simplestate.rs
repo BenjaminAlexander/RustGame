@@ -5,7 +5,7 @@ use crate::simpleserverinput::SimpleServerInput;
 use crate::SimpleGameImpl;
 use commons::geometry::twod::Vector2;
 use commons::time::TimeDuration;
-use engine_core::interface::{
+use engine_core::{
     ClientUpdateArg, GameTrait, InitialInformation, InterpolationArg, ServerUpdateArg,
 };
 use graphics::Context;
