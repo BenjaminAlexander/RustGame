@@ -1,45 +1,56 @@
-use std::ops::ControlFlow::{Break, Continue};
+use crate::net::simulator::tcplistenereventhandler::TcpListenerEvent::Connection;
+use crate::net::ChannelTcpWriter;
+use crate::singlethreaded::{SingleThreadedFactory, SingleThreadedReceiver};
 use commons::net::TcpConnectionHandlerTrait;
 use commons::threading::channel::ReceiveMetaData;
 use commons::threading::eventhandling::{ChannelEvent, EventHandleResult, EventHandlerTrait};
-use crate::net::ChannelTcpWriter;
-use crate::net::simulator::tcplistenereventhandler::TcpListenerEvent::Connection;
-use crate::singlethreaded::{SingleThreadedFactory, SingleThreadedReceiver};
+use std::ops::ControlFlow::{Break, Continue};
 
 pub enum TcpListenerEvent {
-    Connection(ChannelTcpWriter, SingleThreadedReceiver<Vec<u8>>)
+    Connection(ChannelTcpWriter, SingleThreadedReceiver<Vec<u8>>),
 }
 
-pub struct TcpListenerEventHandler<TcpConnectionHandler: TcpConnectionHandlerTrait<Factory=SingleThreadedFactory>> {
-    connection_handler: TcpConnectionHandler
+pub struct TcpListenerEventHandler<
+    TcpConnectionHandler: TcpConnectionHandlerTrait<Factory = SingleThreadedFactory>,
+> {
+    connection_handler: TcpConnectionHandler,
 }
 
-impl<TcpConnectionHandler: TcpConnectionHandlerTrait<Factory=SingleThreadedFactory>> TcpListenerEventHandler<TcpConnectionHandler> {
-
+impl<TcpConnectionHandler: TcpConnectionHandlerTrait<Factory = SingleThreadedFactory>>
+    TcpListenerEventHandler<TcpConnectionHandler>
+{
     pub fn new(connection_handler: TcpConnectionHandler) -> Self {
-        return Self {
-            connection_handler
-        }
+        return Self { connection_handler };
     }
 
-    fn on_connection(mut self, writer: ChannelTcpWriter, reader: SingleThreadedReceiver<Vec<u8>>) -> EventHandleResult<Self> {
+    fn on_connection(
+        mut self,
+        writer: ChannelTcpWriter,
+        reader: SingleThreadedReceiver<Vec<u8>>,
+    ) -> EventHandleResult<Self> {
         return match self.connection_handler.on_connection(writer, reader) {
             Continue(()) => EventHandleResult::TryForNextEvent(self),
-            Break(()) => EventHandleResult::StopThread(self.connection_handler)
+            Break(()) => EventHandleResult::StopThread(self.connection_handler),
         };
     }
 }
 
-impl<TcpConnectionHandler: TcpConnectionHandlerTrait<Factory=SingleThreadedFactory>> EventHandlerTrait for TcpListenerEventHandler<TcpConnectionHandler> {
+impl<TcpConnectionHandler: TcpConnectionHandlerTrait<Factory = SingleThreadedFactory>>
+    EventHandlerTrait for TcpListenerEventHandler<TcpConnectionHandler>
+{
     type Event = TcpListenerEvent;
     type ThreadReturn = TcpConnectionHandler;
 
     fn on_channel_event(self, channel_event: ChannelEvent<Self::Event>) -> EventHandleResult<Self> {
         return match channel_event {
-            ChannelEvent::ReceivedEvent(_, Connection(writer, reader)) => self.on_connection(writer, reader),
+            ChannelEvent::ReceivedEvent(_, Connection(writer, reader)) => {
+                self.on_connection(writer, reader)
+            }
             ChannelEvent::Timeout => EventHandleResult::TryForNextEvent(self),
             ChannelEvent::ChannelEmpty => EventHandleResult::WaitForNextEvent(self),
-            ChannelEvent::ChannelDisconnected => EventHandleResult::StopThread(self.connection_handler)
+            ChannelEvent::ChannelDisconnected => {
+                EventHandleResult::StopThread(self.connection_handler)
+            }
         };
     }
 

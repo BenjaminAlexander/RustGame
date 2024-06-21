@@ -1,5 +1,5 @@
-use serde::{Deserialize, Serialize};
 use crate::interface::GameTrait;
+use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct StateMessage<Game: GameTrait> {
@@ -8,9 +8,8 @@ pub struct StateMessage<Game: GameTrait> {
 }
 
 impl<Game: GameTrait> StateMessage<Game> {
-
     pub fn new(sequence: usize, state: Game::State) -> Self {
-        Self{ sequence, state }
+        Self { sequence, state }
     }
 
     pub fn get_state(self) -> Game::State {
@@ -23,9 +22,8 @@ impl<Game: GameTrait> StateMessage<Game> {
 }
 
 impl<Game: GameTrait> Clone for StateMessage<Game> {
-
     fn clone(&self) -> Self {
-        Self{
+        Self {
             sequence: self.sequence,
             state: self.state.clone(),
         }

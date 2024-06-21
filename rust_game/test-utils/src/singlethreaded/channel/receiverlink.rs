@@ -1,41 +1,40 @@
-use std::collections::VecDeque;
-use std::sync::{Arc, mpsc, Mutex};
-use log::{error, warn};
-use commons::threading::channel::{ReceiveMetaData, SendError, SendMetaData, TryRecvError};
 use crate::singlethreaded::SingleThreadedFactory;
+use commons::threading::channel::{ReceiveMetaData, SendError, SendMetaData, TryRecvError};
+use log::{error, warn};
+use std::collections::VecDeque;
+use std::sync::{mpsc, Arc, Mutex};
 
 pub struct ReceiverLink<T> {
     internal: Arc<Mutex<Internal<T>>>,
-    factory: SingleThreadedFactory
+    factory: SingleThreadedFactory,
 }
 
 pub enum ReceiveOrDisconnected<T> {
     Receive(ReceiveMetaData, T),
-    Disconnected
+    Disconnected,
 }
 
 enum Mode<T> {
     Queue(VecDeque<(SendMetaData, T)>),
     Consumer(Box<dyn Fn(ReceiveOrDisconnected<T>) -> Result<(), SendError<T>> + Send>),
-    ReceiverDisconnected
+    ReceiverDisconnected,
 }
 
 struct Internal<T> {
     is_sender_disconnected: bool,
-    mode: Mode<T>
+    mode: Mode<T>,
 }
 
 impl<T> ReceiverLink<T> {
-
     pub(super) fn new(factory: SingleThreadedFactory) -> Self {
         let internal = Internal {
             is_sender_disconnected: false,
-            mode: Mode::Queue(VecDeque::new())
+            mode: Mode::Queue(VecDeque::new()),
         };
 
         return Self {
             internal: Arc::new(Mutex::new(internal)),
-            factory
+            factory,
         };
     }
 
@@ -53,11 +52,9 @@ impl<T> ReceiverLink<T> {
                 warn!("Consumer returned an error.")
             }
         }
-
     }
 
     pub(super) fn try_recv_meta_data(&self) -> Result<(ReceiveMetaData, T), TryRecvError> {
-
         let mut internal = self.internal.lock().unwrap();
 
         if let Mode::Queue(ref mut queue) = internal.mode {
@@ -80,7 +77,10 @@ impl<T> ReceiverLink<T> {
         }
     }
 
-    pub(super) fn to_consumer(&self, consumer: impl Fn(ReceiveOrDisconnected<T>) -> Result<(), SendError<T>> + Send + 'static) {
+    pub(super) fn to_consumer(
+        &self,
+        consumer: impl Fn(ReceiveOrDisconnected<T>) -> Result<(), SendError<T>> + Send + 'static,
+    ) {
         let mut internal = self.internal.lock().unwrap();
 
         if let Mode::Queue(ref mut queue) = internal.mode {
@@ -127,7 +127,7 @@ impl<T> Clone for ReceiverLink<T> {
     fn clone(&self) -> Self {
         return Self {
             internal: self.internal.clone(),
-            factory: self.factory.clone()
-        }
+            factory: self.factory.clone(),
+        };
     }
 }

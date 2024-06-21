@@ -1,5 +1,5 @@
 pub enum Intersection {
     All,
     None,
-    Point(f64)
+    Point(f64),
 }

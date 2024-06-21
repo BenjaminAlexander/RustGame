@@ -1,30 +1,32 @@
-use std::net::SocketAddr;
-use std::ops::ControlFlow::{Break, Continue};
+use crate::net::NetworkSimulator;
 use commons::net::UdpReadHandlerTrait;
 use commons::threading::channel::ReceiveMetaData;
 use commons::threading::eventhandling::{ChannelEvent, EventHandleResult, EventHandlerTrait};
-use crate::net::NetworkSimulator;
+use std::net::SocketAddr;
+use std::ops::ControlFlow::{Break, Continue};
 
 pub struct UdpReadEventHandler<T: UdpReadHandlerTrait> {
     network_simulator: NetworkSimulator,
     socket_addr: SocketAddr,
-    read_handler: T
+    read_handler: T,
 }
 impl<T: UdpReadHandlerTrait> UdpReadEventHandler<T> {
-
-    pub fn new(network_simulator: NetworkSimulator,  socket_addr: SocketAddr, read_handler: T) -> Self {
+    pub fn new(
+        network_simulator: NetworkSimulator,
+        socket_addr: SocketAddr,
+        read_handler: T,
+    ) -> Self {
         return Self {
             network_simulator,
             socket_addr,
-            read_handler
+            read_handler,
         };
     }
 
     fn read(mut self, source: SocketAddr, buf: Vec<u8>) -> EventHandleResult<Self> {
-
         return match self.read_handler.on_read(source, &buf) {
             Continue(()) => EventHandleResult::TryForNextEvent(self),
-            Break(()) => EventHandleResult::StopThread(self.read_handler)
+            Break(()) => EventHandleResult::StopThread(self.read_handler),
         };
     }
 }
@@ -38,7 +40,7 @@ impl<T: UdpReadHandlerTrait> EventHandlerTrait for UdpReadEventHandler<T> {
             ChannelEvent::ReceivedEvent(_, (source, buf)) => self.read(source, buf),
             ChannelEvent::Timeout => EventHandleResult::TryForNextEvent(self),
             ChannelEvent::ChannelEmpty => EventHandleResult::WaitForNextEvent(self),
-            ChannelEvent::ChannelDisconnected => EventHandleResult::StopThread(self.read_handler)
+            ChannelEvent::ChannelDisconnected => EventHandleResult::StopThread(self.read_handler),
         }
     }
 

@@ -1,35 +1,34 @@
+use crate::net::simulator::udpsocketsimulator::UdpSocketSimulator;
+use crate::net::{ChannelTcpWriter, NetworkSimulator};
+use crate::singlethreaded::{SingleThreadedFactory, SingleThreadedReceiver};
 use std::collections::HashSet;
 use std::io::{Error, ErrorKind};
 use std::net::{IpAddr, SocketAddr};
 use std::sync::{Arc, Mutex};
-use crate::net::{ChannelTcpWriter, NetworkSimulator};
-use crate::net::simulator::udpsocketsimulator::UdpSocketSimulator;
-use crate::singlethreaded::{SingleThreadedFactory, SingleThreadedReceiver};
 
 #[derive(Clone)]
 pub struct HostSimulator {
     internal: Arc<Mutex<Internal>>,
-    network_simulator: NetworkSimulator
+    network_simulator: NetworkSimulator,
 }
 
 struct Internal {
     ip_addr: IpAddr,
     next_tcp_port: u16,
-    bound_udp_sockets: HashSet<SocketAddr>
+    bound_udp_sockets: HashSet<SocketAddr>,
 }
 
 impl HostSimulator {
     pub fn new(network_simulator: NetworkSimulator, ip_addr: IpAddr) -> Self {
-
         let internal = Internal {
             ip_addr,
             next_tcp_port: 1,
-            bound_udp_sockets: HashSet::new()
+            bound_udp_sockets: HashSet::new(),
         };
 
         return Self {
             network_simulator,
-            internal: Arc::new(Mutex::new(internal))
+            internal: Arc::new(Mutex::new(internal)),
         };
     }
 
@@ -41,8 +40,11 @@ impl HostSimulator {
         return &self.network_simulator;
     }
 
-    pub fn connect_tcp(&self, factory: &SingleThreadedFactory, server_socket_addr: SocketAddr) -> Result<(ChannelTcpWriter, SingleThreadedReceiver<Vec<u8>>), Error> {
-
+    pub fn connect_tcp(
+        &self,
+        factory: &SingleThreadedFactory,
+        server_socket_addr: SocketAddr,
+    ) -> Result<(ChannelTcpWriter, SingleThreadedReceiver<Vec<u8>>), Error> {
         let port;
         let ip_addr;
         {
@@ -56,7 +58,9 @@ impl HostSimulator {
 
         let client_socket_addr = SocketAddr::new(ip_addr, port);
 
-        return self.network_simulator.connect_tcp(factory, client_socket_addr, server_socket_addr);
+        return self
+            .network_simulator
+            .connect_tcp(factory, client_socket_addr, server_socket_addr);
     }
 
     pub fn bind_udp_socket(&self, socket_addr: SocketAddr) -> Result<UdpSocketSimulator, Error> {

@@ -1,15 +1,15 @@
-use std::sync::{Arc, Mutex};
-use commons::threading::channel::{SendError, SenderTrait};
 use crate::singlethreaded::channel::senderlink::SenderLink;
+use commons::threading::channel::{SendError, SenderTrait};
+use std::sync::{Arc, Mutex};
 
 pub struct SingleThreadedSender<T: Send> {
-    link: Arc<Mutex<SenderLink<T>>>
+    link: Arc<Mutex<SenderLink<T>>>,
 }
 
 impl<T: Send> SingleThreadedSender<T> {
     pub fn new(link: SenderLink<T>) -> Self {
         return Self {
-            link: Arc::new(Mutex::new(link))
+            link: Arc::new(Mutex::new(link)),
         };
     }
 }
@@ -17,7 +17,7 @@ impl<T: Send> SingleThreadedSender<T> {
 impl<T: Send> Clone for SingleThreadedSender<T> {
     fn clone(&self) -> Self {
         return Self {
-            link: self.link.clone()
+            link: self.link.clone(),
         };
     }
 }

@@ -1,26 +1,25 @@
-use std::cmp::Ordering;
-use std::ops::Add;
-use log::trace;
 use crate::factory::FactoryTrait;
 use crate::time::timerservice::schedule::Schedule;
 use crate::time::timerservice::timercallback::TimerCallBack;
 use crate::time::timerservice::timerid::TimerId;
 use crate::time::TimeValue;
+use log::trace;
+use std::cmp::Ordering;
+use std::ops::Add;
 
 pub struct Timer<T: TimerCallBack> {
     id: TimerId,
     schedule: Option<Schedule>,
-    call_back: T
+    call_back: T,
 }
 
 impl<T: TimerCallBack> Timer<T> {
-
     pub fn new(id: &TimerId, schedule: Option<Schedule>, call_back: T) -> Self {
         return Self {
             id: *id,
             schedule,
-            call_back
-        }
+            call_back,
+        };
     }
 
     pub fn get_id(&self) -> &TimerId {
@@ -38,24 +37,30 @@ impl<T: TimerCallBack> Timer<T> {
     pub fn get_trigger_time(&self) -> Option<&TimeValue> {
         return match &self.schedule {
             None => None,
-            Some(schedule) => Some(schedule.get_trigger_time())
-        }
+            Some(schedule) => Some(schedule.get_trigger_time()),
+        };
     }
 
     pub fn should_trigger(&self, now: &TimeValue) -> bool {
         return match &self.schedule {
             None => false,
-            Some(schedule) => schedule.should_trigger(now)
-        }
+            Some(schedule) => schedule.should_trigger(now),
+        };
     }
 
     pub fn trigger(&mut self, factory: &impl FactoryTrait) {
-        trace!("Time is: {:?}\nTrigging Timer: {:?}", factory.now(), self.id);
+        trace!(
+            "Time is: {:?}\nTrigging Timer: {:?}",
+            factory.now(),
+            self.id
+        );
         self.call_back.tick();
         self.schedule = match self.schedule {
             None => None,
             Some(Schedule::Once(_)) => None,
-            Some(Schedule::Repeating(trigger_time, duration)) => Some(Schedule::Repeating(trigger_time.add(&duration), duration))
+            Some(Schedule::Repeating(trigger_time, duration)) => {
+                Some(Schedule::Repeating(trigger_time.add(&duration), duration))
+            }
         };
     }
 }
@@ -68,7 +73,9 @@ impl<T: TimerCallBack> PartialEq<Self> for Timer<T> {
 
 impl<T: TimerCallBack> PartialOrd<Self> for Timer<T> {
     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
-        return self.get_trigger_time().partial_cmp(&other.get_trigger_time());
+        return self
+            .get_trigger_time()
+            .partial_cmp(&other.get_trigger_time());
     }
 }
 

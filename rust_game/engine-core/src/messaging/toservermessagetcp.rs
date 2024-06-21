@@ -1,6 +1,4 @@
 use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize, Debug)]
-pub enum ToServerMessageTCP {
-
-}
+pub enum ToServerMessageTCP {}

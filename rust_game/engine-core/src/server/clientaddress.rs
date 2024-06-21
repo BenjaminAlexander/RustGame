@@ -3,14 +3,14 @@ use std::net::IpAddr;
 #[derive(Clone, Debug, Eq, Hash, PartialEq)]
 pub struct ClientAddress {
     player_index: usize,
-    ip_address: IpAddr
+    ip_address: IpAddr,
 }
 
 impl ClientAddress {
     pub fn new(player_index: usize, ip_address: IpAddr) -> Self {
-        return Self{
+        return Self {
             player_index,
-            ip_address
+            ip_address,
         };
     }
 

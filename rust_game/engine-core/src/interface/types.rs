@@ -1,6 +1,6 @@
+use crate::interface::{GameFactoryTrait, GameTrait};
 use commons::factory::FactoryTrait;
 use commons::threading::eventhandling;
-use crate::interface::{GameFactoryTrait, GameTrait};
 
 pub type Factory<GameFactory> = <GameFactory as GameFactoryTrait>::Factory;
 pub type TcpWriter<GameFactory> = <Factory<GameFactory> as FactoryTrait>::TcpWriter;

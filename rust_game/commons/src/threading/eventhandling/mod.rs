@@ -1,11 +1,11 @@
 mod enums;
-mod eventhandlertrait;
 mod eventhandlerthread;
-mod types;
+mod eventhandlertrait;
 mod eventsendertrait;
+mod types;
 
-pub use self::eventhandlertrait::EventHandlerTrait;
-pub use self::enums::{ChannelEvent, EventOrStopThread, EventHandleResult};
+pub use self::enums::{ChannelEvent, EventHandleResult, EventOrStopThread};
 pub(crate) use self::eventhandlerthread::EventHandlerThread;
-pub use self::types::{EventHandlerSendError, EventHandlerSendResult, EventHandlerSender};
+pub use self::eventhandlertrait::EventHandlerTrait;
 pub use self::eventsendertrait::EventSenderTrait;
+pub use self::types::{EventHandlerSendError, EventHandlerSendResult, EventHandlerSender};

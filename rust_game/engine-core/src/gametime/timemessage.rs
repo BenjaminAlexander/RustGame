@@ -1,7 +1,7 @@
 use std::ops::Add;
 
+use commons::time::{TimeDuration, TimeValue};
 use serde::{Deserialize, Serialize};
-use commons::time::{TimeValue, TimeDuration};
 
 #[derive(Serialize, Deserialize, Debug, Clone, Copy)]
 pub struct TimeMessage {
@@ -11,12 +11,16 @@ pub struct TimeMessage {
 }
 
 impl TimeMessage {
-
-    pub(super) fn new(start: TimeValue,
-                      step_duration: TimeDuration,
-                      actual_time: TimeValue) -> Self {
-
-        TimeMessage{start, step_duration, actual_time}
+    pub(super) fn new(
+        start: TimeValue,
+        step_duration: TimeDuration,
+        actual_time: TimeValue,
+    ) -> Self {
+        TimeMessage {
+            start,
+            step_duration,
+            actual_time,
+        }
     }
 
     // pub fn get_actual_time(&self) -> &TimeValue {
@@ -37,7 +41,8 @@ impl TimeMessage {
     }
 
     pub fn get_scheduled_time(&self) -> TimeValue {
-        self.start.add(&self.step_duration.mul_f64(self.get_step() as f64))
+        self.start
+            .add(&self.step_duration.mul_f64(self.get_step() as f64))
     }
 
     pub fn get_lateness(&self) -> TimeDuration {

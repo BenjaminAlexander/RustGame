@@ -9,12 +9,11 @@ pub struct SimpleInput {
 }
 
 impl SimpleInput {
-
     pub fn new(aim_point: Vector2, velocity: Vector2, should_fire: bool) -> Self {
-        return Self{
+        return Self {
             aim_point,
             velocity,
-            should_fire
+            should_fire,
         };
     }
 

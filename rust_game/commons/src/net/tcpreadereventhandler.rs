@@ -1,31 +1,29 @@
-use std::ops::ControlFlow::{Break, Continue};
-use log::warn;
 use crate::net::realtcpstream::RealTcpStream;
 use crate::net::tcpreadhandlertrait::TcpReadHandlerTrait;
 use crate::threading::channel::ReceiveMetaData;
 use crate::threading::eventhandling::{ChannelEvent, EventHandleResult, EventHandlerTrait};
+use log::warn;
+use std::ops::ControlFlow::{Break, Continue};
 
 pub struct TcpReaderEventHandler<T: TcpReadHandlerTrait> {
     tcp_reader: RealTcpStream,
-    tcp_read_handler: T
+    tcp_read_handler: T,
 }
 
 impl<T: TcpReadHandlerTrait> TcpReaderEventHandler<T> {
-
     pub fn new(tcp_reader: RealTcpStream, tcp_read_handler: T) -> Self {
         return Self {
             tcp_reader,
-            tcp_read_handler
+            tcp_read_handler,
         };
     }
 
     fn read(mut self) -> EventHandleResult<Self> {
-
         match self.tcp_reader.read::<T::ReadType>() {
             Ok(read_value) => {
                 return match self.tcp_read_handler.on_read(read_value) {
                     Continue(()) => EventHandleResult::TryForNextEvent(self),
-                    Break(()) =>  EventHandleResult::StopThread(self.tcp_read_handler)
+                    Break(()) => EventHandleResult::StopThread(self.tcp_read_handler),
                 };
             }
             Err(error) => {
@@ -45,7 +43,9 @@ impl<T: TcpReadHandlerTrait> EventHandlerTrait for TcpReaderEventHandler<T> {
             ChannelEvent::ReceivedEvent(_, ()) => EventHandleResult::TryForNextEvent(self),
             ChannelEvent::Timeout => EventHandleResult::TryForNextEvent(self),
             ChannelEvent::ChannelEmpty => self.read(),
-            ChannelEvent::ChannelDisconnected => EventHandleResult::StopThread(self.tcp_read_handler)
+            ChannelEvent::ChannelDisconnected => {
+                EventHandleResult::StopThread(self.tcp_read_handler)
+            }
         };
     }
 

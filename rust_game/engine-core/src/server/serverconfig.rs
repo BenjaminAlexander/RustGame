@@ -8,9 +8,7 @@ pub struct ServerConfig {
 
 impl ServerConfig {
     pub fn new(step_duration: TimeDuration) -> Self {
-        return Self{
-            step_duration
-        };
+        return Self { step_duration };
     }
 
     pub fn get_step_duration(&self) -> TimeDuration {

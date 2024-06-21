@@ -1,11 +1,10 @@
-use std::sync::{Arc, mpsc, Mutex};
 use commons::factory::FactoryTrait;
 use commons::threading::channel::{ReceiverTrait, SenderTrait, TryRecvError};
+use std::sync::{mpsc, Arc, Mutex};
 use test_utils::singlethreaded::{ReceiveOrDisconnected, SingleThreadedFactory};
 
 #[test]
 fn test_sender() {
-
     let factory = SingleThreadedFactory::new();
 
     let (sender, mut receiver) = factory.new_channel::<u32>().take();
@@ -20,14 +19,14 @@ fn test_sender() {
     let actual_result = Arc::new(Mutex::new(None));
     let actual_result_clone = actual_result.clone();
 
-    let receiver_link = receiver.to_consumer(move |receive_or_disconnect|{
+    let receiver_link = receiver.to_consumer(move |receive_or_disconnect| {
         match receive_or_disconnect {
             ReceiveOrDisconnected::Receive(_, number) => {
                 *actual_result_clone.lock().unwrap() = Some(number);
             }
             ReceiveOrDisconnected::Disconnected => {}
         }
-       return Ok(());
+        return Ok(());
     });
 
     assert_eq!(2, *actual_result.lock().unwrap().as_ref().unwrap());
@@ -36,7 +35,7 @@ fn test_sender() {
     assert_eq!(3, *actual_result.lock().unwrap().as_ref().unwrap());
 
     receiver_link.disconnect_receiver();
-    assert_eq!(4, sender.send(4).unwrap_err().0.1);
+    assert_eq!(4, sender.send(4).unwrap_err().0 .1);
 }
 
 #[test]
@@ -63,12 +62,15 @@ fn test_sender_error() {
     sender.send(1).unwrap();
     assert_eq!(1, receiver.try_recv().unwrap());
 
-    receiver.to_consumer(move |receive_or_disconnect|{
+    receiver.to_consumer(move |receive_or_disconnect| {
         return match receive_or_disconnect {
-            ReceiveOrDisconnected::Receive(receive_meta_data, number) => Err(mpsc::SendError((receive_meta_data.get_send_meta_data().clone(), number))),
-            ReceiveOrDisconnected::Disconnected => Ok(())
+            ReceiveOrDisconnected::Receive(receive_meta_data, number) => Err(mpsc::SendError((
+                receive_meta_data.get_send_meta_data().clone(),
+                number,
+            ))),
+            ReceiveOrDisconnected::Disconnected => Ok(()),
         };
     });
 
-    assert_eq!(4, sender.send(4).unwrap_err().0.1);
+    assert_eq!(4, sender.send(4).unwrap_err().0 .1);
 }

@@ -1,9 +1,9 @@
-use commons::factory::FactoryTrait;
 use crate::gamemanager::stepmessage::StepMessage;
 use crate::interface::GameTrait;
 use crate::messaging::{ServerInputMessage, StateMessage};
+use commons::factory::FactoryTrait;
 
-pub trait ManagerObserverTrait : 'static + Send {
+pub trait ManagerObserverTrait: 'static + Send {
     type Factory: FactoryTrait;
     type Game: GameTrait;
 

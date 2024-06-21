@@ -1,5 +1,5 @@
-use std::ops::Deref;
 use crate::time::timerservice::timerid::TimerId;
+use std::ops::Deref;
 
 pub trait TimerCreationCallBack: Send + 'static {
     fn timer_created(&self, timer_id: &TimerId);

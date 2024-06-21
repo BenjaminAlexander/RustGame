@@ -1,10 +1,10 @@
-mod timequeue;
+mod channel;
 mod event;
 pub mod eventhandling;
 mod singlethreadedfactory;
-mod channel;
+mod timequeue;
 
-pub use self::channel::{ReceiverLink, ReceiveOrDisconnected};
+pub use self::channel::{ReceiveOrDisconnected, ReceiverLink};
+pub use self::channel::{SingleThreadedReceiver, SingleThreadedSender};
 pub use self::singlethreadedfactory::SingleThreadedFactory;
-pub use self::channel::{SingleThreadedSender, SingleThreadedReceiver};
 pub use self::timequeue::TimeQueue;

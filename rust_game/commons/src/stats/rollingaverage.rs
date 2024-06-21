@@ -1,21 +1,19 @@
 pub struct RollingAverage {
     values: Vec<f64>,
     next_index: usize,
-    sum: f64
+    sum: f64,
 }
 
 impl RollingAverage {
-
     pub fn new(size: usize) -> Self {
         Self {
             values: Vec::with_capacity(size),
             next_index: 0,
-            sum: 0.0
+            sum: 0.0,
         }
     }
 
     pub fn add_value(&mut self, value: f64) -> Option<f64> {
-
         let mut removed_value_option = None;
 
         if self.values.len() == self.values.capacity() {
@@ -24,7 +22,6 @@ impl RollingAverage {
 
             self.sum = self.sum - removed_value;
             removed_value_option = Some(removed_value);
-
         } else {
             self.values.insert(self.next_index, value);
         }
@@ -40,7 +37,7 @@ impl RollingAverage {
             0.0
         } else {
             self.sum / (self.values.len() as f64)
-        }
+        };
     }
 
     pub fn count(&self) -> usize {

@@ -1,5 +1,5 @@
-use serde::{Deserialize, Serialize};
 use crate::interface::GameTrait;
+use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct ServerInputMessage<Game: GameTrait> {
@@ -8,9 +8,8 @@ pub struct ServerInputMessage<Game: GameTrait> {
 }
 
 impl<Game: GameTrait> ServerInputMessage<Game> {
-
     pub fn new(step: usize, server_input: Game::ServerInput) -> Self {
-        Self{ step, server_input }
+        Self { step, server_input }
     }
 
     pub fn get_server_input(self) -> Game::ServerInput {
@@ -23,9 +22,8 @@ impl<Game: GameTrait> ServerInputMessage<Game> {
 }
 
 impl<Game: GameTrait> Clone for ServerInputMessage<Game> {
-
     fn clone(&self) -> Self {
-        Self{
+        Self {
             step: self.step,
             server_input: self.server_input.clone(),
         }

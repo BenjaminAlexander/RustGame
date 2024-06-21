@@ -1,17 +1,17 @@
-mod realsender;
-mod realreceiver;
 mod channel;
-mod sendmetadata;
-mod receivemetadata;
 mod channelthreadbuilder;
-mod sendertrait;
+mod realreceiver;
+mod realsender;
+mod receivemetadata;
 mod receivertrait;
+mod sendertrait;
+mod sendmetadata;
 
-pub use self::realsender::RealSender;
-pub use self::sendertrait::{SenderTrait, SendError};
-pub use self::realreceiver::{RealReceiver, RecvError, RecvTimeoutError};
-pub use self::receivertrait::{ReceiverTrait, TryRecvError};
-pub use self::receivemetadata::ReceiveMetaData;
-pub use self::sendmetadata::SendMetaData;
 pub use self::channel::Channel;
 pub use self::channelthreadbuilder::ChannelThreadBuilder;
+pub use self::realreceiver::{RealReceiver, RecvError, RecvTimeoutError};
+pub use self::realsender::RealSender;
+pub use self::receivemetadata::ReceiveMetaData;
+pub use self::receivertrait::{ReceiverTrait, TryRecvError};
+pub use self::sendertrait::{SendError, SenderTrait};
+pub use self::sendmetadata::SendMetaData;

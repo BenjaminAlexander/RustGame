@@ -1,10 +1,10 @@
+mod minmax;
 mod rollingaverage;
 mod rollingstandarddeviation;
-mod minmax;
-mod totalaverage;
 mod rollingstats;
-mod totalstandarddeviation;
 mod rollingstatslogger;
+mod totalaverage;
+mod totalstandarddeviation;
 
 pub use self::minmax::{MinMax, MinMaxChange};
 pub use self::rollingaverage::RollingAverage;

@@ -1,15 +1,11 @@
 pub struct TotalAverage {
     count: usize,
-    sum: f64
+    sum: f64,
 }
 
 impl TotalAverage {
-
     pub fn new() -> Self {
-        Self {
-            count: 0,
-            sum: 0.0
-        }
+        Self { count: 0, sum: 0.0 }
     }
 
     pub fn add_value(&mut self, value: f64) {
@@ -22,7 +18,7 @@ impl TotalAverage {
             0.0
         } else {
             self.sum / (self.count as f64)
-        }
+        };
     }
 
     pub fn count(&self) -> usize {

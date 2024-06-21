@@ -1,35 +1,30 @@
 use serde::{Deserialize, Serialize};
-use std::time::Duration;
-use std::ops::{Sub, Add};
 use std::cmp::Ordering;
+use std::ops::{Add, Sub};
+use std::time::Duration;
 
 #[derive(Serialize, Deserialize, Clone, Copy, Debug)]
 pub struct TimeDuration {
     seconds: i64,
-    nanos: i32
+    nanos: i32,
 }
 
 impl TimeDuration {
-
     pub const NANOS_PER_SEC: i32 = 1_000_000_000;
     pub const ONE_SECOND: TimeDuration = TimeDuration::new(1, 0);
 
     const fn debug_assert(self) {
-
         debug_assert!(
-            self.seconds.signum() == 0 || 
-            self.nanos.signum() == 0 || 
-            self.seconds.signum() == self.nanos.signum() as i64);
-            
+            self.seconds.signum() == 0
+                || self.nanos.signum() == 0
+                || self.seconds.signum() == self.nanos.signum() as i64
+        );
+
         debug_assert!(self.nanos.abs() < TimeDuration::NANOS_PER_SEC);
     }
 
     const fn new_with_assertions(seconds: i64, nanos: i32) -> TimeDuration {
-
-        let time_duration = Self {
-            seconds,
-            nanos
-        };
+        let time_duration = Self { seconds, nanos };
 
         time_duration.debug_assert();
 
@@ -37,19 +32,17 @@ impl TimeDuration {
     }
 
     pub const fn new(seconds: i64, nanos: i32) -> TimeDuration {
-
         let mut seconds: i64 = seconds + ((nanos / TimeDuration::NANOS_PER_SEC) as i64);
         let mut nanos: i32 = nanos % (TimeDuration::NANOS_PER_SEC as i32);
 
-        if seconds.signum() != 0 && 
-                nanos.signum() != 0 && 
-                seconds.signum() != nanos.signum() as i64 {
-
+        if seconds.signum() != 0 && nanos.signum() != 0 && seconds.signum() != nanos.signum() as i64
+        {
             let original_seconds_signum = seconds.signum();
             seconds = seconds - original_seconds_signum;
-            nanos = (TimeDuration::NANOS_PER_SEC as i32 - nanos.abs()) * (original_seconds_signum as i32);
+            nanos = (TimeDuration::NANOS_PER_SEC as i32 - nanos.abs())
+                * (original_seconds_signum as i32);
         }
-        
+
         return Self::new_with_assertions(seconds, nanos);
     }
 
@@ -62,7 +55,6 @@ impl TimeDuration {
     }
 
     pub fn from_secs_f64(value: f64) -> Self {
-
         let seconds = value.trunc() as i64;
         let nanos = ((value - seconds as f64) * TimeDuration::NANOS_PER_SEC as f64).round() as i32;
 
@@ -86,7 +78,6 @@ impl TimeDuration {
     }
 
     pub fn to_duration(&self) -> Option<Duration> {
-
         self.debug_assert();
 
         if !self.seconds.is_negative() && !self.nanos.is_negative() {
@@ -107,7 +98,10 @@ impl TimeDuration {
 
 impl From<&Duration> for TimeDuration {
     fn from(duration: &Duration) -> TimeDuration {
-        return TimeDuration::new_with_assertions(duration.as_secs() as i64, duration.subsec_nanos() as i32);
+        return TimeDuration::new_with_assertions(
+            duration.as_secs() as i64,
+            duration.subsec_nanos() as i32,
+        );
     }
 }
 
@@ -127,12 +121,10 @@ impl Add<&Self> for TimeDuration {
     }
 }
 
-impl Eq for TimeDuration {
-}
+impl Eq for TimeDuration {}
 
 impl PartialEq for TimeDuration {
     fn eq(&self, other: &TimeDuration) -> bool {
-
         self.debug_assert();
         other.debug_assert();
 
@@ -146,16 +138,14 @@ impl PartialOrd for TimeDuration {
     }
 }
 
-
 impl Ord for TimeDuration {
     fn cmp(&self, other: &Self) -> Ordering {
-
         self.debug_assert();
         other.debug_assert();
 
         return match self.seconds.cmp(&other.seconds) {
             Ordering::Equal => self.nanos.cmp(&other.nanos),
-            result => result
+            result => result,
         };
     }
 }
@@ -171,7 +161,6 @@ mod tests {
 
     #[test]
     fn time_duration_test() {
-
         let time_duration = TimeDuration::new(23, 1_750_000_000);
         assert_time_duration(24, 750_000_000, time_duration);
         assert_eq!(time_duration.as_secs_f64(), 24.75);
@@ -262,15 +251,18 @@ mod tests {
 
         let time_duration1 = TimeDuration::new(23, 750_000_000);
         let time_duration2 = TimeDuration::new(22, 750_000_000);
-        assert_eq!(Some(Ordering::Greater), time_duration1.partial_cmp(&time_duration2));
+        assert_eq!(
+            Some(Ordering::Greater),
+            time_duration1.partial_cmp(&time_duration2)
+        );
 
         let time_duration1 = TimeDuration::new(23, 750_000_000);
         let time_duration2 = TimeDuration::new(23, 500_000_000);
-        assert_eq!(Some(Ordering::Greater), time_duration1.partial_cmp(&time_duration2));
+        assert_eq!(
+            Some(Ordering::Greater),
+            time_duration1.partial_cmp(&time_duration2)
+        );
 
         assert_time_duration(0, 82_921_124, TimeDuration::new(1, -917_078_876));
     }
-
-
-
 }

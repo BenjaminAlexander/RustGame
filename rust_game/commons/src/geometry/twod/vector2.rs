@@ -1,7 +1,7 @@
-use serde::{Deserialize, Serialize};
-use std::ops::{Sub, Add, Mul};
 use num::traits::Pow;
+use serde::{Deserialize, Serialize};
 use std::hash::{Hash, Hasher};
+use std::ops::{Add, Mul, Sub};
 
 #[derive(Serialize, Deserialize, Debug, Clone, Copy)]
 pub struct Vector2 {
@@ -15,7 +15,10 @@ impl Vector2 {
     }
 
     pub fn zero() -> Self {
-        Self { x: 0 as f64, y: 0 as f64 }
+        Self {
+            x: 0 as f64,
+            y: 0 as f64,
+        }
     }
 
     pub fn set(&mut self, other: &Vector2) {
@@ -88,8 +91,10 @@ impl Add for Vector2 {
 }
 
 impl<T> Mul<T> for Vector2
-    where f64 : Mul<T, Output=f64>,
-          T: Copy {
+where
+    f64: Mul<T, Output = f64>,
+    T: Copy,
+{
     type Output = Self;
 
     fn mul(self, rhs: T) -> Self::Output {

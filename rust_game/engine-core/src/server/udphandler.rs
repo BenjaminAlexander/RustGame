@@ -1,11 +1,11 @@
-use std::collections::{HashMap, HashSet};
-use std::net::{IpAddr, SocketAddr};
-use log::{info, warn};
-use commons::net::MAX_UDP_DATAGRAM_SIZE;
 use crate::interface::GameFactoryTrait;
 use crate::messaging::{FragmentAssembler, InputMessage, MessageFragment, ToServerMessageUDP};
 use crate::server::clientaddress::ClientAddress;
 use crate::server::remoteudppeer::RemoteUdpPeer;
+use commons::net::MAX_UDP_DATAGRAM_SIZE;
+use log::{info, warn};
+use std::collections::{HashMap, HashSet};
+use std::net::{IpAddr, SocketAddr};
 
 pub struct UdpHandler<GameFactory: GameFactoryTrait> {
     factory: GameFactory::Factory,
@@ -18,9 +18,7 @@ pub struct UdpHandler<GameFactory: GameFactoryTrait> {
 }
 
 impl<GameFactory: GameFactoryTrait> UdpHandler<GameFactory> {
-
     pub fn new(factory: GameFactory::Factory) -> Self {
-
         return Self {
             factory,
             remote_peers: Vec::new(),
@@ -41,10 +39,21 @@ impl<GameFactory: GameFactoryTrait> UdpHandler<GameFactory> {
 
         self.client_addresses[index] = Some(client_address);
 
-        info!("Added Client: {:?}", self.client_addresses[index].as_ref().unwrap());
+        info!(
+            "Added Client: {:?}",
+            self.client_addresses[index].as_ref().unwrap()
+        );
     }
 
-    pub fn on_udp_packet(&mut self, number_of_bytes: usize, mut buf: [u8; MAX_UDP_DATAGRAM_SIZE], source: SocketAddr) -> (Option<RemoteUdpPeer>, Option<InputMessage<GameFactory::Game>>) {
+    pub fn on_udp_packet(
+        &mut self,
+        number_of_bytes: usize,
+        mut buf: [u8; MAX_UDP_DATAGRAM_SIZE],
+        source: SocketAddr,
+    ) -> (
+        Option<RemoteUdpPeer>,
+        Option<InputMessage<GameFactory::Game>>,
+    ) {
         //TODO: check source against valid sources
         let mut filled_buf = &mut buf[..number_of_bytes];
 
@@ -59,7 +68,6 @@ impl<GameFactory: GameFactoryTrait> UdpHandler<GameFactory> {
                     return self.handle_message(message, source);
                 }
                 Err(error) => {
-
                     //TODO: is removing the fragement assembler on error right?
                     self.fragment_assemblers.remove(&source);
                     warn!("Failed to deserialize a ToServerMessageUDP: {:?}", error);
@@ -75,32 +83,46 @@ impl<GameFactory: GameFactoryTrait> UdpHandler<GameFactory> {
         let assembler = match self.fragment_assemblers.get_mut(&source) {
             None => {
                 //TODO: make max_messages more configurable
-                self.fragment_assemblers.insert(source, FragmentAssembler::new(5));
+                self.fragment_assemblers
+                    .insert(source, FragmentAssembler::new(5));
                 self.fragment_assemblers.get_mut(&source).unwrap()
             }
-            Some(assembler) => assembler
+            Some(assembler) => assembler,
         };
 
         return assembler.add_fragment(&self.factory, MessageFragment::from_vec(fragment.to_vec()));
     }
 
-    fn handle_message(&mut self, message: ToServerMessageUDP<GameFactory::Game>, source: SocketAddr) -> (Option<RemoteUdpPeer>, Option<InputMessage<GameFactory::Game>>) {
-
+    fn handle_message(
+        &mut self,
+        message: ToServerMessageUDP<GameFactory::Game>,
+        source: SocketAddr,
+    ) -> (
+        Option<RemoteUdpPeer>,
+        Option<InputMessage<GameFactory::Game>>,
+    ) {
         let player_index = message.get_player_index();
 
-        if self.client_addresses.len() <= player_index ||
-            self.client_addresses[player_index].is_none() ||
-            !self.client_addresses[player_index].as_ref().unwrap().get_ip_address().eq(&source.ip()) {
-
-            warn!("Received a message from an unexpected source. player_index: {:?}, source: {:?}",
-                  player_index, source.ip());
+        if self.client_addresses.len() <= player_index
+            || self.client_addresses[player_index].is_none()
+            || !self.client_addresses[player_index]
+                .as_ref()
+                .unwrap()
+                .get_ip_address()
+                .eq(&source.ip())
+        {
+            warn!(
+                "Received a message from an unexpected source. player_index: {:?}, source: {:?}",
+                player_index,
+                source.ip()
+            );
             return (None, None);
         }
 
         let remote_peer = self.handle_remote_peer(message.get_player_index(), source);
 
         match message {
-            ToServerMessageUDP::Hello {player_index: _} => {
+            ToServerMessageUDP::Hello { player_index: _ } => {
                 return (remote_peer, None);
             }
             ToServerMessageUDP::Input(input_message) => {
@@ -109,7 +131,11 @@ impl<GameFactory: GameFactoryTrait> UdpHandler<GameFactory> {
         }
     }
 
-    fn handle_remote_peer(&mut self, player_index: usize, remote_peer: SocketAddr) -> Option<RemoteUdpPeer> {
+    fn handle_remote_peer(
+        &mut self,
+        player_index: usize,
+        remote_peer: SocketAddr,
+    ) -> Option<RemoteUdpPeer> {
         while self.remote_peers.len() <= player_index {
             self.remote_peers.push(None);
         }

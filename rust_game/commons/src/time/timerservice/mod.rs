@@ -1,14 +1,14 @@
 mod schedule;
-mod timerid;
-mod timercallback;
 mod timer;
+mod timercallback;
+mod timercreationcallback;
+mod timerid;
 mod timerservice;
 mod timerserviceevent;
-mod timercreationcallback;
 
+pub use self::schedule::Schedule;
+pub use self::timercallback::TimerCallBack;
+pub use self::timercreationcallback::TimerCreationCallBack;
 pub use self::timerid::TimerId;
 pub use self::timerservice::TimeService;
 pub use self::timerserviceevent::TimerServiceEvent;
-pub use self::timercallback::TimerCallBack;
-pub use self::timercreationcallback::TimerCreationCallBack;
-pub use self::schedule::Schedule;
