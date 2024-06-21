@@ -1,5 +1,6 @@
 use log::warn;
 use std::collections::VecDeque;
+use std::ops::Add;
 use std::sync::{Arc, Mutex};
 use commons::time::{TimeDuration, TimeValue};
 use crate::singlethreaded::event::Event;
@@ -45,7 +46,7 @@ impl TimeQueue {
     }
 
     pub fn add_event_at_duration_from_now(&self, duration: TimeDuration, function: impl FnOnce() + Send + 'static) -> usize {
-        let time = self.simulated_time_source.now().add(duration);
+        let time = self.simulated_time_source.now().add(&duration);
         return self.add_event_at_time(time, function);
     }
 
@@ -79,7 +80,7 @@ impl TimeQueue {
     }
 
     pub fn advance_time_for_duration(&self, time_duration: TimeDuration) {
-        let time = self.simulated_time_source.now().add(time_duration);
+        let time = self.simulated_time_source.now().add(&time_duration);
         self.advance_time_until(time);
     }
 }

@@ -1,6 +1,5 @@
-use std::ops::ControlFlow::{Break, Continue};
 use commons::threading::channel::ReceiveMetaData;
-use commons::threading::eventhandling::{ChannelEvent, ChannelEventResult, EventHandlerTrait, WaitOrTryForNextEvent};
+use commons::threading::eventhandling::{ChannelEvent, EventHandleResult, EventHandlerTrait};
 
 pub struct NoOpEventHandler {
     on_stop_func: Box<dyn FnOnce() + Send + 'static>
@@ -18,12 +17,12 @@ impl EventHandlerTrait for NoOpEventHandler {
     type Event = ();
     type ThreadReturn = ();
 
-    fn on_channel_event(self, channel_event: ChannelEvent<Self::Event>) -> ChannelEventResult<Self> {
+    fn on_channel_event(self, channel_event: ChannelEvent<Self::Event>) -> EventHandleResult<Self> {
         return match channel_event {
-            ChannelEvent::ReceivedEvent(_, ()) => Continue(WaitOrTryForNextEvent::TryForNextEvent(self)),
-            ChannelEvent::Timeout => Continue(WaitOrTryForNextEvent::TryForNextEvent(self)),
-            ChannelEvent::ChannelEmpty => Continue(WaitOrTryForNextEvent::WaitForNextEvent(self)),
-            ChannelEvent::ChannelDisconnected => Break(())
+            ChannelEvent::ReceivedEvent(_, ()) => EventHandleResult::TryForNextEvent(self),
+            ChannelEvent::Timeout => EventHandleResult::TryForNextEvent(self),
+            ChannelEvent::ChannelEmpty => EventHandleResult::WaitForNextEvent(self),
+            ChannelEvent::ChannelDisconnected => EventHandleResult::StopThread(())
         };
     }
 

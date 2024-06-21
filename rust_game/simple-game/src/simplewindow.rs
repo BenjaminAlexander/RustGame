@@ -1,13 +1,11 @@
 use opengl_graphics::{GlGraphics, OpenGL};
-use engine_core::gamemanager::RenderReceiver;
 use crate::simpleinputevent::SimpleInputEvent;
-use engine_core::client::Client;
 use piston::{RenderArgs, WindowSettings, Events, EventSettings, RenderEvent, Event};
 use piston::input::Input as PistonInput;
 use graphics::*;
 use glutin_window::GlutinWindow as Window;
 use log::info;
-use engine_core::interface::{Factory, GameFactoryTrait};
+use engine_core::{Factory, GameFactoryTrait, RenderReceiver, Client};
 use crate::simplegameimpl::SimpleGameImpl;
 
 pub struct SimpleWindow<GameFactory: GameFactoryTrait<Game=SimpleGameImpl>> {

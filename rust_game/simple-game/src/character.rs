@@ -5,7 +5,7 @@ use opengl_graphics::GlGraphics;
 use graphics::{Context, rectangle};
 use graphics::*;
 use crate::bullet::Bullet;
-use engine_core::interface::{ClientUpdateArg, GameTrait};
+use engine_core::{ClientUpdateArg, GameTrait};
 use commons::time::TimeDuration;
 use crate::simplegameimpl::SimpleGameImpl;
 
@@ -60,7 +60,7 @@ impl Character {
             self.velocity = input.get_velocity();
         }
 
-        self.position = self.position + self.velocity * SimpleGameImpl::STEP_PERIOD.get_seconds() as f64 * 500.0;
+        self.position = self.position + self.velocity * SimpleGameImpl::STEP_PERIOD.as_secs_f64() * 500.0;
     }
 
     pub fn get_fired_bullet(&self, arg: &ClientUpdateArg<SimpleGameImpl>) -> Option<Bullet> {

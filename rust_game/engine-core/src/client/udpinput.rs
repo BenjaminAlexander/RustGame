@@ -99,7 +99,7 @@ impl<GameFactory: GameFactoryTrait> UdpInput<GameFactory> {
                 //info!("State message: {:?}", state_message.get_sequence());
 
                 let duration_since_last_state = time_received.duration_since(&self.time_of_last_state_receive);
-                if duration_since_last_state > TimeDuration::one_second() {
+                if duration_since_last_state > TimeDuration::ONE_SECOND {
 
                     //TODO: this should probably be a warn
                     debug!("It has been {:?} since last state message was received. Now: {:?}, Last: {:?}",

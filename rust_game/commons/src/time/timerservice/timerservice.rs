@@ -1,9 +1,9 @@
-use std::collections::HashMap;
+use std::collections::{HashMap, VecDeque};
 use std::marker::PhantomData;
 use log::{trace, warn};
 use crate::factory::FactoryTrait;
 use crate::threading::channel::ReceiveMetaData;
-use crate::threading::eventhandling::{ChannelEvent, ChannelEventResult, EventHandlerTrait, WaitOrTryForNextEvent};
+use crate::threading::eventhandling::{ChannelEvent, EventHandleResult, EventHandlerTrait};
 use crate::threading::eventhandling::ChannelEvent::{Timeout, ChannelEmpty, ChannelDisconnected, ReceivedEvent};
 use crate::time::timerservice::schedule::Schedule;
 use crate::time::timerservice::timer::Timer;
@@ -17,9 +17,7 @@ use crate::time::TimeValue;
 pub struct TimeService<Factory: FactoryTrait, T: TimerCreationCallBack, U: TimerCallBack> {
     factory: Factory,
     next_timer_id: usize,
-
-    //TODO: make this a vec deque
-    timers: Vec<Timer<U>>,
+    timers: VecDeque<Timer<U>>,
     unscheduled_timers: HashMap<TimerId, Timer<U>>,
     phantom: PhantomData<T>
 }
@@ -30,7 +28,7 @@ impl<Factory: FactoryTrait, T: TimerCreationCallBack, U: TimerCallBack> TimeServ
         return Self {
             factory,
             next_timer_id: 0,
-            timers: Vec::new(),
+            timers: VecDeque::new(),
             unscheduled_timers: HashMap::new(),
             phantom: PhantomData::default()
         }
@@ -56,7 +54,7 @@ impl<Factory: FactoryTrait, T: TimerCreationCallBack, U: TimerCallBack> TimeServ
             for i in 0..self.timers.len() {
                 if let Some(timer) = self.timers.get(i) {
                     if timer.get_id() == timer_id {
-                        return Some(self.timers.remove(i));
+                        return Some(self.timers.remove(i).unwrap());
                     }
                 }
             }
@@ -64,7 +62,7 @@ impl<Factory: FactoryTrait, T: TimerCreationCallBack, U: TimerCallBack> TimeServ
         return None;
     }
 
-    fn trigger_timers(mut self) -> ChannelEventResult<Self> {
+    fn trigger_timers(mut self) -> EventHandleResult<Self> {
 
         loop {
             let now = self.factory.now();
@@ -72,7 +70,7 @@ impl<Factory: FactoryTrait, T: TimerCreationCallBack, U: TimerCallBack> TimeServ
             if let Some(timer) = self.timers.get(0) {
 
                 if timer.should_trigger(&now) {
-                    let mut timer = self.timers.remove(0);
+                    let mut timer = self.timers.pop_front().unwrap();
                     timer.trigger(&self.factory);
 
                     if timer.get_trigger_time().is_some() {
@@ -89,13 +87,13 @@ impl<Factory: FactoryTrait, T: TimerCreationCallBack, U: TimerCallBack> TimeServ
         }
     }
 
-    fn wait_for_next_trigger(mut self, now: TimeValue) -> ChannelEventResult<Self> {
+    fn wait_for_next_trigger(mut self, now: TimeValue) -> EventHandleResult<Self> {
         if let Some(timer) = self.timers.get(0) {
             if let Some(trigger_time) = timer.get_trigger_time() {
                 let duration_to_wait = trigger_time.duration_since(&now);
 
                 if duration_to_wait.is_positive() {
-                    return ChannelEventResult::Continue(WaitOrTryForNextEvent::WaitForNextEventOrTimeout(self, duration_to_wait));
+                    return EventHandleResult::WaitForNextEventOrTimeout(self, duration_to_wait);
                 } else {
                     warn!("Timers that should be triggered were left in the queue!  TimerID: {:?} Duration Until Trigger: {:?}", timer.get_id(), duration_to_wait);
                     return self.trigger_timers();
@@ -103,12 +101,12 @@ impl<Factory: FactoryTrait, T: TimerCreationCallBack, U: TimerCallBack> TimeServ
 
             } else {
                 warn!("An unscheduled timer was left in the queue!");
-                let timer = self.timers.remove(0);
+                let timer = self.timers.pop_front().unwrap();
                 self.unscheduled_timers.insert(*timer.get_id(), timer);
                 return self.trigger_timers();
             }
         } else {
-            return ChannelEventResult::Continue(WaitOrTryForNextEvent::WaitForNextEvent(self));
+            return EventHandleResult::WaitForNextEvent(self);
         }
     }
 
@@ -139,20 +137,20 @@ impl<Factory: FactoryTrait, T: TimerCreationCallBack, U: TimerCallBack> TimeServ
         }
     }
 
-    fn create_timer_event_event(mut self, creation_call_back: T, tick_call_back: U, schedule: Option<Schedule>) -> ChannelEventResult<Self> {
+    fn create_timer_event_event(mut self, creation_call_back: T, tick_call_back: U, schedule: Option<Schedule>) -> EventHandleResult<Self> {
         let timer_id = self.create_timer(tick_call_back, schedule);
         creation_call_back.timer_created(&timer_id);
-        return ChannelEventResult::Continue(WaitOrTryForNextEvent::TryForNextEvent(self));
+        return EventHandleResult::TryForNextEvent(self);
     }
 
-    fn reschedule_timer_event(mut self, timer_id: &TimerId, schedule: Option<Schedule>) -> ChannelEventResult<Self> {
+    fn reschedule_timer_event(mut self, timer_id: &TimerId, schedule: Option<Schedule>) -> EventHandleResult<Self> {
         self.reschedule_timer(timer_id, schedule);
-        return ChannelEventResult::Continue(WaitOrTryForNextEvent::TryForNextEvent(self));
+        return EventHandleResult::TryForNextEvent(self);
     }
 
-    fn cancel_timer_event(mut self, timer_id: TimerId) -> ChannelEventResult<Self> {
+    fn cancel_timer_event(mut self, timer_id: TimerId) -> EventHandleResult<Self> {
         self.cancel_timer(timer_id);
-        return ChannelEventResult::Continue(WaitOrTryForNextEvent::TryForNextEvent(self));
+        return EventHandleResult::TryForNextEvent(self);
     }
 }
 
@@ -160,14 +158,14 @@ impl<Factory: FactoryTrait, T: TimerCreationCallBack, U: TimerCallBack> EventHan
     type Event = TimerServiceEvent<T, U>;
     type ThreadReturn = ();
 
-    fn on_channel_event(self, channel_event: ChannelEvent<Self::Event>) -> ChannelEventResult<Self> {
+    fn on_channel_event(self, channel_event: ChannelEvent<Self::Event>) -> EventHandleResult<Self> {
         match channel_event {
             ReceivedEvent(_, CreateTimer(creation_call_back, tick_call_back, schedule)) => self.create_timer_event_event(creation_call_back, tick_call_back, schedule),
             ReceivedEvent(_, RescheduleTimer(timer_id, schedule)) => self.reschedule_timer_event(&timer_id, schedule),
             ReceivedEvent(_, CancelTimer(timer_id)) => self.cancel_timer_event(timer_id),
             Timeout => self.trigger_timers(),
             ChannelEmpty => self.trigger_timers(),
-            ChannelDisconnected => ChannelEventResult::Break(())
+            ChannelDisconnected => EventHandleResult::StopThread(())
         }
     }
 

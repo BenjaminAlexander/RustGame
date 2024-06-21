@@ -1,5 +1,5 @@
 use std::ops::ControlFlow;
-use crate::messaging::{ToServerMessageTCP};
+use crate::messaging::ToServerMessageTCP;
 use std::ops::ControlFlow::Continue;
 use commons::net::TcpReadHandlerTrait;
 

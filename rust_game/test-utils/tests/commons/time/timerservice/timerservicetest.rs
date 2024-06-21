@@ -16,9 +16,9 @@ fn timer_service_test() {
 
     LoggingConfigBuilder::new().add_console_appender().init(LevelFilter::Trace);
 
-    let two_seconds = TimeDuration::from_seconds(2.0);
-    let five_seconds = TimeDuration::from_seconds(5.0);
-    let seven_seconds = two_seconds.add(five_seconds);
+    let two_seconds = TimeDuration::from_secs_f64(2.0);
+    let five_seconds = TimeDuration::from_secs_f64(5.0);
+    let seven_seconds = two_seconds.add(&five_seconds);
 
     let factory = SingleThreadedFactory::new();
 
@@ -41,7 +41,7 @@ fn timer_service_test() {
         tick_count_cell_clone.increment();
     });
 
-    let time_value = factory.now().add(five_seconds);
+    let time_value = factory.now().add(&five_seconds);
     channel_thread_builder.get_sender().send_event(TimerServiceEvent::CreateTimer(timer_creation_call_back, timer_tick_call_back, Some(Schedule::Once(time_value)))).unwrap();
 
     let sender = channel_thread_builder.spawn_event_handler(timer_service, move |_async_join|{
@@ -63,7 +63,7 @@ fn timer_service_test() {
     assert_eq!(1, tick_count_cell.get());
 
 
-    let new_schedule = Schedule::Repeating(factory.now().add(seven_seconds), five_seconds);
+    let new_schedule = Schedule::Repeating(factory.now().add(&seven_seconds), five_seconds);
     sender.send_event(TimerServiceEvent::RescheduleTimer(timer_id_cell.lock().unwrap().unwrap(), Some(new_schedule))).unwrap();
     factory.get_time_queue().run_events();
     assert_eq!(1, tick_count_cell.get());

@@ -7,9 +7,9 @@ fn test_simulated_time_provider() {
     let time_source = SimulatedTimeSource::new();
     let time_source_clone = time_source.clone();
 
-    assert_eq!(time_source.now(), TimeValue::from_seconds_since_epoch(0.0));
+    assert_eq!(time_source.now(), TimeValue::from_secs_f64(0.0));
 
-    let new_time = TimeValue::from_seconds_since_epoch(1234.4);
+    let new_time = TimeValue::from_secs_f64(1234.4);
 
     time_source.set_simulated_time(new_time);
 

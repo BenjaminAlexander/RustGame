@@ -2,8 +2,7 @@ use std::net::SocketAddr;
 use std::ops::ControlFlow::{Break, Continue};
 use commons::net::UdpReadHandlerTrait;
 use commons::threading::channel::ReceiveMetaData;
-use commons::threading::eventhandling::{ChannelEvent, ChannelEventResult, EventHandlerTrait};
-use commons::threading::eventhandling::WaitOrTryForNextEvent::{TryForNextEvent, WaitForNextEvent};
+use commons::threading::eventhandling::{ChannelEvent, EventHandleResult, EventHandlerTrait};
 use crate::net::NetworkSimulator;
 
 pub struct UdpReadEventHandler<T: UdpReadHandlerTrait> {
@@ -21,11 +20,11 @@ impl<T: UdpReadHandlerTrait> UdpReadEventHandler<T> {
         };
     }
 
-    fn read(mut self, source: SocketAddr, buf: Vec<u8>) -> ChannelEventResult<Self> {
+    fn read(mut self, source: SocketAddr, buf: Vec<u8>) -> EventHandleResult<Self> {
 
         return match self.read_handler.on_read(source, &buf) {
-            Continue(()) => Continue(TryForNextEvent(self)),
-            Break(()) => Break(self.read_handler)
+            Continue(()) => EventHandleResult::TryForNextEvent(self),
+            Break(()) => EventHandleResult::StopThread(self.read_handler)
         };
     }
 }
@@ -34,12 +33,12 @@ impl<T: UdpReadHandlerTrait> EventHandlerTrait for UdpReadEventHandler<T> {
     type Event = (SocketAddr, Vec<u8>);
     type ThreadReturn = T;
 
-    fn on_channel_event(self, channel_event: ChannelEvent<Self::Event>) -> ChannelEventResult<Self> {
+    fn on_channel_event(self, channel_event: ChannelEvent<Self::Event>) -> EventHandleResult<Self> {
         match channel_event {
             ChannelEvent::ReceivedEvent(_, (source, buf)) => self.read(source, buf),
-            ChannelEvent::Timeout => Continue(TryForNextEvent(self)),
-            ChannelEvent::ChannelEmpty => Continue(WaitForNextEvent(self)),
-            ChannelEvent::ChannelDisconnected => Break(self.read_handler)
+            ChannelEvent::Timeout => EventHandleResult::TryForNextEvent(self),
+            ChannelEvent::ChannelEmpty => EventHandleResult::WaitForNextEvent(self),
+            ChannelEvent::ChannelDisconnected => EventHandleResult::StopThread(self.read_handler)
         }
     }
 

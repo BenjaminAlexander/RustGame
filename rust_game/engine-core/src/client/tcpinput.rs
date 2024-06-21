@@ -6,8 +6,8 @@ use commons::factory::FactoryTrait;
 use commons::net::TcpReadHandlerTrait;
 use crate::client::clientcore::ClientCoreEvent;
 use crate::client::ClientCoreEvent::OnInitialInformation;
-use crate::gamemanager::{ManagerEvent, RenderReceiverMessage};
-use crate::interface::{EventSender, GameFactoryTrait};
+use crate::gamemanager::ManagerEvent;
+use crate::interface::{EventSender, GameFactoryTrait, RenderReceiverMessage};
 use commons::threading::channel::SenderTrait;
 use commons::threading::eventhandling::EventSenderTrait;
 

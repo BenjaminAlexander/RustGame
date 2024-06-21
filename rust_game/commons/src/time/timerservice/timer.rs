@@ -1,4 +1,5 @@
 use std::cmp::Ordering;
+use std::ops::Add;
 use log::trace;
 use crate::factory::FactoryTrait;
 use crate::time::timerservice::schedule::Schedule;
@@ -54,7 +55,7 @@ impl<T: TimerCallBack> Timer<T> {
         self.schedule = match self.schedule {
             None => None,
             Some(Schedule::Once(_)) => None,
-            Some(Schedule::Repeating(trigger_time, duration)) => Some(Schedule::Repeating(trigger_time.add(duration), duration))
+            Some(Schedule::Repeating(trigger_time, duration)) => Some(Schedule::Repeating(trigger_time.add(&duration), duration))
         };
     }
 }

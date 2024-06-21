@@ -1,11 +1,18 @@
-//TODO: pull public pieces from messaging into the interface
-pub mod messaging;
-//TODO: pull public pieces from messaging into the interface
-pub mod server;
-//TODO: maybe move the interface out of a module and place it directly under the crate
-pub mod interface;
+mod messaging;
+mod server;
+mod interface;
 mod gametime;
-//TODO: pull public pieces from messaging into the interface
-pub mod client;
-//TODO: pull public pieces from messaging into the interface
-pub mod gamemanager;
+mod client;
+mod gamemanager;
+
+pub use interface::GameTrait;
+pub use interface::GameFactoryTrait;
+pub use interface::InitialInformation;
+pub use interface::InterpolationArg;
+pub use interface::RealGameFactory;
+pub use interface::Server;
+pub use interface::ServerUpdateArg;
+pub use interface::ClientUpdateArg;
+pub use interface::RenderReceiver;
+pub use interface::Client;
+pub use interface::Factory;
