@@ -227,13 +227,13 @@ impl<GameFactory: GameFactoryTrait> State<GameFactory> {
 
                 let state = State::Running {
                     input_event_handler: GameFactory::Game::new_input_event_handler(),
-                    manager_sender: manager_sender,
+                    manager_sender,
                     game_timer,
-                    udp_input_sender: udp_input_sender,
+                    udp_input_sender,
                     udp_output_sender,
-                    tcp_input_sender: tcp_input_sender,
-                    tcp_output_sender: tcp_output_sender,
-                    render_receiver_sender: render_receiver_sender,
+                    tcp_input_sender,
+                    tcp_output_sender,
+                    render_receiver_sender,
                     initial_information,
                     last_time_message: None,
                 };
