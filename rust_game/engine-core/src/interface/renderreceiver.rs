@@ -1,4 +1,4 @@
-use crate::gamemanager::stepmessage::StepMessage;
+use crate::gamemanager::StepMessage;
 use crate::gametime::TimeMessage;
 use crate::interface::{
     Factory, Game, GameFactoryTrait, GameTrait, InitialInformation, InterpolationArg,

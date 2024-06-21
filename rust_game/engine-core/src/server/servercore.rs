@@ -1,10 +1,10 @@
 use self::ServerCoreEvent::{
     GameTimerTick, StartGameEvent, StartListenerEvent, TcpConnectionEvent,
 };
-use crate::gamemanager::{Manager, ManagerEvent, RenderReceiverMessage};
+use crate::gamemanager::{Manager, ManagerEvent};
 use crate::gametime::GameTimer;
 use crate::interface::{
-    EventSender, GameFactoryTrait, GameTrait, InitialInformation, TcpReader, TcpWriter, UdpSocket,
+    EventSender, GameFactoryTrait, GameTrait, InitialInformation, TcpReader, TcpWriter, UdpSocket, RenderReceiverMessage
 };
 use crate::messaging::InputMessage;
 use crate::server::clientaddress::ClientAddress;

@@ -5,8 +5,7 @@ use commons::threading::AsyncJoin;
 use commons::threading::eventhandling::{EventOrStopThread, EventSenderTrait};
 use crate::client::{ClientCore, ClientCoreEvent};
 use crate::client::ClientCoreEvent::OnInputEvent;
-use crate::gamemanager::RenderReceiver;
-use crate::interface::{ClientInputEvent, EventSender, Factory, GameFactoryTrait};
+use crate::interface::{ClientInputEvent, EventSender, Factory, GameFactoryTrait, RenderReceiver};
 
 pub struct Client<GameFactory: GameFactoryTrait> {
     core_sender: EventSender<GameFactory, ClientCoreEvent<GameFactory>>,

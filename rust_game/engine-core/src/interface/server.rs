@@ -1,5 +1,5 @@
 use commons::{factory::FactoryTrait, threading::{eventhandling::{EventSenderTrait, EventHandlerSender}, AsyncJoin}};
-use crate::{server::{ServerCoreEvent, ServerCore}, gamemanager::{RenderReceiver, RenderReceiverMessage}};
+use crate::{server::{ServerCoreEvent, ServerCore}, interface::{RenderReceiver, RenderReceiverMessage}};
 use super::GameFactoryTrait;
 use log::error;
 
