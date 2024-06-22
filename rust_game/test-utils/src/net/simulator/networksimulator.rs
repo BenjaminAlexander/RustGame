@@ -14,7 +14,7 @@ use log::info;
 use std::collections::HashMap;
 use std::io::{Error, ErrorKind};
 use std::net::{IpAddr, SocketAddr};
-use std::sync::{mpsc, Arc, Mutex};
+use std::sync::{Arc, Mutex};
 
 #[derive(Clone)]
 pub struct NetworkSimulator {
@@ -92,10 +92,7 @@ impl NetworkSimulator {
 
             return match result {
                 Ok(()) => Ok(()),
-                Err(send_error) => Err(mpsc::SendError((
-                    send_error.0 .0,
-                    EventOrStopThread::StopThread,
-                ))),
+                Err(event_or_stopthread) => Err(EventOrStopThread::StopThread),
             };
         });
 
@@ -118,12 +115,15 @@ impl NetworkSimulator {
             let (write_client_to_server, read_client_to_server) =
                 Self::new_tcp_channel(factory, server_socket_addr);
 
-            sender
+            let send_result = sender
                 .send_event(TcpListenerEvent::Connection(
                     write_server_to_client,
                     read_client_to_server,
-                ))
-                .unwrap();
+                ));
+
+            if send_result.is_err() {
+                panic!("Failed to send event");
+            }
 
             return Ok((write_client_to_server, read_server_to_client));
         } else {
@@ -173,10 +173,7 @@ impl NetworkSimulator {
 
             return match result {
                 Ok(()) => Ok(()),
-                Err(send_error) => Err(mpsc::SendError((
-                    send_error.0 .0,
-                    EventOrStopThread::StopThread,
-                ))),
+                Err(send_error) => Err(EventOrStopThread::StopThread),
             };
         });
 
@@ -190,7 +187,12 @@ impl NetworkSimulator {
 
         if let Some(sender) = guard.udp_readers.get(to) {
             let buf = Vec::from(buf);
-            sender.send_event((from.clone(), buf)).unwrap();
+            
+            let send_result = sender.send_event((from.clone(), buf));
+
+            if send_result.is_err() {
+                panic!("Failed to send event");
+            }
         }
     }
 

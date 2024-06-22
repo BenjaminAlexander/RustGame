@@ -16,7 +16,6 @@ use commons::threading::AsyncJoinCallBackTrait;
 use commons::time::TimeValue;
 use std::io::Error;
 use std::net::{IpAddr, Ipv4Addr, SocketAddr};
-use std::sync::mpsc;
 
 #[derive(Clone)]
 pub struct SingleThreadedFactory {
@@ -143,8 +142,8 @@ impl FactoryTrait for SingleThreadedFactory {
 
             return match result {
                 Ok(()) => Ok(()),
-                Err(send_error) => match send_error.0 .1 {
-                    EventOrStopThread::Event(buf) => Err(mpsc::SendError((send_error.0 .0, buf))),
+                Err(event_or_stopthread) => match event_or_stopthread {
+                    EventOrStopThread::Event(buf) => Err(buf),
                     EventOrStopThread::StopThread => Ok(()),
                 },
             };
@@ -163,10 +162,7 @@ impl FactoryTrait for SingleThreadedFactory {
 
             return match result {
                 Ok(()) => Ok(()),
-                Err(send_error) => Err(mpsc::SendError((
-                    send_error.0 .0,
-                    EventOrStopThread::StopThread,
-                ))),
+                Err(event_or_stopthread) => Err(EventOrStopThread::StopThread),
             };
         });
 

@@ -1,5 +1,5 @@
 use crate::singlethreaded::channel::senderlink::SenderLink;
-use commons::threading::channel::{SendError, SenderTrait};
+use commons::threading::channel::SenderTrait;
 use std::sync::{Arc, Mutex};
 
 pub struct SingleThreadedSender<T: Send> {
@@ -23,7 +23,7 @@ impl<T: Send> Clone for SingleThreadedSender<T> {
 }
 
 impl<T: Send> SenderTrait<T> for SingleThreadedSender<T> {
-    fn send(&self, value: T) -> Result<(), SendError<T>> {
+    fn send(&self, value: T) -> Result<(), T> {
         return self.link.lock().unwrap().send(value);
     }
 }
