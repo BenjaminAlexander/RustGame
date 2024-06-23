@@ -33,13 +33,16 @@ impl SingleThreadExecutor {
         };
     }
 
-    pub fn execute_runnable(self, runnable: Runnable) {
-        //TODO: look at all unwarps
-        self.sender.send_event(runnable).unwrap();
+    pub fn execute_runnable(self, runnable: Runnable) -> Result<(), Runnable> {
+        return match self.sender.send_event(runnable) {
+            Ok(()) => Ok(()),
+            Err(EventOrStopThread::Event(runnable)) => Err(runnable),
+            Err(EventOrStopThread::StopThread) => panic!("Illegal State")
+        }
     }
 
-    pub fn execute_function<T: FnOnce() + Send + 'static>(self, function: T) {
-        self.execute_runnable(Box::new(function));
+    pub fn execute_function<T: FnOnce() + Send + 'static>(self, function: T) -> Result<(), Runnable> {
+        return self.execute_runnable(Box::new(function));
     }
 
 }
@@ -62,7 +65,7 @@ impl EventHandlerTrait for SingleThreadExecutorEventHandler {
         }
     }
 
-    fn on_stop(self, receive_meta_data: ReceiveMetaData) -> Self::ThreadReturn {
+    fn on_stop(self, _: ReceiveMetaData) -> Self::ThreadReturn {
         return ();
     }
 }

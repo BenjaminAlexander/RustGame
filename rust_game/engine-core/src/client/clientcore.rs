@@ -300,36 +300,59 @@ impl<GameFactory: GameFactoryTrait> State<GameFactory> {
                             GameFactory::Game::get_input(input_event_handler),
                         );
 
-                        manager_sender
-                            .send_event(ManagerEvent::InputEvent(message.clone()))
-                            .unwrap();
-                        udp_output_sender
-                            .send_event(UdpOutputEvent::InputMessageEvent(message))
-                            .unwrap();
+                        let send_result = manager_sender
+                            .send_event(ManagerEvent::InputEvent(message.clone()));
+
+                        if send_result.is_err() {
+                            warn!("Failed to send InputMessage to Game Manager");
+                            return EventHandleResult::StopThread(());
+                        }
+
+                        let send_result = udp_output_sender
+                            .send_event(UdpOutputEvent::InputMessageEvent(message));
+
+                        if send_result.is_err() {
+                            warn!("Failed to send InputMessage to Udp Output");
+                            return EventHandleResult::StopThread(());
+                        }
 
                         let client_drop_time = time_message
                             .get_scheduled_time()
                             .sub(&GameFactory::Game::GRACE_PERIOD.mul_f64(2.0));
+
                         let drop_step = time_message
                             .get_step_from_actual_time(client_drop_time)
                             .ceil() as usize;
 
-                        manager_sender
-                            .send_event(ManagerEvent::DropStepsBeforeEvent(drop_step))
-                            .unwrap();
+                        let send_result = manager_sender
+                            .send_event(ManagerEvent::DropStepsBeforeEvent(drop_step));
+
+                        if send_result.is_err() {
+                            warn!("Failed to send Drop Steps to Game Manager");
+                            return EventHandleResult::StopThread(());
+                        }
+
                         //TODO: message or last message or next?
                         //TODO: define strict and consistent rules for how real time relates to ticks, input deadlines and display states
-                        manager_sender
+                        let send_result = manager_sender
                             .send_event(ManagerEvent::SetRequestedStepEvent(
                                 time_message.get_step() + 1,
-                            ))
-                            .unwrap();
+                            ));
+
+                        if send_result.is_err() {
+                            warn!("Failed to send Request Step to Game Manager");
+                            return EventHandleResult::StopThread(());
+                        }
                     }
                 }
 
-                render_receiver_sender
-                    .send(RenderReceiverMessage::TimeMessage(time_message.clone()))
-                    .unwrap();
+                let send_result = render_receiver_sender
+                    .send(RenderReceiverMessage::TimeMessage(time_message.clone()));
+
+                if send_result.is_err() {
+                    warn!("Failed to send TimeMessage Step to Render Receiver");
+                    return EventHandleResult::StopThread(());
+                }
 
                 *last_time_message = Some(time_message);
             }

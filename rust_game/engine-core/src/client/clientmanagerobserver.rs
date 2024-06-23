@@ -31,9 +31,13 @@ impl<GameFactory: GameFactoryTrait> ManagerObserverTrait for ClientManagerObserv
     const IS_SERVER: bool = false;
 
     fn on_step_message(&self, step_message: StepMessage<GameFactory::Game>) {
-        self.render_receiver_sender
-            .send(RenderReceiverMessage::StepMessage(step_message))
-            .unwrap();
+        let send_result = self.render_receiver_sender
+            .send(RenderReceiverMessage::StepMessage(step_message));
+
+        //TODO: handle this without panic
+        if send_result.is_err() {
+            panic!("Failed to send StepMessage to render receiver");
+        }
     }
 
     fn on_completed_step(&self, _state_message: StateMessage<GameFactory::Game>) {}

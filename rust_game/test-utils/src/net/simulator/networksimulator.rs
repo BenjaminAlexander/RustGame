@@ -92,7 +92,7 @@ impl NetworkSimulator {
 
             return match result {
                 Ok(()) => Ok(()),
-                Err(event_or_stopthread) => Err(EventOrStopThread::StopThread),
+                Err(_) => Err(EventOrStopThread::StopThread),
             };
         });
 
@@ -173,7 +173,7 @@ impl NetworkSimulator {
 
             return match result {
                 Ok(()) => Ok(()),
-                Err(send_error) => Err(EventOrStopThread::StopThread),
+                Err(_) => Err(EventOrStopThread::StopThread),
             };
         });
 

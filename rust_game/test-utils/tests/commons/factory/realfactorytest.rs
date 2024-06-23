@@ -21,7 +21,8 @@ impl EventHandlerTrait for TestEventHandler {
             ChannelEvent::Timeout => todo!(),
             ChannelEvent::ChannelEmpty => todo!(),
             ChannelEvent::ChannelDisconnected => todo!(),
-        }
+        };
+        
         return EventHandleResult::StopThread(());
     }
 
@@ -52,7 +53,9 @@ fn test_real_factory() {
             *wait_for_join_clone.lock().unwrap() = false;
         }).unwrap();
 
-        sender.send_stop_thread().unwrap();
+        if sender.send_stop_thread().is_err() {
+            panic!("Stop thread failed");
+        }
 
     while *wait_for_join.lock().unwrap()  {};
 

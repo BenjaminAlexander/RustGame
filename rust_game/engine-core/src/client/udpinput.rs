@@ -7,11 +7,10 @@ use commons::factory::FactoryTrait;
 use commons::net::UdpReadHandlerTrait;
 use commons::threading::eventhandling::EventSenderTrait;
 use commons::time::{TimeDuration, TimeValue};
-use log::{debug, error};
+use log::{debug, error, warn};
 use std::io;
 use std::net::SocketAddr;
 use std::ops::ControlFlow;
-use std::ops::ControlFlow::Continue;
 
 pub struct UdpInput<GameFactory: GameFactoryTrait> {
     factory: GameFactory::Factory,
@@ -67,7 +66,7 @@ impl<GameFactory: GameFactoryTrait> UdpReadHandlerTrait for UdpInput<GameFactory
             }
         }
 
-        return Continue(());
+        return ControlFlow::Continue(());
     }
 }
 
@@ -81,27 +80,39 @@ impl<GameFactory: GameFactoryTrait> UdpInput<GameFactory> {
         match value {
             ToClientMessageUDP::TimeMessage(time_message) => {
                 //info!("Time message: {:?}", time_message.get_step());
-                self.core_sender
+                let send_result = self.core_sender
                     .send_event(ClientCoreEvent::RemoteTimeMessageEvent(TimeReceived::new(
                         time_received,
                         time_message,
-                    )))
-                    .unwrap();
+                    )));
+
+                if send_result.is_err() {
+                    warn!("Failed to send TimeMessage to Core");
+                    return ControlFlow::Break(());
+                }
             }
             ToClientMessageUDP::InputMessage(input_message) => {
                 //TODO: ignore input messages from this player
                 //info!("Input message: {:?}", input_message.get_step());
                 self.time_of_last_input_receive = time_received;
-                self.manager_sender
-                    .send_event(ManagerEvent::InputEvent(input_message.clone()))
-                    .unwrap();
+                let send_result = self.manager_sender
+                    .send_event(ManagerEvent::InputEvent(input_message.clone()));
+
+                if send_result.is_err() {
+                    warn!("Failed to send InputEvent to Game Manager");
+                    return ControlFlow::Break(());
+                }
             }
             ToClientMessageUDP::ServerInputMessage(server_input_message) => {
                 //info!("Server Input message: {:?}", server_input_message.get_step());
                 self.time_of_last_server_input_receive = time_received;
-                self.manager_sender
-                    .send_event(ManagerEvent::ServerInputEvent(server_input_message))
-                    .unwrap();
+                let send_result = self.manager_sender
+                    .send_event(ManagerEvent::ServerInputEvent(server_input_message));
+
+                if send_result.is_err() {
+                    warn!("Failed to send ServerInputEvent to Game Manager");
+                    return ControlFlow::Break(());
+                }
             }
             ToClientMessageUDP::StateMessage(state_message) => {
                 //info!("State message: {:?}", state_message.get_sequence());
@@ -115,12 +126,16 @@ impl<GameFactory: GameFactoryTrait> UdpInput<GameFactory> {
                 }
 
                 self.time_of_last_state_receive = time_received;
-                self.manager_sender
-                    .send_event(ManagerEvent::StateEvent(state_message))
-                    .unwrap();
+                let send_result = self.manager_sender
+                    .send_event(ManagerEvent::StateEvent(state_message));
+
+                if send_result.is_err() {
+                    warn!("Failed to send StateMessage to Game Manager");
+                    return ControlFlow::Break(());
+                }
             }
         };
 
-        return Continue(());
+        return ControlFlow::Continue(());
     }
 }

@@ -3,7 +3,7 @@ use crate::server::servercore::ServerCoreEvent;
 use crate::server::servercore::ServerCoreEvent::TcpConnectionEvent;
 use commons::net::{TcpConnectionHandlerTrait, TcpWriterTrait};
 use commons::threading::eventhandling::EventSenderTrait;
-use log::{error, info};
+use log::{info, warn};
 use std::ops::ControlFlow;
 use std::ops::ControlFlow::*;
 
@@ -29,17 +29,15 @@ impl<GameFactory: GameFactoryTrait> TcpConnectionHandlerTrait
     ) -> ControlFlow<()> {
         info!("New TCP connection from {:?}", tcp_sender.get_peer_addr());
 
-        match self
-            .server_core_sender
-            .send_event(TcpConnectionEvent(tcp_sender, tcp_receiver))
-        {
-            Ok(()) => {
-                return Continue(());
-            }
-            Err(error) => {
-                error!("Error sending to the core: {:?}", error);
-                return Break(());
-            }
+        let send_result = self.server_core_sender
+            .send_event(TcpConnectionEvent(tcp_sender, tcp_receiver));
+
+        return match send_result {
+            Ok(_) => Continue(()),
+            Err(_) => {
+                warn!("Error sending TcpConnectionEvent to the Core");
+                Break(())
+            },
         }
     }
 }

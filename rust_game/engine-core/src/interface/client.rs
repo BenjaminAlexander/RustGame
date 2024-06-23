@@ -49,9 +49,8 @@ impl<GameFactory: GameFactoryTrait> Client<GameFactory> {
             .send_event(OnInputEvent(client_input_event))
         {
             Ok(()) => Ok(()),
-            Err(e) => {
-                let (_, event_or_stop) = e.0;
-
+            Err(event_or_stop) => {
+                
                 match event_or_stop {
                     EventOrStopThread::Event(OnInputEvent(client_input_event)) => {
                         Err(client_input_event)

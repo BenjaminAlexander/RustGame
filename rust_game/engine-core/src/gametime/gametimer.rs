@@ -56,7 +56,7 @@ impl<Factory: FactoryTrait, T: TimerCallBack> GameTimer<Factory, T> {
         };
     }
 
-    pub fn start_ticking(&mut self) {
+    pub fn start_ticking(&mut self) -> Result<(), ()> {
         info!(
             "Starting timer with duration {:?}",
             self.server_config.get_step_duration()
@@ -68,15 +68,22 @@ impl<Factory: FactoryTrait, T: TimerCallBack> GameTimer<Factory, T> {
 
         let schedule =
             Schedule::Repeating(self.start.unwrap(), self.server_config.get_step_duration());
-        self.new_timer_sender
+
+        let send_result = self.new_timer_sender
             .send_event(TimerServiceEvent::RescheduleTimer(
                 self.new_timer_id,
                 Some(schedule),
-            ))
-            .unwrap();
+            ));
+
+        if send_result.is_err() {
+            warn!("Failed to schedule timer");
+            return Err(());
+        }
+
+        return Ok(());
     }
 
-    pub fn on_remote_timer_message(&mut self, time_message: TimeReceived<TimeMessage>) {
+    pub fn on_remote_timer_message(&mut self, time_message: TimeReceived<TimeMessage>) -> Result<(), ()> {
         trace!("Handling TimeMessage: {:?}", time_message);
 
         let step_duration = self.server_config.get_step_duration();
@@ -118,13 +125,20 @@ impl<Factory: FactoryTrait, T: TimerCallBack> GameTimer<Factory, T> {
 
             let schedule =
                 Schedule::Repeating(self.start.unwrap(), self.server_config.get_step_duration());
-            self.new_timer_sender
+
+            let send_result = self.new_timer_sender
                 .send_event(TimerServiceEvent::RescheduleTimer(
                     self.new_timer_id,
                     Some(schedule),
-                ))
-                .unwrap();
+                ));
+
+                if send_result.is_err() {
+                    warn!("Failed to reschedule timer");
+                    return Err(());
+                }
         }
+
+        return Ok(());
     }
 
     pub fn create_timer_message(&self) -> TimeMessage {

@@ -15,6 +15,7 @@ use std::collections::vec_deque::VecDeque;
 use std::sync::Arc;
 
 pub enum ManagerEvent<Game: GameTrait> {
+    //TODO: can drop steps and requested Step be combined?
     DropStepsBeforeEvent(usize),
     SetRequestedStepEvent(usize),
     //TODO: get initial information before starting

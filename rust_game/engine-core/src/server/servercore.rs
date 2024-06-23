@@ -27,7 +27,7 @@ use commons::threading::eventhandling::{
     ChannelEvent, EventHandleResult, EventHandlerTrait, EventSenderTrait,
 };
 use commons::threading::AsyncJoin;
-use log::{error, info};
+use log::{error, info, warn};
 use std::net::{Ipv4Addr, SocketAddr, SocketAddrV4};
 use std::ops::Sub;
 use std::str::FromStr;
@@ -193,12 +193,18 @@ impl<GameFactory: GameFactoryTrait> ServerCore<GameFactory> {
         }
     }
 
-    pub(super) fn on_remote_udp_peer(&self, remote_udp_peer: RemoteUdpPeer) {
+    pub(super) fn on_remote_udp_peer(&self, remote_udp_peer: RemoteUdpPeer) -> Result<(), ()> {
         if let Some(udp_output_sender) = self.udp_outputs.get(remote_udp_peer.get_player_index()) {
-            udp_output_sender
-                .send_event(UdpOutputEvent::RemotePeer(remote_udp_peer))
-                .unwrap();
+            let send_result = udp_output_sender
+                .send_event(UdpOutputEvent::RemotePeer(remote_udp_peer));
+
+            if send_result.is_err() {
+                warn!("Failed to send RemotePeer to UdpOutput");
+                return Err(());
+            }
         }
+
+        return Ok(());
     }
 
     fn start_game(
@@ -245,10 +251,14 @@ impl<GameFactory: GameFactoryTrait> ServerCore<GameFactory> {
                 server_game_timer_observer,
             );
 
-            manager_builder
+            let send_result = manager_builder
                 .get_sender()
-                .send_event(ManagerEvent::DropStepsBeforeEvent(self.drop_steps_before))
-                .unwrap();
+                .send_event(ManagerEvent::DropStepsBeforeEvent(self.drop_steps_before));
+
+            if send_result.is_err() {
+                warn!("Failed to send DropSteps to Game Manager");
+                return EventHandleResult::StopThread(());
+            }
 
             let server_initial_information = InitialInformation::<GameFactory::Game>::new(
                 self.server_config.clone(),
@@ -257,29 +267,45 @@ impl<GameFactory: GameFactoryTrait> ServerCore<GameFactory> {
                 initial_state.clone(),
             );
 
-            manager_builder
+            let send_result = manager_builder
                 .get_sender()
                 .send_event(ManagerEvent::InitialInformationEvent(
                     server_initial_information.clone(),
-                ))
-                .unwrap();
-            render_receiver_sender
+                ));
+
+            if send_result.is_err() {
+                warn!("Failed to send InitialInformation to Game Manager");
+                return EventHandleResult::StopThread(());
+            }
+
+            let send_result = render_receiver_sender
                 .send(RenderReceiverMessage::InitialInformation(
                     server_initial_information.clone(),
-                ))
-                .unwrap();
+                ));
+
+            if send_result.is_err() {
+                warn!("Failed to send InitialInformation to Render Receiver");
+                return EventHandleResult::StopThread(());
+            }
 
             for tcp_output in self.tcp_outputs.iter() {
-                tcp_output
+                let send_result = tcp_output
                     .send_event(SendInitialInformation(
                         self.server_config.clone(),
                         self.tcp_outputs.len(),
                         initial_state.clone(),
-                    ))
-                    .unwrap();
+                    ));
+
+                    if send_result.is_err() {
+                        warn!("Failed to send InitialInformation to TcpOutput");
+                        return EventHandleResult::StopThread(());
+                    }
             }
 
-            game_timer.start_ticking();
+            if game_timer.start_ticking().is_err() {
+                warn!("Failed to Start the GameTimer");
+                return EventHandleResult::StopThread(());
+            };
 
             self.game_timer = Some(game_timer);
 
@@ -371,12 +397,17 @@ impl<GameFactory: GameFactoryTrait> ServerCore<GameFactory> {
     ) -> EventHandleResult<Self> {
         let (remote_peer, input_message) = self.udp_handler.on_udp_packet(len, buf, source);
 
+        //TODO: does this happen too often?  Should the core keep a list of known peers and check against that?
         if let Some(remote_peer) = remote_peer {
-            self.on_remote_udp_peer(remote_peer);
+            if self.on_remote_udp_peer(remote_peer).is_err() {
+                return EventHandleResult::StopThread(());
+            }
         }
 
         if let Some(input_message) = input_message {
-            self.on_input_message(input_message);
+            if self.on_input_message(input_message).is_err() {
+                return EventHandleResult::StopThread(());
+            }
         }
 
         return EventHandleResult::TryForNextEvent(self);
@@ -404,51 +435,78 @@ impl<GameFactory: GameFactoryTrait> ServerCore<GameFactory> {
         if let Some(manager_sender) = self.manager_sender_option.as_ref() {
             //the manager needs its lowest step to not have any new inputs
             if self.drop_steps_before > 1 {
-                manager_sender
+                let send_result = manager_sender
                     .send_event(ManagerEvent::DropStepsBeforeEvent(
                         self.drop_steps_before - 1,
-                    ))
-                    .unwrap();
+                    ));
+
+                if send_result.is_err() {
+                    warn!("Failed to send DropSteps to Game Manager");
+                    return EventHandleResult::StopThread(());
+                }
             }
-            manager_sender
+
+            let send_result = manager_sender
                 .send_event(ManagerEvent::SetRequestedStepEvent(
                     time_message.get_step() + 1,
-                ))
-                .unwrap();
+                ));
+
+            if send_result.is_err() {
+                warn!("Failed to send RequestedStep to Game Manager");
+                return EventHandleResult::StopThread(());
+            }
         }
 
         for udp_output in self.udp_outputs.iter() {
-            udp_output
-                .send_event(UdpOutputEvent::SendTimeMessage(time_message.clone()))
-                .unwrap();
+            let send_result = udp_output
+                .send_event(UdpOutputEvent::SendTimeMessage(time_message.clone()));
+
+            if send_result.is_err() {
+                warn!("Failed to send TimeMessage to UdpOutput");
+                return EventHandleResult::StopThread(());
+            }
         }
 
-        self.render_receiver_sender
+        let send_result = self.render_receiver_sender
             .as_ref()
             .unwrap()
-            .send(RenderReceiverMessage::TimeMessage(time_message.clone()))
-            .unwrap();
+            .send(RenderReceiverMessage::TimeMessage(time_message.clone()));
+
+        if send_result.is_err() {
+            warn!("Failed to send TimeMessage to Render Receiver");
+            return EventHandleResult::StopThread(());
+        }
 
         return EventHandleResult::TryForNextEvent(self);
     }
 
-    pub(super) fn on_input_message(&self, input_message: InputMessage<GameFactory::Game>) {
+    pub(super) fn on_input_message(&self, input_message: InputMessage<GameFactory::Game>) -> Result<(), ()> {
         //TODO: is game started?
 
         if self.drop_steps_before <= input_message.get_step()
             && self.manager_sender_option.is_some()
         {
-            self.manager_sender_option
+            let send_result = self.manager_sender_option
                 .as_ref()
                 .unwrap()
-                .send_event(ManagerEvent::InputEvent(input_message.clone()))
-                .unwrap();
+                .send_event(ManagerEvent::InputEvent(input_message.clone()));
+
+            if send_result.is_err() {
+                warn!("Failed to send InputEvent to Game Manager");
+                return Err(());
+            }
 
             for udp_output in self.udp_outputs.iter() {
-                udp_output
-                    .send_event(UdpOutputEvent::SendInputMessage(input_message.clone()))
-                    .unwrap();
+                let send_result = udp_output
+                    .send_event(UdpOutputEvent::SendInputMessage(input_message.clone()));
+
+                if send_result.is_err() {
+                    warn!("Failed to send InputEvent to UdpOutput");
+                    return Err(());
+                }
             }
         }
+
+        return Ok(());
     }
 }

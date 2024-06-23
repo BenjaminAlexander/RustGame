@@ -69,13 +69,19 @@ fn test_tcp() {
     test_write(&server_factory, &server_side, &client_side, 1);
     test_write(&server_factory, &client_side, &server_side, 2);
 
-    connection_handler_sender.send_stop_thread().unwrap();
+    let send_result = connection_handler_sender.send_stop_thread();
+    if send_result.is_err() {
+        panic!("Send Failed")
+    }
     server_factory.get_time_queue().run_events();
 
     test_write(&server_factory, &server_side, &client_side, 3);
     test_write(&server_factory, &client_side, &server_side, 4);
 
-    client_read_sender.send_stop_thread().unwrap();
+    let send_result = client_read_sender.send_stop_thread();
+    if send_result.is_err() {
+        panic!("Send Failed")
+    }
     server_factory.get_time_queue().run_events();
 
     //test_write(&server_factory, &server_side, &client_side, 5);

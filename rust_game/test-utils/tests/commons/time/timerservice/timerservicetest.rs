@@ -48,14 +48,18 @@ fn timer_service_test() {
     });
 
     let time_value = factory.now().add(&five_seconds);
-    channel_thread_builder
+    
+    let send_result = channel_thread_builder
         .get_sender()
         .send_event(TimerServiceEvent::CreateTimer(
             timer_creation_call_back,
             timer_tick_call_back,
             Some(Schedule::Once(time_value)),
-        ))
-        .unwrap();
+        ));
+
+    if send_result.is_err() {
+        panic!("Send Failed")
+    }
 
     let sender = channel_thread_builder
         .spawn_event_handler(timer_service, move |_async_join| {
@@ -82,12 +86,16 @@ fn timer_service_test() {
     assert_eq!(1, tick_count_cell.get());
 
     let new_schedule = Schedule::Repeating(factory.now().add(&seven_seconds), five_seconds);
-    sender
+    let send_result = sender
         .send_event(TimerServiceEvent::RescheduleTimer(
             timer_id_cell.lock().unwrap().unwrap(),
             Some(new_schedule),
-        ))
-        .unwrap();
+        ));
+
+    if send_result.is_err() {
+        panic!("Send Failed")
+    }
+
     factory.get_time_queue().run_events();
     assert_eq!(1, tick_count_cell.get());
 

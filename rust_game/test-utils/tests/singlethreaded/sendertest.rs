@@ -1,6 +1,6 @@
 use commons::factory::FactoryTrait;
 use commons::threading::channel::{ReceiverTrait, SenderTrait, TryRecvError};
-use std::sync::{mpsc, Arc, Mutex};
+use std::sync::{Arc, Mutex};
 use test_utils::singlethreaded::{ReceiveOrDisconnected, SingleThreadedFactory};
 
 #[test]
@@ -35,7 +35,7 @@ fn test_sender() {
     assert_eq!(3, *actual_result.lock().unwrap().as_ref().unwrap());
 
     receiver_link.disconnect_receiver();
-    assert_eq!(4, sender.send(4).unwrap_err().0 .1);
+    assert_eq!(4, sender.send(4).unwrap_err());
 }
 
 #[test]
@@ -64,13 +64,10 @@ fn test_sender_error() {
 
     receiver.to_consumer(move |receive_or_disconnect| {
         return match receive_or_disconnect {
-            ReceiveOrDisconnected::Receive(receive_meta_data, number) => Err(mpsc::SendError((
-                receive_meta_data.get_send_meta_data().clone(),
-                number,
-            ))),
+            ReceiveOrDisconnected::Receive(_, number) => Err(number),
             ReceiveOrDisconnected::Disconnected => Ok(()),
         };
     });
 
-    assert_eq!(4, sender.send(4).unwrap_err().0 .1);
+    assert_eq!(4, sender.send(4).unwrap_err());
 }
