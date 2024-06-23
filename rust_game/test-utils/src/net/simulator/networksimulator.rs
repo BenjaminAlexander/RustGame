@@ -115,11 +115,10 @@ impl NetworkSimulator {
             let (write_client_to_server, read_client_to_server) =
                 Self::new_tcp_channel(factory, server_socket_addr);
 
-            let send_result = sender
-                .send_event(TcpListenerEvent::Connection(
-                    write_server_to_client,
-                    read_client_to_server,
-                ));
+            let send_result = sender.send_event(TcpListenerEvent::Connection(
+                write_server_to_client,
+                read_client_to_server,
+            ));
 
             if send_result.is_err() {
                 panic!("Failed to send event");
@@ -187,7 +186,7 @@ impl NetworkSimulator {
 
         if let Some(sender) = guard.udp_readers.get(to) {
             let buf = Vec::from(buf);
-            
+
             let send_result = sender.send_event((from.clone(), buf));
 
             if send_result.is_err() {

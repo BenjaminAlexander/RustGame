@@ -15,13 +15,12 @@ impl<Factory: FactoryTrait, T: Send> RealSender<Factory, T> {
 
 impl<Factory: FactoryTrait, T: Send> SenderTrait<T> for RealSender<Factory, T> {
     fn send(&self, value: T) -> Result<(), T> {
-
         let send_meta_data = SendMetaData::new(&self.factory);
-        
+
         return match self.sender.send((send_meta_data, value)) {
             Ok(()) => Result::Ok(()),
             Err(SendError((_, value))) => Result::Err(value),
-        }
+        };
     }
 }
 

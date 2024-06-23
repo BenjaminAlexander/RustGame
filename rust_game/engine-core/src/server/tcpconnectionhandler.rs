@@ -29,7 +29,8 @@ impl<GameFactory: GameFactoryTrait> TcpConnectionHandlerTrait
     ) -> ControlFlow<()> {
         info!("New TCP connection from {:?}", tcp_sender.get_peer_addr());
 
-        let send_result = self.server_core_sender
+        let send_result = self
+            .server_core_sender
             .send_event(TcpConnectionEvent(tcp_sender, tcp_receiver));
 
         return match send_result {
@@ -37,7 +38,7 @@ impl<GameFactory: GameFactoryTrait> TcpConnectionHandlerTrait
             Err(_) => {
                 warn!("Error sending TcpConnectionEvent to the Core");
                 Break(())
-            },
-        }
+            }
+        };
     }
 }

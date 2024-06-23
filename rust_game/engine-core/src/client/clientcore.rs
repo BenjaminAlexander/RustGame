@@ -300,8 +300,8 @@ impl<GameFactory: GameFactoryTrait> State<GameFactory> {
                             GameFactory::Game::get_input(input_event_handler),
                         );
 
-                        let send_result = manager_sender
-                            .send_event(ManagerEvent::InputEvent(message.clone()));
+                        let send_result =
+                            manager_sender.send_event(ManagerEvent::InputEvent(message.clone()));
 
                         if send_result.is_err() {
                             warn!("Failed to send InputMessage to Game Manager");
@@ -334,10 +334,9 @@ impl<GameFactory: GameFactoryTrait> State<GameFactory> {
 
                         //TODO: message or last message or next?
                         //TODO: define strict and consistent rules for how real time relates to ticks, input deadlines and display states
-                        let send_result = manager_sender
-                            .send_event(ManagerEvent::SetRequestedStepEvent(
-                                time_message.get_step() + 1,
-                            ));
+                        let send_result = manager_sender.send_event(
+                            ManagerEvent::SetRequestedStepEvent(time_message.get_step() + 1),
+                        );
 
                         if send_result.is_err() {
                             warn!("Failed to send Request Step to Game Manager");

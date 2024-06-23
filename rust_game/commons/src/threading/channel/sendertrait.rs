@@ -8,7 +8,6 @@ pub trait SenderTrait<T>: Clone + Send {
 }
 
 impl<T, U: SenderTrait<EventOrStopThread<T>>> EventSenderTrait<T> for U {
-    
     fn send_event(&self, event: T) -> EventHandlerSendResult<T> {
         return self.send(Event(event));
     }

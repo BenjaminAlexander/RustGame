@@ -20,12 +20,11 @@ impl<Game: GameFactoryTrait> UdpReadHandlerTrait for UdpInput<Game> {
         let mut buf_to_send = [0; MAX_UDP_DATAGRAM_SIZE];
         buf_to_send[..buf.len()].copy_from_slice(buf);
 
-        let send_result = self.core_sender
-            .send_event(ServerCoreEvent::UdpPacket(
-                peer_addr,
-                buf.len(),
-                buf_to_send,
-            ));
+        let send_result = self.core_sender.send_event(ServerCoreEvent::UdpPacket(
+            peer_addr,
+            buf.len(),
+            buf_to_send,
+        ));
 
         return match send_result {
             Ok(_) => ControlFlow::Continue(()),

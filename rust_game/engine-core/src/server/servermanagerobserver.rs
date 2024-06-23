@@ -36,7 +36,8 @@ impl<GameFactory: GameFactoryTrait> ManagerObserverTrait for ServerManagerObserv
     const IS_SERVER: bool = true;
 
     fn on_step_message(&self, step_message: StepMessage<GameFactory::Game>) {
-        let send_result = self.render_receiver_sender
+        let send_result = self
+            .render_receiver_sender
             .send(RenderReceiverMessage::StepMessage(step_message));
 
         //TODO: handle without panic
@@ -47,8 +48,8 @@ impl<GameFactory: GameFactoryTrait> ManagerObserverTrait for ServerManagerObserv
 
     fn on_completed_step(&self, state_message: StateMessage<GameFactory::Game>) {
         for udp_output in self.udp_outputs.iter() {
-            let send_result = udp_output
-                .send_event(UdpOutputEvent::SendCompletedStep(state_message.clone()));
+            let send_result =
+                udp_output.send_event(UdpOutputEvent::SendCompletedStep(state_message.clone()));
 
             //TODO: handle without panic
             if send_result.is_err() {
@@ -59,10 +60,9 @@ impl<GameFactory: GameFactoryTrait> ManagerObserverTrait for ServerManagerObserv
 
     fn on_server_input_message(&self, server_input_message: ServerInputMessage<GameFactory::Game>) {
         for udp_output in self.udp_outputs.iter() {
-            let send_result = udp_output
-                .send_event(UdpOutputEvent::SendServerInputMessage(
-                    server_input_message.clone(),
-                ));
+            let send_result = udp_output.send_event(UdpOutputEvent::SendServerInputMessage(
+                server_input_message.clone(),
+            ));
 
             //TODO: handle without panic
             if send_result.is_err() {

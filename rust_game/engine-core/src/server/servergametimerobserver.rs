@@ -22,8 +22,7 @@ impl<GameFactory: GameFactoryTrait> ServerGameTimerObserver<GameFactory> {
 
 impl<GameFactory: GameFactoryTrait> TimerCallBack for ServerGameTimerObserver<GameFactory> {
     fn tick(&mut self) {
-        let send_result = self.core_sender
-            .send_event(ServerCoreEvent::GameTimerTick);
+        let send_result = self.core_sender.send_event(ServerCoreEvent::GameTimerTick);
 
         //TODO: handle without panic
         if send_result.is_err() {

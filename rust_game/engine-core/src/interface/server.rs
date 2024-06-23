@@ -32,7 +32,8 @@ impl<GameFactory: GameFactoryTrait> Server<GameFactory> {
             server_core_thread_builder.get_sender().clone(),
         );
 
-        let send_result = server_core_thread_builder.get_sender()
+        let send_result = server_core_thread_builder
+            .get_sender()
             .send_event(ServerCoreEvent::StartListenerEvent);
 
         if send_result.is_err() {
@@ -57,8 +58,8 @@ impl<GameFactory: GameFactoryTrait> Server<GameFactory> {
     pub fn start_game(&mut self) -> Result<(), ()> {
         match self.render_receiver_sender_option.take() {
             Some(render_receiver_sender) => {
-
-                let send_result = self.core_sender
+                let send_result = self
+                    .core_sender
                     .send_event(ServerCoreEvent::StartGameEvent(render_receiver_sender));
 
                 if send_result.is_err() {

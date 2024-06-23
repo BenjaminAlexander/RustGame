@@ -69,7 +69,8 @@ impl<Factory: FactoryTrait, T: TimerCallBack> GameTimer<Factory, T> {
         let schedule =
             Schedule::Repeating(self.start.unwrap(), self.server_config.get_step_duration());
 
-        let send_result = self.new_timer_sender
+        let send_result = self
+            .new_timer_sender
             .send_event(TimerServiceEvent::RescheduleTimer(
                 self.new_timer_id,
                 Some(schedule),
@@ -83,7 +84,10 @@ impl<Factory: FactoryTrait, T: TimerCallBack> GameTimer<Factory, T> {
         return Ok(());
     }
 
-    pub fn on_remote_timer_message(&mut self, time_message: TimeReceived<TimeMessage>) -> Result<(), ()> {
+    pub fn on_remote_timer_message(
+        &mut self,
+        time_message: TimeReceived<TimeMessage>,
+    ) -> Result<(), ()> {
         trace!("Handling TimeMessage: {:?}", time_message);
 
         let step_duration = self.server_config.get_step_duration();
@@ -126,16 +130,17 @@ impl<Factory: FactoryTrait, T: TimerCallBack> GameTimer<Factory, T> {
             let schedule =
                 Schedule::Repeating(self.start.unwrap(), self.server_config.get_step_duration());
 
-            let send_result = self.new_timer_sender
+            let send_result = self
+                .new_timer_sender
                 .send_event(TimerServiceEvent::RescheduleTimer(
                     self.new_timer_id,
                     Some(schedule),
                 ));
 
-                if send_result.is_err() {
-                    warn!("Failed to reschedule timer");
-                    return Err(());
-                }
+            if send_result.is_err() {
+                warn!("Failed to reschedule timer");
+                return Err(());
+            }
         }
 
         return Ok(());

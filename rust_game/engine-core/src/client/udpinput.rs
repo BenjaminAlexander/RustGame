@@ -80,11 +80,12 @@ impl<GameFactory: GameFactoryTrait> UdpInput<GameFactory> {
         match value {
             ToClientMessageUDP::TimeMessage(time_message) => {
                 //info!("Time message: {:?}", time_message.get_step());
-                let send_result = self.core_sender
-                    .send_event(ClientCoreEvent::RemoteTimeMessageEvent(TimeReceived::new(
-                        time_received,
-                        time_message,
-                    )));
+                let send_result =
+                    self.core_sender
+                        .send_event(ClientCoreEvent::RemoteTimeMessageEvent(TimeReceived::new(
+                            time_received,
+                            time_message,
+                        )));
 
                 if send_result.is_err() {
                     warn!("Failed to send TimeMessage to Core");
@@ -95,7 +96,8 @@ impl<GameFactory: GameFactoryTrait> UdpInput<GameFactory> {
                 //TODO: ignore input messages from this player
                 //info!("Input message: {:?}", input_message.get_step());
                 self.time_of_last_input_receive = time_received;
-                let send_result = self.manager_sender
+                let send_result = self
+                    .manager_sender
                     .send_event(ManagerEvent::InputEvent(input_message.clone()));
 
                 if send_result.is_err() {
@@ -106,7 +108,8 @@ impl<GameFactory: GameFactoryTrait> UdpInput<GameFactory> {
             ToClientMessageUDP::ServerInputMessage(server_input_message) => {
                 //info!("Server Input message: {:?}", server_input_message.get_step());
                 self.time_of_last_server_input_receive = time_received;
-                let send_result = self.manager_sender
+                let send_result = self
+                    .manager_sender
                     .send_event(ManagerEvent::ServerInputEvent(server_input_message));
 
                 if send_result.is_err() {
@@ -126,7 +129,8 @@ impl<GameFactory: GameFactoryTrait> UdpInput<GameFactory> {
                 }
 
                 self.time_of_last_state_receive = time_received;
-                let send_result = self.manager_sender
+                let send_result = self
+                    .manager_sender
                     .send_event(ManagerEvent::StateEvent(state_message));
 
                 if send_result.is_err() {

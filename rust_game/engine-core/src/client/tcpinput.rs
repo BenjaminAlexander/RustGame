@@ -52,17 +52,19 @@ impl<GameFactory: GameFactoryTrait> TcpReadHandlerTrait for TcpInput<GameFactory
 
                 self.player_index = Some(initial_information_message.get_player_index());
 
-                let send_result = self.manager_sender
-                    .send_event(ManagerEvent::InitialInformationEvent(
-                        initial_information_message.clone(),
-                    ));
+                let send_result =
+                    self.manager_sender
+                        .send_event(ManagerEvent::InitialInformationEvent(
+                            initial_information_message.clone(),
+                        ));
 
                 if send_result.is_err() {
                     warn!("Failed to send InitialInformation to Game Manager");
                     return Break(());
                 }
 
-                let send_result = self.client_core_sender
+                let send_result = self
+                    .client_core_sender
                     .send_event(OnInitialInformation(initial_information_message.clone()));
 
                 if send_result.is_err() {
@@ -70,10 +72,11 @@ impl<GameFactory: GameFactoryTrait> TcpReadHandlerTrait for TcpInput<GameFactory
                     return Break(());
                 }
 
-                let send_result = self.render_data_sender
-                    .send(RenderReceiverMessage::InitialInformation(
-                        initial_information_message,
-                    ));
+                let send_result =
+                    self.render_data_sender
+                        .send(RenderReceiverMessage::InitialInformation(
+                            initial_information_message,
+                        ));
 
                 if send_result.is_err() {
                     warn!("Failed to send InitialInformation to Render Receiver");
