@@ -156,17 +156,17 @@ impl FactoryTrait for SingleThreadedFactory {
 
         let sender_clone = sender.clone();
         tcp_reader.to_consumer(move |receive_or_disconnect| {
-            let result = match receive_or_disconnect {
-                ReceiveOrDisconnected::Receive(_, buf) => sender_clone.send_event(buf),
-                ReceiveOrDisconnected::Disconnected => sender_clone.send_stop_thread(),
-            };
-
-            return match result {
-                Ok(()) => Ok(()),
-                Err(event_or_stopthread) => match event_or_stopthread {
-                    EventOrStopThread::Event(buf) => Err(buf),
-                    EventOrStopThread::StopThread => Ok(()),
-                },
+            match receive_or_disconnect {
+                ReceiveOrDisconnected::Receive(_, buf) => {
+                    return match sender_clone.send_event(buf) {
+                        Ok(_) => Ok(()),
+                        Err(buf) => Err(buf),
+                    };
+                }
+                ReceiveOrDisconnected::Disconnected => {
+                    let _ = sender_clone.send_stop_thread();
+                    return Ok(());
+                }
             };
         });
 

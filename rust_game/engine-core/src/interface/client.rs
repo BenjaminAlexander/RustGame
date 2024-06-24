@@ -1,4 +1,3 @@
-use crate::client::ClientCoreEvent::OnInputEvent;
 use crate::client::{
     ClientCore,
     ClientCoreEvent,
@@ -58,15 +57,11 @@ impl<GameFactory: GameFactoryTrait> Client<GameFactory> {
     ) -> Result<(), ClientInputEvent<GameFactory>> {
         return match self
             .core_sender
-            .send_event(OnInputEvent(client_input_event))
+            .send_event(ClientCoreEvent::OnInputEvent(client_input_event))
         {
             Ok(()) => Ok(()),
-            Err(event_or_stop) => match event_or_stop {
-                EventOrStopThread::Event(OnInputEvent(client_input_event)) => {
-                    Err(client_input_event)
-                }
-                _ => panic!("This should never happen."),
-            },
+            Err(ClientCoreEvent::OnInputEvent(client_input_event)) => Err(client_input_event),
+            _ => panic!("This should never happen."),
         };
     }
 }

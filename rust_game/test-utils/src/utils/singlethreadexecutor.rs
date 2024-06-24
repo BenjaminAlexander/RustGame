@@ -55,11 +55,7 @@ impl SingleThreadExecutor {
     }
 
     pub fn execute_runnable(self, runnable: Runnable) -> Result<(), Runnable> {
-        return match self.sender.send_event(runnable) {
-            Ok(()) => Ok(()),
-            Err(EventOrStopThread::Event(runnable)) => Err(runnable),
-            Err(EventOrStopThread::StopThread) => panic!("Illegal State"),
-        };
+        return self.sender.send_event(runnable);
     }
 
     pub fn execute_function<T: FnOnce() + Send + 'static>(

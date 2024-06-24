@@ -12,7 +12,4 @@ pub use self::enums::{
 pub(crate) use self::eventhandlerthread::EventHandlerThread;
 pub use self::eventhandlertrait::EventHandlerTrait;
 pub use self::eventsendertrait::EventSenderTrait;
-pub use self::types::{
-    EventHandlerSendResult,
-    EventHandlerSender,
-};
+pub use self::types::EventHandlerSender;
