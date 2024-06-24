@@ -85,10 +85,13 @@ impl FactoryTrait for RealFactory {
         &self,
         thread_builder: channel::ChannelThreadBuilder<Self, EventOrStopThread<()>>,
         socket_addr: SocketAddr,
-        tcp_connection_handler: T,
+        mut tcp_connection_handler: T,
         join_call_back: impl AsyncJoinCallBackTrait<Self, T>,
     ) -> Result<EventHandlerSender<Self, ()>, Error> {
         let tcp_listener = TcpListener::bind(socket_addr)?;
+        
+        tcp_connection_handler.on_bind(tcp_listener.local_addr()?);
+
         let event_handler = TcpListenerEventHandler::new(tcp_listener, tcp_connection_handler);
         return thread_builder.spawn_event_handler(event_handler, join_call_back);
     }

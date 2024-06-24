@@ -26,7 +26,7 @@ use commons::threading::eventhandling::{
     EventSenderTrait,
 };
 use commons::threading::AsyncJoinCallBackTrait;
-use log::info;
+use log::{info, warn};
 use std::collections::HashMap;
 use std::io::{
     Error,
@@ -84,20 +84,20 @@ impl NetworkSimulator {
         TcpConnectionHandler: TcpConnectionHandlerTrait<SingleThreadedFactory>,
     >(
         &self,
-        socket_adder: SocketAddr,
+        socket_addr: SocketAddr,
         thread_builder: ChannelThreadBuilder<SingleThreadedFactory, EventOrStopThread<()>>,
         connection_handler: TcpConnectionHandler,
         join_call_back: impl AsyncJoinCallBackTrait<SingleThreadedFactory, TcpConnectionHandler>,
     ) -> Result<EventHandlerSender<SingleThreadedFactory, ()>, Error> {
         let mut guard = self.internal.lock().unwrap();
 
-        if guard.tcp_listeners.contains_key(&socket_adder) {
+        if guard.tcp_listeners.contains_key(&socket_addr) {
             return Err(Error::from(ErrorKind::AddrInUse));
         }
 
         let (thread_builder, channel) = thread_builder.take();
 
-        let tcp_listener_event_handler = TcpListenerEventHandler::new(connection_handler);
+        let tcp_listener_event_handler = TcpListenerEventHandler::new(socket_addr, connection_handler);
 
         let sender = thread_builder
             .spawn_event_handler(tcp_listener_event_handler, join_call_back)
@@ -121,7 +121,14 @@ impl NetworkSimulator {
             };
         });
 
-        guard.tcp_listeners.insert(socket_adder, sender);
+        guard.tcp_listeners.insert(socket_addr, sender.clone());
+        
+        let send_result = sender.send_event(TcpListenerEvent::ListenerReady);
+
+        if send_result.is_err() {
+            warn!("Failed to send ListenerReady");
+            return Err(Error::from(ErrorKind::BrokenPipe));
+        }
 
         return Ok(sender_to_return);
     }

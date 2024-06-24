@@ -31,6 +31,10 @@ impl RealTcpStream {
         return &self.remote_peer_socket_addr;
     }
 
+    pub fn local_addr(&self) -> Result<SocketAddr, Error> {
+        return self.tcp_stream.local_addr();
+    }
+
     pub fn try_clone(&self) -> Result<Self, Error> {
         return Ok(Self {
             tcp_stream: self.tcp_stream.try_clone()?,

@@ -3,11 +3,9 @@ use commons::{
         FactoryTrait,
         RealFactory,
     },
-    net::TcpConnectionHandlerTrait,
+    net::{TcpConnectionHandler, TcpConnectionHandlerTrait, TcpWriterTrait},
     threading::{
-        channel,
-        eventhandling::EventHandlerTrait,
-        SingleThreadExecutor,
+        channel, eventhandling::EventHandlerTrait, AsyncJoin, SingleThreadExecutor
     },
 };
 use commons::{
@@ -68,30 +66,65 @@ fn test_real_factory() {
         .init(LevelFilter::Info);
 
     let executor = SingleThreadExecutor::new();
-
+    
     let real_factory = RealFactory::new();
 
-    let tcp_connection_handler =
-        |tcp_stream_send, tcp_stream_recv| return ControlFlow::Continue(());
+    let socket_addr_v4 = SocketAddrV4::new(Ipv4Addr::new(127, 0, 0, 1), 0);
+    let socket_addr = SocketAddr::from(socket_addr_v4);
+
+    let mut tcp_connection_handler = TcpConnectionHandler::<RealFactory>::new();
+
+    tcp_connection_handler.set_on_bind(|socket_addr|{
+        info!("TcpListener bound to {:?}", socket_addr);
+
+        let (tcp_stream, _) = RealFactory::new().connect_tcp(socket_addr).unwrap();
+
+        info!("Connected local {:?}", tcp_stream.local_addr().unwrap());
+    });
+
+    let executor_clone = executor.clone();
+    tcp_connection_handler.set_on_connection(move |tcp_stream, _| {
+
+        info!("Connected Listened remote {:?}", tcp_stream.get_peer_addr());
+
+        /* 
+        RealFactory::new()
+            .new_thread_builder()
+            .name("TcpReader")
+            .spawn_tcp_reader(
+                tcp_stream, 
+                tcp_read_handler,
+                AsyncJoin::log_async_join);
+    */
+
+        let executor_clone_clone = executor_clone.clone();
+
+
+
+        executor_clone.execute_function(move || {
+            executor_clone_clone.stop();
+        });
+
+        return ControlFlow::Continue(());
+    });
 
     let join_call_back = |_| {
         info!("TcpListener thread is done");
     };
 
-    let socket_addr_v4 = SocketAddrV4::new(Ipv4Addr::new(127, 0, 0, 1), 0);
-    let socket_addr = SocketAddr::from(socket_addr_v4);
-
     let sender = real_factory
         .new_thread_builder()
         .name("TcpListener")
-        .spawn_tcp_listener(socket_addr, tcp_connection_handler, join_call_back)
+        .spawn_tcp_listener(
+            socket_addr, 
+            tcp_connection_handler, 
+            join_call_back)
         .unwrap();
 
     let executor_clone = executor.clone();
 
-    executor.execute_function(move || {
-        executor_clone.stop();
-    });
+
+
 
     executor.wait_for_join();
 
