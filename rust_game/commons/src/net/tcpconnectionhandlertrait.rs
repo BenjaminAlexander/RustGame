@@ -1,26 +1,22 @@
 use crate::factory::FactoryTrait;
 use std::ops::ControlFlow;
 
-pub trait TcpConnectionHandlerTrait: Send + 'static {
-    type Factory: FactoryTrait;
+pub trait TcpConnectionHandlerTrait<Factory: FactoryTrait>: Send + 'static {
 
     fn on_connection(
         &mut self,
-        tcp_sender: <Self::Factory as FactoryTrait>::TcpWriter,
-        tcp_receiver: <Self::Factory as FactoryTrait>::TcpReader,
+        tcp_sender: Factory::TcpWriter,
+        tcp_receiver: Factory::TcpReader,
     ) -> ControlFlow<()>;
 }
 
-/*
-impl<T: TcpConnectionHandlerTrait<Factory=F>, F: FactoryTrait, U: FnMut(Box<<F as FactoryTrait>::TcpWriter>, Box<<F as FactoryTrait>::TcpReader>)> TcpConnectionHandlerTrait for U {
+impl<Factory: FactoryTrait, U: FnMut(Factory::TcpWriter, Factory::TcpReader) -> ControlFlow<()> + Send + 'static> TcpConnectionHandlerTrait<Factory> for U {
 
     fn on_connection(
         &mut self,
-        tcp_sender: <Self::Factory as FactoryTrait>::TcpWriter,
-        tcp_receiver: <Self::Factory as FactoryTrait>::TcpReader,
+        tcp_sender: Factory::TcpWriter,
+        tcp_receiver: Factory::TcpReader,
     ) -> ControlFlow<()> {
-        todo!()
+        return self(tcp_sender, tcp_receiver);
     }
-    
-    type Factory;
-}*/
+}

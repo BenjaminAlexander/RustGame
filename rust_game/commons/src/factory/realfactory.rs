@@ -81,7 +81,7 @@ impl FactoryTrait for RealFactory {
         return Ok(sender);
     }
 
-    fn spawn_tcp_listener<T: TcpConnectionHandlerTrait<Factory = Self>>(
+    fn spawn_tcp_listener<T: TcpConnectionHandlerTrait<Self>>(
         &self,
         thread_builder: channel::ChannelThreadBuilder<Self, EventOrStopThread<()>>,
         socket_addr: SocketAddr,

@@ -81,7 +81,7 @@ impl NetworkSimulator {
     }
 
     pub fn spawn_tcp_listener<
-        TcpConnectionHandler: TcpConnectionHandlerTrait<Factory = SingleThreadedFactory>,
+        TcpConnectionHandler: TcpConnectionHandlerTrait<SingleThreadedFactory>,
     >(
         &self,
         socket_adder: SocketAddr,

@@ -28,10 +28,9 @@ impl<GameFactory: GameFactoryTrait> TcpConnectionHandler<GameFactory> {
     }
 }
 
-impl<GameFactory: GameFactoryTrait> TcpConnectionHandlerTrait
+impl<GameFactory: GameFactoryTrait> TcpConnectionHandlerTrait<GameFactory::Factory>
     for TcpConnectionHandler<GameFactory>
 {
-    type Factory = GameFactory::Factory;
 
     fn on_connection(
         &mut self,

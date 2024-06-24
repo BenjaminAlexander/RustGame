@@ -57,7 +57,7 @@ impl<Factory: FactoryTrait, T: Send + 'static> ChannelThreadBuilder<Factory, Eve
 }
 
 impl<Factory: FactoryTrait> ChannelThreadBuilder<Factory, EventOrStopThread<()>> {
-    pub fn spawn_tcp_listener<T: TcpConnectionHandlerTrait<Factory = Factory>>(
+    pub fn spawn_tcp_listener<T: TcpConnectionHandlerTrait<Factory>>(
         self,
         socket_addr: SocketAddr,
         tcp_connection_handler: T,

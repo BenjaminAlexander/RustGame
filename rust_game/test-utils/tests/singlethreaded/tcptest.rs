@@ -147,8 +147,7 @@ struct ConnectionHandler {
     server_side: Arc<Mutex<Option<TestConnection>>>,
 }
 
-impl TcpConnectionHandlerTrait for ConnectionHandler {
-    type Factory = SingleThreadedFactory;
+impl TcpConnectionHandlerTrait<SingleThreadedFactory> for ConnectionHandler {
 
     fn on_connection(
         &mut self,

@@ -20,11 +20,10 @@ use log::{
     LevelFilter,
 };
 use std::{
-    clone,
-    sync::{
+    clone, net::{Ipv4Addr, SocketAddr, SocketAddrV4}, ops::ControlFlow, sync::{
         Arc,
         Mutex,
-    },
+    }
 };
 
 struct TestEventHandler {}
@@ -59,6 +58,29 @@ fn test_real_factory() {
         .init(LevelFilter::Info);
 
     let executor = SingleThreadExecutor::new();
+
+    let real_factory = RealFactory::new();
+
+    let tcp_connection_handler = |tcp_stream_send, tcp_stream_recv| {
+        return ControlFlow::Continue(())
+    };
+
+    let join_call_back = |_|{
+        info!("TcpListener thread is done");
+    };
+
+    let socket_addr_v4 = SocketAddrV4::new(Ipv4Addr::new(127, 0, 0, 1), 0);
+    let socket_addr = SocketAddr::from(socket_addr_v4);
+
+    let sender = real_factory
+        .new_thread_builder()
+        .name("TcpListener")
+        .spawn_tcp_listener(
+            socket_addr, 
+            tcp_connection_handler, 
+            join_call_back)
+        .unwrap();
+
     let executor_clone = executor.clone();
 
     executor.execute_function(move ||{

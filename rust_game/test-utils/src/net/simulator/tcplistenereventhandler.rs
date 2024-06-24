@@ -21,12 +21,12 @@ pub enum TcpListenerEvent {
 }
 
 pub struct TcpListenerEventHandler<
-    TcpConnectionHandler: TcpConnectionHandlerTrait<Factory = SingleThreadedFactory>,
+    TcpConnectionHandler: TcpConnectionHandlerTrait<SingleThreadedFactory>,
 > {
     connection_handler: TcpConnectionHandler,
 }
 
-impl<TcpConnectionHandler: TcpConnectionHandlerTrait<Factory = SingleThreadedFactory>>
+impl<TcpConnectionHandler: TcpConnectionHandlerTrait<SingleThreadedFactory>>
     TcpListenerEventHandler<TcpConnectionHandler>
 {
     pub fn new(connection_handler: TcpConnectionHandler) -> Self {
@@ -45,7 +45,7 @@ impl<TcpConnectionHandler: TcpConnectionHandlerTrait<Factory = SingleThreadedFac
     }
 }
 
-impl<TcpConnectionHandler: TcpConnectionHandlerTrait<Factory = SingleThreadedFactory>>
+impl<TcpConnectionHandler: TcpConnectionHandlerTrait<SingleThreadedFactory>>
     EventHandlerTrait for TcpListenerEventHandler<TcpConnectionHandler>
 {
     type Event = TcpListenerEvent;

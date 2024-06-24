@@ -72,7 +72,7 @@ impl<Factory: FactoryTrait> ThreadBuilder<Factory> {
             .spawn_event_handler(event_handler, join_call_back);
     }
 
-    pub fn spawn_tcp_listener<T: TcpConnectionHandlerTrait<Factory = Factory>>(
+    pub fn spawn_tcp_listener<T: TcpConnectionHandlerTrait<Factory>>(
         self,
         socket_addr: SocketAddr,
         tcp_connection_handler: T,

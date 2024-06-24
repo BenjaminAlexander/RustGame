@@ -114,7 +114,7 @@ impl FactoryTrait for SingleThreadedFactory {
         ));
     }
 
-    fn spawn_tcp_listener<T: TcpConnectionHandlerTrait<Factory = Self>>(
+    fn spawn_tcp_listener<T: TcpConnectionHandlerTrait<Self>>(
         &self,
         thread_builder: ChannelThreadBuilder<Self, EventOrStopThread<()>>,
         socket_addr: SocketAddr,

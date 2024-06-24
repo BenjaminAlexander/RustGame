@@ -15,12 +15,12 @@ use std::ops::ControlFlow::{
     Continue,
 };
 
-pub struct TcpListenerEventHandler<T: TcpConnectionHandlerTrait<Factory = RealFactory>> {
+pub struct TcpListenerEventHandler<T: TcpConnectionHandlerTrait<RealFactory>> {
     tcp_listener: TcpListener,
     tcp_connection_handler: T,
 }
 
-impl<T: TcpConnectionHandlerTrait<Factory = RealFactory>> TcpListenerEventHandler<T> {
+impl<T: TcpConnectionHandlerTrait<RealFactory>> TcpListenerEventHandler<T> {
     pub fn new(tcp_listener: TcpListener, tcp_connection_handler: T) -> Self {
         return Self {
             tcp_listener,
@@ -60,7 +60,7 @@ impl<T: TcpConnectionHandlerTrait<Factory = RealFactory>> TcpListenerEventHandle
     }
 }
 
-impl<T: TcpConnectionHandlerTrait<Factory = RealFactory>> EventHandlerTrait
+impl<T: TcpConnectionHandlerTrait<RealFactory>> EventHandlerTrait
     for TcpListenerEventHandler<T>
 {
     type Event = ();
