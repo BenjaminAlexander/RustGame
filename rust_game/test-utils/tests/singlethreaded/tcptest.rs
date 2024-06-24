@@ -148,7 +148,6 @@ struct ConnectionHandler {
 }
 
 impl TcpConnectionHandlerTrait<SingleThreadedFactory> for ConnectionHandler {
-
     fn on_connection(
         &mut self,
         tcp_sender: ChannelTcpWriter,

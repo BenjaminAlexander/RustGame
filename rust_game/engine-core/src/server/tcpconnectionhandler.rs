@@ -31,7 +31,6 @@ impl<GameFactory: GameFactoryTrait> TcpConnectionHandler<GameFactory> {
 impl<GameFactory: GameFactoryTrait> TcpConnectionHandlerTrait<GameFactory::Factory>
     for TcpConnectionHandler<GameFactory>
 {
-
     fn on_connection(
         &mut self,
         tcp_sender: TcpWriter<GameFactory>,

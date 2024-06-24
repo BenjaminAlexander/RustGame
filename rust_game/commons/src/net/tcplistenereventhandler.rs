@@ -60,9 +60,7 @@ impl<T: TcpConnectionHandlerTrait<RealFactory>> TcpListenerEventHandler<T> {
     }
 }
 
-impl<T: TcpConnectionHandlerTrait<RealFactory>> EventHandlerTrait
-    for TcpListenerEventHandler<T>
-{
+impl<T: TcpConnectionHandlerTrait<RealFactory>> EventHandlerTrait for TcpListenerEventHandler<T> {
     type Event = ();
     type ThreadReturn = T;
 

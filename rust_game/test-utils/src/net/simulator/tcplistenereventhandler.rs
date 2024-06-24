@@ -45,8 +45,8 @@ impl<TcpConnectionHandler: TcpConnectionHandlerTrait<SingleThreadedFactory>>
     }
 }
 
-impl<TcpConnectionHandler: TcpConnectionHandlerTrait<SingleThreadedFactory>>
-    EventHandlerTrait for TcpListenerEventHandler<TcpConnectionHandler>
+impl<TcpConnectionHandler: TcpConnectionHandlerTrait<SingleThreadedFactory>> EventHandlerTrait
+    for TcpListenerEventHandler<TcpConnectionHandler>
 {
     type Event = TcpListenerEvent;
     type ThreadReturn = TcpConnectionHandler;

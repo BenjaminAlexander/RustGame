@@ -2,10 +2,13 @@ use commons::{
     factory::{
         FactoryTrait,
         RealFactory,
-    }, net::TcpConnectionHandlerTrait, threading::{
+    },
+    net::TcpConnectionHandlerTrait,
+    threading::{
         channel,
-        eventhandling::EventHandlerTrait, SingleThreadExecutor,
-    }
+        eventhandling::EventHandlerTrait,
+        SingleThreadExecutor,
+    },
 };
 use commons::{
     logging::LoggingConfigBuilder,
@@ -20,10 +23,17 @@ use log::{
     LevelFilter,
 };
 use std::{
-    clone, net::{Ipv4Addr, SocketAddr, SocketAddrV4}, ops::ControlFlow, sync::{
+    clone,
+    net::{
+        Ipv4Addr,
+        SocketAddr,
+        SocketAddrV4,
+    },
+    ops::ControlFlow,
+    sync::{
         Arc,
         Mutex,
-    }
+    },
 };
 
 struct TestEventHandler {}
@@ -61,11 +71,10 @@ fn test_real_factory() {
 
     let real_factory = RealFactory::new();
 
-    let tcp_connection_handler = |tcp_stream_send, tcp_stream_recv| {
-        return ControlFlow::Continue(())
-    };
+    let tcp_connection_handler =
+        |tcp_stream_send, tcp_stream_recv| return ControlFlow::Continue(());
 
-    let join_call_back = |_|{
+    let join_call_back = |_| {
         info!("TcpListener thread is done");
     };
 
@@ -75,15 +84,12 @@ fn test_real_factory() {
     let sender = real_factory
         .new_thread_builder()
         .name("TcpListener")
-        .spawn_tcp_listener(
-            socket_addr, 
-            tcp_connection_handler, 
-            join_call_back)
+        .spawn_tcp_listener(socket_addr, tcp_connection_handler, join_call_back)
         .unwrap();
 
     let executor_clone = executor.clone();
 
-    executor.execute_function(move ||{
+    executor.execute_function(move || {
         executor_clone.stop();
     });
 
@@ -91,32 +97,32 @@ fn test_real_factory() {
 
     info!("Done");
 
-/*
-    let real_factory = RealFactory::new();
+    /*
+        let real_factory = RealFactory::new();
 
-    let event_handler = TestEventHandler {};
+        let event_handler = TestEventHandler {};
 
-    let wait_for_join = Arc::new(Mutex::new(true));
+        let wait_for_join = Arc::new(Mutex::new(true));
 
-    let wait_for_join_clone = wait_for_join.clone();
+        let wait_for_join_clone = wait_for_join.clone();
 
-    let sender = real_factory
-        .new_thread_builder()
-        .name("TestThread")
-        .spawn_event_handler(event_handler, move |_| {
-            info!("Setting wait_for_join to false");
-            *wait_for_join_clone.lock().unwrap() = false;
-        })
-        .unwrap();
+        let sender = real_factory
+            .new_thread_builder()
+            .name("TestThread")
+            .spawn_event_handler(event_handler, move |_| {
+                info!("Setting wait_for_join to false");
+                *wait_for_join_clone.lock().unwrap() = false;
+            })
+            .unwrap();
 
-    if sender.send_stop_thread().is_err() {
-        panic!("Stop thread failed");
-    }
+        if sender.send_stop_thread().is_err() {
+            panic!("Stop thread failed");
+        }
 
-    while *wait_for_join.lock().unwrap() {}
+        while *wait_for_join.lock().unwrap() {}
 
-    info!("Done");
-*/
+        info!("Done");
+    */
 
     /*
         let x = real_factory.new_thread_builder()
@@ -133,7 +139,7 @@ fn test_real_factory() {
     //assert_eq!(add(1, 2), 3);
 }
 
-/* 
+/*
 struct ConnectionHandler {
     factory: RealFactory,
     server_side: Arc<Mutex<Option<TestConnection>>>,
