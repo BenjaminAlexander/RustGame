@@ -1,8 +1,18 @@
 use crate::singlethreaded::SingleThreadedFactory;
-use commons::threading::channel::{ReceiveMetaData, SendMetaData, TryRecvError};
-use log::{error, warn};
+use commons::threading::channel::{
+    ReceiveMetaData,
+    SendMetaData,
+    TryRecvError,
+};
+use log::{
+    error,
+    warn,
+};
 use std::collections::VecDeque;
-use std::sync::{Arc, Mutex};
+use std::sync::{
+    Arc,
+    Mutex,
+};
 
 pub struct ReceiverLink<T> {
     internal: Arc<Mutex<Internal<T>>>,

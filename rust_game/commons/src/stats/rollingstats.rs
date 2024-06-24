@@ -1,6 +1,14 @@
 use crate::stats::totalstandarddeviation::TotalStandardDeviation;
-use crate::stats::MinMaxChange::{FirstMinAndMax, NewMax, NewMin};
-use crate::stats::{MinMax, MinMaxChange, RollingStandardDeviation};
+use crate::stats::MinMaxChange::{
+    FirstMinAndMax,
+    NewMax,
+    NewMin,
+};
+use crate::stats::{
+    MinMax,
+    MinMaxChange,
+    RollingStandardDeviation,
+};
 
 pub struct RollingStats {
     standard_deviation_ration: f64,

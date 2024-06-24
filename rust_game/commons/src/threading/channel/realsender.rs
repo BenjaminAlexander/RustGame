@@ -1,6 +1,12 @@
 use crate::factory::FactoryTrait;
-use crate::threading::channel::{SendMetaData, SenderTrait};
-use std::sync::mpsc::{self, SendError};
+use crate::threading::channel::{
+    SendMetaData,
+    SenderTrait,
+};
+use std::sync::mpsc::{
+    self,
+    SendError,
+};
 
 pub struct RealSender<Factory: FactoryTrait, T: Send> {
     factory: Factory,

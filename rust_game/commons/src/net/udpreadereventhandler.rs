@@ -1,9 +1,16 @@
 use crate::net::udpreadhandlertrait::UdpReadHandlerTrait;
 use crate::net::RealUdpSocket;
 use crate::threading::channel::ReceiveMetaData;
-use crate::threading::eventhandling::{ChannelEvent, EventHandleResult, EventHandlerTrait};
+use crate::threading::eventhandling::{
+    ChannelEvent,
+    EventHandleResult,
+    EventHandlerTrait,
+};
 use log::warn;
-use std::ops::ControlFlow::{Break, Continue};
+use std::ops::ControlFlow::{
+    Break,
+    Continue,
+};
 
 pub const MAX_UDP_DATAGRAM_SIZE: usize = 1500;
 

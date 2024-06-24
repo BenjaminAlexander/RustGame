@@ -1,16 +1,37 @@
-use std::ops::{Add, Sub};
+use std::ops::{
+    Add,
+    Sub,
+};
 
-use crate::gametime::{TimeMessage, TimeReceived};
+use crate::gametime::{
+    TimeMessage,
+    TimeReceived,
+};
 use crate::server::ServerConfig;
 use commons::factory::FactoryTrait;
 use commons::stats::RollingAverage;
-use commons::threading::eventhandling::{EventHandlerSender, EventSenderTrait};
+use commons::threading::eventhandling::{
+    EventHandlerSender,
+    EventSenderTrait,
+};
 use commons::threading::AsyncJoin;
 use commons::time::timerservice::{
-    Schedule, TimeService, TimerCallBack, TimerCreationCallBack, TimerId, TimerServiceEvent,
+    Schedule,
+    TimeService,
+    TimerCallBack,
+    TimerCreationCallBack,
+    TimerId,
+    TimerServiceEvent,
 };
-use commons::time::{TimeDuration, TimeValue};
-use log::{info, trace, warn};
+use commons::time::{
+    TimeDuration,
+    TimeValue,
+};
+use log::{
+    info,
+    trace,
+    warn,
+};
 use timer::Timer;
 
 const TICK_LATENESS_WARN_DURATION: TimeDuration = TimeDuration::new(0, 20_000_000);

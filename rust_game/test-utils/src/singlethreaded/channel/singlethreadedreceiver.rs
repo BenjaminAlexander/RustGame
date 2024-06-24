@@ -1,7 +1,17 @@
-use crate::singlethreaded::channel::receiverlink::{ReceiveOrDisconnected, ReceiverLink};
+use crate::singlethreaded::channel::receiverlink::{
+    ReceiveOrDisconnected,
+    ReceiverLink,
+};
 use crate::singlethreaded::channel::senderlink::SenderLink;
-use crate::singlethreaded::{SingleThreadedFactory, SingleThreadedSender};
-use commons::threading::channel::{ReceiveMetaData, ReceiverTrait, TryRecvError};
+use crate::singlethreaded::{
+    SingleThreadedFactory,
+    SingleThreadedSender,
+};
+use commons::threading::channel::{
+    ReceiveMetaData,
+    ReceiverTrait,
+    TryRecvError,
+};
 
 pub struct SingleThreadedReceiver<T: Send> {
     link: ReceiverLink<T>,

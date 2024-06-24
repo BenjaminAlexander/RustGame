@@ -1,9 +1,18 @@
 use crate::time::TimeDuration;
 use core::time::Duration;
-use serde::{Deserialize, Serialize};
+use serde::{
+    Deserialize,
+    Serialize,
+};
 use std::cmp::Ordering;
-use std::ops::{Add, Sub};
-use std::time::{SystemTime, UNIX_EPOCH};
+use std::ops::{
+    Add,
+    Sub,
+};
+use std::time::{
+    SystemTime,
+    UNIX_EPOCH,
+};
 
 #[derive(Serialize, Deserialize, Clone, Copy, Debug)]
 pub struct TimeValue {

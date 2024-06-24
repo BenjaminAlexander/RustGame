@@ -1,6 +1,9 @@
 use crate::interface::serverupdatearg::ServerUpdateArg;
 use crate::interface::InitialInformation;
-use crate::interface::{ClientUpdateArg, InterpolationArg};
+use crate::interface::{
+    ClientUpdateArg,
+    InterpolationArg,
+};
 use commons::time::TimeDuration;
 use serde::de::DeserializeOwned;
 use serde::Serialize;

@@ -1,2 +1,4 @@
-blank_lines_lower_bound = 1
+imports_layout = "Vertical"
 use_field_init_shorthand = true
+# use: cargo +nightly fmt
+unstable_features = true

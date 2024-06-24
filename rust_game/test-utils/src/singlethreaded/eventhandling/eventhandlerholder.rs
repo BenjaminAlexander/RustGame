@@ -1,15 +1,37 @@
-use crate::singlethreaded::{ReceiveOrDisconnected, ReceiverLink, SingleThreadedFactory};
-use commons::threading::channel::{Channel, ChannelThreadBuilder, ReceiveMetaData};
+use crate::singlethreaded::{
+    ReceiveOrDisconnected,
+    ReceiverLink,
+    SingleThreadedFactory,
+};
+use commons::threading::channel::{
+    Channel,
+    ChannelThreadBuilder,
+    ReceiveMetaData,
+};
 use commons::threading::eventhandling::ChannelEvent::{
-    ChannelDisconnected, ChannelEmpty, ReceivedEvent, Timeout,
+    ChannelDisconnected,
+    ChannelEmpty,
+    ReceivedEvent,
+    Timeout,
 };
 use commons::threading::eventhandling::{
-    ChannelEvent, EventHandleResult, EventHandlerSender, EventHandlerTrait, EventOrStopThread,
+    ChannelEvent,
+    EventHandleResult,
+    EventHandlerSender,
+    EventHandlerTrait,
+    EventOrStopThread,
 };
-use commons::threading::{AsyncJoin, AsyncJoinCallBackTrait, ThreadBuilder};
+use commons::threading::{
+    AsyncJoin,
+    AsyncJoinCallBackTrait,
+    ThreadBuilder,
+};
 use commons::time::TimeDuration;
 use log::trace;
-use std::sync::{Arc, Mutex};
+use std::sync::{
+    Arc,
+    Mutex,
+};
 
 pub struct EventHandlerHolder<
     T: EventHandlerTrait,

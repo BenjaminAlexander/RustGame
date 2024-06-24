@@ -1,6 +1,9 @@
 use crate::interface::GameTrait;
 use crate::interface::InitialInformation;
-use serde::{Deserialize, Serialize};
+use serde::{
+    Deserialize,
+    Serialize,
+};
 
 #[derive(Serialize, Deserialize, Debug)]
 #[serde(bound = "")]

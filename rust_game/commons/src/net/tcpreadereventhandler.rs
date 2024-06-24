@@ -1,9 +1,16 @@
 use crate::net::realtcpstream::RealTcpStream;
 use crate::net::tcpreadhandlertrait::TcpReadHandlerTrait;
 use crate::threading::channel::ReceiveMetaData;
-use crate::threading::eventhandling::{ChannelEvent, EventHandleResult, EventHandlerTrait};
+use crate::threading::eventhandling::{
+    ChannelEvent,
+    EventHandleResult,
+    EventHandlerTrait,
+};
 use log::warn;
-use std::ops::ControlFlow::{Break, Continue};
+use std::ops::ControlFlow::{
+    Break,
+    Continue,
+};
 
 pub struct TcpReaderEventHandler<T: TcpReadHandlerTrait> {
     tcp_reader: RealTcpStream,

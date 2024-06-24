@@ -1,5 +1,10 @@
 use crate::factory::FactoryTrait;
-use crate::threading::channel::{ReceiveMetaData, ReceiverTrait, SendMetaData, TryRecvError};
+use crate::threading::channel::{
+    ReceiveMetaData,
+    ReceiverTrait,
+    SendMetaData,
+    TryRecvError,
+};
 use crate::time::TimeDuration;
 use std::sync::mpsc;
 

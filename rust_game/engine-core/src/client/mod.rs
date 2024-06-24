@@ -6,4 +6,7 @@ mod tcpoutput;
 mod udpinput;
 mod udpoutput;
 
-pub use self::clientcore::{ClientCore, ClientCoreEvent};
+pub use self::clientcore::{
+    ClientCore,
+    ClientCoreEvent,
+};

@@ -1,6 +1,15 @@
 use crate::gamemanager::stepmessage::StepMessage;
-use crate::interface::{ClientUpdateArg, GameTrait, InitialInformation, ServerUpdateArg};
-use crate::messaging::{InputMessage, ServerInputMessage, StateMessage};
+use crate::interface::{
+    ClientUpdateArg,
+    GameTrait,
+    InitialInformation,
+    ServerUpdateArg,
+};
+use crate::messaging::{
+    InputMessage,
+    ServerInputMessage,
+    StateMessage,
+};
 use std::sync::Arc;
 
 pub struct Step<Game: GameTrait> {

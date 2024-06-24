@@ -1,10 +1,25 @@
 use crate::net::{
-    TcpConnectionHandlerTrait, TcpReadHandlerTrait, TcpWriterTrait, UdpReadHandlerTrait,
+    TcpConnectionHandlerTrait,
+    TcpReadHandlerTrait,
+    TcpWriterTrait,
+    UdpReadHandlerTrait,
     UdpSocketTrait,
 };
-use crate::threading::channel::{Channel, ChannelThreadBuilder, ReceiverTrait, SenderTrait};
-use crate::threading::eventhandling::{EventHandlerSender, EventHandlerTrait, EventOrStopThread};
-use crate::threading::{AsyncJoinCallBackTrait, ThreadBuilder};
+use crate::threading::channel::{
+    Channel,
+    ChannelThreadBuilder,
+    ReceiverTrait,
+    SenderTrait,
+};
+use crate::threading::eventhandling::{
+    EventHandlerSender,
+    EventHandlerTrait,
+    EventOrStopThread,
+};
+use crate::threading::{
+    AsyncJoinCallBackTrait,
+    ThreadBuilder,
+};
 use crate::time::TimeValue;
 use std::io::Error;
 use std::net::SocketAddr;

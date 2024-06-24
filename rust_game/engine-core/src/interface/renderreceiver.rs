@@ -1,13 +1,26 @@
 use crate::gamemanager::StepMessage;
 use crate::gametime::TimeMessage;
 use crate::interface::{
-    Factory, Game, GameFactoryTrait, GameTrait, InitialInformation, InterpolationArg,
-    InterpolationResult, Receiver, Sender,
+    Factory,
+    Game,
+    GameFactoryTrait,
+    GameTrait,
+    InitialInformation,
+    InterpolationArg,
+    InterpolationResult,
+    Receiver,
+    Sender,
 };
 use commons::factory::FactoryTrait;
-use commons::threading::channel::{ReceiverTrait, TryRecvError};
+use commons::threading::channel::{
+    ReceiverTrait,
+    TryRecvError,
+};
 use commons::time::TimeDuration;
-use log::{info, warn};
+use log::{
+    info,
+    warn,
+};
 
 pub enum RenderReceiverMessage<Game: GameTrait> {
     InitialInformation(InitialInformation<Game>),

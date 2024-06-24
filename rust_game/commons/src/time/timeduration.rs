@@ -1,6 +1,12 @@
-use serde::{Deserialize, Serialize};
+use serde::{
+    Deserialize,
+    Serialize,
+};
 use std::cmp::Ordering;
-use std::ops::{Add, Sub};
+use std::ops::{
+    Add,
+    Sub,
+};
 use std::time::Duration;
 
 #[derive(Serialize, Deserialize, Clone, Copy, Debug)]

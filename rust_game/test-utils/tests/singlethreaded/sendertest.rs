@@ -1,7 +1,17 @@
 use commons::factory::FactoryTrait;
-use commons::threading::channel::{ReceiverTrait, SenderTrait, TryRecvError};
-use std::sync::{Arc, Mutex};
-use test_utils::singlethreaded::{ReceiveOrDisconnected, SingleThreadedFactory};
+use commons::threading::channel::{
+    ReceiverTrait,
+    SenderTrait,
+    TryRecvError,
+};
+use std::sync::{
+    Arc,
+    Mutex,
+};
+use test_utils::singlethreaded::{
+    ReceiveOrDisconnected,
+    SingleThreadedFactory,
+};
 
 #[test]
 fn test_sender() {

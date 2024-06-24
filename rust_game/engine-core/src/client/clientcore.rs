@@ -3,22 +3,50 @@ use crate::client::clientmanagerobserver::ClientManagerObserver;
 use crate::client::tcpinput::TcpInput;
 use crate::client::tcpoutput::TcpOutput;
 use crate::client::udpinput::UdpInput;
-use crate::client::udpoutput::{UdpOutput, UdpOutputEvent};
-use crate::gamemanager::{Manager, ManagerEvent};
-use crate::gametime::{GameTimer, TimeMessage, TimeReceived};
+use crate::client::udpoutput::{
+    UdpOutput,
+    UdpOutputEvent,
+};
+use crate::gamemanager::{
+    Manager,
+    ManagerEvent,
+};
+use crate::gametime::{
+    GameTimer,
+    TimeMessage,
+    TimeReceived,
+};
 use crate::interface::{
-    EventSender, GameFactoryTrait, GameTrait, InitialInformation, RenderReceiverMessage, Sender,
+    EventSender,
+    GameFactoryTrait,
+    GameTrait,
+    InitialInformation,
+    RenderReceiverMessage,
+    Sender,
 };
 use crate::messaging::InputMessage;
 use commons::factory::FactoryTrait;
 use commons::net::UdpSocketTrait;
-use commons::threading::channel::{ReceiveMetaData, SenderTrait};
+use commons::threading::channel::{
+    ReceiveMetaData,
+    SenderTrait,
+};
 use commons::threading::eventhandling::{
-    ChannelEvent, EventHandleResult, EventHandlerTrait, EventSenderTrait,
+    ChannelEvent,
+    EventHandleResult,
+    EventHandlerTrait,
+    EventSenderTrait,
 };
 use commons::threading::AsyncJoin;
-use log::{trace, warn};
-use std::net::{Ipv4Addr, SocketAddr, SocketAddrV4};
+use log::{
+    trace,
+    warn,
+};
+use std::net::{
+    Ipv4Addr,
+    SocketAddr,
+    SocketAddrV4,
+};
 use std::ops::Sub;
 
 pub enum ClientCoreEvent<GameFactory: GameFactoryTrait> {

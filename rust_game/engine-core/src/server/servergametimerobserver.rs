@@ -1,4 +1,7 @@
-use crate::interface::{EventSender, GameFactoryTrait};
+use crate::interface::{
+    EventSender,
+    GameFactoryTrait,
+};
 use crate::server::servercore::ServerCoreEvent;
 use commons::threading::eventhandling::EventSenderTrait;
 use commons::time::timerservice::TimerCallBack;

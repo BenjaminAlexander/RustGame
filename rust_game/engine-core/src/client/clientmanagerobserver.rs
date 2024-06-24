@@ -1,6 +1,15 @@
-use crate::gamemanager::{ManagerObserverTrait, StepMessage};
-use crate::interface::{GameFactoryTrait, RenderReceiverMessage};
-use crate::messaging::{ServerInputMessage, StateMessage};
+use crate::gamemanager::{
+    ManagerObserverTrait,
+    StepMessage,
+};
+use crate::interface::{
+    GameFactoryTrait,
+    RenderReceiverMessage,
+};
+use crate::messaging::{
+    ServerInputMessage,
+    StateMessage,
+};
 use commons::factory::FactoryTrait;
 use commons::threading::channel::SenderTrait;
 

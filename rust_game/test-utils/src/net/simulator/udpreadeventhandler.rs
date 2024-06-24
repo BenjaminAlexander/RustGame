@@ -1,9 +1,16 @@
 use crate::net::NetworkSimulator;
 use commons::net::UdpReadHandlerTrait;
 use commons::threading::channel::ReceiveMetaData;
-use commons::threading::eventhandling::{ChannelEvent, EventHandleResult, EventHandlerTrait};
+use commons::threading::eventhandling::{
+    ChannelEvent,
+    EventHandleResult,
+    EventHandlerTrait,
+};
 use std::net::SocketAddr;
-use std::ops::ControlFlow::{Break, Continue};
+use std::ops::ControlFlow::{
+    Break,
+    Continue,
+};
 
 pub struct UdpReadEventHandler<T: UdpReadHandlerTrait> {
     network_simulator: NetworkSimulator,

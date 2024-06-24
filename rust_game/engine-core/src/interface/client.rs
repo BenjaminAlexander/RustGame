@@ -1,8 +1,20 @@
 use crate::client::ClientCoreEvent::OnInputEvent;
-use crate::client::{ClientCore, ClientCoreEvent};
-use crate::interface::{ClientInputEvent, EventSender, Factory, GameFactoryTrait, RenderReceiver};
+use crate::client::{
+    ClientCore,
+    ClientCoreEvent,
+};
+use crate::interface::{
+    ClientInputEvent,
+    EventSender,
+    Factory,
+    GameFactoryTrait,
+    RenderReceiver,
+};
 use commons::factory::FactoryTrait;
-use commons::threading::eventhandling::{EventOrStopThread, EventSenderTrait};
+use commons::threading::eventhandling::{
+    EventOrStopThread,
+    EventSenderTrait,
+};
 use commons::threading::AsyncJoin;
 use std::net::Ipv4Addr;
 use std::str::FromStr;

@@ -3,10 +3,17 @@ use crate::net::realtcpstream::RealTcpStream;
 use crate::net::tcpconnectionhandlertrait::TcpConnectionHandlerTrait;
 use crate::net::TcpWriterTrait;
 use crate::threading::channel::ReceiveMetaData;
-use crate::threading::eventhandling::{ChannelEvent, EventHandleResult, EventHandlerTrait};
+use crate::threading::eventhandling::{
+    ChannelEvent,
+    EventHandleResult,
+    EventHandlerTrait,
+};
 use log::error;
 use std::net::TcpListener;
-use std::ops::ControlFlow::{Break, Continue};
+use std::ops::ControlFlow::{
+    Break,
+    Continue,
+};
 
 pub struct TcpListenerEventHandler<T: TcpConnectionHandlerTrait<Factory = RealFactory>> {
     tcp_listener: TcpListener,

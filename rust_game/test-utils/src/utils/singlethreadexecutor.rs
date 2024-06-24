@@ -1,13 +1,27 @@
 use commons::{
-    factory::{FactoryTrait, RealFactory},
+    factory::{
+        FactoryTrait,
+        RealFactory,
+    },
     threading::{
-        channel::{RealSender, ReceiveMetaData},
+        channel::{
+            RealSender,
+            ReceiveMetaData,
+        },
         eventhandling::{
-            ChannelEvent, EventHandleResult, EventHandlerTrait, EventOrStopThread, EventSenderTrait,
+            ChannelEvent,
+            EventHandleResult,
+            EventHandlerTrait,
+            EventOrStopThread,
+            EventSenderTrait,
         },
     },
 };
-use std::sync::{Arc, Condvar, Mutex};
+use std::sync::{
+    Arc,
+    Condvar,
+    Mutex,
+};
 
 type Runnable = Box<dyn FnOnce() + Send>;
 

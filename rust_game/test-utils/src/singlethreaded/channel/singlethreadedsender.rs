@@ -1,6 +1,9 @@
 use crate::singlethreaded::channel::senderlink::SenderLink;
 use commons::threading::channel::SenderTrait;
-use std::sync::{Arc, Mutex};
+use std::sync::{
+    Arc,
+    Mutex,
+};
 
 pub struct SingleThreadedSender<T: Send> {
     link: Arc<Mutex<SenderLink<T>>>,

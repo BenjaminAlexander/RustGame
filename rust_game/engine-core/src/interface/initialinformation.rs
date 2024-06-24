@@ -1,6 +1,9 @@
 use crate::interface::GameTrait;
 use crate::server::ServerConfig;
-use serde::{Deserialize, Serialize};
+use serde::{
+    Deserialize,
+    Serialize,
+};
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct InitialInformation<Game: GameTrait> {

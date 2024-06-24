@@ -4,7 +4,10 @@ use commons::threading::channel::SenderTrait;
 use rmp_serde::encode::Error as EncodeError;
 use serde::de::DeserializeOwned;
 use serde::Serialize;
-use std::io::{Error, ErrorKind};
+use std::io::{
+    Error,
+    ErrorKind,
+};
 use std::net::SocketAddr;
 
 pub struct ChannelTcpWriter {

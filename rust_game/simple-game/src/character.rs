@@ -2,12 +2,21 @@ use crate::bullet::Bullet;
 use crate::simplegameimpl::SimpleGameImpl;
 use commons::geometry::twod::Vector2;
 use commons::time::TimeDuration;
-use engine_core::{ClientUpdateArg, GameTrait};
+use engine_core::{
+    ClientUpdateArg,
+    GameTrait,
+};
 use graphics::*;
-use graphics::{rectangle, Context};
+use graphics::{
+    rectangle,
+    Context,
+};
 use opengl_graphics::GlGraphics;
 use piston::RenderArgs;
-use serde::{Deserialize, Serialize};
+use serde::{
+    Deserialize,
+    Serialize,
+};
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Character {

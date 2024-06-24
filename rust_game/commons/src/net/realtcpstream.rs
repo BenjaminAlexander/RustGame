@@ -4,8 +4,14 @@ use rmp_serde::encode::Error as EncodeError;
 use serde::de::DeserializeOwned;
 use serde::Serialize;
 use std::fmt::Debug;
-use std::io::{Error, Write};
-use std::net::{SocketAddr, TcpStream};
+use std::io::{
+    Error,
+    Write,
+};
+use std::net::{
+    SocketAddr,
+    TcpStream,
+};
 
 #[derive(Debug)]
 pub struct RealTcpStream {

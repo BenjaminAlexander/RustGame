@@ -8,8 +8,15 @@ use crate::simplewindow::SimpleWindow;
 use commons::factory::RealFactory;
 use commons::logging::LoggingConfigBuilder;
 use commons::time::TimeDuration;
-use engine_core::{Client, RealGameFactory, Server};
-use log::{info, LevelFilter};
+use engine_core::{
+    Client,
+    RealGameFactory,
+    Server,
+};
+use log::{
+    info,
+    LevelFilter,
+};
 use std::io::stdin;
 use std::path::PathBuf;
 use std::process;

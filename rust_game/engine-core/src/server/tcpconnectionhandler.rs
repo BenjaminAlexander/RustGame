@@ -1,9 +1,20 @@
-use crate::interface::{EventSender, GameFactoryTrait, TcpReader, TcpWriter};
+use crate::interface::{
+    EventSender,
+    GameFactoryTrait,
+    TcpReader,
+    TcpWriter,
+};
 use crate::server::servercore::ServerCoreEvent;
 use crate::server::servercore::ServerCoreEvent::TcpConnectionEvent;
-use commons::net::{TcpConnectionHandlerTrait, TcpWriterTrait};
+use commons::net::{
+    TcpConnectionHandlerTrait,
+    TcpWriterTrait,
+};
 use commons::threading::eventhandling::EventSenderTrait;
-use log::{info, warn};
+use log::{
+    info,
+    warn,
+};
 use std::ops::ControlFlow;
 use std::ops::ControlFlow::*;
 

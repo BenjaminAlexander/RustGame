@@ -6,12 +6,19 @@ use crate::SimpleGameImpl;
 use commons::geometry::twod::Vector2;
 use commons::time::TimeDuration;
 use engine_core::{
-    ClientUpdateArg, GameTrait, InitialInformation, InterpolationArg, ServerUpdateArg,
+    ClientUpdateArg,
+    GameTrait,
+    InitialInformation,
+    InterpolationArg,
+    ServerUpdateArg,
 };
 use graphics::Context;
 use opengl_graphics::GlGraphics;
 use piston::RenderArgs;
-use serde::{Deserialize, Serialize};
+use serde::{
+    Deserialize,
+    Serialize,
+};
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct SimpleState {

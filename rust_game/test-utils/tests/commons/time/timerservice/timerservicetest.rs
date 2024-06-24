@@ -2,12 +2,20 @@ use commons::factory::FactoryTrait;
 use commons::logging::LoggingConfigBuilder;
 use commons::threading::eventhandling::EventSenderTrait;
 use commons::time::timerservice::{
-    Schedule, TimeService, TimerCallBack, TimerCreationCallBack, TimerId, TimerServiceEvent,
+    Schedule,
+    TimeService,
+    TimerCallBack,
+    TimerCreationCallBack,
+    TimerId,
+    TimerServiceEvent,
 };
 use commons::time::TimeDuration;
 use log::LevelFilter;
 use std::ops::Add;
-use std::sync::{Arc, Mutex};
+use std::sync::{
+    Arc,
+    Mutex,
+};
 use test_utils::singlethreaded::SingleThreadedFactory;
 use test_utils::utils::Counter;
 

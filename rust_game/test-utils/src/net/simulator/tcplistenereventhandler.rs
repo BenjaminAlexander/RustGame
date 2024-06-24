@@ -1,10 +1,20 @@
 use crate::net::simulator::tcplistenereventhandler::TcpListenerEvent::Connection;
 use crate::net::ChannelTcpWriter;
-use crate::singlethreaded::{SingleThreadedFactory, SingleThreadedReceiver};
+use crate::singlethreaded::{
+    SingleThreadedFactory,
+    SingleThreadedReceiver,
+};
 use commons::net::TcpConnectionHandlerTrait;
 use commons::threading::channel::ReceiveMetaData;
-use commons::threading::eventhandling::{ChannelEvent, EventHandleResult, EventHandlerTrait};
-use std::ops::ControlFlow::{Break, Continue};
+use commons::threading::eventhandling::{
+    ChannelEvent,
+    EventHandleResult,
+    EventHandlerTrait,
+};
+use std::ops::ControlFlow::{
+    Break,
+    Continue,
+};
 
 pub enum TcpListenerEvent {
     Connection(ChannelTcpWriter, SingleThreadedReceiver<Vec<u8>>),

@@ -1,11 +1,23 @@
 use self::ServerCoreEvent::{
-    GameTimerTick, StartGameEvent, StartListenerEvent, TcpConnectionEvent,
+    GameTimerTick,
+    StartGameEvent,
+    StartListenerEvent,
+    TcpConnectionEvent,
 };
-use crate::gamemanager::{Manager, ManagerEvent};
+use crate::gamemanager::{
+    Manager,
+    ManagerEvent,
+};
 use crate::gametime::GameTimer;
 use crate::interface::{
-    EventSender, GameFactoryTrait, GameTrait, InitialInformation, RenderReceiverMessage, TcpReader,
-    TcpWriter, UdpSocket,
+    EventSender,
+    GameFactoryTrait,
+    GameTrait,
+    InitialInformation,
+    RenderReceiverMessage,
+    TcpReader,
+    TcpWriter,
+    UdpSocket,
 };
 use crate::messaging::InputMessage;
 use crate::server::clientaddress::ClientAddress;
@@ -14,21 +26,48 @@ use crate::server::servergametimerobserver::ServerGameTimerObserver;
 use crate::server::servermanagerobserver::ServerManagerObserver;
 use crate::server::tcpinput::TcpInput;
 use crate::server::tcpoutput::TcpOutputEvent::SendInitialInformation;
-use crate::server::tcpoutput::{TcpOutput, TcpOutputEvent};
+use crate::server::tcpoutput::{
+    TcpOutput,
+    TcpOutputEvent,
+};
 use crate::server::udphandler::UdpHandler;
 use crate::server::udpinput::UdpInput;
-use crate::server::udpoutput::{UdpOutput, UdpOutputEvent};
+use crate::server::udpoutput::{
+    UdpOutput,
+    UdpOutputEvent,
+};
 use crate::server::ServerCoreEvent::UdpPacket;
-use crate::server::{ServerConfig, TcpConnectionHandler};
+use crate::server::{
+    ServerConfig,
+    TcpConnectionHandler,
+};
 use commons::factory::FactoryTrait;
-use commons::net::{TcpWriterTrait, UdpSocketTrait, MAX_UDP_DATAGRAM_SIZE};
-use commons::threading::channel::{ReceiveMetaData, SenderTrait};
+use commons::net::{
+    TcpWriterTrait,
+    UdpSocketTrait,
+    MAX_UDP_DATAGRAM_SIZE,
+};
+use commons::threading::channel::{
+    ReceiveMetaData,
+    SenderTrait,
+};
 use commons::threading::eventhandling::{
-    ChannelEvent, EventHandleResult, EventHandlerTrait, EventSenderTrait,
+    ChannelEvent,
+    EventHandleResult,
+    EventHandlerTrait,
+    EventSenderTrait,
 };
 use commons::threading::AsyncJoin;
-use log::{error, info, warn};
-use std::net::{Ipv4Addr, SocketAddr, SocketAddrV4};
+use log::{
+    error,
+    info,
+    warn,
+};
+use std::net::{
+    Ipv4Addr,
+    SocketAddr,
+    SocketAddrV4,
+};
 use std::ops::Sub;
 use std::str::FromStr;
 

@@ -1,5 +1,8 @@
 pub use self::serverconfig::ServerConfig;
-pub use self::servercore::{ServerCore, ServerCoreEvent};
+pub use self::servercore::{
+    ServerCore,
+    ServerCoreEvent,
+};
 pub use crate::server::tcpconnectionhandler::TcpConnectionHandler;
 
 mod clientaddress;

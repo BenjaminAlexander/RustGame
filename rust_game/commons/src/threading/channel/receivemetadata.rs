@@ -1,6 +1,9 @@
 use crate::factory::FactoryTrait;
 use crate::threading::channel::SendMetaData;
-use crate::time::{TimeDuration, TimeValue};
+use crate::time::{
+    TimeDuration,
+    TimeValue,
+};
 
 #[derive(Debug)]
 pub struct ReceiveMetaData {

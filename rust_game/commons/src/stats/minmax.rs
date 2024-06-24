@@ -1,6 +1,17 @@
-use crate::stats::minmax::MinMax::{MinAndMax, NoValues, SingleValue};
-use crate::stats::minmax::MinMaxChange::{FirstMinAndMax, NewMax, NewMin};
-use std::fmt::{Display, Formatter};
+use crate::stats::minmax::MinMax::{
+    MinAndMax,
+    NoValues,
+    SingleValue,
+};
+use crate::stats::minmax::MinMaxChange::{
+    FirstMinAndMax,
+    NewMax,
+    NewMin,
+};
+use std::fmt::{
+    Display,
+    Formatter,
+};
 use std::mem;
 
 #[derive(Debug)]

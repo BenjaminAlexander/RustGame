@@ -1,15 +1,31 @@
 use commons::{
-    factory::{FactoryTrait, RealFactory},
-    threading::{channel, eventhandling::EventHandlerTrait},
+    factory::{
+        FactoryTrait,
+        RealFactory,
+    },
+    threading::{
+        channel,
+        eventhandling::EventHandlerTrait,
+    },
 };
 use commons::{
     logging::LoggingConfigBuilder,
-    threading::eventhandling::{ChannelEvent, EventHandleResult, EventSenderTrait},
+    threading::eventhandling::{
+        ChannelEvent,
+        EventHandleResult,
+        EventSenderTrait,
+    },
 };
-use log::{info, LevelFilter};
+use log::{
+    info,
+    LevelFilter,
+};
 use std::{
     clone,
-    sync::{Arc, Mutex},
+    sync::{
+        Arc,
+        Mutex,
+    },
 };
 
 struct TestEventHandler {}

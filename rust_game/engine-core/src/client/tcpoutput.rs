@@ -1,9 +1,19 @@
-use crate::interface::{GameFactoryTrait, TcpWriter};
+use crate::interface::{
+    GameFactoryTrait,
+    TcpWriter,
+};
 use commons::threading::channel::ReceiveMetaData;
 use commons::threading::eventhandling::ChannelEvent::{
-    ChannelDisconnected, ChannelEmpty, ReceivedEvent, Timeout,
+    ChannelDisconnected,
+    ChannelEmpty,
+    ReceivedEvent,
+    Timeout,
 };
-use commons::threading::eventhandling::{ChannelEvent, EventHandleResult, EventHandlerTrait};
+use commons::threading::eventhandling::{
+    ChannelEvent,
+    EventHandleResult,
+    EventHandlerTrait,
+};
 
 //TODO: Send response to time messages to calculate ping
 pub struct TcpOutput<GameFactory: GameFactoryTrait> {

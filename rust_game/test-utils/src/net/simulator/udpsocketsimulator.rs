@@ -2,7 +2,10 @@ use crate::net::HostSimulator;
 use commons::net::UdpSocketTrait;
 use std::io::Error;
 use std::net::SocketAddr;
-use std::sync::{Arc, Mutex};
+use std::sync::{
+    Arc,
+    Mutex,
+};
 
 #[derive(Clone)]
 pub struct UdpSocketSimulator {

@@ -1,6 +1,9 @@
 use crate::gamemanager::stepmessage::StepMessage;
 use crate::interface::GameTrait;
-use crate::messaging::{ServerInputMessage, StateMessage};
+use crate::messaging::{
+    ServerInputMessage,
+    StateMessage,
+};
 use commons::factory::FactoryTrait;
 
 pub trait ManagerObserverTrait: 'static + Send {

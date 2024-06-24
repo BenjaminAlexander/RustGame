@@ -1,6 +1,11 @@
-use crate::threading::eventhandling::EventOrStopThread::{Event, StopThread};
+use crate::threading::eventhandling::EventOrStopThread::{
+    Event,
+    StopThread,
+};
 use crate::threading::eventhandling::{
-    EventHandlerSendResult, EventOrStopThread, EventSenderTrait,
+    EventHandlerSendResult,
+    EventOrStopThread,
+    EventSenderTrait,
 };
 
 pub trait SenderTrait<T>: Clone + Send {

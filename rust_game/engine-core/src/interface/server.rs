@@ -1,16 +1,28 @@
 use super::GameFactoryTrait;
 use crate::{
-    interface::{RenderReceiver, RenderReceiverMessage},
-    server::{ServerCore, ServerCoreEvent},
+    interface::{
+        RenderReceiver,
+        RenderReceiverMessage,
+    },
+    server::{
+        ServerCore,
+        ServerCoreEvent,
+    },
 };
 use commons::{
     factory::FactoryTrait,
     threading::{
-        eventhandling::{EventHandlerSender, EventSenderTrait},
+        eventhandling::{
+            EventHandlerSender,
+            EventSenderTrait,
+        },
         AsyncJoin,
     },
 };
-use log::{error, warn};
+use log::{
+    error,
+    warn,
+};
 
 pub struct Server<GameFactory: GameFactoryTrait> {
     core_sender: EventHandlerSender<GameFactory::Factory, ServerCoreEvent<GameFactory>>,

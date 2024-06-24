@@ -1,20 +1,45 @@
 use crate::net::simulator::hostsimulator::HostSimulator;
-use crate::net::simulator::tcplistenereventhandler::{TcpListenerEvent, TcpListenerEventHandler};
+use crate::net::simulator::tcplistenereventhandler::{
+    TcpListenerEvent,
+    TcpListenerEventHandler,
+};
 use crate::net::simulator::udpreadeventhandler::UdpReadEventHandler;
-use crate::net::{ChannelTcpWriter, UdpSocketSimulator};
+use crate::net::{
+    ChannelTcpWriter,
+    UdpSocketSimulator,
+};
 use crate::singlethreaded::{
-    ReceiveOrDisconnected, SingleThreadedFactory, SingleThreadedReceiver, SingleThreadedSender,
+    ReceiveOrDisconnected,
+    SingleThreadedFactory,
+    SingleThreadedReceiver,
+    SingleThreadedSender,
 };
 use commons::factory::FactoryTrait;
-use commons::net::{TcpConnectionHandlerTrait, UdpReadHandlerTrait};
+use commons::net::{
+    TcpConnectionHandlerTrait,
+    UdpReadHandlerTrait,
+};
 use commons::threading::channel::ChannelThreadBuilder;
-use commons::threading::eventhandling::{EventHandlerSender, EventOrStopThread, EventSenderTrait};
+use commons::threading::eventhandling::{
+    EventHandlerSender,
+    EventOrStopThread,
+    EventSenderTrait,
+};
 use commons::threading::AsyncJoinCallBackTrait;
 use log::info;
 use std::collections::HashMap;
-use std::io::{Error, ErrorKind};
-use std::net::{IpAddr, SocketAddr};
-use std::sync::{Arc, Mutex};
+use std::io::{
+    Error,
+    ErrorKind,
+};
+use std::net::{
+    IpAddr,
+    SocketAddr,
+};
+use std::sync::{
+    Arc,
+    Mutex,
+};
 
 #[derive(Clone)]
 pub struct NetworkSimulator {

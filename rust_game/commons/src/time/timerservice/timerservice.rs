@@ -1,9 +1,16 @@
 use crate::factory::FactoryTrait;
 use crate::threading::channel::ReceiveMetaData;
 use crate::threading::eventhandling::ChannelEvent::{
-    ChannelDisconnected, ChannelEmpty, ReceivedEvent, Timeout,
+    ChannelDisconnected,
+    ChannelEmpty,
+    ReceivedEvent,
+    Timeout,
 };
-use crate::threading::eventhandling::{ChannelEvent, EventHandleResult, EventHandlerTrait};
+use crate::threading::eventhandling::{
+    ChannelEvent,
+    EventHandleResult,
+    EventHandlerTrait,
+};
 use crate::time::timerservice::schedule::Schedule;
 use crate::time::timerservice::timer::Timer;
 use crate::time::timerservice::timercallback::TimerCallBack;
@@ -11,11 +18,19 @@ use crate::time::timerservice::timercreationcallback::TimerCreationCallBack;
 use crate::time::timerservice::timerid::TimerId;
 use crate::time::timerservice::timerserviceevent::TimerServiceEvent;
 use crate::time::timerservice::timerserviceevent::TimerServiceEvent::{
-    CancelTimer, CreateTimer, RescheduleTimer,
+    CancelTimer,
+    CreateTimer,
+    RescheduleTimer,
 };
 use crate::time::TimeValue;
-use log::{trace, warn};
-use std::collections::{HashMap, VecDeque};
+use log::{
+    trace,
+    warn,
+};
+use std::collections::{
+    HashMap,
+    VecDeque,
+};
 use std::marker::PhantomData;
 
 pub struct TimeService<Factory: FactoryTrait, T: TimerCreationCallBack, U: TimerCallBack> {

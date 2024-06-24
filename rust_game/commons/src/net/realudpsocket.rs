@@ -1,6 +1,9 @@
 use crate::net::UdpSocketTrait;
 use std::io::Error;
-use std::net::{SocketAddr, UdpSocket};
+use std::net::{
+    SocketAddr,
+    UdpSocket,
+};
 
 pub struct RealUdpSocket {
     udp_socket: UdpSocket,

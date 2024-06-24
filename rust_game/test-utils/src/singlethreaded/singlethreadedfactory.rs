@@ -1,21 +1,42 @@
 use crate::net::{
-    ChannelTcpWriter, HostSimulator, NetworkSimulator, TcpReaderEventHandler, UdpSocketSimulator,
+    ChannelTcpWriter,
+    HostSimulator,
+    NetworkSimulator,
+    TcpReaderEventHandler,
+    UdpSocketSimulator,
 };
 use crate::singlethreaded::eventhandling::EventHandlerHolder;
 use crate::singlethreaded::{
-    ReceiveOrDisconnected, SingleThreadedReceiver, SingleThreadedSender, TimeQueue,
+    ReceiveOrDisconnected,
+    SingleThreadedReceiver,
+    SingleThreadedSender,
+    TimeQueue,
 };
 use crate::time::SimulatedTimeSource;
 use commons::factory::FactoryTrait;
-use commons::net::{TcpConnectionHandlerTrait, TcpReadHandlerTrait, UdpReadHandlerTrait};
-use commons::threading::channel::{Channel, ChannelThreadBuilder};
+use commons::net::{
+    TcpConnectionHandlerTrait,
+    TcpReadHandlerTrait,
+    UdpReadHandlerTrait,
+};
+use commons::threading::channel::{
+    Channel,
+    ChannelThreadBuilder,
+};
 use commons::threading::eventhandling::{
-    EventHandlerSender, EventHandlerTrait, EventOrStopThread, EventSenderTrait,
+    EventHandlerSender,
+    EventHandlerTrait,
+    EventOrStopThread,
+    EventSenderTrait,
 };
 use commons::threading::AsyncJoinCallBackTrait;
 use commons::time::TimeValue;
 use std::io::Error;
-use std::net::{IpAddr, Ipv4Addr, SocketAddr};
+use std::net::{
+    IpAddr,
+    Ipv4Addr,
+    SocketAddr,
+};
 
 #[derive(Clone)]
 pub struct SingleThreadedFactory {

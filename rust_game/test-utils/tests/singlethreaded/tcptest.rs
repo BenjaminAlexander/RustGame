@@ -1,16 +1,36 @@
 use commons::factory::FactoryTrait;
 use commons::logging::LoggingConfigBuilder;
-use commons::net::{TcpConnectionHandlerTrait, TcpReadHandlerTrait, TcpWriterTrait};
-use commons::threading::eventhandling::{EventOrStopThread, EventSenderTrait};
+use commons::net::{
+    TcpConnectionHandlerTrait,
+    TcpReadHandlerTrait,
+    TcpWriterTrait,
+};
+use commons::threading::eventhandling::{
+    EventOrStopThread,
+    EventSenderTrait,
+};
 use commons::threading::AsyncJoin;
-use log::{error, info, LevelFilter};
-use std::net::{IpAddr, Ipv4Addr, SocketAddr};
+use log::{
+    error,
+    info,
+    LevelFilter,
+};
+use std::net::{
+    IpAddr,
+    Ipv4Addr,
+    SocketAddr,
+};
 use std::ops::ControlFlow;
 use std::ops::ControlFlow::Continue;
-use std::sync::{Arc, Mutex};
+use std::sync::{
+    Arc,
+    Mutex,
+};
 use test_utils::net::ChannelTcpWriter;
 use test_utils::singlethreaded::{
-    SingleThreadedFactory, SingleThreadedReceiver, SingleThreadedSender,
+    SingleThreadedFactory,
+    SingleThreadedReceiver,
+    SingleThreadedSender,
 };
 
 const PORT: u16 = 1234;
