@@ -2,11 +2,10 @@ use commons::{
     factory::{
         FactoryTrait,
         RealFactory,
-    },
-    threading::{
+    }, net::TcpConnectionHandlerTrait, threading::{
         channel,
-        eventhandling::EventHandlerTrait,
-    },
+        eventhandling::EventHandlerTrait, SingleThreadExecutor,
+    }
 };
 use commons::{
     logging::LoggingConfigBuilder,
@@ -59,6 +58,18 @@ fn test_real_factory() {
         .add_console_appender()
         .init(LevelFilter::Info);
 
+    let executor = SingleThreadExecutor::new();
+    let executor_clone = executor.clone();
+
+    executor.execute_function(move ||{
+        executor_clone.stop();
+    });
+
+    executor.wait_for_join();
+
+    info!("Done");
+
+/*
     let real_factory = RealFactory::new();
 
     let event_handler = TestEventHandler {};
@@ -83,6 +94,7 @@ fn test_real_factory() {
     while *wait_for_join.lock().unwrap() {}
 
     info!("Done");
+*/
 
     /*
         let x = real_factory.new_thread_builder()
@@ -99,7 +111,7 @@ fn test_real_factory() {
     //assert_eq!(add(1, 2), 3);
 }
 
-/*
+/* 
 struct ConnectionHandler {
     factory: RealFactory,
     server_side: Arc<Mutex<Option<TestConnection>>>,
@@ -146,4 +158,5 @@ impl TcpConnectionHandlerTrait for ConnectionHandler {
 
         return Continue(());
     }
-}*/
+}
+*/

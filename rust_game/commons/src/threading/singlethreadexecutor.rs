@@ -1,4 +1,4 @@
-use commons::{
+use crate::{
     factory::{
         FactoryTrait,
         RealFactory,
@@ -17,11 +17,11 @@ use commons::{
         },
     },
 };
-use std::sync::{
+use std::{ops::Deref, sync::{
     Arc,
     Condvar,
     Mutex,
-};
+}};
 
 type Runnable = Box<dyn FnOnce() + Send>;
 
@@ -42,8 +42,8 @@ impl SingleThreadExecutor {
             .new_thread_builder()
             .name("SingleThreadExecutor")
             .spawn_event_handler(SingleThreadExecutorEventHandler(), move |_| {
-                let (mutex, condvar) = join_signal_clone.as_ref();
-                *mutex.lock().unwrap() = false;
+                let (wait_for_join_mutex, condvar) = join_signal_clone.as_ref();
+                *wait_for_join_mutex.lock().unwrap() = false;
                 condvar.notify_all();
             })
             .unwrap();
@@ -54,15 +54,27 @@ impl SingleThreadExecutor {
         };
     }
 
-    pub fn execute_runnable(self, runnable: Runnable) -> Result<(), Runnable> {
+    pub fn execute_runnable(&self, runnable: Runnable) -> Result<(), Runnable> {
         return self.sender.send_event(runnable);
     }
 
     pub fn execute_function<T: FnOnce() + Send + 'static>(
-        self,
+        &self,
         function: T,
     ) -> Result<(), Runnable> {
         return self.execute_runnable(Box::new(function));
+    }
+
+    pub fn stop(&self) {
+        let _ = self.sender.send_stop_thread();
+    }
+
+    pub fn wait_for_join(&self) {
+        let (wait_for_join_mutex, condvar) = &*self.join_signal;
+        let mut wait_for_join = wait_for_join_mutex.lock().unwrap();
+        while *wait_for_join {
+            wait_for_join = condvar.wait(wait_for_join).unwrap();
+        }
     }
 }
 
@@ -78,7 +90,7 @@ impl EventHandlerTrait for SingleThreadExecutorEventHandler {
                 runnable();
                 return EventHandleResult::WaitForNextEvent(self);
             }
-            ChannelEvent::Timeout => EventHandleResult::WaitForNextEvent(self),
+            ChannelEvent::Timeout => unreachable!(),
             ChannelEvent::ChannelEmpty => EventHandleResult::WaitForNextEvent(self),
             ChannelEvent::ChannelDisconnected => EventHandleResult::StopThread(()),
         }

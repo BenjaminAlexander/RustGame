@@ -11,7 +11,6 @@ use crate::interface::{
 };
 use commons::factory::FactoryTrait;
 use commons::threading::eventhandling::{
-    EventOrStopThread,
     EventSenderTrait,
 };
 use commons::threading::AsyncJoin;
