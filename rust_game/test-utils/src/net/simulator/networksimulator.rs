@@ -26,7 +26,10 @@ use commons::threading::eventhandling::{
     EventSenderTrait,
 };
 use commons::threading::AsyncJoinCallBackTrait;
-use log::{info, warn};
+use log::{
+    info,
+    warn,
+};
 use std::collections::HashMap;
 use std::io::{
     Error,
@@ -97,7 +100,8 @@ impl NetworkSimulator {
 
         let (thread_builder, channel) = thread_builder.take();
 
-        let tcp_listener_event_handler = TcpListenerEventHandler::new(socket_addr, connection_handler);
+        let tcp_listener_event_handler =
+            TcpListenerEventHandler::new(socket_addr, connection_handler);
 
         let sender = thread_builder
             .spawn_event_handler(tcp_listener_event_handler, join_call_back)
@@ -122,7 +126,7 @@ impl NetworkSimulator {
         });
 
         guard.tcp_listeners.insert(socket_addr, sender.clone());
-        
+
         let send_result = sender.send_event(TcpListenerEvent::ListenerReady);
 
         if send_result.is_err() {

@@ -11,10 +11,11 @@ mod udpsockettrait;
 
 pub use self::realtcpstream::RealTcpStream;
 pub use self::realudpsocket::RealUdpSocket;
-pub use self::tcpconnectionhandlertrait::TcpConnectionHandlerTrait;
 pub use self::tcpconnectionhandlertrait::TcpConnectionHandler;
+pub use self::tcpconnectionhandlertrait::TcpConnectionHandlerTrait;
 pub(crate) use self::tcplistenereventhandler::TcpListenerEventHandler;
 pub(crate) use self::tcpreadereventhandler::TcpReaderEventHandler;
+pub use self::tcpreadhandlertrait::TcpReadHandler;
 pub use self::tcpreadhandlertrait::TcpReadHandlerTrait;
 pub use self::tcpwritertrait::TcpWriterTrait;
 pub(crate) use self::udpreadereventhandler::UdpReaderEventHandler;

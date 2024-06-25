@@ -17,13 +17,10 @@ use crate::{
         },
     },
 };
-use std::{
-    ops::Deref,
-    sync::{
-        Arc,
-        Condvar,
-        Mutex,
-    },
+use std::sync::{
+    Arc,
+    Condvar,
+    Mutex,
 };
 
 type Runnable = Box<dyn FnOnce() + Send>;

@@ -34,7 +34,7 @@ impl<TcpConnectionHandler: TcpConnectionHandlerTrait<SingleThreadedFactory>>
     pub fn new(socket_addr: SocketAddr, connection_handler: TcpConnectionHandler) -> Self {
         return Self {
             socket_addr,
-            connection_handler
+            connection_handler,
         };
     }
 
@@ -56,7 +56,10 @@ impl<TcpConnectionHandler: TcpConnectionHandlerTrait<SingleThreadedFactory>> Eve
     type Event = TcpListenerEvent;
     type ThreadReturn = TcpConnectionHandler;
 
-    fn on_channel_event(mut self, channel_event: ChannelEvent<Self::Event>) -> EventHandleResult<Self> {
+    fn on_channel_event(
+        mut self,
+        channel_event: ChannelEvent<Self::Event>,
+    ) -> EventHandleResult<Self> {
         return match channel_event {
             ChannelEvent::ReceivedEvent(_, TcpListenerEvent::Connection(writer, reader)) => {
                 self.on_connection(writer, reader)
