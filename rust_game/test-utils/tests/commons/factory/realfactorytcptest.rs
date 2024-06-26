@@ -41,6 +41,7 @@ struct TestStruct {
 
 #[test]
 fn test_real_factory_tcp() {
+    //TODO: write a set up logging method for tests
     LoggingConfigBuilder::new()
         .add_console_appender()
         .init(LevelFilter::Info);
