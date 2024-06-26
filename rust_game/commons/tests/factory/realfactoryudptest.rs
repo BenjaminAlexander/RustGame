@@ -1,9 +1,5 @@
 use std::{
-    net::{
-        Ipv4Addr,
-        SocketAddr,
-        SocketAddrV4,
-    },
+    net::SocketAddr,
     ops::ControlFlow,
     sync::{
         Arc,
@@ -32,6 +28,7 @@ const A_NUMBER: u8 = 42;
 
 struct TestStruct {
     received_number: Option<u8>,
+    peer_addr: Option<SocketAddr>,
 }
 
 #[test]
@@ -42,16 +39,15 @@ fn test_real_factory_tcp() {
 
     let test_struct = TestStruct {
         received_number: None,
+        peer_addr: None,
     };
 
     let test_struct = Arc::new(Mutex::new(test_struct));
 
     let real_factory = RealFactory::new();
 
-    let socket_addr_v4 = SocketAddrV4::new(Ipv4Addr::new(127, 0, 0, 1), 0);
-    let socket_addr = SocketAddr::from(socket_addr_v4);
+    let udp_socket_1 = real_factory.bind_udp_ephemeral_port().unwrap();
 
-    let udp_socket_1 = real_factory.bind_udp_socket(socket_addr).unwrap();
     let local_addr1 = udp_socket_1.local_addr().unwrap();
 
     let executor = SingleThreadExecutor::new();
@@ -61,20 +57,30 @@ fn test_real_factory_tcp() {
     let test_struct_clone = test_struct.clone();
     let executor_clone = executor.clone();
     let udp_read_handler = move |peer_addr: SocketAddr, buf: &[u8]| {
-        test_struct_clone.lock().unwrap().received_number = Some(buf[0]);
+        {
+            let mut guard = test_struct_clone.lock().unwrap();
+            guard.received_number = Some(buf[0]);
+            guard.peer_addr = Some(peer_addr);
+        }
 
         executor_clone.stop();
 
         return ControlFlow::Continue(());
     };
 
+    let udp_socket_clone = udp_socket_1.try_clone().unwrap();
+
     let _sender = real_factory
         .new_thread_builder()
         .name("UdpReader")
-        .spawn_udp_reader(udp_socket_1, udp_read_handler, AsyncJoin::log_async_join)
+        .spawn_udp_reader(
+            udp_socket_clone,
+            udp_read_handler,
+            AsyncJoin::log_async_join,
+        )
         .unwrap();
 
-    let mut udp_socket_2 = real_factory.bind_udp_socket(socket_addr).unwrap();
+    let mut udp_socket_2 = real_factory.bind_udp_ephemeral_port().unwrap();
 
     udp_socket_2.send_to(&[A_NUMBER], &local_addr1).unwrap();
 
@@ -83,4 +89,10 @@ fn test_real_factory_tcp() {
     let test_struct_guard = test_struct.lock().unwrap();
 
     assert_eq!(A_NUMBER, test_struct_guard.received_number.unwrap());
+    assert_eq!(
+        udp_socket_2.local_addr().unwrap(),
+        test_struct_guard.peer_addr.unwrap()
+    );
+
+    assert_eq! {true, udp_socket_1.peer_addr().is_err()}
 }

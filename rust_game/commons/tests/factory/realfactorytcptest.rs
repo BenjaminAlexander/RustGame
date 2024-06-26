@@ -1,4 +1,5 @@
 use commons::logging::LoggingConfigBuilder;
+use commons::net::LOCAL_EPHEMERAL_SOCKET_ADDR_V4;
 use commons::threading::channel::RealSender;
 use commons::threading::eventhandling::EventOrStopThread;
 use commons::{
@@ -21,11 +22,7 @@ use log::{
     LevelFilter,
 };
 use std::{
-    net::{
-        Ipv4Addr,
-        SocketAddr,
-        SocketAddrV4,
-    },
+    net::SocketAddr,
     ops::ControlFlow,
     sync::{
         Arc,
@@ -60,9 +57,6 @@ fn test_real_factory_tcp() {
     let executor = SingleThreadExecutor::new();
 
     let real_factory = RealFactory::new();
-
-    let socket_addr_v4 = SocketAddrV4::new(Ipv4Addr::new(127, 0, 0, 1), 0);
-    let socket_addr = SocketAddr::from(socket_addr_v4);
 
     let mut tcp_connection_handler = TcpConnectionHandler::<RealFactory>::new();
 
@@ -122,7 +116,7 @@ fn test_real_factory_tcp() {
         .new_thread_builder()
         .name("TcpListener")
         .spawn_tcp_listener(
-            socket_addr,
+            SocketAddr::from(LOCAL_EPHEMERAL_SOCKET_ADDR_V4),
             tcp_connection_handler,
             AsyncJoin::log_async_join,
         )

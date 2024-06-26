@@ -1,3 +1,4 @@
+mod constants;
 mod realtcpstream;
 mod realudpsocket;
 mod tcpconnectionhandlertrait;
@@ -9,6 +10,8 @@ mod udpreadereventhandler;
 mod udpreadhandlertrait;
 mod udpsockettrait;
 
+pub use self::constants::LOCAL_EPHEMERAL_SOCKET_ADDR_V4;
+pub use self::constants::MAX_UDP_DATAGRAM_SIZE;
 pub use self::realtcpstream::RealTcpStream;
 pub use self::realudpsocket::RealUdpSocket;
 pub use self::tcpconnectionhandlertrait::TcpConnectionHandler;
@@ -19,6 +22,5 @@ pub use self::tcpreadhandlertrait::TcpReadHandler;
 pub use self::tcpreadhandlertrait::TcpReadHandlerTrait;
 pub use self::tcpwritertrait::TcpWriterTrait;
 pub(crate) use self::udpreadereventhandler::UdpReaderEventHandler;
-pub use self::udpreadereventhandler::MAX_UDP_DATAGRAM_SIZE;
 pub use self::udpreadhandlertrait::UdpReadHandlerTrait;
 pub use self::udpsockettrait::UdpSocketTrait;

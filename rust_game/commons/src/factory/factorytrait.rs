@@ -4,6 +4,7 @@ use crate::net::{
     TcpWriterTrait,
     UdpReadHandlerTrait,
     UdpSocketTrait,
+    LOCAL_EPHEMERAL_SOCKET_ADDR_V4,
 };
 use crate::threading::channel::{
     Channel,
@@ -70,6 +71,10 @@ pub trait FactoryTrait: Clone + Send + 'static {
     ) -> Result<EventHandlerSender<Self, ()>, Error>;
 
     fn bind_udp_socket(&self, socket_addr: SocketAddr) -> Result<Self::UdpSocket, Error>;
+
+    fn bind_udp_ephemeral_port(&self) -> Result<Self::UdpSocket, Error> {
+        return self.bind_udp_socket(SocketAddr::from(LOCAL_EPHEMERAL_SOCKET_ADDR_V4));
+    }
 
     fn spawn_udp_reader<T: UdpReadHandlerTrait>(
         &self,
