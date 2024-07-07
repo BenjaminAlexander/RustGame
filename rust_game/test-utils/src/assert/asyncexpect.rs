@@ -23,13 +23,25 @@ enum AsyncExpectTraitState {
 
 #[derive(Clone)]
 pub struct AsyncExpects {
-    unmet_expectations: Arc<(Mutex<Vec<AsyncExpectObject>>, Condvar)>,
+    internal: Arc<AsyncExpectsInternal>,
+}
+
+#[derive(Default)]
+struct AsyncExpectsInternal {
+    signal: Condvar,
+    collection: Mutex<AsyncExpectsCollection>
+}
+
+#[derive(Default)]
+struct AsyncExpectsCollection {
+    unmet_expectations: Vec<AsyncExpectObject>,
+    failed_expectations: Vec<AsyncExpectObject>
 }
 
 impl AsyncExpects {
     pub fn new() -> Self {
         return AsyncExpects {
-            unmet_expectations: Arc::new((Mutex::new(Vec::new()), Condvar::new())),
+            internal: Arc::default()
         };
     }
 
@@ -38,10 +50,10 @@ impl AsyncExpects {
         description: &str,
         expected_value: T,
     ) -> AsyncExpect<T> {
-        let (unmet_expectations, _signal) = self.unmet_expectations.deref();
+        let internal = self.internal.deref();
 
         //let unmet_expectations = UNMET_EXPECTATIONS;
-        let mut guard = unmet_expectations.lock().unwrap();
+        let mut guard = internal.collection.lock().unwrap();
 
         let async_expect_internal = AsyncExpectInternal {
             description: description.to_string(),
@@ -51,7 +63,7 @@ impl AsyncExpects {
 
         let async_expect_object = Arc::new(Mutex::new(async_expect_internal));
 
-        guard.push(async_expect_object.clone());
+        guard.unmet_expectations.push(async_expect_object.clone());
 
         return AsyncExpect {
             async_expects: self.clone(),
@@ -60,12 +72,12 @@ impl AsyncExpects {
     }
 
     pub fn wait_for_all(&self) {
-        let (unmet_expectations, signal) = self.unmet_expectations.deref();
+        let internal = self.internal.deref();
 
-        let mut unmet_expectations_guard = unmet_expectations.lock().unwrap();
+        let mut collection_guard = internal.collection.lock().unwrap();
 
-        while unmet_expectations_guard.len() > 0 {
-            unmet_expectations_guard = signal.wait(unmet_expectations_guard).unwrap();
+        while collection_guard.unmet_expectations.len() > 0 {
+            collection_guard = internal.signal.wait(collection_guard).unwrap();
 
         }
     }
@@ -107,10 +119,10 @@ pub struct AsyncExpect<T: Debug + Eq + Send + 'static> {
 
 impl<T: Debug + Eq + Send + 'static> AsyncExpect<T> {
     pub fn set_actual(&self, actual_value: T) {
-        let (unmet_expectations, signal) = self.async_expects.unmet_expectations.deref();
+        let internal = self.async_expects.internal.deref();
 
         {
-            let mut unmet_expectations_guard = unmet_expectations.lock().unwrap();
+            let mut collection_guard = internal.collection.lock().unwrap();
 
             {
                 let mut self_guard = self.async_expect_object.lock().unwrap();
@@ -168,32 +180,32 @@ impl<T: Debug + Eq + Send + 'static> AsyncExpect<T> {
             }
 
             let mut i = 0;
-            while i < unmet_expectations_guard.len() {
-                let state = unmet_expectations_guard[i]
+            while i < collection_guard.unmet_expectations.len() {
+                let state = collection_guard.unmet_expectations[i]
                     .lock()
                     .unwrap()
                     .get_state();
 
                 if state == AsyncExpectTraitState::ActualMatchesExpected {
-                    unmet_expectations_guard.remove(i);
+                    collection_guard.unmet_expectations.remove(i);
                 } else {
                     i += 1;
                 }
             }
         }
 
-        signal.notify_all();
+        internal.signal.notify_all();
 
         //TODO: panic after notify all
     }
 
     pub fn wait_for(&self) {
-        let (unmet_expectations, signal) = self.async_expects.unmet_expectations.deref();
+        let internal = self.async_expects.internal.deref();
 
-        let mut unmet_expectations_guard = unmet_expectations.lock().unwrap();
+        let mut collection_guard = internal.collection.lock().unwrap();
 
         while !self.is_met() {
-            unmet_expectations_guard = signal.wait(unmet_expectations_guard).unwrap();
+            collection_guard = internal.signal.wait(collection_guard).unwrap();
         }
     }
 
