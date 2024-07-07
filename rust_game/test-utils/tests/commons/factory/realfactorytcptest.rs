@@ -21,6 +21,7 @@ use log::{
     info,
     LevelFilter,
 };
+use test_utils::assert::AsyncExpects;
 use std::{
     net::SocketAddr,
     ops::ControlFlow,
@@ -34,7 +35,6 @@ const A_NUMBER: i32 = 42;
 
 struct TestStruct {
     tcp_reader_sender: Option<RealSender<RealFactory, EventOrStopThread<()>>>,
-    received_number: Option<i32>,
     connector_local_socket_addr: Option<SocketAddr>,
     listener_remote_socket_addr: Option<SocketAddr>,
 }
@@ -48,12 +48,14 @@ fn test_real_factory_tcp() {
 
     let test_struct = TestStruct {
         tcp_reader_sender: None,
-        received_number: None,
         connector_local_socket_addr: None,
         listener_remote_socket_addr: None,
     };
 
     let test_struct = Arc::new(Mutex::new(test_struct));
+
+    let async_expects = AsyncExpects::new();
+    let expected_number = async_expects.new_async_expect("An expected number sent over TCP", A_NUMBER);
 
     let executor = SingleThreadExecutor::new();
 
@@ -91,11 +93,14 @@ fn test_real_factory_tcp() {
         test_struct.lock().unwrap().listener_remote_socket_addr = Some(listener_remote_socket_addr);
 
         let executor = executor_clone.clone();
-        let test_struct_clone = test_struct.clone();
+        let expected_number_clone = expected_number.clone();
         let tcp_read_handler = TcpReadHandler::new(move |number: i32| {
             info!("Read a number {:?}", number);
-            test_struct_clone.lock().unwrap().received_number = Some(number);
 
+            //TODO: test with bad value
+            expected_number_clone.set_actual(number);
+
+            //TODO: remove
             executor.stop();
 
             return ControlFlow::Continue(());
@@ -125,9 +130,9 @@ fn test_real_factory_tcp() {
 
     executor.wait_for_join();
 
-    let test_struct_guard = test_struct_clone.lock().unwrap();
+    async_expects.wait_for_all();
 
-    assert_eq!(A_NUMBER, test_struct_guard.received_number.unwrap());
+    let test_struct_guard = test_struct_clone.lock().unwrap();
 
     assert_eq!(
         test_struct_guard.connector_local_socket_addr.unwrap(),
