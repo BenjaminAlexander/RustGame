@@ -65,10 +65,7 @@ impl SingleThreadExecutor {
         return self.execute_runnable(Box::new(function));
     }
 
-    pub fn execute_function_or_panic<T: FnOnce() + Send + 'static>(
-        &self,
-        function: T,
-    ) {
+    pub fn execute_function_or_panic<T: FnOnce() + Send + 'static>(&self, function: T) {
         if self.execute_function(function).is_err() {
             panic!("Failed to send function to the executor");
         }
