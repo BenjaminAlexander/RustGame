@@ -1,5 +1,6 @@
 use std::fmt::Debug;
 use std::ops::Deref;
+use std::ptr::addr_eq;
 use std::sync::{
     Arc,
     Condvar,
@@ -13,12 +14,19 @@ use log::error;
 
 type AsyncExpectObject = Arc<Mutex<dyn AsyncExpectTrait>>;
 
-#[derive(PartialEq, Eq)]
-enum AsyncExpectTraitState {
+#[derive(PartialEq, Eq, Clone, Debug)]
+enum AsyncExpectState {
     WaitingForActualValue,
     ActualMatchesExpected,
-    ActualDoesNotMatchExpected,
-    FailedSinceAlreadyMet    
+    Failed(String),
+}
+
+impl AsyncExpectState {
+    fn panic_if_failed(&self) {
+        if let AsyncExpectState::Failed(message) = self {
+            panic!("{message}");
+        }
+    }
 }
 
 #[derive(Clone)]
@@ -29,19 +37,19 @@ pub struct AsyncExpects {
 #[derive(Default)]
 struct AsyncExpectsInternal {
     signal: Condvar,
-    collection: Mutex<AsyncExpectsCollection>
+    collection: Mutex<AsyncExpectsCollection>,
 }
 
 #[derive(Default)]
 struct AsyncExpectsCollection {
     unmet_expectations: Vec<AsyncExpectObject>,
-    failed_expectations: Vec<AsyncExpectObject>
+    failed_expectations: Vec<AsyncExpectObject>,
 }
 
 impl AsyncExpects {
     pub fn new() -> Self {
         return AsyncExpects {
-            internal: Arc::default()
+            internal: Arc::default(),
         };
     }
 
@@ -52,7 +60,6 @@ impl AsyncExpects {
     ) -> AsyncExpect<T> {
         let internal = self.internal.deref();
 
-        //let unmet_expectations = UNMET_EXPECTATIONS;
         let mut guard = internal.collection.lock().unwrap();
 
         let async_expect_internal = AsyncExpectInternal {
@@ -76,38 +83,38 @@ impl AsyncExpects {
 
         let mut collection_guard = internal.collection.lock().unwrap();
 
-        while collection_guard.unmet_expectations.len() > 0 {
+        while collection_guard.unmet_expectations.len() > 0
+            && collection_guard.failed_expectations.len() == 0
+        {
             collection_guard = internal.signal.wait(collection_guard).unwrap();
+        }
 
+        if collection_guard.failed_expectations.len() != 0 {
+            collection_guard
+                .failed_expectations
+                .get(0)
+                .unwrap()
+                .lock()
+                .unwrap()
+                .get_state()
+                .panic_if_failed();
         }
     }
 }
 
 trait AsyncExpectTrait: Send {
-    fn get_state(&self) -> AsyncExpectTraitState;
+    fn get_state(&self) -> &AsyncExpectState;
 }
 
-#[derive(PartialEq, Eq)]
-enum AsyncExpectState<T: Debug + Eq + 'static> {
-    WaitingForActualValue,
-    ActualMatchesExpected,
-    ActualDoesNotMatchExpected(T),
-    FailedSinceAlreadyMet    
-}
-struct AsyncExpectInternal<T: Debug + Eq  + 'static> {
+struct AsyncExpectInternal<T: Debug + Eq + 'static> {
     description: String,
     expected_value: T,
-    state: AsyncExpectState<T>,
+    state: AsyncExpectState,
 }
 
 impl<T: Debug + Eq + Send + 'static> AsyncExpectTrait for AsyncExpectInternal<T> {
-    fn get_state(&self) -> AsyncExpectTraitState {
-        return match self.state {
-            AsyncExpectState::WaitingForActualValue => AsyncExpectTraitState::WaitingForActualValue,
-            AsyncExpectState::ActualMatchesExpected => AsyncExpectTraitState::ActualMatchesExpected,
-            AsyncExpectState::ActualDoesNotMatchExpected(_) => AsyncExpectTraitState::ActualDoesNotMatchExpected,
-            AsyncExpectState::FailedSinceAlreadyMet => AsyncExpectTraitState::FailedSinceAlreadyMet,
-        };
+    fn get_state(&self) -> &AsyncExpectState {
+        return &self.state;
     }
 }
 
@@ -119,6 +126,8 @@ pub struct AsyncExpect<T: Debug + Eq + Send + 'static> {
 
 impl<T: Debug + Eq + Send + 'static> AsyncExpect<T> {
     pub fn set_actual(&self, actual_value: T) {
+        let state_clone;
+
         let internal = self.async_expects.internal.deref();
 
         {
@@ -132,71 +141,57 @@ impl<T: Debug + Eq + Send + 'static> AsyncExpect<T> {
                         if self_guard.expected_value == actual_value {
                             self_guard.state = AsyncExpectState::ActualMatchesExpected;
                         } else {
-                            self_guard.state = AsyncExpectState::ActualDoesNotMatchExpected(actual_value);
+                            let message = format!(
+                                "Expected Value does not match actual value: {:?}\nExpected: {:?}\nActual: {:?}",
+                                self_guard.description, self_guard.expected_value, actual_value
+                            );
 
-                            //TODO: don't panic
-                            panic!();
+                            error!("{message}");
+
+                            self_guard.state = AsyncExpectState::Failed(message);
                         }
-                    },
+                    }
                     AsyncExpectState::ActualMatchesExpected => {
-                        self_guard.state = AsyncExpectState::FailedSinceAlreadyMet;
-                        //TODO: don't panic
-                        panic!();
-                    },
-                    AsyncExpectState::ActualDoesNotMatchExpected(_) => {
+                        let message = format!(
+                            "Expectation has already been met: {:?}",
+                            self_guard.description
+                        );
+
+                        error!("{message}");
+
+                        self_guard.state = AsyncExpectState::Failed(message);
+                    }
+                    AsyncExpectState::Failed(_) => {
                         return;
-                    },
-                    AsyncExpectState::FailedSinceAlreadyMet => {
-                        return;
-                    },
+                    }
                 }
 
-                /*
-                if self_guard.is_expectation_met {
-
-                    panic!(
-                        "Expectation has already been met: {:?}",
-                        self_guard.description
-                    );
-
-                }
-
-                format!()
-
-                if self_guard.expected_value != actual_value {
-
-                    error!(
-                        "Expectation failed: {:?}\nExpected: {:?}\nActual: {:?}",
-                        self_guard.description, self_guard.expected_value, actual_value
-                    );
-
-                    panic!(
-                        "Expectation failed: {:?}\nExpected: {:?}\nActual: {:?}",
-                        self_guard.description, self_guard.expected_value, actual_value
-                    );
-                }
-                */
-                
+                state_clone = self_guard.get_state().clone();
             }
 
             let mut i = 0;
             while i < collection_guard.unmet_expectations.len() {
-                let state = collection_guard.unmet_expectations[i]
-                    .lock()
-                    .unwrap()
-                    .get_state();
-
-                if state == AsyncExpectTraitState::ActualMatchesExpected {
+                if addr_eq(
+                    Arc::as_ptr(&collection_guard.unmet_expectations[i]),
+                    Arc::as_ptr(&self.async_expect_object),
+                ) {
                     collection_guard.unmet_expectations.remove(i);
+                    break;
                 } else {
-                    i += 1;
+                    i += 1
                 }
+            }
+
+            if let AsyncExpectState::Failed(_) = state_clone {
+                collection_guard
+                    .failed_expectations
+                    .push(self.async_expect_object.clone());
             }
         }
 
         internal.signal.notify_all();
 
-        //TODO: panic after notify all
+        state_clone.panic_if_failed();
     }
 
     pub fn wait_for(&self) {
@@ -204,12 +199,13 @@ impl<T: Debug + Eq + Send + 'static> AsyncExpect<T> {
 
         let mut collection_guard = internal.collection.lock().unwrap();
 
-        while !self.is_met() {
-            collection_guard = internal.signal.wait(collection_guard).unwrap();
-        }
-    }
+        let mut state = self.async_expect_object.lock().unwrap().get_state().clone();
 
-    fn is_met(&self) -> bool {
-        return self.async_expect_object.lock().unwrap().state == AsyncExpectState::ActualMatchesExpected;
+        while state == AsyncExpectState::WaitingForActualValue {
+            collection_guard = internal.signal.wait(collection_guard).unwrap();
+            state = self.async_expect_object.lock().unwrap().get_state().clone();
+        }
+
+        state.panic_if_failed();
     }
 }

@@ -3,6 +3,7 @@ use commons::{
     threading::SingleThreadExecutor,
 };
 use log::LevelFilter;
+use std::panic::catch_unwind;
 use test_utils::assert::AsyncExpects;
 
 #[test]
@@ -60,7 +61,7 @@ fn test_failed_async_expect() {
 
 #[test]
 #[should_panic]
-fn test_duplicate_async_expect() {
+fn test_duplicate() {
     LoggingConfigBuilder::new()
         .add_console_appender()
         .init(LevelFilter::Info);
@@ -72,4 +73,74 @@ fn test_duplicate_async_expect() {
     async_expect.set_actual(true);
 
     async_expect.set_actual(true);
+}
+
+#[test]
+#[should_panic]
+fn test_duplicate_async() {
+    LoggingConfigBuilder::new()
+        .add_console_appender()
+        .init(LevelFilter::Info);
+
+    let async_expects = AsyncExpects::new();
+
+    let async_expect_to_set_multiple_times = async_expects.new_async_expect("Expect true", true);
+
+    async_expect_to_set_multiple_times.set_actual(true);
+
+    catch_unwind(|| {
+        async_expect_to_set_multiple_times.set_actual(true);
+    })
+    .unwrap_err();
+
+    catch_unwind(|| {
+        async_expect_to_set_multiple_times.set_actual(true);
+    })
+    .unwrap_err();
+
+    async_expects.wait_for_all();
+}
+
+#[test]
+#[should_panic]
+fn test_wait_for_async_panic() {
+    LoggingConfigBuilder::new()
+        .add_console_appender()
+        .init(LevelFilter::Info);
+
+    let executor = SingleThreadExecutor::new();
+
+    let async_expects = AsyncExpects::new();
+
+    let expect = async_expects.new_async_expect("Expect true", true);
+
+    let expect_clone = expect.clone();
+
+    executor.execute_function_or_panic(move || {
+        expect_clone.set_actual(false);
+    });
+
+    expect.wait_for();
+}
+
+#[test]
+#[should_panic]
+fn test_wait_for_all_async_panic() {
+    LoggingConfigBuilder::new()
+        .add_console_appender()
+        .init(LevelFilter::Info);
+
+    let executor = SingleThreadExecutor::new();
+
+    let async_expects = AsyncExpects::new();
+
+    let expect = async_expects.new_async_expect("Expect true", true);
+
+    let expect_clone = expect.clone();
+
+    executor.execute_function_or_panic(move || {
+        expect_clone.set_actual(false);
+    });
+
+    async_expects.wait_for_all();
 }

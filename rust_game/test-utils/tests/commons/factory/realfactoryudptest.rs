@@ -1,12 +1,3 @@
-use std::{
-    net::SocketAddr,
-    ops::ControlFlow,
-    sync::{
-        Arc,
-        Mutex,
-    },
-};
-
 use commons::{
     factory::{
         FactoryTrait,
@@ -14,22 +5,19 @@ use commons::{
     },
     logging::LoggingConfigBuilder,
     net::UdpSocketTrait,
-    threading::{
-        AsyncJoin,
-        SingleThreadExecutor,
-    },
+    threading::AsyncJoin,
 };
 use log::{
     info,
     LevelFilter,
 };
+use std::{
+    net::SocketAddr,
+    ops::ControlFlow,
+};
+use test_utils::assert::AsyncExpects;
 
 const A_NUMBER: u8 = 42;
-
-struct TestStruct {
-    received_number: Option<u8>,
-    peer_addr: Option<SocketAddr>,
-}
 
 #[test]
 fn test_real_factory_tcp() {
@@ -37,33 +25,29 @@ fn test_real_factory_tcp() {
         .add_console_appender()
         .init(LevelFilter::Info);
 
-    let test_struct = TestStruct {
-        received_number: None,
-        peer_addr: None,
-    };
+    let async_expects = AsyncExpects::new();
 
-    let test_struct = Arc::new(Mutex::new(test_struct));
+    let expected_number =
+        async_expects.new_async_expect("An expected number sent over UDP", A_NUMBER);
 
     let real_factory = RealFactory::new();
+
+    let mut send_udp_socket = real_factory.bind_udp_ephemeral_port().unwrap();
+
+    let expected_socket = async_expects.new_async_expect(
+        "The expected source socket",
+        send_udp_socket.local_addr().unwrap(),
+    );
 
     let udp_socket_1 = real_factory.bind_udp_ephemeral_port().unwrap();
 
     let local_addr1 = udp_socket_1.local_addr().unwrap();
 
-    let executor = SingleThreadExecutor::new();
-
     info!("Bound to local addr: {:?}", local_addr1);
 
-    let test_struct_clone = test_struct.clone();
-    let executor_clone = executor.clone();
     let udp_read_handler = move |peer_addr: SocketAddr, buf: &[u8]| {
-        {
-            let mut guard = test_struct_clone.lock().unwrap();
-            guard.received_number = Some(buf[0]);
-            guard.peer_addr = Some(peer_addr);
-        }
-
-        executor_clone.stop();
+        expected_number.set_actual(buf[0]);
+        expected_socket.set_actual(peer_addr);
 
         return ControlFlow::Continue(());
     };
@@ -80,19 +64,9 @@ fn test_real_factory_tcp() {
         )
         .unwrap();
 
-    let mut udp_socket_2 = real_factory.bind_udp_ephemeral_port().unwrap();
+    send_udp_socket.send_to(&[A_NUMBER], &local_addr1).unwrap();
 
-    udp_socket_2.send_to(&[A_NUMBER], &local_addr1).unwrap();
-
-    executor.wait_for_join();
-
-    let test_struct_guard = test_struct.lock().unwrap();
-
-    assert_eq!(A_NUMBER, test_struct_guard.received_number.unwrap());
-    assert_eq!(
-        udp_socket_2.local_addr().unwrap(),
-        test_struct_guard.peer_addr.unwrap()
-    );
+    async_expects.wait_for_all();
 
     assert_eq! {true, udp_socket_1.peer_addr().is_err()}
 }
