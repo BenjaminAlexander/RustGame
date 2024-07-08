@@ -90,6 +90,8 @@ impl FactoryTrait for RealFactory {
     ) -> Result<EventHandlerSender<Self, ()>, Error> {
         let tcp_listener = TcpListener::bind(socket_addr)?;
 
+        tcp_listener.set_nonblocking(true)?;
+
         tcp_connection_handler.on_bind(tcp_listener.local_addr()?);
 
         let event_handler = TcpListenerEventHandler::new(tcp_listener, tcp_connection_handler);

@@ -1,7 +1,10 @@
 use commons::logging::LoggingConfigBuilder;
 use commons::net::LOCAL_EPHEMERAL_SOCKET_ADDR_V4;
 use commons::threading::channel::RealSender;
-use commons::threading::eventhandling::EventOrStopThread;
+use commons::threading::eventhandling::{
+    EventOrStopThread,
+    EventSenderTrait,
+};
 use commons::{
     factory::{
         FactoryTrait,
@@ -84,6 +87,14 @@ fn test_real_factory_tcp() {
         tcp_stream.flush().unwrap();
     });
 
+    let tcp_listener_builder = real_factory
+        .new_thread_builder()
+        .name("TcpListener")
+        .build_channel_for_tcp_listener::<TcpConnectionHandler<RealFactory>>(
+    );
+
+    let tcp_listener_sender = tcp_listener_builder.clone_sender();
+
     let test_struct_clone = test_struct.clone();
     tcp_connection_handler.set_on_connection(move |tcp_stream, _| {
         let listener_remote_socket_addr = *tcp_stream.get_peer_addr();
@@ -100,11 +111,15 @@ fn test_real_factory_tcp() {
             .unwrap()
             .set_actual(listener_remote_socket_addr);
 
+        let tcp_listener_sender_clone = tcp_listener_sender.clone();
         let expected_number_clone = expected_number.clone();
         let tcp_read_handler = TcpReadHandler::new(move |number: i32| {
             info!("Read a number {:?}", number);
 
             expected_number_clone.set_actual(number);
+
+            //Stop the listener
+            tcp_listener_sender_clone.send_stop_thread().unwrap();
 
             return ControlFlow::Continue(());
         });
@@ -121,13 +136,17 @@ fn test_real_factory_tcp() {
         return ControlFlow::Continue(());
     });
 
-    let _sender = real_factory
-        .new_thread_builder()
-        .name("TcpListener")
+    let expect_join = async_expects.new_async_expect("", ());
+
+    let on_join = move |_| {
+        expect_join.set_actual(());
+    };
+
+    tcp_listener_builder
         .spawn_tcp_listener(
             SocketAddr::from(LOCAL_EPHEMERAL_SOCKET_ADDR_V4),
             tcp_connection_handler,
-            AsyncJoin::log_async_join,
+            on_join,
         )
         .unwrap();
 

@@ -62,6 +62,12 @@ impl<Factory: FactoryTrait> ThreadBuilder<Factory> {
         return self.build_channel_thread();
     }
 
+    pub fn build_channel_for_tcp_listener<T: TcpConnectionHandlerTrait<Factory>>(
+        self,
+    ) -> channel::ChannelThreadBuilder<Factory, EventOrStopThread<()>> {
+        return self.build_channel_thread();
+    }
+
     pub fn spawn_event_handler<T: EventHandlerTrait>(
         self,
         event_handler: T,

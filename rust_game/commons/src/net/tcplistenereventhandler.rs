@@ -8,7 +8,9 @@ use crate::threading::eventhandling::{
     EventHandleResult,
     EventHandlerTrait,
 };
+use crate::time::TimeDuration;
 use log::error;
+use std::io;
 use std::net::TcpListener;
 use std::ops::ControlFlow::{
     Break,
@@ -52,6 +54,12 @@ impl<T: TcpConnectionHandlerTrait<RealFactory>> TcpListenerEventHandler<T> {
                     return EventHandleResult::TryForNextEvent(self);
                 }
             }
+            Err(ref error) if error.kind() == io::ErrorKind::WouldBlock => {
+                return EventHandleResult::WaitForNextEventOrTimeout(
+                    self,
+                    TimeDuration::ONE_SECOND,
+                );
+            }
             Err(error) => {
                 error!("Error while trying to accept a TCP connection: {:?}", error);
                 return EventHandleResult::TryForNextEvent(self);
@@ -67,7 +75,7 @@ impl<T: TcpConnectionHandlerTrait<RealFactory>> EventHandlerTrait for TcpListene
     fn on_channel_event(self, channel_event: ChannelEvent<Self::Event>) -> EventHandleResult<Self> {
         return match channel_event {
             ChannelEvent::ReceivedEvent(_, ()) => EventHandleResult::TryForNextEvent(self),
-            ChannelEvent::Timeout => EventHandleResult::TryForNextEvent(self),
+            ChannelEvent::Timeout => self.accept(),
             ChannelEvent::ChannelEmpty => self.accept(),
             ChannelEvent::ChannelDisconnected => {
                 EventHandleResult::StopThread(self.tcp_connection_handler)
