@@ -1,8 +1,16 @@
 use crate::factory::FactoryTrait;
-use crate::net::{TcpConnectionHandlerTrait, TcpReadHandlerTrait, UdpReadHandlerTrait};
+use crate::net::{
+    TcpConnectionHandlerTrait,
+    TcpReadHandlerTrait,
+    UdpReadHandlerTrait,
+};
 use crate::threading;
 use crate::threading::channel::Channel;
-use crate::threading::eventhandling::{EventHandlerSender, EventHandlerTrait, EventOrStopThread};
+use crate::threading::eventhandling::{
+    EventHandlerSender,
+    EventHandlerTrait,
+    EventOrStopThread,
+};
 use crate::threading::AsyncJoinCallBackTrait;
 use std::io::Error;
 use std::net::SocketAddr;
@@ -49,7 +57,7 @@ impl<Factory: FactoryTrait, T: Send + 'static> ChannelThreadBuilder<Factory, Eve
 }
 
 impl<Factory: FactoryTrait> ChannelThreadBuilder<Factory, EventOrStopThread<()>> {
-    pub fn spawn_tcp_listener<T: TcpConnectionHandlerTrait<Factory = Factory>>(
+    pub fn spawn_tcp_listener<T: TcpConnectionHandlerTrait<Factory>>(
         self,
         socket_addr: SocketAddr,
         tcp_connection_handler: T,

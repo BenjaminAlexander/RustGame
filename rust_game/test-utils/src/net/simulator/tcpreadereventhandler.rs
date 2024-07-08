@@ -1,8 +1,15 @@
 use commons::net::TcpReadHandlerTrait;
 use commons::threading::channel::ReceiveMetaData;
-use commons::threading::eventhandling::{ChannelEvent, EventHandleResult, EventHandlerTrait};
+use commons::threading::eventhandling::{
+    ChannelEvent,
+    EventHandleResult,
+    EventHandlerTrait,
+};
 use std::io::Cursor;
-use std::ops::ControlFlow::{Break, Continue};
+use std::ops::ControlFlow::{
+    Break,
+    Continue,
+};
 
 pub struct TcpReaderEventHandler<T: TcpReadHandlerTrait> {
     read_handler: T,

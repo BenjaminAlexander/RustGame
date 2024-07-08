@@ -1,5 +1,4 @@
 use crate::singlethreaded::channel::receiverlink::ReceiverLink;
-use commons::threading::channel::SendError;
 
 pub struct SenderLink<T> {
     receiver_link: ReceiverLink<T>,
@@ -10,7 +9,7 @@ impl<T> SenderLink<T> {
         return Self { receiver_link };
     }
 
-    pub(super) fn send(&self, t: T) -> Result<(), SendError<T>> {
+    pub(super) fn send(&self, t: T) -> Result<(), T> {
         return self.receiver_link.send(t);
     }
 }

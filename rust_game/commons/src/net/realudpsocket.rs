@@ -1,6 +1,9 @@
 use crate::net::UdpSocketTrait;
 use std::io::Error;
-use std::net::{SocketAddr, UdpSocket};
+use std::net::{
+    SocketAddr,
+    UdpSocket,
+};
 
 pub struct RealUdpSocket {
     udp_socket: UdpSocket,
@@ -15,6 +18,14 @@ impl RealUdpSocket {
 
     pub fn recv_from(&mut self, buf: &mut [u8]) -> Result<(usize, SocketAddr), Error> {
         return self.udp_socket.recv_from(buf);
+    }
+
+    pub fn local_addr(&self) -> Result<SocketAddr, Error> {
+        return self.udp_socket.local_addr();
+    }
+
+    pub fn peer_addr(&self) -> Result<SocketAddr, Error> {
+        return self.udp_socket.peer_addr();
     }
 }
 

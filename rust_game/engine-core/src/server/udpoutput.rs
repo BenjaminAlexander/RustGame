@@ -1,19 +1,46 @@
 use crate::gametime::TimeMessage;
-use crate::interface::{GameFactoryTrait, GameTrait, UdpSocket};
+use crate::interface::{
+    GameFactoryTrait,
+    GameTrait,
+    UdpSocket,
+};
 use crate::messaging::{
-    Fragmenter, InputMessage, ServerInputMessage, StateMessage, ToClientMessageUDP,
+    Fragmenter,
+    InputMessage,
+    ServerInputMessage,
+    StateMessage,
+    ToClientMessageUDP,
 };
 use crate::server::remoteudppeer::RemoteUdpPeer;
 use crate::server::udpoutput::UdpOutputEvent::{
-    RemotePeer, SendCompletedStep, SendInputMessage, SendServerInputMessage, SendTimeMessage,
+    RemotePeer,
+    SendCompletedStep,
+    SendInputMessage,
+    SendServerInputMessage,
+    SendTimeMessage,
 };
 use commons::factory::FactoryTrait;
-use commons::net::{UdpSocketTrait, MAX_UDP_DATAGRAM_SIZE};
+use commons::net::{
+    UdpSocketTrait,
+    MAX_UDP_DATAGRAM_SIZE,
+};
 use commons::stats::RollingAverage;
 use commons::threading::channel::ReceiveMetaData;
-use commons::threading::eventhandling::{ChannelEvent, EventHandleResult, EventHandlerTrait};
-use commons::time::{TimeDuration, TimeValue};
-use log::{debug, error, info, warn};
+use commons::threading::eventhandling::{
+    ChannelEvent,
+    EventHandleResult,
+    EventHandlerTrait,
+};
+use commons::time::{
+    TimeDuration,
+    TimeValue,
+};
+use log::{
+    debug,
+    error,
+    info,
+    warn,
+};
 use std::io;
 use std::ops::Add;
 

@@ -3,22 +3,50 @@ use crate::client::clientmanagerobserver::ClientManagerObserver;
 use crate::client::tcpinput::TcpInput;
 use crate::client::tcpoutput::TcpOutput;
 use crate::client::udpinput::UdpInput;
-use crate::client::udpoutput::{UdpOutput, UdpOutputEvent};
-use crate::gamemanager::{Manager, ManagerEvent};
-use crate::gametime::{GameTimer, TimeMessage, TimeReceived};
+use crate::client::udpoutput::{
+    UdpOutput,
+    UdpOutputEvent,
+};
+use crate::gamemanager::{
+    Manager,
+    ManagerEvent,
+};
+use crate::gametime::{
+    GameTimer,
+    TimeMessage,
+    TimeReceived,
+};
 use crate::interface::{
-    EventSender, GameFactoryTrait, GameTrait, InitialInformation, RenderReceiverMessage, Sender,
+    EventSender,
+    GameFactoryTrait,
+    GameTrait,
+    InitialInformation,
+    RenderReceiverMessage,
+    Sender,
 };
 use crate::messaging::InputMessage;
 use commons::factory::FactoryTrait;
 use commons::net::UdpSocketTrait;
-use commons::threading::channel::{ReceiveMetaData, SenderTrait};
+use commons::threading::channel::{
+    ReceiveMetaData,
+    SenderTrait,
+};
 use commons::threading::eventhandling::{
-    ChannelEvent, EventHandleResult, EventHandlerTrait, EventSenderTrait,
+    ChannelEvent,
+    EventHandleResult,
+    EventHandlerTrait,
+    EventSenderTrait,
 };
 use commons::threading::AsyncJoin;
-use log::{trace, warn};
-use std::net::{Ipv4Addr, SocketAddr, SocketAddrV4};
+use log::{
+    trace,
+    warn,
+};
+use std::net::{
+    Ipv4Addr,
+    SocketAddr,
+    SocketAddrV4,
+};
 use std::ops::Sub;
 
 pub enum ClientCoreEvent<GameFactory: GameFactoryTrait> {
@@ -227,13 +255,13 @@ impl<GameFactory: GameFactoryTrait> State<GameFactory> {
 
                 let state = State::Running {
                     input_event_handler: GameFactory::Game::new_input_event_handler(),
-                    manager_sender: manager_sender,
+                    manager_sender,
                     game_timer,
-                    udp_input_sender: udp_input_sender,
+                    udp_input_sender,
                     udp_output_sender,
-                    tcp_input_sender: tcp_input_sender,
-                    tcp_output_sender: tcp_output_sender,
-                    render_receiver_sender: render_receiver_sender,
+                    tcp_input_sender,
+                    tcp_output_sender,
+                    render_receiver_sender,
                     initial_information,
                     last_time_message: None,
                 };
@@ -300,36 +328,58 @@ impl<GameFactory: GameFactoryTrait> State<GameFactory> {
                             GameFactory::Game::get_input(input_event_handler),
                         );
 
-                        manager_sender
-                            .send_event(ManagerEvent::InputEvent(message.clone()))
-                            .unwrap();
-                        udp_output_sender
-                            .send_event(UdpOutputEvent::InputMessageEvent(message))
-                            .unwrap();
+                        let send_result =
+                            manager_sender.send_event(ManagerEvent::InputEvent(message.clone()));
+
+                        if send_result.is_err() {
+                            warn!("Failed to send InputMessage to Game Manager");
+                            return EventHandleResult::StopThread(());
+                        }
+
+                        let send_result = udp_output_sender
+                            .send_event(UdpOutputEvent::InputMessageEvent(message));
+
+                        if send_result.is_err() {
+                            warn!("Failed to send InputMessage to Udp Output");
+                            return EventHandleResult::StopThread(());
+                        }
 
                         let client_drop_time = time_message
                             .get_scheduled_time()
                             .sub(&GameFactory::Game::GRACE_PERIOD.mul_f64(2.0));
+
                         let drop_step = time_message
                             .get_step_from_actual_time(client_drop_time)
                             .ceil() as usize;
 
-                        manager_sender
-                            .send_event(ManagerEvent::DropStepsBeforeEvent(drop_step))
-                            .unwrap();
+                        let send_result = manager_sender
+                            .send_event(ManagerEvent::DropStepsBeforeEvent(drop_step));
+
+                        if send_result.is_err() {
+                            warn!("Failed to send Drop Steps to Game Manager");
+                            return EventHandleResult::StopThread(());
+                        }
+
                         //TODO: message or last message or next?
                         //TODO: define strict and consistent rules for how real time relates to ticks, input deadlines and display states
-                        manager_sender
-                            .send_event(ManagerEvent::SetRequestedStepEvent(
-                                time_message.get_step() + 1,
-                            ))
-                            .unwrap();
+                        let send_result = manager_sender.send_event(
+                            ManagerEvent::SetRequestedStepEvent(time_message.get_step() + 1),
+                        );
+
+                        if send_result.is_err() {
+                            warn!("Failed to send Request Step to Game Manager");
+                            return EventHandleResult::StopThread(());
+                        }
                     }
                 }
 
-                render_receiver_sender
-                    .send(RenderReceiverMessage::TimeMessage(time_message.clone()))
-                    .unwrap();
+                let send_result = render_receiver_sender
+                    .send(RenderReceiverMessage::TimeMessage(time_message.clone()));
+
+                if send_result.is_err() {
+                    warn!("Failed to send TimeMessage Step to Render Receiver");
+                    return EventHandleResult::StopThread(());
+                }
 
                 *last_time_message = Some(time_message);
             }

@@ -1,4 +1,7 @@
-use crate::time::{TimeDuration, TimeValue};
+use crate::time::{
+    TimeDuration,
+    TimeValue,
+};
 
 #[derive(Debug)]
 pub enum Schedule {

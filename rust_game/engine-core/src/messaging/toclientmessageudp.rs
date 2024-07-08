@@ -1,8 +1,15 @@
-use serde::{Deserialize, Serialize};
+use serde::{
+    Deserialize,
+    Serialize,
+};
 
 use crate::gametime::TimeMessage;
 use crate::interface::GameTrait;
-use crate::messaging::{InputMessage, ServerInputMessage, StateMessage};
+use crate::messaging::{
+    InputMessage,
+    ServerInputMessage,
+    StateMessage,
+};
 
 #[derive(Serialize, Deserialize, Debug)]
 #[serde(bound = "")]

@@ -1,10 +1,25 @@
 use crate::net::simulator::udpsocketsimulator::UdpSocketSimulator;
-use crate::net::{ChannelTcpWriter, NetworkSimulator};
-use crate::singlethreaded::{SingleThreadedFactory, SingleThreadedReceiver};
+use crate::net::{
+    ChannelTcpWriter,
+    NetworkSimulator,
+};
+use crate::singlethreaded::{
+    SingleThreadedFactory,
+    SingleThreadedReceiver,
+};
 use std::collections::HashSet;
-use std::io::{Error, ErrorKind};
-use std::net::{IpAddr, SocketAddr};
-use std::sync::{Arc, Mutex};
+use std::io::{
+    Error,
+    ErrorKind,
+};
+use std::net::{
+    IpAddr,
+    SocketAddr,
+};
+use std::sync::{
+    Arc,
+    Mutex,
+};
 
 #[derive(Clone)]
 pub struct HostSimulator {

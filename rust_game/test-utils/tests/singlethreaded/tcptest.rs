@@ -1,16 +1,36 @@
 use commons::factory::FactoryTrait;
 use commons::logging::LoggingConfigBuilder;
-use commons::net::{TcpConnectionHandlerTrait, TcpReadHandlerTrait, TcpWriterTrait};
-use commons::threading::eventhandling::{EventOrStopThread, EventSenderTrait};
+use commons::net::{
+    TcpConnectionHandlerTrait,
+    TcpReadHandlerTrait,
+    TcpWriterTrait,
+};
+use commons::threading::eventhandling::{
+    EventOrStopThread,
+    EventSenderTrait,
+};
 use commons::threading::AsyncJoin;
-use log::{error, info, LevelFilter};
-use std::net::{IpAddr, Ipv4Addr, SocketAddr};
+use log::{
+    error,
+    info,
+    LevelFilter,
+};
+use std::net::{
+    IpAddr,
+    Ipv4Addr,
+    SocketAddr,
+};
 use std::ops::ControlFlow;
 use std::ops::ControlFlow::Continue;
-use std::sync::{Arc, Mutex};
+use std::sync::{
+    Arc,
+    Mutex,
+};
 use test_utils::net::ChannelTcpWriter;
 use test_utils::singlethreaded::{
-    SingleThreadedFactory, SingleThreadedReceiver, SingleThreadedSender,
+    SingleThreadedFactory,
+    SingleThreadedReceiver,
+    SingleThreadedSender,
 };
 
 const PORT: u16 = 1234;
@@ -69,13 +89,19 @@ fn test_tcp() {
     test_write(&server_factory, &server_side, &client_side, 1);
     test_write(&server_factory, &client_side, &server_side, 2);
 
-    connection_handler_sender.send_stop_thread().unwrap();
+    let send_result = connection_handler_sender.send_stop_thread();
+    if send_result.is_err() {
+        panic!("Send Failed")
+    }
     server_factory.get_time_queue().run_events();
 
     test_write(&server_factory, &server_side, &client_side, 3);
     test_write(&server_factory, &client_side, &server_side, 4);
 
-    client_read_sender.send_stop_thread().unwrap();
+    let send_result = client_read_sender.send_stop_thread();
+    if send_result.is_err() {
+        panic!("Send Failed")
+    }
     server_factory.get_time_queue().run_events();
 
     //test_write(&server_factory, &server_side, &client_side, 5);
@@ -121,9 +147,7 @@ struct ConnectionHandler {
     server_side: Arc<Mutex<Option<TestConnection>>>,
 }
 
-impl TcpConnectionHandlerTrait for ConnectionHandler {
-    type Factory = SingleThreadedFactory;
-
+impl TcpConnectionHandlerTrait<SingleThreadedFactory> for ConnectionHandler {
     fn on_connection(
         &mut self,
         tcp_sender: ChannelTcpWriter,

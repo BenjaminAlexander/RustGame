@@ -1,13 +1,27 @@
 use crate::factory::FactoryTrait;
 use crate::threading;
 use crate::threading::channel::{
-    RealReceiver, ReceiveMetaData, ReceiverTrait, RecvTimeoutError, TryRecvError,
+    RealReceiver,
+    ReceiveMetaData,
+    ReceiverTrait,
+    RecvTimeoutError,
+    TryRecvError,
 };
 use crate::threading::eventhandling::ChannelEvent::{
-    ChannelDisconnected, ChannelEmpty, ReceivedEvent, Timeout,
+    ChannelDisconnected,
+    ChannelEmpty,
+    ReceivedEvent,
+    Timeout,
 };
-use crate::threading::eventhandling::EventOrStopThread::{Event, StopThread};
-use crate::threading::eventhandling::{EventHandleResult, EventHandlerTrait, EventOrStopThread};
+use crate::threading::eventhandling::EventOrStopThread::{
+    Event,
+    StopThread,
+};
+use crate::threading::eventhandling::{
+    EventHandleResult,
+    EventHandlerTrait,
+    EventOrStopThread,
+};
 use crate::time::TimeDuration;
 use log::info;
 

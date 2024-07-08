@@ -1,18 +1,38 @@
 use crate::factory::FactoryTrait;
 use crate::net::{
-    RealTcpStream, RealUdpSocket, TcpConnectionHandlerTrait, TcpListenerEventHandler,
-    TcpReadHandlerTrait, TcpReaderEventHandler, UdpReadHandlerTrait, UdpReaderEventHandler,
+    RealTcpStream,
+    RealUdpSocket,
+    TcpConnectionHandlerTrait,
+    TcpListenerEventHandler,
+    TcpReadHandlerTrait,
+    TcpReaderEventHandler,
+    UdpReadHandlerTrait,
+    UdpReaderEventHandler,
 };
 use crate::threading::channel::{
-    Channel, ChannelThreadBuilder, RealReceiver, RealSender, SendMetaData,
+    Channel,
+    ChannelThreadBuilder,
+    RealReceiver,
+    RealSender,
+    SendMetaData,
 };
 use crate::threading::eventhandling::{
-    EventHandlerSender, EventHandlerThread, EventHandlerTrait, EventOrStopThread,
+    EventHandlerSender,
+    EventHandlerThread,
+    EventHandlerTrait,
+    EventOrStopThread,
 };
-use crate::threading::{channel, AsyncJoinCallBackTrait};
+use crate::threading::{
+    channel,
+    AsyncJoinCallBackTrait,
+};
 use crate::time::TimeValue;
 use std::io::Error;
-use std::net::{SocketAddr, TcpListener, TcpStream};
+use std::net::{
+    SocketAddr,
+    TcpListener,
+    TcpStream,
+};
 use std::sync::mpsc;
 use std::time::SystemTime;
 
@@ -61,14 +81,17 @@ impl FactoryTrait for RealFactory {
         return Ok(sender);
     }
 
-    fn spawn_tcp_listener<T: TcpConnectionHandlerTrait<Factory = Self>>(
+    fn spawn_tcp_listener<T: TcpConnectionHandlerTrait<Self>>(
         &self,
         thread_builder: channel::ChannelThreadBuilder<Self, EventOrStopThread<()>>,
         socket_addr: SocketAddr,
-        tcp_connection_handler: T,
+        mut tcp_connection_handler: T,
         join_call_back: impl AsyncJoinCallBackTrait<Self, T>,
     ) -> Result<EventHandlerSender<Self, ()>, Error> {
         let tcp_listener = TcpListener::bind(socket_addr)?;
+
+        tcp_connection_handler.on_bind(tcp_listener.local_addr()?);
+
         let event_handler = TcpListenerEventHandler::new(tcp_listener, tcp_connection_handler);
         return thread_builder.spawn_event_handler(event_handler, join_call_back);
     }

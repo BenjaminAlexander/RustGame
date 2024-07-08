@@ -9,9 +9,16 @@ mod sendmetadata;
 
 pub use self::channel::Channel;
 pub use self::channelthreadbuilder::ChannelThreadBuilder;
-pub use self::realreceiver::{RealReceiver, RecvError, RecvTimeoutError};
+pub use self::realreceiver::{
+    RealReceiver,
+    RecvError,
+    RecvTimeoutError,
+};
 pub use self::realsender::RealSender;
 pub use self::receivemetadata::ReceiveMetaData;
-pub use self::receivertrait::{ReceiverTrait, TryRecvError};
-pub use self::sendertrait::{SendError, SenderTrait};
+pub use self::receivertrait::{
+    ReceiverTrait,
+    TryRecvError,
+};
+pub use self::sendertrait::SenderTrait;
 pub use self::sendmetadata::SendMetaData;

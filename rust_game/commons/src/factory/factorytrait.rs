@@ -1,10 +1,26 @@
 use crate::net::{
-    TcpConnectionHandlerTrait, TcpReadHandlerTrait, TcpWriterTrait, UdpReadHandlerTrait,
+    TcpConnectionHandlerTrait,
+    TcpReadHandlerTrait,
+    TcpWriterTrait,
+    UdpReadHandlerTrait,
     UdpSocketTrait,
+    LOCAL_EPHEMERAL_SOCKET_ADDR_V4,
 };
-use crate::threading::channel::{Channel, ChannelThreadBuilder, ReceiverTrait, SenderTrait};
-use crate::threading::eventhandling::{EventHandlerSender, EventHandlerTrait, EventOrStopThread};
-use crate::threading::{AsyncJoinCallBackTrait, ThreadBuilder};
+use crate::threading::channel::{
+    Channel,
+    ChannelThreadBuilder,
+    ReceiverTrait,
+    SenderTrait,
+};
+use crate::threading::eventhandling::{
+    EventHandlerSender,
+    EventHandlerTrait,
+    EventOrStopThread,
+};
+use crate::threading::{
+    AsyncJoinCallBackTrait,
+    ThreadBuilder,
+};
 use crate::time::TimeValue;
 use std::io::Error;
 use std::net::SocketAddr;
@@ -33,7 +49,7 @@ pub trait FactoryTrait: Clone + Send + 'static {
         join_call_back: impl AsyncJoinCallBackTrait<Self, U::ThreadReturn>,
     ) -> Result<EventHandlerSender<Self, U::Event>, Error>;
 
-    fn spawn_tcp_listener<T: TcpConnectionHandlerTrait<Factory = Self>>(
+    fn spawn_tcp_listener<T: TcpConnectionHandlerTrait<Self>>(
         &self,
         thread_builder: ChannelThreadBuilder<Self, EventOrStopThread<()>>,
         socket_addr: SocketAddr,
@@ -55,6 +71,10 @@ pub trait FactoryTrait: Clone + Send + 'static {
     ) -> Result<EventHandlerSender<Self, ()>, Error>;
 
     fn bind_udp_socket(&self, socket_addr: SocketAddr) -> Result<Self::UdpSocket, Error>;
+
+    fn bind_udp_ephemeral_port(&self) -> Result<Self::UdpSocket, Error> {
+        return self.bind_udp_socket(SocketAddr::from(LOCAL_EPHEMERAL_SOCKET_ADDR_V4));
+    }
 
     fn spawn_udp_reader<T: UdpReadHandlerTrait>(
         &self,

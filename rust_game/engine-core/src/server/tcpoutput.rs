@@ -1,10 +1,19 @@
-use crate::interface::{GameFactoryTrait, GameTrait, InitialInformation, TcpWriter};
+use crate::interface::{
+    GameFactoryTrait,
+    GameTrait,
+    InitialInformation,
+    TcpWriter,
+};
 use crate::messaging::ToClientMessageTCP;
 use crate::server::tcpoutput::TcpOutputEvent::SendInitialInformation;
 use crate::server::ServerConfig;
 use commons::net::TcpWriterTrait;
 use commons::threading::channel::ReceiveMetaData;
-use commons::threading::eventhandling::{ChannelEvent, EventHandleResult, EventHandlerTrait};
+use commons::threading::eventhandling::{
+    ChannelEvent,
+    EventHandleResult,
+    EventHandlerTrait,
+};
 use log::debug;
 
 pub enum TcpOutputEvent<Game: GameTrait> {

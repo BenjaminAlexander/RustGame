@@ -1,11 +1,22 @@
 use crate::{
-    SimpleInput, SimpleInputEvent, SimpleInputEventHandler, SimpleServerInput, SimpleState,
+    SimpleInput,
+    SimpleInputEvent,
+    SimpleInputEventHandler,
+    SimpleServerInput,
+    SimpleState,
     TimeDuration,
 };
 use engine_core::{
-    ClientUpdateArg, GameTrait, InitialInformation, InterpolationArg, ServerUpdateArg,
+    ClientUpdateArg,
+    GameTrait,
+    InitialInformation,
+    InterpolationArg,
+    ServerUpdateArg,
 };
-use serde::{Deserialize, Serialize};
+use serde::{
+    Deserialize,
+    Serialize,
+};
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct SimpleGameImpl {}

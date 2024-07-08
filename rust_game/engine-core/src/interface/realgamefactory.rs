@@ -1,4 +1,7 @@
-use crate::interface::{GameFactoryTrait, GameTrait};
+use crate::interface::{
+    GameFactoryTrait,
+    GameTrait,
+};
 use commons::factory::RealFactory;
 use std::marker::PhantomData;
 

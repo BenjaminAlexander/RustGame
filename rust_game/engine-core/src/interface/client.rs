@@ -1,8 +1,16 @@
-use crate::client::ClientCoreEvent::OnInputEvent;
-use crate::client::{ClientCore, ClientCoreEvent};
-use crate::interface::{ClientInputEvent, EventSender, Factory, GameFactoryTrait, RenderReceiver};
+use crate::client::{
+    ClientCore,
+    ClientCoreEvent,
+};
+use crate::interface::{
+    ClientInputEvent,
+    EventSender,
+    Factory,
+    GameFactoryTrait,
+    RenderReceiver,
+};
 use commons::factory::FactoryTrait;
-use commons::threading::eventhandling::{EventOrStopThread, EventSenderTrait};
+use commons::threading::eventhandling::EventSenderTrait;
 use commons::threading::AsyncJoin;
 use std::net::Ipv4Addr;
 use std::str::FromStr;
@@ -46,19 +54,11 @@ impl<GameFactory: GameFactoryTrait> Client<GameFactory> {
     ) -> Result<(), ClientInputEvent<GameFactory>> {
         return match self
             .core_sender
-            .send_event(OnInputEvent(client_input_event))
+            .send_event(ClientCoreEvent::OnInputEvent(client_input_event))
         {
             Ok(()) => Ok(()),
-            Err(e) => {
-                let (_, event_or_stop) = e.0;
-
-                match event_or_stop {
-                    EventOrStopThread::Event(OnInputEvent(client_input_event)) => {
-                        Err(client_input_event)
-                    }
-                    _ => panic!("This should never happen."),
-                }
-            }
+            Err(ClientCoreEvent::OnInputEvent(client_input_event)) => Err(client_input_event),
+            _ => panic!("This should never happen."),
         };
     }
 }

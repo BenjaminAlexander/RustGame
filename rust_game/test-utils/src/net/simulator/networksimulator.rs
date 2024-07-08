@@ -1,20 +1,48 @@
 use crate::net::simulator::hostsimulator::HostSimulator;
-use crate::net::simulator::tcplistenereventhandler::{TcpListenerEvent, TcpListenerEventHandler};
+use crate::net::simulator::tcplistenereventhandler::{
+    TcpListenerEvent,
+    TcpListenerEventHandler,
+};
 use crate::net::simulator::udpreadeventhandler::UdpReadEventHandler;
-use crate::net::{ChannelTcpWriter, UdpSocketSimulator};
+use crate::net::{
+    ChannelTcpWriter,
+    UdpSocketSimulator,
+};
 use crate::singlethreaded::{
-    ReceiveOrDisconnected, SingleThreadedFactory, SingleThreadedReceiver, SingleThreadedSender,
+    ReceiveOrDisconnected,
+    SingleThreadedFactory,
+    SingleThreadedReceiver,
+    SingleThreadedSender,
 };
 use commons::factory::FactoryTrait;
-use commons::net::{TcpConnectionHandlerTrait, UdpReadHandlerTrait};
+use commons::net::{
+    TcpConnectionHandlerTrait,
+    UdpReadHandlerTrait,
+};
 use commons::threading::channel::ChannelThreadBuilder;
-use commons::threading::eventhandling::{EventHandlerSender, EventOrStopThread, EventSenderTrait};
+use commons::threading::eventhandling::{
+    EventHandlerSender,
+    EventOrStopThread,
+    EventSenderTrait,
+};
 use commons::threading::AsyncJoinCallBackTrait;
-use log::info;
+use log::{
+    info,
+    warn,
+};
 use std::collections::HashMap;
-use std::io::{Error, ErrorKind};
-use std::net::{IpAddr, SocketAddr};
-use std::sync::{mpsc, Arc, Mutex};
+use std::io::{
+    Error,
+    ErrorKind,
+};
+use std::net::{
+    IpAddr,
+    SocketAddr,
+};
+use std::sync::{
+    Arc,
+    Mutex,
+};
 
 #[derive(Clone)]
 pub struct NetworkSimulator {
@@ -56,23 +84,24 @@ impl NetworkSimulator {
     }
 
     pub fn spawn_tcp_listener<
-        TcpConnectionHandler: TcpConnectionHandlerTrait<Factory = SingleThreadedFactory>,
+        TcpConnectionHandler: TcpConnectionHandlerTrait<SingleThreadedFactory>,
     >(
         &self,
-        socket_adder: SocketAddr,
+        socket_addr: SocketAddr,
         thread_builder: ChannelThreadBuilder<SingleThreadedFactory, EventOrStopThread<()>>,
         connection_handler: TcpConnectionHandler,
         join_call_back: impl AsyncJoinCallBackTrait<SingleThreadedFactory, TcpConnectionHandler>,
     ) -> Result<EventHandlerSender<SingleThreadedFactory, ()>, Error> {
         let mut guard = self.internal.lock().unwrap();
 
-        if guard.tcp_listeners.contains_key(&socket_adder) {
+        if guard.tcp_listeners.contains_key(&socket_addr) {
             return Err(Error::from(ErrorKind::AddrInUse));
         }
 
         let (thread_builder, channel) = thread_builder.take();
 
-        let tcp_listener_event_handler = TcpListenerEventHandler::new(connection_handler);
+        let tcp_listener_event_handler =
+            TcpListenerEventHandler::new(socket_addr, connection_handler);
 
         let sender = thread_builder
             .spawn_event_handler(tcp_listener_event_handler, join_call_back)
@@ -92,14 +121,18 @@ impl NetworkSimulator {
 
             return match result {
                 Ok(()) => Ok(()),
-                Err(send_error) => Err(mpsc::SendError((
-                    send_error.0 .0,
-                    EventOrStopThread::StopThread,
-                ))),
+                Err(_) => Err(EventOrStopThread::StopThread),
             };
         });
 
-        guard.tcp_listeners.insert(socket_adder, sender);
+        guard.tcp_listeners.insert(socket_addr, sender.clone());
+
+        let send_result = sender.send_event(TcpListenerEvent::ListenerReady);
+
+        if send_result.is_err() {
+            warn!("Failed to send ListenerReady");
+            return Err(Error::from(ErrorKind::BrokenPipe));
+        }
 
         return Ok(sender_to_return);
     }
@@ -118,12 +151,14 @@ impl NetworkSimulator {
             let (write_client_to_server, read_client_to_server) =
                 Self::new_tcp_channel(factory, server_socket_addr);
 
-            sender
-                .send_event(TcpListenerEvent::Connection(
-                    write_server_to_client,
-                    read_client_to_server,
-                ))
-                .unwrap();
+            let send_result = sender.send_event(TcpListenerEvent::Connection(
+                write_server_to_client,
+                read_client_to_server,
+            ));
+
+            if send_result.is_err() {
+                panic!("Failed to send event");
+            }
 
             return Ok((write_client_to_server, read_server_to_client));
         } else {
@@ -173,10 +208,7 @@ impl NetworkSimulator {
 
             return match result {
                 Ok(()) => Ok(()),
-                Err(send_error) => Err(mpsc::SendError((
-                    send_error.0 .0,
-                    EventOrStopThread::StopThread,
-                ))),
+                Err(_) => Err(EventOrStopThread::StopThread),
             };
         });
 
@@ -190,7 +222,12 @@ impl NetworkSimulator {
 
         if let Some(sender) = guard.udp_readers.get(to) {
             let buf = Vec::from(buf);
-            sender.send_event((from.clone(), buf)).unwrap();
+
+            let send_result = sender.send_event((from.clone(), buf));
+
+            if send_result.is_err() {
+                panic!("Failed to send event");
+            }
         }
     }
 

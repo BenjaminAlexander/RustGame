@@ -1,4 +1,7 @@
-use crate::interface::{EventSender, GameFactoryTrait};
+use crate::interface::{
+    EventSender,
+    GameFactoryTrait,
+};
 use crate::server::servercore::ServerCoreEvent;
 use commons::threading::eventhandling::EventSenderTrait;
 use commons::time::timerservice::TimerCallBack;
@@ -22,8 +25,11 @@ impl<GameFactory: GameFactoryTrait> ServerGameTimerObserver<GameFactory> {
 
 impl<GameFactory: GameFactoryTrait> TimerCallBack for ServerGameTimerObserver<GameFactory> {
     fn tick(&mut self) {
-        self.core_sender
-            .send_event(ServerCoreEvent::GameTimerTick)
-            .unwrap();
+        let send_result = self.core_sender.send_event(ServerCoreEvent::GameTimerTick);
+
+        //TODO: handle without panic
+        if send_result.is_err() {
+            panic!("Failed to send GameTimerTick to Core");
+        }
     }
 }

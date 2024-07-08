@@ -1,16 +1,28 @@
 use super::GameFactoryTrait;
 use crate::{
-    interface::{RenderReceiver, RenderReceiverMessage},
-    server::{ServerCore, ServerCoreEvent},
+    interface::{
+        RenderReceiver,
+        RenderReceiverMessage,
+    },
+    server::{
+        ServerCore,
+        ServerCoreEvent,
+    },
 };
 use commons::{
     factory::FactoryTrait,
     threading::{
-        eventhandling::{EventHandlerSender, EventSenderTrait},
+        eventhandling::{
+            EventHandlerSender,
+            EventSenderTrait,
+        },
         AsyncJoin,
     },
 };
-use log::error;
+use log::{
+    error,
+    warn,
+};
 
 pub struct Server<GameFactory: GameFactoryTrait> {
     core_sender: EventHandlerSender<GameFactory::Factory, ServerCoreEvent<GameFactory>>,
@@ -32,17 +44,16 @@ impl<GameFactory: GameFactoryTrait> Server<GameFactory> {
             server_core_thread_builder.get_sender().clone(),
         );
 
-        if let Err(error) = server_core_thread_builder
+        let send_result = server_core_thread_builder
             .get_sender()
-            .send_event(ServerCoreEvent::StartListenerEvent)
-        {
-            error!("{:?}", error);
+            .send_event(ServerCoreEvent::StartListenerEvent);
+
+        if send_result.is_err() {
+            warn!("Failed to send StartListenerEvent to Core");
             return Err(());
         }
 
-        let core_sender: <<GameFactory as GameFactoryTrait>::Factory as FactoryTrait>::Sender<
-            commons::threading::eventhandling::EventOrStopThread<ServerCoreEvent<GameFactory>>,
-        > = server_core_thread_builder
+        let core_sender = server_core_thread_builder
             .spawn_event_handler(server_core, AsyncJoin::log_async_join)
             .unwrap();
 
@@ -59,19 +70,16 @@ impl<GameFactory: GameFactoryTrait> Server<GameFactory> {
     pub fn start_game(&mut self) -> Result<(), ()> {
         match self.render_receiver_sender_option.take() {
             Some(render_receiver_sender) => {
-                match self
+                let send_result = self
                     .core_sender
-                    .send_event(ServerCoreEvent::StartGameEvent(render_receiver_sender))
-                {
-                    Ok(()) => return Ok(()),
-                    Err(error) => {
-                        error!(
-                            "An error occurred when signaling the server to start: {:?}",
-                            error
-                        );
-                        return Err(());
-                    }
+                    .send_event(ServerCoreEvent::StartGameEvent(render_receiver_sender));
+
+                if send_result.is_err() {
+                    warn!("Failed to send ServerCoreEvent to Core");
+                    return Err(());
                 }
+
+                return Ok(());
             }
             None => {
                 error!("The server has already been started");

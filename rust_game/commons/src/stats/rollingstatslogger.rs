@@ -1,6 +1,9 @@
 use crate::factory::FactoryTrait;
 use crate::stats::RollingStats;
-use crate::time::{TimeDuration, TimeValue};
+use crate::time::{
+    TimeDuration,
+    TimeValue,
+};
 use log::info;
 use std::fmt::Write;
 use std::marker::PhantomData;

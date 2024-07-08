@@ -4,8 +4,14 @@ use rmp_serde::encode::Error as EncodeError;
 use serde::de::DeserializeOwned;
 use serde::Serialize;
 use std::fmt::Debug;
-use std::io::{Error, Write};
-use std::net::{SocketAddr, TcpStream};
+use std::io::{
+    Error,
+    Write,
+};
+use std::net::{
+    SocketAddr,
+    TcpStream,
+};
 
 #[derive(Debug)]
 pub struct RealTcpStream {
@@ -23,6 +29,10 @@ impl RealTcpStream {
 
     fn get_peer_addr(&self) -> &SocketAddr {
         return &self.remote_peer_socket_addr;
+    }
+
+    pub fn local_addr(&self) -> Result<SocketAddr, Error> {
+        return self.tcp_stream.local_addr();
     }
 
     pub fn try_clone(&self) -> Result<Self, Error> {

@@ -1,7 +1,17 @@
-use crate::singlethreaded::channel::receiverlink::{ReceiveOrDisconnected, ReceiverLink};
+use crate::singlethreaded::channel::receiverlink::{
+    ReceiveOrDisconnected,
+    ReceiverLink,
+};
 use crate::singlethreaded::channel::senderlink::SenderLink;
-use crate::singlethreaded::{SingleThreadedFactory, SingleThreadedSender};
-use commons::threading::channel::{ReceiveMetaData, ReceiverTrait, SendError, TryRecvError};
+use crate::singlethreaded::{
+    SingleThreadedFactory,
+    SingleThreadedSender,
+};
+use commons::threading::channel::{
+    ReceiveMetaData,
+    ReceiverTrait,
+    TryRecvError,
+};
 
 pub struct SingleThreadedReceiver<T: Send> {
     link: ReceiverLink<T>,
@@ -27,7 +37,7 @@ impl<T: Send> SingleThreadedReceiver<T> {
 
     pub fn to_consumer(
         self,
-        consumer: impl Fn(ReceiveOrDisconnected<T>) -> Result<(), SendError<T>> + Send + 'static,
+        consumer: impl Fn(ReceiveOrDisconnected<T>) -> Result<(), T> + Send + 'static,
     ) -> ReceiverLink<T> {
         self.link.to_consumer(consumer);
         return self.link;

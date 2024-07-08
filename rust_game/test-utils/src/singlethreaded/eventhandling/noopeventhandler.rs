@@ -1,5 +1,9 @@
 use commons::threading::channel::ReceiveMetaData;
-use commons::threading::eventhandling::{ChannelEvent, EventHandleResult, EventHandlerTrait};
+use commons::threading::eventhandling::{
+    ChannelEvent,
+    EventHandleResult,
+    EventHandlerTrait,
+};
 
 pub struct NoOpEventHandler {
     on_stop_func: Box<dyn FnOnce() + Send + 'static>,

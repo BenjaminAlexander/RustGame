@@ -1,22 +1,42 @@
 use crate::net::{
-    ChannelTcpWriter, HostSimulator, NetworkSimulator, TcpReaderEventHandler, UdpSocketSimulator,
+    ChannelTcpWriter,
+    HostSimulator,
+    NetworkSimulator,
+    TcpReaderEventHandler,
+    UdpSocketSimulator,
 };
 use crate::singlethreaded::eventhandling::EventHandlerHolder;
 use crate::singlethreaded::{
-    ReceiveOrDisconnected, SingleThreadedReceiver, SingleThreadedSender, TimeQueue,
+    ReceiveOrDisconnected,
+    SingleThreadedReceiver,
+    SingleThreadedSender,
+    TimeQueue,
 };
 use crate::time::SimulatedTimeSource;
 use commons::factory::FactoryTrait;
-use commons::net::{TcpConnectionHandlerTrait, TcpReadHandlerTrait, UdpReadHandlerTrait};
-use commons::threading::channel::{Channel, ChannelThreadBuilder};
+use commons::net::{
+    TcpConnectionHandlerTrait,
+    TcpReadHandlerTrait,
+    UdpReadHandlerTrait,
+};
+use commons::threading::channel::{
+    Channel,
+    ChannelThreadBuilder,
+};
 use commons::threading::eventhandling::{
-    EventHandlerSender, EventHandlerTrait, EventOrStopThread, EventSenderTrait,
+    EventHandlerSender,
+    EventHandlerTrait,
+    EventOrStopThread,
+    EventSenderTrait,
 };
 use commons::threading::AsyncJoinCallBackTrait;
 use commons::time::TimeValue;
 use std::io::Error;
-use std::net::{IpAddr, Ipv4Addr, SocketAddr};
-use std::sync::mpsc;
+use std::net::{
+    IpAddr,
+    Ipv4Addr,
+    SocketAddr,
+};
 
 #[derive(Clone)]
 pub struct SingleThreadedFactory {
@@ -94,7 +114,7 @@ impl FactoryTrait for SingleThreadedFactory {
         ));
     }
 
-    fn spawn_tcp_listener<T: TcpConnectionHandlerTrait<Factory = Self>>(
+    fn spawn_tcp_listener<T: TcpConnectionHandlerTrait<Self>>(
         &self,
         thread_builder: ChannelThreadBuilder<Self, EventOrStopThread<()>>,
         socket_addr: SocketAddr,
@@ -136,17 +156,17 @@ impl FactoryTrait for SingleThreadedFactory {
 
         let sender_clone = sender.clone();
         tcp_reader.to_consumer(move |receive_or_disconnect| {
-            let result = match receive_or_disconnect {
-                ReceiveOrDisconnected::Receive(_, buf) => sender_clone.send_event(buf),
-                ReceiveOrDisconnected::Disconnected => sender_clone.send_stop_thread(),
-            };
-
-            return match result {
-                Ok(()) => Ok(()),
-                Err(send_error) => match send_error.0 .1 {
-                    EventOrStopThread::Event(buf) => Err(mpsc::SendError((send_error.0 .0, buf))),
-                    EventOrStopThread::StopThread => Ok(()),
-                },
+            match receive_or_disconnect {
+                ReceiveOrDisconnected::Receive(_, buf) => {
+                    return match sender_clone.send_event(buf) {
+                        Ok(_) => Ok(()),
+                        Err(buf) => Err(buf),
+                    };
+                }
+                ReceiveOrDisconnected::Disconnected => {
+                    let _ = sender_clone.send_stop_thread();
+                    return Ok(());
+                }
             };
         });
 
@@ -163,10 +183,7 @@ impl FactoryTrait for SingleThreadedFactory {
 
             return match result {
                 Ok(()) => Ok(()),
-                Err(send_error) => Err(mpsc::SendError((
-                    send_error.0 .0,
-                    EventOrStopThread::StopThread,
-                ))),
+                Err(_) => Err(EventOrStopThread::StopThread),
             };
         });
 

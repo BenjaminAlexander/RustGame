@@ -1,8 +1,18 @@
 use crate::singlethreaded::SingleThreadedFactory;
-use commons::threading::channel::{ReceiveMetaData, SendError, SendMetaData, TryRecvError};
-use log::{error, warn};
+use commons::threading::channel::{
+    ReceiveMetaData,
+    SendMetaData,
+    TryRecvError,
+};
+use log::{
+    error,
+    warn,
+};
 use std::collections::VecDeque;
-use std::sync::{mpsc, Arc, Mutex};
+use std::sync::{
+    Arc,
+    Mutex,
+};
 
 pub struct ReceiverLink<T> {
     internal: Arc<Mutex<Internal<T>>>,
@@ -16,7 +26,7 @@ pub enum ReceiveOrDisconnected<T> {
 
 enum Mode<T> {
     Queue(VecDeque<(SendMetaData, T)>),
-    Consumer(Box<dyn Fn(ReceiveOrDisconnected<T>) -> Result<(), SendError<T>> + Send>),
+    Consumer(Box<dyn Fn(ReceiveOrDisconnected<T>) -> Result<(), T> + Send>),
     ReceiverDisconnected,
 }
 
@@ -79,7 +89,7 @@ impl<T> ReceiverLink<T> {
 
     pub(super) fn to_consumer(
         &self,
-        consumer: impl Fn(ReceiveOrDisconnected<T>) -> Result<(), SendError<T>> + Send + 'static,
+        consumer: impl Fn(ReceiveOrDisconnected<T>) -> Result<(), T> + Send + 'static,
     ) {
         let mut internal = self.internal.lock().unwrap();
 
@@ -102,7 +112,7 @@ impl<T> ReceiverLink<T> {
         internal.mode = Mode::Consumer(Box::new(consumer));
     }
 
-    pub(super) fn send(&self, t: T) -> Result<(), SendError<T>> {
+    pub(super) fn send(&self, t: T) -> Result<(), T> {
         let send_meta_data = SendMetaData::new(&self.factory);
 
         let mut internal = self.internal.lock().unwrap();
@@ -117,7 +127,7 @@ impl<T> ReceiverLink<T> {
                 return consumer(ReceiveOrDisconnected::Receive(receive_meta_data, t));
             }
             Mode::ReceiverDisconnected => {
-                return Err(mpsc::SendError((send_meta_data, t)));
+                return Err(t);
             }
         }
     }

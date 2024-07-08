@@ -1,7 +1,17 @@
 use num::traits::Pow;
-use serde::{Deserialize, Serialize};
-use std::hash::{Hash, Hasher};
-use std::ops::{Add, Mul, Sub};
+use serde::{
+    Deserialize,
+    Serialize,
+};
+use std::hash::{
+    Hash,
+    Hasher,
+};
+use std::ops::{
+    Add,
+    Mul,
+    Sub,
+};
 
 #[derive(Serialize, Deserialize, Debug, Clone, Copy)]
 pub struct Vector2 {

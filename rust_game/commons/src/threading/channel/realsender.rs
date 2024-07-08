@@ -1,6 +1,12 @@
 use crate::factory::FactoryTrait;
-use crate::threading::channel::{SendError, SendMetaData, SenderTrait};
-use std::sync::mpsc;
+use crate::threading::channel::{
+    SendMetaData,
+    SenderTrait,
+};
+use std::sync::mpsc::{
+    self,
+    SendError,
+};
 
 pub struct RealSender<Factory: FactoryTrait, T: Send> {
     factory: Factory,
@@ -14,8 +20,13 @@ impl<Factory: FactoryTrait, T: Send> RealSender<Factory, T> {
 }
 
 impl<Factory: FactoryTrait, T: Send> SenderTrait<T> for RealSender<Factory, T> {
-    fn send(&self, value: T) -> Result<(), SendError<T>> {
-        return self.sender.send((SendMetaData::new(&self.factory), value));
+    fn send(&self, value: T) -> Result<(), T> {
+        let send_meta_data = SendMetaData::new(&self.factory);
+
+        return match self.sender.send((send_meta_data, value)) {
+            Ok(()) => Result::Ok(()),
+            Err(SendError((_, value))) => Result::Err(value),
+        };
     }
 }
 

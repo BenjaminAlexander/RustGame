@@ -1,10 +1,16 @@
 use crate::singlethreaded::event::Event;
 use crate::time::SimulatedTimeSource;
-use commons::time::{TimeDuration, TimeValue};
+use commons::time::{
+    TimeDuration,
+    TimeValue,
+};
 use log::warn;
 use std::collections::VecDeque;
 use std::ops::Add;
-use std::sync::{Arc, Mutex};
+use std::sync::{
+    Arc,
+    Mutex,
+};
 
 #[derive(Clone)]
 pub struct TimeQueue {

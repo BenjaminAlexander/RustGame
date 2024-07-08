@@ -1,5 +1,8 @@
 use crate::interface::GameTrait;
-use serde::{Deserialize, Serialize};
+use serde::{
+    Deserialize,
+    Serialize,
+};
 
 use super::InputMessage;
 

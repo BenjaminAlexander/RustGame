@@ -3,10 +3,16 @@ use commons::geometry::twod::Vector2;
 use commons::time::TimeDuration;
 use engine_core::GameTrait;
 use graphics::*;
-use graphics::{rectangle, Context};
+use graphics::{
+    rectangle,
+    Context,
+};
 use opengl_graphics::GlGraphics;
 use piston::RenderArgs;
-use serde::{Deserialize, Serialize};
+use serde::{
+    Deserialize,
+    Serialize,
+};
 
 const MAX_RANGE: f64 = 5000 as f64;
 

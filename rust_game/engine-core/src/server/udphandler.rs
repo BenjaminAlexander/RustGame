@@ -1,11 +1,25 @@
 use crate::interface::GameFactoryTrait;
-use crate::messaging::{FragmentAssembler, InputMessage, MessageFragment, ToServerMessageUDP};
+use crate::messaging::{
+    FragmentAssembler,
+    InputMessage,
+    MessageFragment,
+    ToServerMessageUDP,
+};
 use crate::server::clientaddress::ClientAddress;
 use crate::server::remoteudppeer::RemoteUdpPeer;
 use commons::net::MAX_UDP_DATAGRAM_SIZE;
-use log::{info, warn};
-use std::collections::{HashMap, HashSet};
-use std::net::{IpAddr, SocketAddr};
+use log::{
+    info,
+    warn,
+};
+use std::collections::{
+    HashMap,
+    HashSet,
+};
+use std::net::{
+    IpAddr,
+    SocketAddr,
+};
 
 pub struct UdpHandler<GameFactory: GameFactoryTrait> {
     factory: GameFactory::Factory,

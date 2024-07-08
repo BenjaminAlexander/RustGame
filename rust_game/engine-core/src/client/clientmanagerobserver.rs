@@ -1,6 +1,15 @@
-use crate::gamemanager::{ManagerObserverTrait, StepMessage};
-use crate::interface::{GameFactoryTrait, RenderReceiverMessage};
-use crate::messaging::{ServerInputMessage, StateMessage};
+use crate::gamemanager::{
+    ManagerObserverTrait,
+    StepMessage,
+};
+use crate::interface::{
+    GameFactoryTrait,
+    RenderReceiverMessage,
+};
+use crate::messaging::{
+    ServerInputMessage,
+    StateMessage,
+};
 use commons::factory::FactoryTrait;
 use commons::threading::channel::SenderTrait;
 
@@ -31,9 +40,14 @@ impl<GameFactory: GameFactoryTrait> ManagerObserverTrait for ClientManagerObserv
     const IS_SERVER: bool = false;
 
     fn on_step_message(&self, step_message: StepMessage<GameFactory::Game>) {
-        self.render_receiver_sender
-            .send(RenderReceiverMessage::StepMessage(step_message))
-            .unwrap();
+        let send_result = self
+            .render_receiver_sender
+            .send(RenderReceiverMessage::StepMessage(step_message));
+
+        //TODO: handle this without panic
+        if send_result.is_err() {
+            panic!("Failed to send StepMessage to render receiver");
+        }
     }
 
     fn on_completed_step(&self, _state_message: StateMessage<GameFactory::Game>) {}

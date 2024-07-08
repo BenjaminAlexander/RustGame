@@ -1,4 +1,7 @@
-use crate::geometry::twod::{Intersection, Vector2};
+use crate::geometry::twod::{
+    Intersection,
+    Vector2,
+};
 
 pub enum Line2 {
     NonVertical { m: f64, b: f64 },

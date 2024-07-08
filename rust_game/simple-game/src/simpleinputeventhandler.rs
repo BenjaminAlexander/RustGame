@@ -2,7 +2,14 @@ use crate::simpleinput::SimpleInput;
 use crate::simpleinputevent::SimpleInputEvent;
 use commons::geometry::twod::Vector2;
 use piston::input::Input as PistonInput;
-use piston::{Button, ButtonArgs, ButtonState, Key, Motion, MouseButton};
+use piston::{
+    Button,
+    ButtonArgs,
+    ButtonState,
+    Key,
+    Motion,
+    MouseButton,
+};
 
 pub struct SimpleInputEventHandler {
     aim_point: Vector2,

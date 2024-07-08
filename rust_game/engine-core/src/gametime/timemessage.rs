@@ -1,7 +1,13 @@
 use std::ops::Add;
 
-use commons::time::{TimeDuration, TimeValue};
-use serde::{Deserialize, Serialize};
+use commons::time::{
+    TimeDuration,
+    TimeValue,
+};
+use serde::{
+    Deserialize,
+    Serialize,
+};
 
 #[derive(Serialize, Deserialize, Debug, Clone, Copy)]
 pub struct TimeMessage {

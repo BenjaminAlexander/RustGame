@@ -1,9 +1,20 @@
-use crate::interface::{EventSender, GameFactoryTrait, TcpReader, TcpWriter};
+use crate::interface::{
+    EventSender,
+    GameFactoryTrait,
+    TcpReader,
+    TcpWriter,
+};
 use crate::server::servercore::ServerCoreEvent;
 use crate::server::servercore::ServerCoreEvent::TcpConnectionEvent;
-use commons::net::{TcpConnectionHandlerTrait, TcpWriterTrait};
+use commons::net::{
+    TcpConnectionHandlerTrait,
+    TcpWriterTrait,
+};
 use commons::threading::eventhandling::EventSenderTrait;
-use log::{error, info};
+use log::{
+    info,
+    warn,
+};
 use std::ops::ControlFlow;
 use std::ops::ControlFlow::*;
 
@@ -17,11 +28,9 @@ impl<GameFactory: GameFactoryTrait> TcpConnectionHandler<GameFactory> {
     }
 }
 
-impl<GameFactory: GameFactoryTrait> TcpConnectionHandlerTrait
+impl<GameFactory: GameFactoryTrait> TcpConnectionHandlerTrait<GameFactory::Factory>
     for TcpConnectionHandler<GameFactory>
 {
-    type Factory = GameFactory::Factory;
-
     fn on_connection(
         &mut self,
         tcp_sender: TcpWriter<GameFactory>,
@@ -29,17 +38,16 @@ impl<GameFactory: GameFactoryTrait> TcpConnectionHandlerTrait
     ) -> ControlFlow<()> {
         info!("New TCP connection from {:?}", tcp_sender.get_peer_addr());
 
-        match self
+        let send_result = self
             .server_core_sender
-            .send_event(TcpConnectionEvent(tcp_sender, tcp_receiver))
-        {
-            Ok(()) => {
-                return Continue(());
+            .send_event(TcpConnectionEvent(tcp_sender, tcp_receiver));
+
+        return match send_result {
+            Ok(_) => Continue(()),
+            Err(_) => {
+                warn!("Error sending TcpConnectionEvent to the Core");
+                Break(())
             }
-            Err(error) => {
-                error!("Error sending to the core: {:?}", error);
-                return Break(());
-            }
-        }
+        };
     }
 }

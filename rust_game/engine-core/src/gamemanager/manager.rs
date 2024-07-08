@@ -1,20 +1,42 @@
 use crate::gamemanager::manager::ManagerEvent::{
-    DropStepsBeforeEvent, InitialInformationEvent, InputEvent, ServerInputEvent,
-    SetRequestedStepEvent, StateEvent,
+    DropStepsBeforeEvent,
+    InitialInformationEvent,
+    InputEvent,
+    ServerInputEvent,
+    SetRequestedStepEvent,
+    StateEvent,
 };
 use crate::gamemanager::step::Step;
 use crate::gamemanager::ManagerObserverTrait;
-use crate::interface::{GameTrait, InitialInformation};
-use crate::messaging::{InputMessage, ServerInputMessage, StateMessage};
+use crate::interface::{
+    GameTrait,
+    InitialInformation,
+};
+use crate::messaging::{
+    InputMessage,
+    ServerInputMessage,
+    StateMessage,
+};
 use commons::factory::FactoryTrait;
 use commons::threading::channel::ReceiveMetaData;
-use commons::threading::eventhandling::{ChannelEvent, EventHandleResult, EventHandlerTrait};
-use commons::time::{TimeDuration, TimeValue};
-use log::{trace, warn};
+use commons::threading::eventhandling::{
+    ChannelEvent,
+    EventHandleResult,
+    EventHandlerTrait,
+};
+use commons::time::{
+    TimeDuration,
+    TimeValue,
+};
+use log::{
+    trace,
+    warn,
+};
 use std::collections::vec_deque::VecDeque;
 use std::sync::Arc;
 
 pub enum ManagerEvent<Game: GameTrait> {
+    //TODO: can drop steps and requested Step be combined?
     DropStepsBeforeEvent(usize),
     SetRequestedStepEvent(usize),
     //TODO: get initial information before starting

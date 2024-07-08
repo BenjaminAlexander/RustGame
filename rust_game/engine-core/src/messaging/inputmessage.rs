@@ -1,5 +1,8 @@
 use crate::interface::GameTrait;
-use serde::{Deserialize, Serialize};
+use serde::{
+    Deserialize,
+    Serialize,
+};
 use std::cmp::Ordering;
 
 #[derive(Serialize, Deserialize, Debug)]
