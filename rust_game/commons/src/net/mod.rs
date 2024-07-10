@@ -12,6 +12,7 @@ mod udpsockettrait;
 
 pub use self::constants::LOCAL_EPHEMERAL_SOCKET_ADDR_V4;
 pub use self::constants::MAX_UDP_DATAGRAM_SIZE;
+pub use self::constants::TCP_LISTENER_POLLING_PERIOD;
 pub use self::realtcpstream::RealTcpStream;
 pub use self::realudpsocket::RealUdpSocket;
 pub use self::tcpconnectionhandlertrait::TcpConnectionHandler;

@@ -1,10 +1,14 @@
 use commons::logging::LoggingConfigBuilder;
-use commons::net::LOCAL_EPHEMERAL_SOCKET_ADDR_V4;
+use commons::net::{
+    LOCAL_EPHEMERAL_SOCKET_ADDR_V4,
+    TCP_LISTENER_POLLING_PERIOD,
+};
 use commons::threading::channel::RealSender;
 use commons::threading::eventhandling::{
     EventOrStopThread,
     EventSenderTrait,
 };
+use commons::threading::SingleThreadExecutor;
 use commons::{
     factory::{
         FactoryTrait,
@@ -131,6 +135,101 @@ fn test_tcp_listener_channel_disconnect() {
         .spawn_tcp_listener(
             SocketAddr::from(LOCAL_EPHEMERAL_SOCKET_ADDR_V4),
             TcpConnectionHandler::<RealFactory>::new(),
+            async_expects.new_expect_async_join("Expect listener join"),
+        )
+        .unwrap();
+
+    async_expects.wait_for_all();
+}
+
+#[test]
+fn test_tcp_listener_polling_timeout() {
+    //TODO: write a set up logging method for tests
+    LoggingConfigBuilder::new()
+        .add_console_appender()
+        .init(LevelFilter::Info);
+
+    let async_expects = AsyncExpects::new();
+
+    let expect_connection = async_expects.new_async_expect("Expect one TCP connection", ());
+
+    let executor = SingleThreadExecutor::new();
+
+    let mut tcp_connection_handler = TcpConnectionHandler::<RealFactory>::new();
+
+    tcp_connection_handler.set_on_bind(move |socket_addr| {
+        executor.execute_function_or_panic(move || {
+            //Sleep to cause the listener to poll
+            std::thread::sleep(
+                TCP_LISTENER_POLLING_PERIOD
+                    .mul_f64(2.0)
+                    .to_duration()
+                    .unwrap(),
+            );
+
+            RealFactory::new().connect_tcp(socket_addr).unwrap();
+        });
+    });
+
+    tcp_connection_handler.set_on_connection(move |_, _| {
+        expect_connection.set_actual(());
+        return ControlFlow::Break(());
+    });
+
+    let _sender = RealFactory::new()
+        .new_thread_builder()
+        .name("TcpListener")
+        .spawn_tcp_listener(
+            SocketAddr::from(LOCAL_EPHEMERAL_SOCKET_ADDR_V4),
+            tcp_connection_handler,
+            async_expects.new_expect_async_join("Expect listener join"),
+        )
+        .unwrap();
+
+    async_expects.wait_for_all();
+}
+
+#[test]
+fn test_tcp_listener_send_event() {
+    //TODO: write a set up logging method for tests
+    LoggingConfigBuilder::new()
+        .add_console_appender()
+        .init(LevelFilter::Info);
+
+    let async_expects = AsyncExpects::new();
+
+    let expect_connection = async_expects.new_async_expect("Expect one TCP connection", ());
+
+    let executor = SingleThreadExecutor::new();
+
+    let thread_builder = RealFactory::new()
+        .new_thread_builder()
+        .name("TcpListener")
+        .build_channel_for_tcp_listener::<TcpConnectionHandler<RealFactory>>();
+
+    let mut tcp_connection_handler = TcpConnectionHandler::<RealFactory>::new();
+
+    let sender = thread_builder.clone_sender();
+    tcp_connection_handler.set_on_bind(move |socket_addr| {
+        let sender = sender.clone();
+        executor.execute_function_or_panic(move || {
+            sender.send_event(()).unwrap();
+
+            RealFactory::new().connect_tcp(socket_addr).unwrap();
+        });
+    });
+
+    let sender = thread_builder.clone_sender();
+    tcp_connection_handler.set_on_connection(move |_, _| {
+        expect_connection.set_actual(());
+        sender.send_stop_thread().unwrap();
+        return ControlFlow::Continue(());
+    });
+
+    let _sender = thread_builder
+        .spawn_tcp_listener(
+            SocketAddr::from(LOCAL_EPHEMERAL_SOCKET_ADDR_V4),
+            tcp_connection_handler,
             async_expects.new_expect_async_join("Expect listener join"),
         )
         .unwrap();
