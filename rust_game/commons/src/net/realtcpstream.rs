@@ -1,18 +1,19 @@
 use crate::net::TcpWriterTrait;
+use log::info;
 use rmp_serde::decode::Error as DecodeError;
 use rmp_serde::encode::Error as EncodeError;
 use serde::de::DeserializeOwned;
 use serde::Serialize;
 use std::fmt::Debug;
 use std::io::{
-    Error,
-    Write,
+    BufRead, BufReader, Cursor, Error, Write
 };
 use std::net::{
     Shutdown,
     SocketAddr,
     TcpStream,
 };
+use std::ops::ControlFlow;
 
 #[derive(Debug)]
 pub struct RealTcpStream {
@@ -64,5 +65,30 @@ impl TcpWriterTrait for RealTcpStream {
 
     fn get_peer_addr(&self) -> &SocketAddr {
         return RealTcpStream::get_peer_addr(self);
+    }
+}
+
+pub struct NonBlockingTcpReader {
+    buf_reader: BufReader<TcpStream>,
+    remote_peer_socket_addr: SocketAddr,
+}
+
+impl NonBlockingTcpReader {
+    fn read<T: Serialize + DeserializeOwned>(&mut self) -> Result<T, ControlFlow<()>> {
+        let result = self.buf_reader.fill_buf();
+        info!("fill_buf result: {:?}", result);
+
+        let buffer = self.buf_reader.buffer();
+        let mut cursor = Cursor::new(buffer);
+
+        match rmp_serde::from_read::<&mut Cursor<&[u8]>, T>(&mut cursor) {
+            Ok(value) => {
+                
+                self.buf_reader.consume(cursor.position().try_into().unwrap())
+            },
+            Err(_) => todo!(),
+        };
+
+        return Result::Err(ControlFlow::Break(()));
     }
 }
