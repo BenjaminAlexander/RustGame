@@ -9,6 +9,7 @@ use std::io::{
     Write,
 };
 use std::net::{
+    Shutdown,
     SocketAddr,
     TcpStream,
 };
@@ -44,6 +45,11 @@ impl RealTcpStream {
 
     pub fn read<T: Serialize + DeserializeOwned>(&mut self) -> Result<T, DecodeError> {
         return rmp_serde::from_read(&self.tcp_stream);
+    }
+
+    //TODO: remove this if its not needed
+    pub fn shutdown(&self) -> Result<(), Error> {
+        return self.tcp_stream.shutdown(Shutdown::Both);
     }
 }
 

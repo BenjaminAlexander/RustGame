@@ -1,4 +1,5 @@
 use std::fmt::Debug;
+use std::marker::PhantomData;
 use std::ops::Deref;
 use std::ptr::addr_eq;
 use std::sync::{
@@ -7,7 +8,12 @@ use std::sync::{
     Mutex,
 };
 
-use log::error;
+use commons::factory::FactoryTrait;
+use commons::threading::AsyncJoinCallBackTrait;
+use log::{
+    error,
+    info,
+};
 
 //TODO: Add a wait_or_timeout variant to panic if expects are not met by a timeout
 //TODO: add useful logging or panic message about outstanding expects when a timeout occurs
@@ -75,6 +81,16 @@ impl AsyncExpects {
         return AsyncExpect {
             async_expects: self.clone(),
             async_expect_object,
+        };
+    }
+
+    pub fn new_expect_async_join<Factory: FactoryTrait, T: Send + 'static>(
+        &self,
+        description: &str,
+    ) -> ExpectAsyncJoin<Factory, T> {
+        return ExpectAsyncJoin {
+            async_expect: self.new_async_expect(description, ()),
+            phantom: PhantomData,
         };
     }
 
@@ -207,5 +223,22 @@ impl<T: Debug + Eq + Send + 'static> AsyncExpect<T> {
         }
 
         state.panic_if_failed();
+    }
+}
+
+pub struct ExpectAsyncJoin<Factory: FactoryTrait, T: Send + 'static> {
+    async_expect: AsyncExpect<()>,
+    phantom: PhantomData<(Factory, T)>,
+}
+
+impl<Factory: FactoryTrait, T: Send> AsyncJoinCallBackTrait<Factory, T>
+    for ExpectAsyncJoin<Factory, T>
+{
+    fn join(self, async_join: commons::threading::AsyncJoin<Factory, T>) {
+        info!(
+            "Thread Name: {:?} joined as expected.",
+            async_join.get_thread_name()
+        );
+        self.async_expect.set_actual(());
     }
 }
