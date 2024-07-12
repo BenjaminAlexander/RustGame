@@ -6,7 +6,11 @@ use serde::de::DeserializeOwned;
 use serde::Serialize;
 use std::fmt::Debug;
 use std::io::{
-    BufRead, BufReader, Cursor, Error, Write
+    BufRead,
+    BufReader,
+    Cursor,
+    Error,
+    Write,
 };
 use std::net::{
     Shutdown,
@@ -82,10 +86,9 @@ impl NonBlockingTcpReader {
         let mut cursor = Cursor::new(buffer);
 
         match rmp_serde::from_read::<&mut Cursor<&[u8]>, T>(&mut cursor) {
-            Ok(value) => {
-                
-                self.buf_reader.consume(cursor.position().try_into().unwrap())
-            },
+            Ok(value) => self
+                .buf_reader
+                .consume(cursor.position().try_into().unwrap()),
             Err(_) => todo!(),
         };
 
