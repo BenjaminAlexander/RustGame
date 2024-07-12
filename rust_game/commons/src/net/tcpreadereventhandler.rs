@@ -6,10 +6,8 @@ use crate::threading::eventhandling::{
     EventHandleResult,
     EventHandlerTrait,
 };
-use log::warn;
 use std::ops::ControlFlow::{
-    Break,
-    Continue,
+    self, Break, Continue
 };
 
 pub struct TcpReaderEventHandler<T: TcpReadHandlerTrait> {
@@ -33,10 +31,8 @@ impl<T: TcpReadHandlerTrait> TcpReaderEventHandler<T> {
                     Break(()) => EventHandleResult::StopThread(self.tcp_read_handler),
                 };
             }
-            Err(error) => {
-                warn!("Error on TCP read: {:?}", error);
-                return EventHandleResult::StopThread(self.tcp_read_handler);
-            }
+            Err(ControlFlow::Continue(())) => EventHandleResult::TryForNextEvent(self),
+            Err(ControlFlow::Break(())) =>  EventHandleResult::StopThread(self.tcp_read_handler)
         }
     }
 }

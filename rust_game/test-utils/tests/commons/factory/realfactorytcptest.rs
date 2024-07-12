@@ -301,7 +301,7 @@ fn test_stop_tcp_reader() {
         reader_sender.send_stop_thread().unwrap();
 
         //TODO: make this test pass when this is removed
-        tcp_stream.shutdown().unwrap();
+        //tcp_stream.shutdown().unwrap();
 
         return ControlFlow::Continue(());
     });

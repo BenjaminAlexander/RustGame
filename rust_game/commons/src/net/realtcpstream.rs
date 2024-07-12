@@ -1,19 +1,14 @@
 use crate::net::TcpWriterTrait;
-use log::info;
+use log::{info, warn};
 use rmp_serde::decode::Error as DecodeError;
 use rmp_serde::encode::Error as EncodeError;
 use serde::de::DeserializeOwned;
 use serde::Serialize;
 use std::fmt::Debug;
 use std::io::{
-    BufRead,
-    BufReader,
-    Cursor,
-    Error,
-    Write,
+    self, BufRead, BufReader, Cursor, Error, Write
 };
 use std::net::{
-    Shutdown,
     SocketAddr,
     TcpStream,
 };
@@ -48,14 +43,17 @@ impl RealTcpStream {
         });
     }
 
-    pub fn read<T: Serialize + DeserializeOwned>(&mut self) -> Result<T, DecodeError> {
-        return rmp_serde::from_read(&self.tcp_stream);
+    pub fn read<T: Serialize + DeserializeOwned>(&mut self) -> Result<T, ControlFlow<()>> {
+        return match rmp_serde::from_read(&self.tcp_stream) {
+            Ok(value) => Ok(value),
+            Err(DecodeError::InvalidMarkerRead(ref error)) if error.kind() == io::ErrorKind::TimedOut || error.kind() == io::ErrorKind::WouldBlock => Err(ControlFlow::Continue(())),
+            Err(error) => {
+                warn!("Error on TCP read: {:?}", error);
+                Err(ControlFlow::Break(()))
+            },
+        };
     }
-
-    //TODO: remove this if its not needed
-    pub fn shutdown(&self) -> Result<(), Error> {
-        return self.tcp_stream.shutdown(Shutdown::Both);
-    }
+    
 }
 
 impl TcpWriterTrait for RealTcpStream {

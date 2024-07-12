@@ -48,6 +48,9 @@ impl<T: TcpConnectionHandlerTrait<RealFactory>> TcpListenerEventHandler<T> {
     ) -> EventHandleResult<Self> {
         match accept_result {
             Ok((tcp_stream, remote_peer_socket_addr)) => {
+
+                tcp_stream.set_read_timeout(Some(TCP_LISTENER_POLLING_PERIOD.to_duration().unwrap())).unwrap();
+
                 let tcp_stream = RealTcpStream::new(tcp_stream, remote_peer_socket_addr);
                 let tcp_stream_clone_result = tcp_stream.try_clone();
                 return self.handle_tcp_stream_clone_result(tcp_stream, tcp_stream_clone_result);
