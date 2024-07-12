@@ -89,7 +89,7 @@ impl TcpWriterTrait for RealTcpStream {
 pub struct TcpDeserializer {
     //deserializer: Deserializer<rmp_serde::decode::ReadReader<TcpStream>>,
     buf_reader: BufReader<TcpStream>,
-    buf: VecDeque<u8>,
+    buf: Box<[u8]>,
     remote_peer_socket_addr: SocketAddr,
 }
 
@@ -135,6 +135,8 @@ impl TcpDeserializer {
         return match result {
             Ok(value) => Ok(value),
             Err(DecodeError::InvalidMarkerRead(ref error)) if error.kind() == io::ErrorKind::TimedOut || error.kind() == io::ErrorKind::WouldBlock => {
+                    //TODO: reset reader
+                    
                     Err(ControlFlow::Continue(()))
             },
             Err(error) => {
@@ -149,6 +151,8 @@ impl TcpDeserializer {
 impl Read for TcpDeserializer {
 
     fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
+
+        self.buf.len();
 
         let result = self.buf_reader.read(buf);
         warn!("READ: {:?}", result);
