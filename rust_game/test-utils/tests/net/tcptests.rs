@@ -68,12 +68,23 @@ fn test_non_blocking_tcp_reader() {
 
             let mut tcp_stream = TcpStream::connect(socket_addr).unwrap();
 
+
+
+
+
+            //let garbage = [1, 2, 3, 4, 5, 6, 7, 8];
+            //tcp_stream.write_all(&garbage).unwrap();
+            //tcp_stream.flush().unwrap();
+
+
+
+
             tcp_stream.write_all(&vec[0..1]).unwrap();
             tcp_stream.flush().unwrap();
 
             std::thread::sleep(
                 TCP_LISTENER_POLLING_PERIOD
-                    .mul_f64(2.0)
+                    .mul_f64(5.0)
                     .to_duration()
                     .unwrap(),
             );

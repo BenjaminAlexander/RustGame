@@ -10,21 +10,23 @@ use std::ops::ControlFlow::{
     self, Break, Continue
 };
 
+use super::realtcpstream::TcpDeserializer;
+
 pub struct TcpReaderEventHandler<T: TcpReadHandlerTrait> {
-    tcp_reader: RealTcpStream,
+    tcp_deserializer: TcpDeserializer,
     tcp_read_handler: T,
 }
 
 impl<T: TcpReadHandlerTrait> TcpReaderEventHandler<T> {
     pub fn new(tcp_reader: RealTcpStream, tcp_read_handler: T) -> Self {
         return Self {
-            tcp_reader,
+            tcp_deserializer: tcp_reader.to_deserializer(),
             tcp_read_handler,
         };
     }
 
     fn read(mut self) -> EventHandleResult<Self> {
-        match self.tcp_reader.read::<T::ReadType>() {
+        match self.tcp_deserializer.read::<T::ReadType>() {
             Ok(read_value) => {
                 return match self.tcp_read_handler.on_read(read_value) {
                     Continue(()) => EventHandleResult::TryForNextEvent(self),
