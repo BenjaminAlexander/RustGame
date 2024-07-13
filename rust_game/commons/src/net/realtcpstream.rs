@@ -65,11 +65,7 @@ impl RealTcpStream {
 
     pub fn to_deserializer(self) -> TcpDeserializer {
         return TcpDeserializer {
-            //deserializer: Deserializer::new(self.tcp_stream),
-            buf_reader: BufReader::new(self.tcp_stream),
-            buf: VecDeque::new(),
-            fill_len: 0,
-            read_len: 0,
+            resetable_reader: ResetableReader::new(self.tcp_stream),
             remote_peer_socket_addr: self.remote_peer_socket_addr,
         }
     }
@@ -91,11 +87,7 @@ impl TcpWriterTrait for RealTcpStream {
 }
 
 pub struct TcpDeserializer {
-    //deserializer: Deserializer<rmp_serde::decode::ReadReader<TcpStream>>,
-    buf_reader: BufReader<TcpStream>,
-    buf: VecDeque<u8>,
-    fill_len: usize,
-    read_len: usize,
+    resetable_reader: ResetableReader<TcpStream>,
     remote_peer_socket_addr: SocketAddr,
 }
 
@@ -103,20 +95,40 @@ impl TcpDeserializer {
 
     pub fn read<T: Serialize + DeserializeOwned>(&mut self) -> Result<T, ControlFlow<()>> {
 
-        let x: &&mut TcpDeserializer = &self;
-
-        let result = rmp_serde::decode::from_read(x);
+        let result = rmp_serde::decode::from_read(&mut self.resetable_reader);
 
         return match result {
-            Ok(value) => Ok(value),
+            Ok(value) => {
+                self.resetable_reader.drop_read_bytes();
+                Ok(value)
+            },
             Err(DecodeError::InvalidMarkerRead(ref error)) if error.kind() == io::ErrorKind::TimedOut || error.kind() == io::ErrorKind::WouldBlock => {
-                    self.reset_cursor();
+                    self.resetable_reader.reset_cursor();
                     Err(ControlFlow::Continue(()))
             },
             Err(error) => {
+                self.resetable_reader.drop_read_bytes();
                 warn!("Error on TCP read: {:?}", error);
                 Err(ControlFlow::Break(()))
             },
+        };
+    }
+}
+
+struct ResetableReader<T: Read> {
+    buf_reader: BufReader<T>,
+    buf: VecDeque<u8>,
+    fill_len: usize,
+    read_len: usize,
+}
+
+impl<T: Read> ResetableReader<T> {
+    fn new(inner: T) -> Self {
+        return Self {
+            buf_reader: BufReader::new(inner),
+            buf: VecDeque::new(),
+            fill_len: 0,
+            read_len: 0,
         };
     }
 
@@ -124,9 +136,13 @@ impl TcpDeserializer {
         self.read_len = 0;
     }
 
+    fn drop_read_bytes(&mut self) {
+        let buf = &self.buf;
+        warn!("Buf after drop: {buf:?}");
+    }
 }
 
-impl Read for TcpDeserializer {
+impl<T: Read> Read for &mut ResetableReader<T> {
 
     fn read(&mut self, read_buf: &mut [u8]) -> io::Result<usize> {
 
@@ -154,6 +170,8 @@ impl Read for TcpDeserializer {
                     warn!("Buf after read: {slice:?}");
                     self.fill_len += read_len;              
                 },
+
+                //TODO: generalize the errors
                 Err(error) if error.kind() == io::ErrorKind::TimedOut || error.kind() == io::ErrorKind::WouldBlock => {
                     return Err(Error::from(io::ErrorKind::TimedOut));
                 }
@@ -172,6 +190,9 @@ impl Read for TcpDeserializer {
 
         slice_to_read_into.copy_from_slice(&mut slice[self.read_len..(self.read_len + len_to_read)]);
 
+        self.read_len += len_to_read;
+
+
         let result =Ok(len_to_read);
 
 
@@ -180,10 +201,13 @@ impl Read for TcpDeserializer {
     }
 }
 
-impl Read for &&mut TcpDeserializer {
+/* 
+impl<T: Read> Read for &ResetableReader<T> {
 
     fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
-        let x = *self;
-        return Read::read(*x, buf);
+        let mut x = *self;
+        return x.read(buf);
     }
+
 }
+    */
