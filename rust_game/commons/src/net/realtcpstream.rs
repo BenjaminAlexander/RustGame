@@ -18,6 +18,8 @@ use std::net::{
 };
 use std::ops::ControlFlow;
 
+use super::TCP_LISTENER_POLLING_PERIOD;
+
 #[derive(Debug)]
 pub struct RealTcpStream {
     tcp_stream: TcpStream,
@@ -26,6 +28,9 @@ pub struct RealTcpStream {
 
 impl RealTcpStream {
     pub fn new(tcp_stream: TcpStream, remote_peer_socket_addr: SocketAddr) -> Self {
+
+        tcp_stream.set_read_timeout(Some(TCP_LISTENER_POLLING_PERIOD.to_duration().unwrap())).unwrap();
+
         return Self {
             tcp_stream,
             remote_peer_socket_addr,
@@ -117,7 +122,7 @@ impl TcpDeserializer {
 
 struct ResetableReader<T: Read> {
     buf_reader: BufReader<T>,
-    buf: VecDeque<u8>,
+    buf: Vec<u8>,
     fill_len: usize,
     read_len: usize,
 }
@@ -126,7 +131,7 @@ impl<T: Read> ResetableReader<T> {
     fn new(inner: T) -> Self {
         return Self {
             buf_reader: BufReader::new(inner),
-            buf: VecDeque::new(),
+            buf: Vec::new(),
             fill_len: 0,
             read_len: 0,
         };
@@ -137,12 +142,16 @@ impl<T: Read> ResetableReader<T> {
     }
 
     fn drop_read_bytes(&mut self) {
+
+        self.buf.drain(0..self.read_len);
+        self.read_len = 0;
+
         let buf = &self.buf;
         warn!("Buf after drop: {buf:?}");
     }
 }
 
-impl<T: Read> Read for &mut ResetableReader<T> {
+impl<T: Read> Read for ResetableReader<T> {
 
     fn read(&mut self, read_buf: &mut [u8]) -> io::Result<usize> {
 
@@ -155,7 +164,7 @@ impl<T: Read> Read for &mut ResetableReader<T> {
             self.buf.resize(self.fill_len + bytes_needed_from_tcp_stream, 0);
         }
 
-        let slice = self.buf.make_contiguous();
+        let slice = self.buf.as_mut_slice();
 
         if bytes_needed_from_tcp_stream > 0 {
 

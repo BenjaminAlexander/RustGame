@@ -9,6 +9,7 @@ mod tcpwritertrait;
 mod udpreadereventhandler;
 mod udpreadhandlertrait;
 mod udpsockettrait;
+mod resetablereader;
 
 pub use self::constants::LOCAL_EPHEMERAL_SOCKET_ADDR_V4;
 pub use self::constants::MAX_UDP_DATAGRAM_SIZE;
