@@ -1,6 +1,4 @@
-use std::{cmp::min, io::{BufReader, Error, ErrorKind, Read, Result}};
-
-use log::warn;
+use std::{cmp::min, io::{BufReader, Read, Result}};
 
 pub struct ResetableReader<T: Read> {
     buf_reader: BufReader<T>,
@@ -24,20 +22,14 @@ impl<T: Read> ResetableReader<T> {
     }
 
     pub fn drop_read_bytes(&mut self) {
-
         self.buf.drain(0..self.read_len);
         self.read_len = 0;
-
-        let buf = &self.buf;
-        warn!("Buf after drop: {buf:?}");
     }
 }
 
 impl<T: Read> Read for ResetableReader<T> {
 
     fn read(&mut self, read_buf: &mut [u8]) -> Result<usize> {
-
-        warn!("Buf: {:?}", self.buf);
 
         let unread_bytes_in_buf = self.fill_len - self.read_len;
         let bytes_needed_from_tcp_stream = read_buf.len() - unread_bytes_in_buf;
@@ -50,7 +42,7 @@ impl<T: Read> Read for ResetableReader<T> {
 
         if bytes_needed_from_tcp_stream > 0 {
 
-            //Need to read bytes from the TcpStream
+            //Need to read bytes from the reader
             let end = bytes_needed_from_tcp_stream + self.fill_len;
             let slice_to_read_into = &mut slice[self.fill_len..end];
 
@@ -58,22 +50,14 @@ impl<T: Read> Read for ResetableReader<T> {
 
             match result {
                 Ok(read_len) => {
-                    warn!("Buf after read: {slice:?}");
                     self.fill_len += read_len;              
                 },
-
-                //TODO: generalize the errors
-                Err(error) if error.kind() == ErrorKind::TimedOut || error.kind() == ErrorKind::WouldBlock => {
-                    return Err(Error::from(ErrorKind::TimedOut));
-                }
                 Err(_) => return result,
             }
 
         }
 
         //Now, the bytes have already been buffered
-
-        //TODO: start here:
         let bytes_available = slice.len() - self.read_len;
         let len_to_read = min(bytes_available, read_buf.len());
 
@@ -83,11 +67,7 @@ impl<T: Read> Read for ResetableReader<T> {
 
         self.read_len += len_to_read;
 
-
-        let result =Ok(len_to_read);
-
-
-        warn!("READ\nResult: {result:?}\nread_buf: {read_buf:?}");
+        let result = Ok(len_to_read);
         return result;
     }
 }
