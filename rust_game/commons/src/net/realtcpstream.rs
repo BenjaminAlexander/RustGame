@@ -68,6 +68,7 @@ impl RealTcpStream {
             //deserializer: Deserializer::new(self.tcp_stream),
             buf_reader: BufReader::new(self.tcp_stream),
             buf: VecDeque::new(),
+            fill_len: 0,
             read_len: 0,
             remote_peer_socket_addr: self.remote_peer_socket_addr,
         }
@@ -93,6 +94,7 @@ pub struct TcpDeserializer {
     //deserializer: Deserializer<rmp_serde::decode::ReadReader<TcpStream>>,
     buf_reader: BufReader<TcpStream>,
     buf: VecDeque<u8>,
+    fill_len: usize,
     read_len: usize,
     remote_peer_socket_addr: SocketAddr,
 }
@@ -158,30 +160,31 @@ impl Read for TcpDeserializer {
 
         warn!("Buf: {:?}", self.buf);
 
-        let unread_bytes_in_buf = self.buf.len() - self.read_len;
+        let unread_bytes_in_buf = self.fill_len - self.read_len;
         let bytes_needed_from_tcp_stream = read_buf.len() - unread_bytes_in_buf;
         
+        if bytes_needed_from_tcp_stream > self.buf.len() - self.fill_len {
+            self.buf.resize(self.fill_len + bytes_needed_from_tcp_stream, 0);
+        }
+
         if bytes_needed_from_tcp_stream > 0 {
 
             //Need to read bytes from the TcpStream
 
-            //TODO: need to resize here
-            self.buf.reserve(bytes_needed_from_tcp_stream);
-            
-            let mut slice = self.buf.make_contiguous();
+            let slice = self.buf.make_contiguous();
 
-            self.buf_reader.read_vectored(bufs)
+            let end = bytes_needed_from_tcp_stream + self.fill_len;
+            let slice_to_read_into = &mut slice[self.fill_len..end];
 
-            //TODO: this is the wrong number of bytes to read
-            let u = [..];
-            let y = &[42, 10][..];
-            let x = self.buf.as_mut_slices();
-            let result = self.buf_reader.read(read_buf);
+            //TODO: remove
+            debug_assert!(read_buf.len() - slice_to_read_into.len() - unread_bytes_in_buf == 0);
+
+            let result = self.buf_reader.read(slice_to_read_into);
 
             match result {
-                Ok(len_read) => {
-                    unwrap_or_log_panic(self.buf.write(&read_buf[0..len_read]));
+                Ok(read_len) => {
                     warn!("Buf after read: {:?}", self.buf);
+                    self.fill_len += read_len;              
                 },
                 Err(error) if error.kind() == io::ErrorKind::TimedOut || error.kind() == io::ErrorKind::WouldBlock => {
                     return Err(Error::from(io::ErrorKind::TimedOut));
@@ -193,10 +196,11 @@ impl Read for TcpDeserializer {
 
         //Now, the bytes have already been buffered
 
+        //TODO: start here:
         let bytes_available = self.buf.len() - self.read_len;
         let len_to_read = min(bytes_available, read_buf.len());
 
-        read_buf.clone_from_slice(src)
+        //read_buf.clone_from_slice(src)
 
 
 
