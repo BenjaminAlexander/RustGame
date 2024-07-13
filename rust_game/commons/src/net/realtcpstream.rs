@@ -102,47 +102,15 @@ pub struct TcpDeserializer {
 impl TcpDeserializer {
 
     pub fn read<T: Serialize + DeserializeOwned>(&mut self) -> Result<T, ControlFlow<()>> {
-/*
-        let c = Cursor::new(self.buf);
 
-        VecDeque
+        let x: &&mut TcpDeserializer = &self;
 
-        c.read(buf)
-
-        warn!("BEGIN");
-
-        //let i_buf = self.buf_reader.fill_buf().unwrap();
-        warn!("i_buf: {:?}", self.buf_reader.fill_buf());
-*/
-/*
-        let mut buf: [u8; 1] = [0];
-        self.buf_reader.read(&mut buf);
-        warn!("buf: {:?}", buf);
-
-        self.buf_reader.read(&mut buf);
-        warn!("buf: {:?}", buf);
-
-
-
-
-        self.buf_reader.consume(1);
-        let i_buf = self.buf_reader.fill_buf().unwrap();
-        warn!("i_buf: {:?}", i_buf);
-
-        self.buf_reader.read(&mut buf);
-        warn!("buf: {:?}", buf);
-*/
-
-        //return Err(ControlFlow::Continue(()));
-
-        //let result = Deserialize::deserialize(&mut self.deserializer);
-        let result = rmp_serde::decode::from_read(self);
+        let result = rmp_serde::decode::from_read(x);
 
         return match result {
             Ok(value) => Ok(value),
             Err(DecodeError::InvalidMarkerRead(ref error)) if error.kind() == io::ErrorKind::TimedOut || error.kind() == io::ErrorKind::WouldBlock => {
-                    //TODO: reset reader
-                    
+                    self.reset_cursor();
                     Err(ControlFlow::Continue(()))
             },
             Err(error) => {
@@ -150,6 +118,10 @@ impl TcpDeserializer {
                 Err(ControlFlow::Break(()))
             },
         };
+    }
+
+    fn reset_cursor(&mut self) {
+        self.read_len = 0;
     }
 
 }
@@ -167,23 +139,19 @@ impl Read for TcpDeserializer {
             self.buf.resize(self.fill_len + bytes_needed_from_tcp_stream, 0);
         }
 
+        let slice = self.buf.make_contiguous();
+
         if bytes_needed_from_tcp_stream > 0 {
 
             //Need to read bytes from the TcpStream
-
-            let slice = self.buf.make_contiguous();
-
             let end = bytes_needed_from_tcp_stream + self.fill_len;
             let slice_to_read_into = &mut slice[self.fill_len..end];
-
-            //TODO: remove
-            debug_assert!(read_buf.len() - slice_to_read_into.len() - unread_bytes_in_buf == 0);
 
             let result = self.buf_reader.read(slice_to_read_into);
 
             match result {
                 Ok(read_len) => {
-                    warn!("Buf after read: {:?}", self.buf);
+                    warn!("Buf after read: {slice:?}");
                     self.fill_len += read_len;              
                 },
                 Err(error) if error.kind() == io::ErrorKind::TimedOut || error.kind() == io::ErrorKind::WouldBlock => {
@@ -197,20 +165,25 @@ impl Read for TcpDeserializer {
         //Now, the bytes have already been buffered
 
         //TODO: start here:
-        let bytes_available = self.buf.len() - self.read_len;
+        let bytes_available = slice.len() - self.read_len;
         let len_to_read = min(bytes_available, read_buf.len());
 
-        //read_buf.clone_from_slice(src)
+        let slice_to_read_into = &mut read_buf[0..len_to_read];
+
+        slice_to_read_into.copy_from_slice(&mut slice[self.read_len..(self.read_len + len_to_read)]);
+
+        let result =Ok(len_to_read);
 
 
-
-    /*     
-
-
-         */   
-
-        let result = self.buf_reader.read(read_buf);
-        warn!("READ: {:?}", result);
+        warn!("READ\nResult: {result:?}\nread_buf: {read_buf:?}");
         return result;
+    }
+}
+
+impl Read for &&mut TcpDeserializer {
+
+    fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
+        let x = *self;
+        return Read::read(*x, buf);
     }
 }
