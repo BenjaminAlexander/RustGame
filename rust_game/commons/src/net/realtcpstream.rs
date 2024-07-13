@@ -1,3 +1,4 @@
+use crate::logging::unwrap_or_log_panic;
 use crate::net::TcpWriterTrait;
 use log::{info, warn};
 use rmp_serde::decode::Error as DecodeError;
@@ -5,7 +6,8 @@ use rmp_serde::encode::Error as EncodeError;
 use rmp_serde::Deserializer;
 use serde::de::DeserializeOwned;
 use serde::{Deserialize, Serialize};
-use std::collections::VecDeque;
+use std::cmp::min;
+use std::collections::{vec_deque, VecDeque};
 use std::fmt::Debug;
 use std::io::{
     self, BufRead, BufReader, Cursor, Error, Read, Write
@@ -66,6 +68,7 @@ impl RealTcpStream {
             //deserializer: Deserializer::new(self.tcp_stream),
             buf_reader: BufReader::new(self.tcp_stream),
             buf: VecDeque::new(),
+            read_len: 0,
             remote_peer_socket_addr: self.remote_peer_socket_addr,
         }
     }
@@ -89,7 +92,8 @@ impl TcpWriterTrait for RealTcpStream {
 pub struct TcpDeserializer {
     //deserializer: Deserializer<rmp_serde::decode::ReadReader<TcpStream>>,
     buf_reader: BufReader<TcpStream>,
-    buf: Box<[u8]>,
+    buf: VecDeque<u8>,
+    read_len: usize,
     remote_peer_socket_addr: SocketAddr,
 }
 
@@ -150,11 +154,58 @@ impl TcpDeserializer {
 
 impl Read for TcpDeserializer {
 
-    fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
+    fn read(&mut self, read_buf: &mut [u8]) -> io::Result<usize> {
 
-        self.buf.len();
+        warn!("Buf: {:?}", self.buf);
 
-        let result = self.buf_reader.read(buf);
+        let unread_bytes_in_buf = self.buf.len() - self.read_len;
+        let bytes_needed_from_tcp_stream = read_buf.len() - unread_bytes_in_buf;
+        
+        if bytes_needed_from_tcp_stream > 0 {
+
+            //Need to read bytes from the TcpStream
+
+            //TODO: need to resize here
+            self.buf.reserve(bytes_needed_from_tcp_stream);
+            
+            let mut slice = self.buf.make_contiguous();
+
+            self.buf_reader.read_vectored(bufs)
+
+            //TODO: this is the wrong number of bytes to read
+            let u = [..];
+            let y = &[42, 10][..];
+            let x = self.buf.as_mut_slices();
+            let result = self.buf_reader.read(read_buf);
+
+            match result {
+                Ok(len_read) => {
+                    unwrap_or_log_panic(self.buf.write(&read_buf[0..len_read]));
+                    warn!("Buf after read: {:?}", self.buf);
+                },
+                Err(error) if error.kind() == io::ErrorKind::TimedOut || error.kind() == io::ErrorKind::WouldBlock => {
+                    return Err(Error::from(io::ErrorKind::TimedOut));
+                }
+                Err(_) => return result,
+            }
+
+        }
+
+        //Now, the bytes have already been buffered
+
+        let bytes_available = self.buf.len() - self.read_len;
+        let len_to_read = min(bytes_available, read_buf.len());
+
+        read_buf.clone_from_slice(src)
+
+
+
+    /*     
+
+
+         */   
+
+        let result = self.buf_reader.read(read_buf);
         warn!("READ: {:?}", result);
         return result;
     }
