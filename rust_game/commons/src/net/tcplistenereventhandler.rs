@@ -30,11 +30,13 @@ pub struct TcpListenerEventHandler<T: TcpConnectionHandlerTrait<RealFactory>> {
 }
 
 impl<T: TcpConnectionHandlerTrait<RealFactory>> TcpListenerEventHandler<T> {
-    pub fn new(tcp_listener: TcpListener, tcp_connection_handler: T) -> Self {
-        return Self {
+    pub fn new(tcp_listener: TcpListener, tcp_connection_handler: T) -> io::Result<Self> {
+        tcp_listener.set_nonblocking(true)?;
+
+        return Ok(Self {
             tcp_listener,
             tcp_connection_handler,
-        };
+        });
     }
 
     fn accept(self) -> EventHandleResult<Self> {
@@ -145,7 +147,8 @@ mod tests {
 
         let real_tcp_stream = RealTcpStream::new(tcp_stream, listener_addr);
 
-        let event_handler = TcpListenerEventHandler::new(tcp_listener, tcp_connection_handler);
+        let event_handler =
+            TcpListenerEventHandler::new(tcp_listener, tcp_connection_handler).unwrap();
 
         let event_handler_result = event_handler.handle_tcp_stream_clone_result(
             real_tcp_stream,
@@ -168,7 +171,8 @@ mod tests {
 
         let tcp_listener = TcpListener::bind(LOCAL_EPHEMERAL_SOCKET_ADDR_V4).unwrap();
 
-        let event_handler = TcpListenerEventHandler::new(tcp_listener, tcp_connection_handler);
+        let event_handler =
+            TcpListenerEventHandler::new(tcp_listener, tcp_connection_handler).unwrap();
 
         let event_handler_result =
             event_handler.handle_accept_result(Result::Err(Error::from(ErrorKind::NotConnected)));
