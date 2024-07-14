@@ -49,7 +49,7 @@ impl<T: TcpReadHandlerTrait> EventHandlerTrait for TcpReaderEventHandler<T> {
             ChannelEvent::ChannelEmpty => self.read(),
             ChannelEvent::ChannelDisconnected => {
                 EventHandleResult::StopThread(self.tcp_read_handler)
-            },
+            }
             _ => EventHandleResult::TryForNextEvent(self),
         };
     }
