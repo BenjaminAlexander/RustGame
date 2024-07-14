@@ -1,6 +1,6 @@
 use commons::net::{
     LOCAL_EPHEMERAL_SOCKET_ADDR_V4,
-    TCP_LISTENER_POLLING_PERIOD,
+    TCP_POLLING_PERIOD,
 };
 use commons::threading::channel::RealSender;
 use commons::threading::eventhandling::{
@@ -148,7 +148,7 @@ fn test_tcp_listener_polling_timeout() {
         executor.execute_function_or_panic(move || {
             //Sleep to cause the listener to poll
             std::thread::sleep(
-                TCP_LISTENER_POLLING_PERIOD
+                TCP_POLLING_PERIOD
                     .mul_f64(2.0)
                     .to_duration()
                     .unwrap(),
@@ -291,7 +291,7 @@ fn test_stop_tcp_reader() {
 
         //Sleep to cause the reader to poll
         std::thread::sleep(
-            TCP_LISTENER_POLLING_PERIOD
+            TCP_POLLING_PERIOD
                 .mul_f64(2.0)
                 .to_duration()
                 .unwrap(),
@@ -299,9 +299,6 @@ fn test_stop_tcp_reader() {
 
         listener_sender.send_stop_thread().unwrap();
         reader_sender.send_stop_thread().unwrap();
-
-        //TODO: make this test pass when this is removed
-        //tcp_stream.shutdown().unwrap();
 
         return ControlFlow::Continue(());
     });

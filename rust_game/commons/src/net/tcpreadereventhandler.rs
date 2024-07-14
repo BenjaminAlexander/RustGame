@@ -6,11 +6,9 @@ use crate::threading::eventhandling::{
     EventHandleResult,
     EventHandlerTrait,
 };
-use std::ops::ControlFlow::{
-    self, Break, Continue
-};
+use std::ops::ControlFlow;
 
-use super::realtcpstream::TcpDeserializer;
+use super::realtcpstream::{TcpDeserializer, TcpReadResult};
 
 pub struct TcpReaderEventHandler<T: TcpReadHandlerTrait> {
     tcp_deserializer: TcpDeserializer,
@@ -27,14 +25,14 @@ impl<T: TcpReadHandlerTrait> TcpReaderEventHandler<T> {
 
     fn read(mut self) -> EventHandleResult<Self> {
         match self.tcp_deserializer.read::<T::ReadType>() {
-            Ok(read_value) => {
+            TcpReadResult::Ok(read_value) => {
                 return match self.tcp_read_handler.on_read(read_value) {
-                    Continue(()) => EventHandleResult::TryForNextEvent(self),
-                    Break(()) => EventHandleResult::StopThread(self.tcp_read_handler),
+                    ControlFlow::Continue(()) => EventHandleResult::TryForNextEvent(self),
+                    ControlFlow::Break(()) => EventHandleResult::StopThread(self.tcp_read_handler),
                 };
             }
-            Err(ControlFlow::Continue(())) => EventHandleResult::TryForNextEvent(self),
-            Err(ControlFlow::Break(())) =>  EventHandleResult::StopThread(self.tcp_read_handler)
+            TcpReadResult::TimedOut => EventHandleResult::TryForNextEvent(self),
+            TcpReadResult::Err =>  EventHandleResult::StopThread(self.tcp_read_handler)
         }
     }
 }

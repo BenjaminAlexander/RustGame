@@ -1,6 +1,6 @@
 use commons::net::{
     LOCAL_EPHEMERAL_SOCKET_ADDR_V4,
-    TCP_LISTENER_POLLING_PERIOD,
+    TCP_POLLING_PERIOD,
 };
 use commons::threading::channel::RealSender;
 use commons::threading::eventhandling::{
@@ -70,8 +70,8 @@ fn test_non_blocking_tcp_reader() {
             tcp_stream.flush().unwrap();
 
             std::thread::sleep(
-                TCP_LISTENER_POLLING_PERIOD
-                    .mul_f64(2.0)
+                TCP_POLLING_PERIOD
+                    .mul_f64(3.0)
                     .to_duration()
                     .unwrap(),
             );

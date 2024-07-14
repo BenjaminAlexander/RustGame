@@ -1,4 +1,4 @@
-use super::constants::TCP_LISTENER_POLLING_PERIOD;
+use super::constants::TCP_POLLING_PERIOD;
 use crate::factory::RealFactory;
 use crate::net::realtcpstream::RealTcpStream;
 use crate::net::tcpconnectionhandlertrait::TcpConnectionHandlerTrait;
@@ -55,7 +55,7 @@ impl<T: TcpConnectionHandlerTrait<RealFactory>> TcpListenerEventHandler<T> {
             Err(ref error) if error.kind() == io::ErrorKind::WouldBlock => {
                 return EventHandleResult::WaitForNextEventOrTimeout(
                     self,
-                    TCP_LISTENER_POLLING_PERIOD,
+                    TCP_POLLING_PERIOD,
                 );
             }
             Err(error) => {
