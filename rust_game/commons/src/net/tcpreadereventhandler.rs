@@ -46,12 +46,11 @@ impl<T: TcpReadHandlerTrait> EventHandlerTrait for TcpReaderEventHandler<T> {
 
     fn on_channel_event(self, channel_event: ChannelEvent<Self::Event>) -> EventHandleResult<Self> {
         return match channel_event {
-            ChannelEvent::ReceivedEvent(_, ()) => EventHandleResult::TryForNextEvent(self),
-            ChannelEvent::Timeout => EventHandleResult::TryForNextEvent(self),
             ChannelEvent::ChannelEmpty => self.read(),
             ChannelEvent::ChannelDisconnected => {
                 EventHandleResult::StopThread(self.tcp_read_handler)
-            }
+            },
+            _ => EventHandleResult::TryForNextEvent(self),
         };
     }
 
