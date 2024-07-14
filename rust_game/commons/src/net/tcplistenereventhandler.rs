@@ -53,10 +53,7 @@ impl<T: TcpConnectionHandlerTrait<RealFactory>> TcpListenerEventHandler<T> {
                 return self.handle_tcp_stream_clone_result(tcp_stream, tcp_stream_clone_result);
             }
             Err(ref error) if error.kind() == io::ErrorKind::WouldBlock => {
-                return EventHandleResult::WaitForNextEventOrTimeout(
-                    self,
-                    TCP_POLLING_PERIOD,
-                );
+                return EventHandleResult::WaitForNextEventOrTimeout(self, TCP_POLLING_PERIOD);
             }
             Err(error) => {
                 error!("Error while trying to accept a TCP connection: {:?}", error);

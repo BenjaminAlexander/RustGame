@@ -8,7 +8,10 @@ use crate::threading::eventhandling::{
 };
 use std::ops::ControlFlow;
 
-use super::realtcpstream::{TcpDeserializer, TcpReadResult};
+use super::realtcpstream::{
+    TcpDeserializer,
+    TcpReadResult,
+};
 
 pub struct TcpReaderEventHandler<T: TcpReadHandlerTrait> {
     tcp_deserializer: TcpDeserializer,
@@ -32,7 +35,7 @@ impl<T: TcpReadHandlerTrait> TcpReaderEventHandler<T> {
                 };
             }
             TcpReadResult::TimedOut => EventHandleResult::TryForNextEvent(self),
-            TcpReadResult::Err =>  EventHandleResult::StopThread(self.tcp_read_handler)
+            TcpReadResult::Err => EventHandleResult::StopThread(self.tcp_read_handler),
         }
     }
 }

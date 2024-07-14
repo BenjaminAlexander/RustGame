@@ -5,7 +5,11 @@ use rmp_serde::encode::Error as EncodeError;
 use serde::de::DeserializeOwned;
 use serde::Serialize;
 use std::fmt::Debug;
-use std::io::{Error, ErrorKind, Write};
+use std::io::{
+    Error,
+    ErrorKind,
+    Write,
+};
 use std::net::{
     SocketAddr,
     TcpStream,
@@ -22,7 +26,9 @@ pub struct RealTcpStream {
 
 impl RealTcpStream {
     pub fn new(tcp_stream: TcpStream, remote_peer_socket_addr: SocketAddr) -> Self {
-        tcp_stream.set_read_timeout(Some(TCP_POLLING_PERIOD.to_duration().unwrap())).unwrap();
+        tcp_stream
+            .set_read_timeout(Some(TCP_POLLING_PERIOD.to_duration().unwrap()))
+            .unwrap();
 
         return Self {
             tcp_stream,
@@ -47,10 +53,9 @@ impl RealTcpStream {
 
     pub fn to_deserializer(self) -> TcpDeserializer {
         return TcpDeserializer {
-            resetable_reader: ResetableReader::new(self.tcp_stream)
-        }
+            resetable_reader: ResetableReader::new(self.tcp_stream),
+        };
     }
-    
 }
 
 impl TcpWriterTrait for RealTcpStream {
@@ -68,35 +73,35 @@ impl TcpWriterTrait for RealTcpStream {
 }
 
 pub struct TcpDeserializer {
-    resetable_reader: ResetableReader<TcpStream>
+    resetable_reader: ResetableReader<TcpStream>,
 }
 
 pub enum TcpReadResult<T> {
     Ok(T),
     TimedOut,
-    Err
+    Err,
 }
 
 impl TcpDeserializer {
-
     pub fn read<T: Serialize + DeserializeOwned>(&mut self) -> TcpReadResult<T> {
-
         let result = rmp_serde::decode::from_read(&mut self.resetable_reader);
 
         return match result {
             Ok(value) => {
                 self.resetable_reader.drop_read_bytes();
                 TcpReadResult::Ok(value)
-            },
-            Err(DecodeError::InvalidMarkerRead(ref error)) if error.kind() == ErrorKind::TimedOut || error.kind() == ErrorKind::WouldBlock => {
-                    self.resetable_reader.reset_cursor();
-                    TcpReadResult::TimedOut
-            },
+            }
+            Err(DecodeError::InvalidMarkerRead(ref error))
+                if error.kind() == ErrorKind::TimedOut || error.kind() == ErrorKind::WouldBlock =>
+            {
+                self.resetable_reader.reset_cursor();
+                TcpReadResult::TimedOut
+            }
             Err(error) => {
                 self.resetable_reader.drop_read_bytes();
                 warn!("Error on TCP read: {:?}", error);
                 TcpReadResult::Err
-            },
+            }
         };
     }
 }

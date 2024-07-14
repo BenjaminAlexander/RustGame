@@ -147,12 +147,7 @@ fn test_tcp_listener_polling_timeout() {
     tcp_connection_handler.set_on_bind(move |socket_addr| {
         executor.execute_function_or_panic(move || {
             //Sleep to cause the listener to poll
-            std::thread::sleep(
-                TCP_POLLING_PERIOD
-                    .mul_f64(2.0)
-                    .to_duration()
-                    .unwrap(),
-            );
+            std::thread::sleep(TCP_POLLING_PERIOD.mul_f64(2.0).to_duration().unwrap());
 
             RealFactory::new().connect_tcp(socket_addr).unwrap();
         });
@@ -290,12 +285,7 @@ fn test_stop_tcp_reader() {
             .unwrap();
 
         //Sleep to cause the reader to poll
-        std::thread::sleep(
-            TCP_POLLING_PERIOD
-                .mul_f64(2.0)
-                .to_duration()
-                .unwrap(),
-        );
+        std::thread::sleep(TCP_POLLING_PERIOD.mul_f64(2.0).to_duration().unwrap());
 
         listener_sender.send_stop_thread().unwrap();
         reader_sender.send_stop_thread().unwrap();

@@ -1,6 +1,7 @@
 mod constants;
 mod realtcpstream;
 mod realudpsocket;
+mod resetablereader;
 mod tcpconnectionhandlertrait;
 mod tcplistenereventhandler;
 mod tcpreadereventhandler;
@@ -9,7 +10,6 @@ mod tcpwritertrait;
 mod udpreadereventhandler;
 mod udpreadhandlertrait;
 mod udpsockettrait;
-mod resetablereader;
 
 pub use self::constants::LOCAL_EPHEMERAL_SOCKET_ADDR_V4;
 pub use self::constants::MAX_UDP_DATAGRAM_SIZE;

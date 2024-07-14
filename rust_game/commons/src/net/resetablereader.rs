@@ -1,4 +1,11 @@
-use std::{cmp::min, io::{BufReader, Read, Result}};
+use std::{
+    cmp::min,
+    io::{
+        BufReader,
+        Read,
+        Result,
+    },
+};
 
 pub struct ResetableReader<T: Read> {
     buf_reader: BufReader<T>,
@@ -29,9 +36,7 @@ impl<T: Read> ResetableReader<T> {
 }
 
 impl<T: Read> Read for ResetableReader<T> {
-
     fn read(&mut self, read_buf: &mut [u8]) -> Result<usize> {
-
         let unread_bytes_in_buf = self.fill_len - self.read_len;
 
         let bytes_needed_from_stream;
@@ -48,7 +53,6 @@ impl<T: Read> Read for ResetableReader<T> {
         let slice = self.buf.as_mut_slice();
 
         if bytes_needed_from_stream > 0 {
-
             //Need to read bytes from the reader
             let end = bytes_needed_from_stream + self.fill_len;
             let slice_to_read_into = &mut slice[self.fill_len..end];
@@ -59,7 +63,6 @@ impl<T: Read> Read for ResetableReader<T> {
                 Ok(read_len) => self.fill_len += read_len,
                 Err(_) => return result,
             }
-
         }
 
         //Now, the bytes have already been buffered
@@ -68,7 +71,8 @@ impl<T: Read> Read for ResetableReader<T> {
 
         let slice_to_read_into = &mut read_buf[0..len_to_read];
 
-        slice_to_read_into.copy_from_slice(&mut slice[self.read_len..(self.read_len + len_to_read)]);
+        slice_to_read_into
+            .copy_from_slice(&mut slice[self.read_len..(self.read_len + len_to_read)]);
 
         self.read_len += len_to_read;
 
@@ -87,13 +91,12 @@ mod tests {
 
     #[test]
     fn test_no_bytes_needed() {
-
         let source: [u8; 4] = [45, 78, 34, 99];
         let cursor: Cursor<[u8; 4]> = Cursor::new(source);
         let mut resetable_reader = ResetableReader::new(cursor);
 
         let mut buf: [u8; 2] = [0, 0];
-        
+
         let result = resetable_reader.read(&mut buf);
         assert!(matches!(result, Ok(2)));
         assert_eq!([45, 78], buf);
@@ -124,6 +127,5 @@ mod tests {
         let result = resetable_reader.read(&mut buf);
         assert!(matches!(result, Ok(2)));
         assert_eq!([34, 99], buf);
-
     }
 }

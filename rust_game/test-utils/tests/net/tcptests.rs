@@ -69,12 +69,7 @@ fn test_non_blocking_tcp_reader() {
             tcp_stream.write_all(&vec[0..1]).unwrap();
             tcp_stream.flush().unwrap();
 
-            std::thread::sleep(
-                TCP_POLLING_PERIOD
-                    .mul_f64(3.0)
-                    .to_duration()
-                    .unwrap(),
-            );
+            std::thread::sleep(TCP_POLLING_PERIOD.mul_f64(3.0).to_duration().unwrap());
 
             tcp_stream.write_all(&vec[1..]).unwrap();
             tcp_stream.flush().unwrap();
