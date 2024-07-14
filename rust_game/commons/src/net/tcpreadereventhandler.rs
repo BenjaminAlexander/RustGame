@@ -6,37 +6,36 @@ use crate::threading::eventhandling::{
     EventHandleResult,
     EventHandlerTrait,
 };
-use log::warn;
-use std::ops::ControlFlow::{
-    Break,
-    Continue,
+use std::ops::ControlFlow;
+
+use super::realtcpstream::{
+    TcpDeserializer,
+    TcpReadResult,
 };
 
 pub struct TcpReaderEventHandler<T: TcpReadHandlerTrait> {
-    tcp_reader: RealTcpStream,
+    tcp_deserializer: TcpDeserializer,
     tcp_read_handler: T,
 }
 
 impl<T: TcpReadHandlerTrait> TcpReaderEventHandler<T> {
     pub fn new(tcp_reader: RealTcpStream, tcp_read_handler: T) -> Self {
         return Self {
-            tcp_reader,
+            tcp_deserializer: tcp_reader.to_deserializer(),
             tcp_read_handler,
         };
     }
 
     fn read(mut self) -> EventHandleResult<Self> {
-        match self.tcp_reader.read::<T::ReadType>() {
-            Ok(read_value) => {
+        match self.tcp_deserializer.read::<T::ReadType>() {
+            TcpReadResult::Ok(read_value) => {
                 return match self.tcp_read_handler.on_read(read_value) {
-                    Continue(()) => EventHandleResult::TryForNextEvent(self),
-                    Break(()) => EventHandleResult::StopThread(self.tcp_read_handler),
+                    ControlFlow::Continue(()) => EventHandleResult::TryForNextEvent(self),
+                    ControlFlow::Break(()) => EventHandleResult::StopThread(self.tcp_read_handler),
                 };
             }
-            Err(error) => {
-                warn!("Error on TCP read: {:?}", error);
-                return EventHandleResult::StopThread(self.tcp_read_handler);
-            }
+            TcpReadResult::TimedOut => EventHandleResult::TryForNextEvent(self),
+            TcpReadResult::Err => EventHandleResult::StopThread(self.tcp_read_handler),
         }
     }
 }
