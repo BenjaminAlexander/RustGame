@@ -5,15 +5,18 @@ use std::net::{
     UdpSocket,
 };
 
+use super::TCP_POLLING_PERIOD;
+
 pub struct RealUdpSocket {
     udp_socket: UdpSocket,
 }
 
 impl RealUdpSocket {
     pub fn bind(socket_addr: SocketAddr) -> Result<Self, Error> {
-        return Ok(Self {
-            udp_socket: UdpSocket::bind(socket_addr)?,
-        });
+        let udp_socket = UdpSocket::bind(socket_addr)?;
+        udp_socket.set_read_timeout(Some(TCP_POLLING_PERIOD.to_duration().unwrap()))?;
+
+        return Ok(Self { udp_socket });
     }
 
     pub fn recv_from(&mut self, buf: &mut [u8]) -> Result<(usize, SocketAddr), Error> {

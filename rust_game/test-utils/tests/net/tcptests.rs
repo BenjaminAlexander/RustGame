@@ -111,6 +111,8 @@ fn test_non_blocking_tcp_reader() {
             )
             .unwrap();
 
+        reader_sender.send_event(()).unwrap();
+
         tcp_reader_senders.push(reader_sender);
 
         return ControlFlow::Continue(());
