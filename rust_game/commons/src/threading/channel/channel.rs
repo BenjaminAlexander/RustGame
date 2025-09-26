@@ -14,10 +14,6 @@ impl<Factory: FactoryTrait, T: Send + 'static> Channel<Factory, T> {
         return &self.sender;
     }
 
-    pub fn get_receiver(&self) -> &Factory::Receiver<T> {
-        return &self.receiver;
-    }
-
     pub fn take(self) -> (Factory::Sender<T>, Factory::Receiver<T>) {
         return (self.sender, self.receiver);
     }
