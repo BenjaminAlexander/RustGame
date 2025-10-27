@@ -66,7 +66,11 @@ impl SingleThreadExecutor {
     }
 
     pub fn execute_function_or_panic<T: FnOnce() + Send + 'static>(&self, function: T) {
-        if self.execute_function(function).is_err() {
+        Self::panic_on_err(self.execute_function(function));
+    }
+
+    fn panic_on_err(result: Result<(), Runnable>) {
+        if result.is_err() {
             panic!("Failed to send function to the executor");
         }
     }
@@ -96,13 +100,18 @@ impl EventHandlerTrait for SingleThreadExecutorEventHandler {
                 runnable();
                 return EventHandleResult::WaitForNextEvent(self);
             }
-            ChannelEvent::Timeout => unreachable!(),
-            ChannelEvent::ChannelEmpty => EventHandleResult::WaitForNextEvent(self),
             ChannelEvent::ChannelDisconnected => EventHandleResult::StopThread(()),
+            _ => EventHandleResult::WaitForNextEvent(self),
         }
     }
 
     fn on_stop(self, _: ReceiveMetaData) -> Self::ThreadReturn {
         return ();
     }
+}
+
+#[test]
+#[should_panic]
+fn test_panic_on_err() {
+    SingleThreadExecutor::panic_on_err(Result::Err(Box::new(|| {})));
 }
