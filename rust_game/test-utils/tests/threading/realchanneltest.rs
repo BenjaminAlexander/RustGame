@@ -7,15 +7,21 @@ fn test_channel() {
 
     let factory = RealFactory::new();
     let channel = factory.new_channel::<i32>();
-    let value = 1234;
+    let value1 = 1234;
+    let value2 = 789;
 
-    channel.get_sender().send(value).unwrap();
+    channel.get_sender().send(value1).unwrap();
 
-    let (_, mut receiver) = channel.take();
+    let (sender, mut receiver) = channel.take();
 
-    let recieved_value = receiver.recv().unwrap();
+    let recieved_value1 = receiver.recv().unwrap();
+    assert_eq!(value1, recieved_value1);
 
-    assert_eq!(value, recieved_value);
+    sender.send(value2).unwrap();
+    let (metadata2, recieved_value2) = receiver.recv_meta_data().unwrap();
+    assert_eq!(value2, recieved_value2);
+
+    assert_eq!(metadata2.get_time_received().duration_since(metadata2.get_send_meta_data().get_time_sent()), metadata2.get_duration_in_queue())
 }
 
 #[test]
