@@ -2,14 +2,9 @@ use crate::SimpleGameImpl;
 use commons::geometry::twod::Vector2;
 use commons::time::TimeDuration;
 use engine_core::GameTrait;
-use graphics::math::Matrix2d;
 use graphics::*;
-use graphics::{
-    rectangle,
-    Context,
-};
+use graphics::rectangle;
 use opengl_graphics::GlGraphics;
-use piston::RenderArgs;
 use serde::{
     Deserialize,
     Serialize,
@@ -60,26 +55,24 @@ impl Bullet {
     pub fn draw(
         &self,
         duration_since_game_start: TimeDuration,
-        args: &RenderArgs,
-        transform: Matrix2d,
+        context: Context,
         gl: &mut GlGraphics,
     ) {
-        const BLUE: [f32; 4] = [0.0, 0.0, 1.0, 1.0];
+        const BULLET_COLOR: [f32; 4] = [0.0, 0.0, 0.0, 1.0];
+        const BULLET_SIZE: f64 = 10.0;
 
         if let Some(current_position) = self.get_position(duration_since_game_start) {
             let (x, y) = current_position.get();
-            let x_in_window = (x as f64 / args.draw_size[0] as f64) * args.window_size[0];
-            let y_in_window = (y as f64 / args.draw_size[1] as f64) * args.window_size[1];
 
-            let square = rectangle::square(0.0, 0.0, 10.0);
+            let square = rectangle::square(0.0, 0.0, BULLET_SIZE);
             let rotation = 0 as f64;
 
-            let bullet_transform = transform
-                .trans(x_in_window, y_in_window)
+            let bullet_transform = context.transform
+                .trans(x, y)
                 .rot_rad(rotation)
-                .trans(-5.0, -5.0);
+                .trans(-0.5 * BULLET_SIZE, -0.5 * BULLET_SIZE);
 
-            rectangle(BLUE, square, bullet_transform, gl);
+            rectangle(BULLET_COLOR, square, bullet_transform, gl);
         }
     }
 }

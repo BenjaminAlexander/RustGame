@@ -6,14 +6,9 @@ use engine_core::{
     ClientUpdateArg,
     GameTrait,
 };
-use graphics::math::Matrix2d;
 use graphics::*;
-use graphics::{
-    rectangle,
-    Context,
-};
+use graphics::rectangle;
 use opengl_graphics::GlGraphics;
-use piston::RenderArgs;
 use serde::{
     Deserialize,
     Serialize,
@@ -87,41 +82,41 @@ impl Character {
         return None;
     }
 
-    pub fn draw(&self, args: &RenderArgs, transform: Matrix2d, gl: &mut GlGraphics, local_player_index: usize) {
+    pub fn draw(&self, context: Context, gl: &mut GlGraphics, local_player_index: usize) {
         const RED: [f32; 4] = [1.0, 0.0, 0.0, 1.0];
         const GREEN: [f32; 4] = [0.0, 1.0, 0.0, 1.0];
+        const BLUE: [f32; 4] = [0.0, 0.0, 1.0, 1.0];
 
+        const CHARACTER_SIZE: f64 = 50.0;
+        const HEALTH_BAR_HEIGHT: f64 = 10.0;
+        const HEALTH_BAR_TOKEN_WIDTH: f64 = 10.0;
+
+        let is_local_player = local_player_index == self.player_index;
+
+        let color = if self.health > 0 {
+            if is_local_player {
+                BLUE
+            } else {
+                RED
+            }
+        } else {
+            GREEN
+        };
+        
         let (x, y) = self.position.get();
-        let x_in_window = x;//(x as f64 / ;
-        let y_in_window = y;//(y as f64 / args.draw_size[1] as f64) * args.window_size[1];
 
+        let square = rectangle::square(0.0, 0.0, CHARACTER_SIZE);
 
-        if local_player_index == self.player_index {
-            let square = rectangle::square(0.0, 0.0, 54.0);
-            let rotation = 1 as f64;
+        let player_transform = context.transform
+            .trans(x, y)
+            .trans(-0.5 * CHARACTER_SIZE, -0.5 * CHARACTER_SIZE);
 
-            let local_player_transform = transform
-                .trans(x_in_window, y_in_window)
-                //.rot_rad(rotation)
-                .trans(-27.0, -27.0);
-
-            rectangle(GREEN, square, local_player_transform, gl);
-        }
-
-        let square = rectangle::square(0.0, 0.0, 50.0);
-        let rotation = 0 as f64;
-
-        let player_transform = transform
-            .trans(x_in_window, y_in_window)
-            //.rot_rad(rotation)
-            .trans(-25.0, -25.0);
-
-        rectangle(RED, square, player_transform, gl);
+        rectangle(color, square, player_transform, gl);
 
         //draw health bar
-        let base = self.player_index as f64 * 10.0;
-        let health_rectangle =
-            rectangle::rectangle_by_corners(0.0, base, 10.0 * self.health as f64, base + 10.0);
-        rectangle(RED, health_rectangle, transform, gl);
+        if is_local_player {
+            let health_rectangle = rectangle::rectangle_by_corners(0.0, 0.0, HEALTH_BAR_TOKEN_WIDTH * self.health as f64, HEALTH_BAR_HEIGHT);
+            rectangle(RED, health_rectangle, context.transform, gl);
+        }
     }
 }

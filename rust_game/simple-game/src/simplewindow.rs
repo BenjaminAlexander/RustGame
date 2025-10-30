@@ -82,25 +82,11 @@ impl<GameFactory: GameFactoryTrait<Game = SimpleGameImpl>> SimpleWindow<GameFact
                 let (duration_since_game_start, step_message) = step_message.unwrap();
                 let initial_information = initial_information.as_ref().unwrap();
 
-                //let draw_transform = context.transform.scale(args.window_size[0] / args.draw_size[0] as f64, args.window_size[1] / args.draw_size[1] as f64);
-
                 //let duration_since_game_start = STEP_DURATION * step_message.get_step_index() as i64;
-                step_message.draw(initial_information, duration_since_game_start, args, context.transform, gl);
+                step_message.draw(initial_information, duration_since_game_start, context, gl);
             }
 
-            //TODO: render local mouse position here
-            const MOUSE_COLOR: [f32; 4] = [0.0, 1.0, 1.0, 1.0];
-
-            let square = rectangle::square(0.0, 0.0, 10.0);
-            let rotation = 0 as f64;
-
-            let transform = context
-                .transform
-                .trans(self.mouse_position[0], self.mouse_position[1])
-                .rot_rad(rotation)
-                .trans(-5.0, -5.0);
-
-            rectangle(MOUSE_COLOR, square, transform, gl);
+            self.draw_mouse(context, gl)
 
         });
     }
@@ -115,10 +101,25 @@ impl<GameFactory: GameFactoryTrait<Game = SimpleGameImpl>> SimpleWindow<GameFact
             _ => {}
         }
 
+
         if let Some(client) = self.client_option.as_ref() {
             client
                 .send_client_input_event(SimpleInputEvent::new(input))
                 .unwrap();
         }
     }
+
+    fn draw_mouse(&self, context: Context, gl: &mut GlGraphics) {
+        const MOUSE_COLOR: [f32; 4] = [0.0, 1.0, 1.0, 1.0];
+
+        let square = rectangle::square(0.0, 0.0, 10.0);
+
+        let transform = context
+            .transform
+            .trans(self.mouse_position[0], self.mouse_position[1])
+            .trans(-5.0, -5.0);
+
+        rectangle(MOUSE_COLOR, square, transform, gl);
+    }
+
 }

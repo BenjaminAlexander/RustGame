@@ -13,9 +13,7 @@ use engine_core::{
     ServerUpdateArg,
 };
 use graphics::Context;
-use graphics::math::Matrix2d;
 use opengl_graphics::GlGraphics;
-use piston::RenderArgs;
 use serde::{
     Deserialize,
     Serialize,
@@ -122,16 +120,15 @@ impl SimpleState {
         &self,
         initial_information: &InitialInformation<SimpleGameImpl>,
         duration_since_game_start: TimeDuration,
-        args: &RenderArgs,
-        transform: Matrix2d,
+        context: Context,
         gl: &mut GlGraphics,
     ) {
         for character in &self.player_characters {
-            character.draw(args, transform, gl, initial_information.get_player_index());
+            character.draw(context, gl, initial_information.get_player_index());
         }
 
         for bullet in &self.bullets {
-            bullet.draw(duration_since_game_start, args, transform, gl);
+            bullet.draw(duration_since_game_start, context, gl);
         }
     }
 
