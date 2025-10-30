@@ -13,6 +13,7 @@ use engine_core::{
     ServerUpdateArg,
 };
 use graphics::Context;
+use graphics::math::Matrix2d;
 use opengl_graphics::GlGraphics;
 use piston::RenderArgs;
 use serde::{
@@ -119,17 +120,18 @@ impl SimpleState {
 
     pub fn draw(
         &self,
+        initial_information: &InitialInformation<SimpleGameImpl>,
         duration_since_game_start: TimeDuration,
         args: &RenderArgs,
-        context: Context,
+        transform: Matrix2d,
         gl: &mut GlGraphics,
     ) {
         for character in &self.player_characters {
-            character.draw(args, context, gl);
+            character.draw(args, transform, gl, initial_information.get_player_index());
         }
 
         for bullet in &self.bullets {
-            bullet.draw(duration_since_game_start, args, context, gl);
+            bullet.draw(duration_since_game_start, args, transform, gl);
         }
     }
 

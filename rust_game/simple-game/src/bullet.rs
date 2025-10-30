@@ -2,6 +2,7 @@ use crate::SimpleGameImpl;
 use commons::geometry::twod::Vector2;
 use commons::time::TimeDuration;
 use engine_core::GameTrait;
+use graphics::math::Matrix2d;
 use graphics::*;
 use graphics::{
     rectangle,
@@ -60,7 +61,7 @@ impl Bullet {
         &self,
         duration_since_game_start: TimeDuration,
         args: &RenderArgs,
-        context: Context,
+        transform: Matrix2d,
         gl: &mut GlGraphics,
     ) {
         const BLUE: [f32; 4] = [0.0, 0.0, 1.0, 1.0];
@@ -73,13 +74,12 @@ impl Bullet {
             let square = rectangle::square(0.0, 0.0, 10.0);
             let rotation = 0 as f64;
 
-            let transform = context
-                .transform
+            let bullet_transform = transform
                 .trans(x_in_window, y_in_window)
                 .rot_rad(rotation)
                 .trans(-5.0, -5.0);
 
-            rectangle(BLUE, square, transform, gl);
+            rectangle(BLUE, square, bullet_transform, gl);
         }
     }
 }

@@ -168,6 +168,11 @@ impl<GameFactory: GameFactoryTrait> RenderReceiver<GameFactory> {
             return None;
         }
     }
+
+    pub fn get_initial_information(&self) -> &Option<InitialInformation<Game<GameFactory>>> {
+        return &self.data.initial_information;
+    }
+
 }
 
 impl<GameFactory: GameFactoryTrait> Data<GameFactory> {

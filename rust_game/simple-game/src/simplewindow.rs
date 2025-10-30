@@ -2,7 +2,6 @@ use crate::simplegameimpl::SimpleGameImpl;
 use crate::simpleinputevent::SimpleInputEvent;
 use engine_core::{
     Client,
-    Factory,
     GameFactoryTrait,
     RenderReceiver,
 };
@@ -15,38 +14,32 @@ use opengl_graphics::{
 };
 use piston::input::Input as PistonInput;
 use piston::{
-    Event,
-    EventSettings,
-    Events,
-    RenderArgs,
-    RenderEvent,
-    WindowSettings,
+    Event, EventSettings, Events, Motion, RenderArgs, RenderEvent, WindowSettings
 };
 
 pub struct SimpleWindow<GameFactory: GameFactoryTrait<Game = SimpleGameImpl>> {
-    factory: Factory<GameFactory>,
     window_name: String,
     render_receiver: RenderReceiver<GameFactory>,
     //TODO: don't expose eventhandling, sender or ClientCore, or ClientCoreEvent, or GameFactoryTrait, or RealGameFactory
     client_option: Option<Client<GameFactory>>,
+    mouse_position: [f64; 2]
 }
 
 impl<GameFactory: GameFactoryTrait<Game = SimpleGameImpl>> SimpleWindow<GameFactory> {
     pub fn new(
-        factory: Factory<GameFactory>,
         window_name: String,
         render_receiver: RenderReceiver<GameFactory>,
         client_option: Option<Client<GameFactory>>,
     ) -> Self {
         return Self {
-            factory,
             window_name,
             render_receiver,
             client_option,
+            mouse_position: [0.0, 0.0]
         };
     }
 
-    pub fn run(self) -> () {
+    pub fn run(mut self) -> () {
         // Change this to OpenGL::V2_1 if not working.
         let opengl = OpenGL::V3_2;
 
@@ -60,21 +53,13 @@ impl<GameFactory: GameFactoryTrait<Game = SimpleGameImpl>> SimpleWindow<GameFact
 
         let mut gl = GlGraphics::new(opengl);
 
-        //TODO: why this?
-        let mut simple_window = SimpleWindow {
-            factory: self.factory,
-            window_name: self.window_name,
-            render_receiver: self.render_receiver,
-            client_option: self.client_option,
-        };
-
         let mut events = Events::new(EventSettings::new());
         while let Some(e) = events.next(&mut window) {
             if let Some(args) = e.render_args() {
-                simple_window.render(&mut gl, &args);
+                self.render(&mut gl, &args);
             } else {
                 match e {
-                    Event::Input(input, _) => simple_window.input(input),
+                    Event::Input(input, _) => self.input(input),
                     _ => {}
                 }
             }
@@ -85,22 +70,51 @@ impl<GameFactory: GameFactoryTrait<Game = SimpleGameImpl>> SimpleWindow<GameFact
 
     fn render(&mut self, gl_graphics: &mut GlGraphics, args: &RenderArgs) {
         let step_message = self.render_receiver.get_step_message();
+        let initial_information = self.render_receiver.get_initial_information();
 
-        gl_graphics.draw(args.viewport(), |c, gl| {
+        gl_graphics.draw(args.viewport(), |context, gl| {
             const GREEN: [f32; 4] = [0.7, 0.7, 0.3, 1.0];
 
             // Clear the screen.
             clear(GREEN, gl);
 
-            if step_message.is_some() {
+            if step_message.is_some() && initial_information.is_some() {
                 let (duration_since_game_start, step_message) = step_message.unwrap();
+                let initial_information = initial_information.as_ref().unwrap();
+
+                //let draw_transform = context.transform.scale(args.window_size[0] / args.draw_size[0] as f64, args.window_size[1] / args.draw_size[1] as f64);
+
                 //let duration_since_game_start = STEP_DURATION * step_message.get_step_index() as i64;
-                step_message.draw(duration_since_game_start, args, c, gl);
+                step_message.draw(initial_information, duration_since_game_start, args, context.transform, gl);
             }
+
+            //TODO: render local mouse position here
+            const MOUSE_COLOR: [f32; 4] = [0.0, 1.0, 1.0, 1.0];
+
+            let square = rectangle::square(0.0, 0.0, 10.0);
+            let rotation = 0 as f64;
+
+            let transform = context
+                .transform
+                .trans(self.mouse_position[0], self.mouse_position[1])
+                .rot_rad(rotation)
+                .trans(-5.0, -5.0);
+
+            rectangle(MOUSE_COLOR, square, transform, gl);
+
         });
     }
 
     fn input(&mut self, input: PistonInput) {
+
+        //TODO: track local mouse position here
+        match input {
+            PistonInput::Move(Motion::MouseCursor(ref position)) => {
+                self.mouse_position = *position;
+            }
+            _ => {}
+        }
+
         if let Some(client) = self.client_option.as_ref() {
             client
                 .send_client_input_event(SimpleInputEvent::new(input))

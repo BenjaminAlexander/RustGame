@@ -6,6 +6,7 @@ use engine_core::{
     ClientUpdateArg,
     GameTrait,
 };
+use graphics::math::Matrix2d;
 use graphics::*;
 use graphics::{
     rectangle,
@@ -86,29 +87,41 @@ impl Character {
         return None;
     }
 
-    pub fn draw(&self, args: &RenderArgs, context: Context, gl: &mut GlGraphics) {
+    pub fn draw(&self, args: &RenderArgs, transform: Matrix2d, gl: &mut GlGraphics, local_player_index: usize) {
         const RED: [f32; 4] = [1.0, 0.0, 0.0, 1.0];
+        const GREEN: [f32; 4] = [0.0, 1.0, 0.0, 1.0];
 
         let (x, y) = self.position.get();
-        let x_in_window = (x as f64 / args.draw_size[0] as f64) * args.window_size[0];
-        let y_in_window = (y as f64 / args.draw_size[1] as f64) * args.window_size[1];
+        let x_in_window = x;//(x as f64 / ;
+        let y_in_window = y;//(y as f64 / args.draw_size[1] as f64) * args.window_size[1];
+
+
+        if local_player_index == self.player_index {
+            let square = rectangle::square(0.0, 0.0, 54.0);
+            let rotation = 1 as f64;
+
+            let local_player_transform = transform
+                .trans(x_in_window, y_in_window)
+                //.rot_rad(rotation)
+                .trans(-27.0, -27.0);
+
+            rectangle(GREEN, square, local_player_transform, gl);
+        }
 
         let square = rectangle::square(0.0, 0.0, 50.0);
         let rotation = 0 as f64;
 
-        let transform = context
-            .transform
+        let player_transform = transform
             .trans(x_in_window, y_in_window)
-            .rot_rad(rotation)
+            //.rot_rad(rotation)
             .trans(-25.0, -25.0);
 
-        rectangle(RED, square, transform, gl);
+        rectangle(RED, square, player_transform, gl);
 
         //draw health bar
         let base = self.player_index as f64 * 10.0;
         let health_rectangle =
             rectangle::rectangle_by_corners(0.0, base, 10.0 * self.health as f64, base + 10.0);
-        let health_trasform = context.transform;
-        rectangle(RED, health_rectangle, health_trasform, gl);
+        rectangle(RED, health_rectangle, transform, gl);
     }
 }
