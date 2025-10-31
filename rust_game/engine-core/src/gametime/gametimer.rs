@@ -2,7 +2,6 @@ use std::ops::{
     Add,
     Sub,
 };
-
 use crate::gametime::{
     GameTimerConfig,
     TimeMessage,
@@ -17,7 +16,7 @@ use commons::threading::eventhandling::{
 use commons::threading::AsyncJoin;
 use commons::time::timerservice::{
     Schedule,
-    TimeService,
+    TimerService,
     TimerCallBack,
     TimerCreationCallBack,
     TimerId,
@@ -32,20 +31,17 @@ use log::{
     trace,
     warn,
 };
-use timer::Timer;
 
 const TICK_LATENESS_WARN_DURATION: TimeDuration = TimeDuration::new(0, 20_000_000);
 const CLIENT_ERROR_WARN_DURATION: TimeDuration = TimeDuration::new(0, 20_000_000);
 
 pub struct GameTimer<Factory: FactoryTrait, T: TimerCallBack> {
     factory: Factory,
-    //TODO: remove timer
-    timer: Timer,
     game_timer_config: GameTimerConfig,
     start: Option<TimeValue>,
     rolling_average: RollingAverage,
-    new_timer_id: TimerId,
-    new_timer_sender: EventHandlerSender<Factory, TimerServiceEvent<GameTimerCreationCallBack, T>>,
+    timer_id: TimerId,
+    timer_sender: EventHandlerSender<Factory, TimerServiceEvent<GameTimerCreationCallBack, T>>,
 }
 
 impl<Factory: FactoryTrait, T: TimerCallBack> GameTimer<Factory, T> {
@@ -56,11 +52,11 @@ impl<Factory: FactoryTrait, T: TimerCallBack> GameTimer<Factory, T> {
         call_back: T,
     ) -> Self {
         let mut timer_service =
-            TimeService::<Factory, GameTimerCreationCallBack, T>::new(factory.clone());
+            TimerService::<Factory, GameTimerCreationCallBack, T>::new(factory.clone());
 
         let timer_id = timer_service.create_timer(call_back, None);
 
-        let new_timer_sender = factory
+        let timer_sender = factory
             .new_thread_builder()
             .name("NewTimerThread")
             .spawn_event_handler(timer_service, AsyncJoin::log_async_join)
@@ -68,12 +64,11 @@ impl<Factory: FactoryTrait, T: TimerCallBack> GameTimer<Factory, T> {
 
         return Self {
             factory,
-            timer: Timer::new(),
             game_timer_config,
             start: None,
             rolling_average: RollingAverage::new(rolling_average_size),
-            new_timer_id: timer_id,
-            new_timer_sender,
+            timer_id,
+            timer_sender,
         };
     }
 
@@ -94,9 +89,9 @@ impl<Factory: FactoryTrait, T: TimerCallBack> GameTimer<Factory, T> {
         );
 
         let send_result = self
-            .new_timer_sender
+            .timer_sender
             .send_event(TimerServiceEvent::RescheduleTimer(
-                self.new_timer_id,
+                self.timer_id,
                 Some(schedule),
             ));
 
@@ -108,10 +103,7 @@ impl<Factory: FactoryTrait, T: TimerCallBack> GameTimer<Factory, T> {
         return Ok(());
     }
 
-    pub fn on_remote_timer_message(
-        &mut self,
-        time_message: TimeReceived<TimeMessage>,
-    ) -> Result<(), ()> {
+    pub fn on_remote_timer_message(&mut self, time_message: TimeReceived<TimeMessage>) -> Result<(), ()> {
         trace!("Handling TimeMessage: {:?}", time_message);
 
         let step_duration = self.game_timer_config.get_frame_duration();
@@ -157,9 +149,9 @@ impl<Factory: FactoryTrait, T: TimerCallBack> GameTimer<Factory, T> {
             );
 
             let send_result = self
-                .new_timer_sender
+                .timer_sender
                 .send_event(TimerServiceEvent::RescheduleTimer(
-                    self.new_timer_id,
+                    self.timer_id,
                     Some(schedule),
                 ));
 

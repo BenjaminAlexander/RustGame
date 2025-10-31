@@ -33,7 +33,7 @@ use std::collections::{
 };
 use std::marker::PhantomData;
 
-pub struct TimeService<Factory: FactoryTrait, T: TimerCreationCallBack, U: TimerCallBack> {
+pub struct TimerService<Factory: FactoryTrait, T: TimerCreationCallBack, U: TimerCallBack> {
     factory: Factory,
     next_timer_id: usize,
     timers: VecDeque<Timer<U>>,
@@ -41,7 +41,7 @@ pub struct TimeService<Factory: FactoryTrait, T: TimerCreationCallBack, U: Timer
     phantom: PhantomData<T>,
 }
 
-impl<Factory: FactoryTrait, T: TimerCreationCallBack, U: TimerCallBack> TimeService<Factory, T, U> {
+impl<Factory: FactoryTrait, T: TimerCreationCallBack, U: TimerCallBack> TimerService<Factory, T, U> {
     pub fn new(factory: Factory) -> Self {
         return Self {
             factory,
@@ -199,7 +199,7 @@ impl<Factory: FactoryTrait, T: TimerCreationCallBack, U: TimerCallBack> TimeServ
 }
 
 impl<Factory: FactoryTrait, T: TimerCreationCallBack, U: TimerCallBack> EventHandlerTrait
-    for TimeService<Factory, T, U>
+    for TimerService<Factory, T, U>
 {
     type Event = TimerServiceEvent<T, U>;
     type ThreadReturn = ();

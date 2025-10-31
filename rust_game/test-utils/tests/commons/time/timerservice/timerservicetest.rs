@@ -3,7 +3,7 @@ use commons::logging::LoggingConfigBuilder;
 use commons::threading::eventhandling::EventSenderTrait;
 use commons::time::timerservice::{
     Schedule,
-    TimeService,
+    TimerService,
     TimerCallBack,
     TimerCreationCallBack,
     TimerId,
@@ -20,7 +20,7 @@ use test_utils::singlethreaded::SingleThreadedFactory;
 use test_utils::utils::Counter;
 
 type TimerServiceAlias =
-    TimeService<SingleThreadedFactory, Box<dyn TimerCreationCallBack>, Box<dyn TimerCallBack>>;
+    TimerService<SingleThreadedFactory, Box<dyn TimerCreationCallBack>, Box<dyn TimerCallBack>>;
 
 #[test]
 fn timer_service_test() {
