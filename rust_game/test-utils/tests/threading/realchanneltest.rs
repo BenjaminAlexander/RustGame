@@ -1,4 +1,14 @@
-use commons::{factory::{FactoryTrait, RealFactory}, threading::channel::{RecvTimeoutError, SenderTrait}, time::TimeDuration};
+use commons::{
+    factory::{
+        FactoryTrait,
+        RealFactory,
+    },
+    threading::channel::{
+        RecvTimeoutError,
+        SenderTrait,
+    },
+    time::TimeDuration,
+};
 use test_utils::utils::setup_test_logging;
 
 #[test]
@@ -21,7 +31,12 @@ fn test_channel() {
     let (metadata2, recieved_value2) = receiver.recv_meta_data().unwrap();
     assert_eq!(value2, recieved_value2);
 
-    assert_eq!(metadata2.get_time_received().duration_since(metadata2.get_send_meta_data().get_time_sent()), metadata2.get_duration_in_queue())
+    assert_eq!(
+        metadata2
+            .get_time_received()
+            .duration_since(metadata2.get_send_meta_data().get_time_sent()),
+        metadata2.get_duration_in_queue()
+    )
 }
 
 #[test]
@@ -36,7 +51,9 @@ fn test_recv_timeout() {
 
     let (_, mut receiver) = channel.take();
 
-    let recieved_value = receiver.recv_timeout(TimeDuration::from_millis_f64(1.0)).unwrap();
+    let recieved_value = receiver
+        .recv_timeout(TimeDuration::from_millis_f64(1.0))
+        .unwrap();
 
     assert_eq!(value, recieved_value);
 }
@@ -50,7 +67,9 @@ fn test_recv_timeout_timeout() {
 
     let (sender, mut receiver) = channel.take();
 
-    let recieved_value = receiver.recv_timeout(TimeDuration::from_millis_f64(1.0)).unwrap_err();
+    let recieved_value = receiver
+        .recv_timeout(TimeDuration::from_millis_f64(1.0))
+        .unwrap_err();
 
     assert_eq!(RecvTimeoutError::Timeout, recieved_value);
 }
@@ -64,7 +83,9 @@ fn test_recv_timeout_negetive_timeout() {
 
     let (_sender, mut receiver) = channel.take();
 
-    let error = receiver.recv_timeout(TimeDuration::from_millis_f64(-1.0)).unwrap_err();
+    let error = receiver
+        .recv_timeout(TimeDuration::from_millis_f64(-1.0))
+        .unwrap_err();
 
     assert_eq!(RecvTimeoutError::Timeout, error);
 }

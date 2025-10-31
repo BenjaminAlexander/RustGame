@@ -8,7 +8,10 @@ use crate::gamemanager::{
     Manager,
     ManagerEvent,
 };
-use crate::gametime::GameTimer;
+use crate::gametime::{
+    GameTimer,
+    GameTimerConfig,
+};
 use crate::interface::{
     EventSender,
     GameFactoryTrait,
@@ -137,7 +140,8 @@ impl<GameFactory: GameFactoryTrait> ServerCore<GameFactory> {
         factory: GameFactory::Factory,
         sender: EventSender<GameFactory, ServerCoreEvent<GameFactory>>,
     ) -> Self {
-        let server_config = ServerConfig::new(GameFactory::Game::STEP_PERIOD);
+        let game_timer_config = GameTimerConfig::new(GameFactory::Game::STEP_PERIOD);
+        let server_config = ServerConfig::new(game_timer_config);
 
         let udp_handler = UdpHandler::new(factory.clone());
 
@@ -285,7 +289,7 @@ impl<GameFactory: GameFactoryTrait> ServerCore<GameFactory> {
 
             let mut game_timer = GameTimer::new(
                 self.factory.clone(),
-                self.server_config,
+                *self.server_config.get_game_timer_config(),
                 0,
                 server_game_timer_observer,
             );

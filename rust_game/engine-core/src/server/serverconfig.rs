@@ -1,20 +1,21 @@
-use commons::time::TimeDuration;
 use serde::{
     Deserialize,
     Serialize,
 };
 
+use crate::gametime::GameTimerConfig;
+
 #[derive(Serialize, Deserialize, Clone, Debug, Copy)]
 pub struct ServerConfig {
-    step_duration: TimeDuration,
+    game_timer_config: GameTimerConfig,
 }
 
 impl ServerConfig {
-    pub fn new(step_duration: TimeDuration) -> Self {
-        return Self { step_duration };
+    pub fn new(game_timer_config: GameTimerConfig) -> Self {
+        return Self { game_timer_config };
     }
 
-    pub fn get_step_duration(&self) -> TimeDuration {
-        return self.step_duration;
+    pub fn get_game_timer_config(&self) -> &GameTimerConfig {
+        return &self.game_timer_config;
     }
 }

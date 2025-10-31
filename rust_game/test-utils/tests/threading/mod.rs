@@ -1,3 +1,3 @@
-mod realchanneltest;
 mod eventhandlertest;
+mod realchanneltest;
 mod singlethreadexecutortest;

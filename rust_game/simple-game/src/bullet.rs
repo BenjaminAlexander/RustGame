@@ -2,8 +2,8 @@ use crate::SimpleGameImpl;
 use commons::geometry::twod::Vector2;
 use commons::time::TimeDuration;
 use engine_core::GameTrait;
-use graphics::*;
 use graphics::rectangle;
+use graphics::*;
 use opengl_graphics::GlGraphics;
 use serde::{
     Deserialize,
@@ -67,7 +67,8 @@ impl Bullet {
             let square = rectangle::square(0.0, 0.0, BULLET_SIZE);
             let rotation = 0 as f64;
 
-            let bullet_transform = context.transform
+            let bullet_transform = context
+                .transform
                 .trans(x, y)
                 .rot_rad(rotation)
                 .trans(-0.5 * BULLET_SIZE, -0.5 * BULLET_SIZE);

@@ -6,8 +6,8 @@ use engine_core::{
     ClientUpdateArg,
     GameTrait,
 };
-use graphics::*;
 use graphics::rectangle;
+use graphics::*;
 use opengl_graphics::GlGraphics;
 use serde::{
     Deserialize,
@@ -102,12 +102,13 @@ impl Character {
         } else {
             GREEN
         };
-        
+
         let (x, y) = self.position.get();
 
         let square = rectangle::square(0.0, 0.0, CHARACTER_SIZE);
 
-        let player_transform = context.transform
+        let player_transform = context
+            .transform
             .trans(x, y)
             .trans(-0.5 * CHARACTER_SIZE, -0.5 * CHARACTER_SIZE);
 
@@ -115,7 +116,12 @@ impl Character {
 
         //draw health bar
         if is_local_player {
-            let health_rectangle = rectangle::rectangle_by_corners(0.0, 0.0, HEALTH_BAR_TOKEN_WIDTH * self.health as f64, HEALTH_BAR_HEIGHT);
+            let health_rectangle = rectangle::rectangle_by_corners(
+                0.0,
+                0.0,
+                HEALTH_BAR_TOKEN_WIDTH * self.health as f64,
+                HEALTH_BAR_HEIGHT,
+            );
             rectangle(RED, health_rectangle, context.transform, gl);
         }
     }

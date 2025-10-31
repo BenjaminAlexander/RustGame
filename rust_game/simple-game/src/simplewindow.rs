@@ -14,7 +14,13 @@ use opengl_graphics::{
 };
 use piston::input::Input as PistonInput;
 use piston::{
-    Event, EventSettings, Events, Motion, RenderArgs, RenderEvent, WindowSettings
+    Event,
+    EventSettings,
+    Events,
+    Motion,
+    RenderArgs,
+    RenderEvent,
+    WindowSettings,
 };
 
 pub struct SimpleWindow<GameFactory: GameFactoryTrait<Game = SimpleGameImpl>> {
@@ -22,7 +28,7 @@ pub struct SimpleWindow<GameFactory: GameFactoryTrait<Game = SimpleGameImpl>> {
     render_receiver: RenderReceiver<GameFactory>,
     //TODO: don't expose eventhandling, sender or ClientCore, or ClientCoreEvent, or GameFactoryTrait, or RealGameFactory
     client_option: Option<Client<GameFactory>>,
-    mouse_position: [f64; 2]
+    mouse_position: [f64; 2],
 }
 
 impl<GameFactory: GameFactoryTrait<Game = SimpleGameImpl>> SimpleWindow<GameFactory> {
@@ -35,7 +41,7 @@ impl<GameFactory: GameFactoryTrait<Game = SimpleGameImpl>> SimpleWindow<GameFact
             window_name,
             render_receiver,
             client_option,
-            mouse_position: [0.0, 0.0]
+            mouse_position: [0.0, 0.0],
         };
     }
 
@@ -87,12 +93,10 @@ impl<GameFactory: GameFactoryTrait<Game = SimpleGameImpl>> SimpleWindow<GameFact
             }
 
             self.draw_mouse(context, gl)
-
         });
     }
 
     fn input(&mut self, input: PistonInput) {
-
         //TODO: track local mouse position here
         match input {
             PistonInput::Move(Motion::MouseCursor(ref position)) => {
@@ -100,7 +104,6 @@ impl<GameFactory: GameFactoryTrait<Game = SimpleGameImpl>> SimpleWindow<GameFact
             }
             _ => {}
         }
-
 
         if let Some(client) = self.client_option.as_ref() {
             client
@@ -121,5 +124,4 @@ impl<GameFactory: GameFactoryTrait<Game = SimpleGameImpl>> SimpleWindow<GameFact
 
         rectangle(MOUSE_COLOR, square, transform, gl);
     }
-
 }

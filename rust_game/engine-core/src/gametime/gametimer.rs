@@ -4,10 +4,10 @@ use std::ops::{
 };
 
 use crate::gametime::{
+    GameTimerConfig,
     TimeMessage,
     TimeReceived,
 };
-use crate::server::ServerConfig;
 use commons::factory::FactoryTrait;
 use commons::stats::RollingAverage;
 use commons::threading::eventhandling::{
@@ -41,7 +41,7 @@ pub struct GameTimer<Factory: FactoryTrait, T: TimerCallBack> {
     factory: Factory,
     //TODO: remove timer
     timer: Timer,
-    server_config: ServerConfig,
+    game_timer_config: GameTimerConfig,
     start: Option<TimeValue>,
     rolling_average: RollingAverage,
     new_timer_id: TimerId,
@@ -51,7 +51,7 @@ pub struct GameTimer<Factory: FactoryTrait, T: TimerCallBack> {
 impl<Factory: FactoryTrait, T: TimerCallBack> GameTimer<Factory, T> {
     pub fn new(
         factory: Factory,
-        server_config: ServerConfig,
+        game_timer_config: GameTimerConfig,
         rolling_average_size: usize,
         call_back: T,
     ) -> Self {
@@ -69,7 +69,7 @@ impl<Factory: FactoryTrait, T: TimerCallBack> GameTimer<Factory, T> {
         return Self {
             factory,
             timer: Timer::new(),
-            server_config,
+            game_timer_config,
             start: None,
             rolling_average: RollingAverage::new(rolling_average_size),
             new_timer_id: timer_id,
@@ -80,15 +80,18 @@ impl<Factory: FactoryTrait, T: TimerCallBack> GameTimer<Factory, T> {
     pub fn start_ticking(&mut self) -> Result<(), ()> {
         info!(
             "Starting timer with duration {:?}",
-            self.server_config.get_step_duration()
+            self.game_timer_config.get_frame_duration()
         );
 
         let now = self.factory.now();
 
-        self.start = Some(now.add(&self.server_config.get_step_duration()));
+        // add a frame duration to now so the first timer call back is at frame 0
+        self.start = Some(now.add(&self.game_timer_config.get_frame_duration()));
 
-        let schedule =
-            Schedule::Repeating(self.start.unwrap(), self.server_config.get_step_duration());
+        let schedule = Schedule::Repeating(
+            self.start.unwrap(),
+            *self.game_timer_config.get_frame_duration(),
+        );
 
         let send_result = self
             .new_timer_sender
@@ -111,7 +114,7 @@ impl<Factory: FactoryTrait, T: TimerCallBack> GameTimer<Factory, T> {
     ) -> Result<(), ()> {
         trace!("Handling TimeMessage: {:?}", time_message);
 
-        let step_duration = self.server_config.get_step_duration();
+        let step_duration = self.game_timer_config.get_frame_duration();
 
         //Calculate the start time of the remote clock in local time and add it to the rolling average
         let remote_start = time_message
@@ -148,8 +151,10 @@ impl<Factory: FactoryTrait, T: TimerCallBack> GameTimer<Factory, T> {
                 ),
             );
 
-            let schedule =
-                Schedule::Repeating(self.start.unwrap(), self.server_config.get_step_duration());
+            let schedule = Schedule::Repeating(
+                self.start.unwrap(),
+                *self.game_timer_config.get_frame_duration(),
+            );
 
             let send_result = self
                 .new_timer_sender
@@ -174,7 +179,7 @@ impl<Factory: FactoryTrait, T: TimerCallBack> GameTimer<Factory, T> {
         //TODO: How much of this can move into the other thread?
         let time_message = TimeMessage::new(
             self.start.clone().unwrap(),
-            self.server_config.get_step_duration(),
+            *self.game_timer_config.get_frame_duration(),
             now,
         );
 

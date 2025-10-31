@@ -83,8 +83,7 @@ pub fn main() {
         let (client, render_receiver) =
             Client::<RealGameFactory<SimpleGameImpl>>::new(factory.clone());
 
-        let client_window =
-            SimpleWindow::new(window_name, render_receiver, Some(client));
+        let client_window = SimpleWindow::new(window_name, render_receiver, Some(client));
 
         client_window.run();
     } else {
@@ -99,11 +98,8 @@ pub fn main() {
 
         server.start_game().unwrap();
 
-        let server_window = SimpleWindow::new(
-            window_name,
-            server.take_render_receiver().unwrap(),
-            None,
-        );
+        let server_window =
+            SimpleWindow::new(window_name, server.take_render_receiver().unwrap(), None);
 
         server_window.run();
     }

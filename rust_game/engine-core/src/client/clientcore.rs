@@ -207,7 +207,9 @@ impl<GameFactory: GameFactoryTrait> State<GameFactory> {
 
                 let game_timer = GameTimer::new(
                     factory.clone(),
-                    *initial_information.get_server_config(),
+                    *initial_information
+                        .get_server_config()
+                        .get_game_timer_config(),
                     GameFactory::Game::CLOCK_AVERAGE_SIZE,
                     client_game_time_observer,
                 );
