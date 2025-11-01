@@ -13,7 +13,6 @@ use serde::{
 /// These messages are used to propogate the occurance of a new frame from the clock throughout the system.
 #[derive(Serialize, Deserialize, Debug, Clone, Copy)]
 pub struct TimeMessage {
-
     /// The time of occurance for frame index 0.  On clients, this time can float around to slave the client's clock to the server's clock.
     start: TimeValue,
 

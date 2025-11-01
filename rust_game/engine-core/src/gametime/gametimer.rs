@@ -1,7 +1,3 @@
-use std::ops::{
-    Add,
-    Sub,
-};
 use crate::gametime::{
     GameTimerConfig,
     TimeMessage,
@@ -9,18 +5,13 @@ use crate::gametime::{
 };
 use commons::factory::FactoryTrait;
 use commons::stats::RollingAverage;
-use commons::threading::eventhandling::{
-    EventHandlerSender,
-    EventSenderTrait,
-};
-use commons::threading::AsyncJoin;
 use commons::time::timerservice::{
+    IdleTimerService,
     Schedule,
-    TimerService,
     TimerCallBack,
     TimerCreationCallBack,
     TimerId,
-    TimerServiceEvent,
+    TimerService,
 };
 use commons::time::{
     TimeDuration,
@@ -30,6 +21,10 @@ use log::{
     info,
     trace,
     warn,
+};
+use std::ops::{
+    Add,
+    Sub,
 };
 
 const TICK_LATENESS_WARN_DURATION: TimeDuration = TimeDuration::new(0, 20_000_000);
@@ -41,7 +36,7 @@ pub struct GameTimer<Factory: FactoryTrait, T: TimerCallBack> {
     start: Option<TimeValue>,
     rolling_average: RollingAverage,
     timer_id: TimerId,
-    timer_sender: EventHandlerSender<Factory, TimerServiceEvent<GameTimerCreationCallBack, T>>,
+    timer_service: TimerService<Factory, GameTimerCreationCallBack, T>,
 }
 
 impl<Factory: FactoryTrait, T: TimerCallBack> GameTimer<Factory, T> {
@@ -51,16 +46,12 @@ impl<Factory: FactoryTrait, T: TimerCallBack> GameTimer<Factory, T> {
         rolling_average_size: usize,
         call_back: T,
     ) -> Self {
-        let mut timer_service =
-            TimerService::<Factory, GameTimerCreationCallBack, T>::new(factory.clone());
+        let mut idle_timer_service = IdleTimerService::new(factory.clone());
 
-        let timer_id = timer_service.create_timer(call_back, None);
+        let timer_id = idle_timer_service.create_timer(call_back, None);
 
-        let timer_sender = factory
-            .new_thread_builder()
-            .name("NewTimerThread")
-            .spawn_event_handler(timer_service, AsyncJoin::log_async_join)
-            .unwrap();
+        //TODO: remove unwrap
+        let timer_service = idle_timer_service.start().unwrap();
 
         return Self {
             factory,
@@ -68,7 +59,7 @@ impl<Factory: FactoryTrait, T: TimerCallBack> GameTimer<Factory, T> {
             start: None,
             rolling_average: RollingAverage::new(rolling_average_size),
             timer_id,
-            timer_sender,
+            timer_service,
         };
     }
 
@@ -83,17 +74,15 @@ impl<Factory: FactoryTrait, T: TimerCallBack> GameTimer<Factory, T> {
         // add a frame duration to now so the first timer call back is at frame 0
         self.start = Some(now.add(&self.game_timer_config.get_frame_duration()));
 
+        //TODO: duplicate code in on_remote_timer_message
         let schedule = Schedule::Repeating(
             self.start.unwrap(),
             *self.game_timer_config.get_frame_duration(),
         );
 
         let send_result = self
-            .timer_sender
-            .send_event(TimerServiceEvent::RescheduleTimer(
-                self.timer_id,
-                Some(schedule),
-            ));
+            .timer_service
+            .reschedule_timer(self.timer_id, Some(schedule));
 
         if send_result.is_err() {
             warn!("Failed to schedule timer");
@@ -103,7 +92,10 @@ impl<Factory: FactoryTrait, T: TimerCallBack> GameTimer<Factory, T> {
         return Ok(());
     }
 
-    pub fn on_remote_timer_message(&mut self, time_message: TimeReceived<TimeMessage>) -> Result<(), ()> {
+    pub fn on_remote_timer_message(
+        &mut self,
+        time_message: TimeReceived<TimeMessage>,
+    ) -> Result<(), ()> {
         trace!("Handling TimeMessage: {:?}", time_message);
 
         let step_duration = self.game_timer_config.get_frame_duration();
@@ -149,11 +141,8 @@ impl<Factory: FactoryTrait, T: TimerCallBack> GameTimer<Factory, T> {
             );
 
             let send_result = self
-                .timer_sender
-                .send_event(TimerServiceEvent::RescheduleTimer(
-                    self.timer_id,
-                    Some(schedule),
-                ));
+                .timer_service
+                .reschedule_timer(self.timer_id, Some(schedule));
 
             if send_result.is_err() {
                 warn!("Failed to reschedule timer");

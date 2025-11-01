@@ -1,13 +1,9 @@
 use commons::factory::FactoryTrait;
 use commons::logging::LoggingConfigBuilder;
-use commons::threading::eventhandling::EventSenderTrait;
 use commons::time::timerservice::{
+    IdleTimerService,
     Schedule,
-    TimerService,
-    TimerCallBack,
-    TimerCreationCallBack,
     TimerId,
-    TimerServiceEvent,
 };
 use commons::time::TimeDuration;
 use log::LevelFilter;
@@ -18,9 +14,6 @@ use std::sync::{
 };
 use test_utils::singlethreaded::SingleThreadedFactory;
 use test_utils::utils::Counter;
-
-type TimerServiceAlias =
-    TimerService<SingleThreadedFactory, Box<dyn TimerCreationCallBack>, Box<dyn TimerCallBack>>;
 
 #[test]
 fn timer_service_test() {
@@ -34,16 +27,10 @@ fn timer_service_test() {
 
     let factory = SingleThreadedFactory::new();
 
-    let timer_service = TimerServiceAlias::new(factory.clone());
+    let timer_service = IdleTimerService::new(factory.clone()).start().unwrap();
 
     let timer_id_cell = Arc::new(Mutex::new(None::<TimerId>));
     let tick_count_cell = Counter::new(0);
-    let join_counter = Counter::new(0);
-
-    let join_counter_clone = join_counter.clone();
-    let channel_thread_builder = factory
-        .new_thread_builder()
-        .build_channel_for_event_handler::<TimerServiceAlias>();
 
     let timer_id_cell_clone = timer_id_cell.clone();
     let timer_creation_call_back = Box::new(move |timer_id: &TimerId| {
@@ -57,23 +44,12 @@ fn timer_service_test() {
 
     let time_value = factory.now().add(&five_seconds);
 
-    let send_result =
-        channel_thread_builder
-            .get_sender()
-            .send_event(TimerServiceEvent::CreateTimer(
-                timer_creation_call_back,
-                timer_tick_call_back,
-                Some(Schedule::Once(time_value)),
-            ));
-
-    if send_result.is_err() {
-        panic!("Send Failed")
-    }
-
-    let sender = channel_thread_builder
-        .spawn_event_handler(timer_service, move |_async_join| {
-            join_counter_clone.increment();
-        })
+    timer_service
+        .create_timer(
+            timer_creation_call_back,
+            timer_tick_call_back,
+            Some(Schedule::Once(time_value)),
+        )
         .unwrap();
 
     assert_eq!(None, *timer_id_cell.lock().unwrap());
@@ -95,14 +71,9 @@ fn timer_service_test() {
     assert_eq!(1, tick_count_cell.get());
 
     let new_schedule = Schedule::Repeating(factory.now().add(&seven_seconds), five_seconds);
-    let send_result = sender.send_event(TimerServiceEvent::RescheduleTimer(
-        timer_id_cell.lock().unwrap().unwrap(),
-        Some(new_schedule),
-    ));
-
-    if send_result.is_err() {
-        panic!("Send Failed")
-    }
+    timer_service
+        .reschedule_timer(timer_id_cell.lock().unwrap().unwrap(), Some(new_schedule))
+        .unwrap();
 
     factory.get_time_queue().run_events();
     assert_eq!(1, tick_count_cell.get());
@@ -122,9 +93,5 @@ fn timer_service_test() {
         .advance_time_for_duration(five_seconds);
     assert_eq!(3, tick_count_cell.get());
 
-    assert_eq!(0, join_counter.get());
-    drop(sender);
-    assert_eq!(0, join_counter.get());
     factory.get_time_queue().run_events();
-    assert_eq!(1, join_counter.get());
 }

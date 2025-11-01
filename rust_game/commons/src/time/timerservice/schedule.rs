@@ -3,6 +3,7 @@ use crate::time::{
     TimeValue,
 };
 
+//TODO: add never
 #[derive(Debug)]
 pub enum Schedule {
     Once(TimeValue),

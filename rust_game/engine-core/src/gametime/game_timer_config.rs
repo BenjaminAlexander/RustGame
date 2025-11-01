@@ -7,7 +7,6 @@ use serde::{
 /// The configuration values for the game timer
 #[derive(Serialize, Deserialize, Clone, Debug, Copy)]
 pub struct GameTimerConfig {
-
     /// The [`TimeDuration`] between frames
     frame_duration: TimeDuration,
 }

@@ -10,18 +10,15 @@ use crate::threading::eventhandling::{
     ChannelEvent,
     EventHandleResult,
     EventHandlerTrait,
+    EventOrStopThread,
+    EventSenderTrait,
 };
+use crate::threading::AsyncJoin;
 use crate::time::timerservice::schedule::Schedule;
 use crate::time::timerservice::timer::Timer;
 use crate::time::timerservice::timercallback::TimerCallBack;
 use crate::time::timerservice::timercreationcallback::TimerCreationCallBack;
 use crate::time::timerservice::timerid::TimerId;
-use crate::time::timerservice::timerserviceevent::TimerServiceEvent;
-use crate::time::timerservice::timerserviceevent::TimerServiceEvent::{
-    CancelTimer,
-    CreateTimer,
-    RescheduleTimer,
-};
 use crate::time::TimeValue;
 use log::{
     trace,
@@ -31,9 +28,121 @@ use std::collections::{
     HashMap,
     VecDeque,
 };
+use std::io::Error;
 use std::marker::PhantomData;
 
+/// An idle [`TimerService`] that is not currently running.  Timers belonging to this service will not be called.
+///
+/// This struct can be used to add timers to the service before starting it, as well as starting the [`TimerService`] itself.
+pub struct IdleTimerService<Factory: FactoryTrait, T: TimerCreationCallBack, U: TimerCallBack> {
+    event_handler: TimerServiceEventHandler<Factory, T, U>,
+}
+
+impl<Factory: FactoryTrait, T: TimerCreationCallBack, U: TimerCallBack>
+    IdleTimerService<Factory, T, U>
+{
+    /// Creates a new [`IdleTimerService`]
+    pub fn new(factory: Factory) -> Self {
+        return Self {
+            event_handler: TimerServiceEventHandler {
+                factory,
+                next_timer_id: 0,
+                timers: VecDeque::new(),
+                unscheduled_timers: HashMap::new(),
+                phantom: PhantomData::default(),
+            },
+        };
+    }
+
+    /// Creates a new timer with an associated callback in the [`TimerService`]
+    pub fn create_timer(&mut self, tick_call_back: U, schedule: Option<Schedule>) -> TimerId {
+        return self.event_handler.create_timer(tick_call_back, schedule);
+    }
+
+    /// Starts the [`TimerService`] thread and begins triggering timers
+    pub fn start(self) -> Result<TimerService<Factory, T, U>, Error> {
+        let sender = self
+            .event_handler
+            .factory
+            .new_thread_builder()
+            .name("TimerServiceThread")
+            .spawn_event_handler(self.event_handler, AsyncJoin::log_async_join)?;
+
+        return Ok(TimerService { sender });
+    }
+}
+
+/// A handle for a service which invokes callbacks associated with timers.
+///
+/// The [`TimerService`] itself runs in a another rate thread.  All callbacks
+/// are invoked in this separate thread.  All timers must be added asynconously
+/// via a channel, so [`TimerId`] is provided back to the caller via a callback.
+///
+/// Since the [`TimerService`] runs in another thread, observers may see
+/// callbacks that are inconsistent with the latest [`Schedule`] for a timer
+/// when a race condition occurs.
+///
+/// To add a timer using a sychronous call, use [`IdleTimerService`] before starting the [`TimerService`].
+#[derive(Clone)]
 pub struct TimerService<Factory: FactoryTrait, T: TimerCreationCallBack, U: TimerCallBack> {
+    sender: <Factory as FactoryTrait>::Sender<EventOrStopThread<TimerServiceEvent<T, U>>>,
+}
+
+impl<Factory: FactoryTrait, T: TimerCreationCallBack, U: TimerCallBack>
+    TimerService<Factory, T, U>
+{
+    /// Reschedules an existing timer
+    pub fn reschedule_timer(
+        &self,
+        timer_id: TimerId,
+        schedule: Option<Schedule>,
+    ) -> Result<(), ()> {
+        return simplify_result(
+            self.sender
+                .send_event(TimerServiceEvent::RescheduleTimer(timer_id, schedule)),
+        );
+    }
+
+    /// creates a timer
+    pub fn create_timer(
+        &self,
+        timer_creation_callback: T,
+        timer_callback: U,
+        schedule: Option<Schedule>,
+    ) -> Result<(), ()> {
+        return simplify_result(self.sender.send_event(TimerServiceEvent::CreateTimer(
+            timer_creation_callback,
+            timer_callback,
+            schedule,
+        )));
+    }
+
+    /// Removes a timer.  Once removed, the timer can never be re-used.
+    pub fn remove_timer(&self, timer_id: TimerId) -> Result<(), ()> {
+        return simplify_result(
+            self.sender
+                .send_event(TimerServiceEvent::RemoveTimer(timer_id)),
+        );
+    }
+
+    //TODO: add stop function
+}
+
+//TODO: probably move to a util
+fn simplify_result<T, U>(result: Result<T, U>) -> Result<T, ()> {
+    return match result {
+        Ok(t) => Ok(t),
+        Err(_) => Err(()),
+    };
+}
+
+/// The set of events that can be sent to the [`TimerService`]'s thread.
+enum TimerServiceEvent<T: TimerCreationCallBack, U: TimerCallBack> {
+    CreateTimer(T, U, Option<Schedule>),
+    RescheduleTimer(TimerId, Option<Schedule>),
+    RemoveTimer(TimerId),
+}
+struct TimerServiceEventHandler<Factory: FactoryTrait, T: TimerCreationCallBack, U: TimerCallBack> {
     factory: Factory,
     next_timer_id: usize,
     timers: VecDeque<Timer<U>>,
@@ -41,17 +150,9 @@ pub struct TimerService<Factory: FactoryTrait, T: TimerCreationCallBack, U: Time
     phantom: PhantomData<T>,
 }
 
-impl<Factory: FactoryTrait, T: TimerCreationCallBack, U: TimerCallBack> TimerService<Factory, T, U> {
-    pub fn new(factory: Factory) -> Self {
-        return Self {
-            factory,
-            next_timer_id: 0,
-            timers: VecDeque::new(),
-            unscheduled_timers: HashMap::new(),
-            phantom: PhantomData::default(),
-        };
-    }
-
+impl<Factory: FactoryTrait, T: TimerCreationCallBack, U: TimerCallBack>
+    TimerServiceEventHandler<Factory, T, U>
+{
     fn insert(&mut self, timer: Timer<U>) {
         trace!(
             "Time is: {:?}\nInserting Timer: {:?}",
@@ -132,7 +233,7 @@ impl<Factory: FactoryTrait, T: TimerCreationCallBack, U: TimerCallBack> TimerSer
         }
     }
 
-    pub fn create_timer(&mut self, tick_call_back: U, schedule: Option<Schedule>) -> TimerId {
+    fn create_timer(&mut self, tick_call_back: U, schedule: Option<Schedule>) -> TimerId {
         let timer_id = TimerId::new(self.next_timer_id);
 
         trace!(
@@ -199,20 +300,23 @@ impl<Factory: FactoryTrait, T: TimerCreationCallBack, U: TimerCallBack> TimerSer
 }
 
 impl<Factory: FactoryTrait, T: TimerCreationCallBack, U: TimerCallBack> EventHandlerTrait
-    for TimerService<Factory, T, U>
+    for TimerServiceEventHandler<Factory, T, U>
 {
     type Event = TimerServiceEvent<T, U>;
     type ThreadReturn = ();
 
     fn on_channel_event(self, channel_event: ChannelEvent<Self::Event>) -> EventHandleResult<Self> {
         match channel_event {
-            ReceivedEvent(_, CreateTimer(creation_call_back, tick_call_back, schedule)) => {
-                self.create_timer_event_event(creation_call_back, tick_call_back, schedule)
-            }
-            ReceivedEvent(_, RescheduleTimer(timer_id, schedule)) => {
+            ReceivedEvent(
+                _,
+                TimerServiceEvent::CreateTimer(creation_call_back, tick_call_back, schedule),
+            ) => self.create_timer_event_event(creation_call_back, tick_call_back, schedule),
+            ReceivedEvent(_, TimerServiceEvent::RescheduleTimer(timer_id, schedule)) => {
                 self.reschedule_timer_event(&timer_id, schedule)
             }
-            ReceivedEvent(_, CancelTimer(timer_id)) => self.cancel_timer_event(timer_id),
+            ReceivedEvent(_, TimerServiceEvent::RemoveTimer(timer_id)) => {
+                self.cancel_timer_event(timer_id)
+            }
             Timeout => self.trigger_timers(),
             ChannelEmpty => self.trigger_timers(),
             ChannelDisconnected => EventHandleResult::StopThread(()),

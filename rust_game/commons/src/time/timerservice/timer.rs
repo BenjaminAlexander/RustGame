@@ -49,11 +49,6 @@ impl<T: TimerCallBack> Timer<T> {
     }
 
     pub fn trigger(&mut self, factory: &impl FactoryTrait) {
-        trace!(
-            "Time is: {:?}\nTrigging Timer: {:?}",
-            factory.now(),
-            self.id
-        );
         self.call_back.tick();
         self.schedule = match self.schedule {
             None => None,
