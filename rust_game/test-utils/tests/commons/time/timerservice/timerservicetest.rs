@@ -42,7 +42,7 @@ fn timer_service_test() {
         tick_count_cell_clone.increment();
     });
 
-    let time_value = factory.now().add(&five_seconds);
+    let time_value = factory.get_time_source().now().add(&five_seconds);
 
     timer_service
         .create_timer(
@@ -70,7 +70,7 @@ fn timer_service_test() {
         .advance_time_for_duration(five_seconds);
     assert_eq!(1, tick_count_cell.get());
 
-    let new_schedule = Schedule::Repeating(factory.now().add(&seven_seconds), five_seconds);
+    let new_schedule = Schedule::Repeating(factory.get_time_source().now().add(&seven_seconds), five_seconds);
     timer_service
         .reschedule_timer(timer_id_cell.lock().unwrap().unwrap(), new_schedule)
         .unwrap();

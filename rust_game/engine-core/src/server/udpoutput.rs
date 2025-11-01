@@ -86,9 +86,9 @@ impl<GameFactory: GameFactoryTrait> UdpOutput<GameFactory> {
 
             //metrics
             time_in_queue_rolling_average: RollingAverage::new(100),
-            time_of_last_state_send: factory.now(),
-            time_of_last_input_send: factory.now(),
-            time_of_last_server_input_send: factory.now(),
+            time_of_last_state_send: factory.get_time_source().now(),
+            time_of_last_input_send: factory.get_time_source().now(),
+            time_of_last_server_input_send: factory.get_time_source().now(),
 
             factory,
         })
@@ -115,7 +115,7 @@ impl<GameFactory: GameFactoryTrait> UdpOutput<GameFactory> {
             || self.last_state_sequence.as_ref().unwrap() <= &state_message.get_sequence()
         {
             self.last_state_sequence = Some(state_message.get_sequence());
-            self.time_of_last_state_send = self.factory.now();
+            self.time_of_last_state_send = self.factory.get_time_source().now();
 
             let message = ToClientMessageUDP::<GameFactory::Game>::StateMessage(state_message);
             self.send_message(message);
@@ -174,7 +174,7 @@ impl<GameFactory: GameFactoryTrait> UdpOutput<GameFactory> {
             && (self.last_state_sequence.is_none()
                 || self.last_state_sequence.as_ref().unwrap() <= &input_message.get_step())
         {
-            self.time_of_last_input_send = self.factory.now();
+            self.time_of_last_input_send = self.factory.get_time_source().now();
 
             let message = ToClientMessageUDP::<GameFactory::Game>::InputMessage(input_message);
             self.send_message(message);
@@ -198,7 +198,7 @@ impl<GameFactory: GameFactoryTrait> UdpOutput<GameFactory> {
         if self.last_state_sequence.is_none()
             || self.last_state_sequence.as_ref().unwrap() <= &server_input_message.get_step()
         {
-            self.time_of_last_server_input_send = self.factory.now();
+            self.time_of_last_server_input_send = self.factory.get_time_source().now();
 
             let message =
                 ToClientMessageUDP::<GameFactory::Game>::ServerInputMessage(server_input_message);
@@ -215,7 +215,7 @@ impl<GameFactory: GameFactoryTrait> UdpOutput<GameFactory> {
 
     //TODO: generalize this for all channels
     fn log_time_in_queue(&mut self, time_in_queue: TimeValue) {
-        let now = self.factory.now();
+        let now = self.factory.get_time_source().now();
         let duration_in_queue = now.duration_since(&time_in_queue);
 
         self.time_in_queue_rolling_average
@@ -256,7 +256,7 @@ impl<GameFactory: GameFactoryTrait> EventHandlerTrait for UdpOutput<GameFactory>
     type ThreadReturn = ();
 
     fn on_channel_event(self, channel_event: ChannelEvent<Self::Event>) -> EventHandleResult<Self> {
-        let now = self.factory.now();
+        let now = self.factory.get_time_source().now();
 
         // let duration_since_last_input = now.duration_since(self.time_of_last_input_send);
         // if duration_since_last_input > TimeDuration::one_second() {

@@ -71,8 +71,8 @@ impl<ManagerObserver: ManagerObserverTrait> Manager<ManagerObserver> {
             manager_observer,
 
             //metrics
-            time_of_last_state_receive: factory.now(),
-            time_of_last_input_receive: factory.now(),
+            time_of_last_state_receive: factory.get_time_source().now(),
+            time_of_last_input_receive: factory.get_time_source().now(),
 
             factory,
         }
@@ -158,7 +158,7 @@ impl<ManagerObserver: ManagerObserverTrait> Manager<ManagerObserver> {
     }
 
     fn on_none_pending(mut self) -> EventHandleResult<Self> {
-        let now = self.factory.now();
+        let now = self.factory.get_time_source().now();
         let duration_since_last_state = now.duration_since(&self.time_of_last_state_receive);
         if duration_since_last_state > TimeDuration::ONE_SECOND {
             //warn!("It has been {:?} since last state message was received. Now: {:?}, Last: {:?}",
@@ -250,7 +250,7 @@ impl<ManagerObserver: ManagerObserverTrait> Manager<ManagerObserver> {
     ) -> EventHandleResult<Self> {
         if let Some(step) = self.get_state(input_message.get_step()) {
             step.set_input(input_message);
-            self.time_of_last_input_receive = self.factory.now();
+            self.time_of_last_input_receive = self.factory.get_time_source().now();
         }
         return EventHandleResult::TryForNextEvent(self);
     }
@@ -272,7 +272,7 @@ impl<ManagerObserver: ManagerObserverTrait> Manager<ManagerObserver> {
     ) -> EventHandleResult<Self> {
         self.handle_state_message(state_message);
 
-        self.time_of_last_state_receive = self.factory.now();
+        self.time_of_last_state_receive = self.factory.get_time_source().now();
 
         return EventHandleResult::TryForNextEvent(self);
     }

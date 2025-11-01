@@ -15,7 +15,7 @@ impl ReceiveMetaData {
     pub fn new(factory: &impl FactoryTrait, send_meta_data: SendMetaData) -> Self {
         return ReceiveMetaData {
             send_meta_data,
-            time_received: factory.now(),
+            time_received: factory.get_time_source().now(),
         };
     }
 

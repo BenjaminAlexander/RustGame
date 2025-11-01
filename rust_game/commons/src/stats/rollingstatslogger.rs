@@ -22,12 +22,12 @@ impl<T: Into<f64>, U: FactoryTrait> RollingStatsLogger<T, U> {
         size: usize,
         standard_deviation_ration: f64,
         min_log_interval: TimeDuration,
-        time_source: U,
+        factory: U,
     ) -> Self {
-        let last_log = time_source.now();
+        let last_log = factory.get_time_source().now();
 
         Self {
-            time_source,
+            time_source: factory,
             min_log_interval,
             last_log,
             need_to_log: false,
@@ -37,7 +37,7 @@ impl<T: Into<f64>, U: FactoryTrait> RollingStatsLogger<T, U> {
     }
 
     pub fn add_value(&mut self, value: T) {
-        let now = self.time_source.now();
+        let now = self.time_source.get_time_source().now();
 
         if let Some(value_of_interest) = self.rolling_stats.add_value(value.into()) {
             if now.duration_since(&self.last_log) > self.min_log_interval {

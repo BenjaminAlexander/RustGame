@@ -94,7 +94,7 @@ impl PartiallyAssembledFragment {
             count: fragment.get_count(),
             outstanding_fragments: fragment.get_count(),
             fragments: vec,
-            time_of_first_fragment: factory.now(),
+            time_of_first_fragment: factory.get_time_source().now(),
         };
 
         new.add_fragment(fragment);

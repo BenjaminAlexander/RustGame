@@ -21,7 +21,7 @@ use crate::threading::{
     AsyncJoinCallBackTrait,
     ThreadBuilder,
 };
-use crate::time::TimeValue;
+use crate::time::TimeSource;
 use std::io::Error;
 use std::net::SocketAddr;
 
@@ -34,7 +34,7 @@ pub trait FactoryTrait: Clone + Send + 'static {
 
     type UdpSocket: UdpSocketTrait;
 
-    fn now(&self) -> TimeValue;
+    fn get_time_source(&self) -> &TimeSource;
 
     fn new_thread_builder(&self) -> ThreadBuilder<Self> {
         return ThreadBuilder::new(self.clone());

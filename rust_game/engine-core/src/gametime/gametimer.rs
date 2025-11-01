@@ -69,7 +69,7 @@ impl<Factory: FactoryTrait, T: TimerCallBack> GameTimer<Factory, T> {
             self.game_timer_config.get_frame_duration()
         );
 
-        let now = self.factory.now();
+        let now = self.factory.get_time_source().now();
 
         // add a frame duration to now so the first timer call back is at frame 0
         self.start = Some(now.add(&self.game_timer_config.get_frame_duration()));
@@ -124,6 +124,7 @@ impl<Factory: FactoryTrait, T: TimerCallBack> GameTimer<Factory, T> {
                 &step_duration.mul_f64(
                     (self
                         .factory
+                        .get_time_source()
                         .now()
                         .duration_since(&self.start.unwrap())
                         .as_secs_f64()
@@ -150,7 +151,7 @@ impl<Factory: FactoryTrait, T: TimerCallBack> GameTimer<Factory, T> {
     }
 
     pub fn create_timer_message(&self) -> TimeMessage {
-        let now = self.factory.now();
+        let now = self.factory.get_time_source().now();
 
         //TODO: tick_time_value is the value from the remote thread, this value gets older and older as the event makes its way through the queue
         //TODO: How much of this can move into the other thread?

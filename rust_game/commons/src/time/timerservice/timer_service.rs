@@ -156,7 +156,7 @@ impl<Factory: FactoryTrait, T: TimerCreationCallBack, U: TimerCallBack>
     fn insert(&mut self, timer: Timer<U>) {
         trace!(
             "Time is: {:?}\nInserting Timer: {:?}",
-            self.factory.now(),
+            self.factory.get_time_source().now(),
             timer.get_id()
         );
 
@@ -171,7 +171,7 @@ impl<Factory: FactoryTrait, T: TimerCreationCallBack, U: TimerCallBack>
     fn move_timer(&mut self, timer_id: &TimerId) -> Option<Timer<U>> {
         trace!(
             "Time is: {:?}\nMoving Timer: {:?}",
-            self.factory.now(),
+            self.factory.get_time_source().now(),
             timer_id
         );
         if let Some(timer) = self.unscheduled_timers.remove(timer_id) {
@@ -190,7 +190,7 @@ impl<Factory: FactoryTrait, T: TimerCreationCallBack, U: TimerCallBack>
 
     fn trigger_timers(mut self) -> EventHandleResult<Self> {
         loop {
-            let now = self.factory.now();
+            let now = self.factory.get_time_source().now();
 
             if let Some(timer) = self.timers.get(0) {
                 if timer.should_trigger(&now) {
@@ -238,7 +238,7 @@ impl<Factory: FactoryTrait, T: TimerCreationCallBack, U: TimerCallBack>
 
         trace!(
             "Time is: {:?}\nCreating Timer: {:?}",
-            self.factory.now(),
+            self.factory.get_time_source().now(),
             timer_id
         );
         self.next_timer_id = self.next_timer_id + 1;
@@ -250,7 +250,7 @@ impl<Factory: FactoryTrait, T: TimerCreationCallBack, U: TimerCallBack>
     pub fn reschedule_timer(&mut self, timer_id: &TimerId, schedule: Schedule) {
         trace!(
             "Time is: {:?}\nRescheduling Timer: {:?} to {:?}",
-            self.factory.now(),
+            self.factory.get_time_source().now(),
             timer_id,
             schedule
         );
@@ -265,7 +265,7 @@ impl<Factory: FactoryTrait, T: TimerCreationCallBack, U: TimerCallBack>
     pub fn cancel_timer(&mut self, timer_id: TimerId) {
         trace!(
             "Time is: {:?}\nCanceling Timer: {:?}",
-            self.factory.now(),
+            self.factory.get_time_source().now(),
             timer_id
         );
         if self.move_timer(&timer_id).is_none() {

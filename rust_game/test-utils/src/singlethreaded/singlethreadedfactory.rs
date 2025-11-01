@@ -12,7 +12,6 @@ use crate::singlethreaded::{
     SingleThreadedSender,
     TimeQueue,
 };
-use crate::time::SimulatedTimeSource;
 use commons::factory::FactoryTrait;
 use commons::net::{
     TcpConnectionHandlerTrait,
@@ -30,7 +29,7 @@ use commons::threading::eventhandling::{
     EventSenderTrait,
 };
 use commons::threading::AsyncJoinCallBackTrait;
-use commons::time::TimeValue;
+use commons::time::{SimulatedTimeSource, TimeSource};
 use std::io::Error;
 use std::net::{
     IpAddr,
@@ -40,7 +39,7 @@ use std::net::{
 
 #[derive(Clone)]
 pub struct SingleThreadedFactory {
-    //TODO: don't let this SimulatedTimeSource escape SingleThreaded package
+    time_source: TimeSource,
     simulated_time_source: SimulatedTimeSource,
     //TODO: don't let this TimeQueue escape SingleThreaded package
     time_queue: TimeQueue,
@@ -49,10 +48,11 @@ pub struct SingleThreadedFactory {
 
 impl SingleThreadedFactory {
     pub fn new() -> Self {
-        let simulated_time_source = SimulatedTimeSource::new();
+        let (time_source, simulated_time_source) = TimeSource::new_simulated_time_source();
         let time_queue = TimeQueue::new(simulated_time_source.clone());
 
         return Self {
+            time_source,
             simulated_time_source,
             host_simulator: NetworkSimulator::new()
                 .new_host(IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1))),
@@ -91,8 +91,8 @@ impl FactoryTrait for SingleThreadedFactory {
 
     type UdpSocket = UdpSocketSimulator;
 
-    fn now(&self) -> TimeValue {
-        return self.simulated_time_source.now();
+    fn get_time_source(&self) -> &TimeSource {
+        return &self.time_source;
     }
 
     fn new_channel<T: Send>(&self) -> Channel<Self, T> {

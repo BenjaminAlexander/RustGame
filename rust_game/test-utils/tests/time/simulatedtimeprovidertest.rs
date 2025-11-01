@@ -1,9 +1,8 @@
-use commons::time::TimeValue;
-use test_utils::time::SimulatedTimeSource;
+use commons::time::{TimeSource, TimeValue};
 
 #[test]
 fn test_simulated_time_provider() {
-    let time_source = SimulatedTimeSource::new();
+    let (_, time_source) = TimeSource::new_simulated_time_source();
     let time_source_clone = time_source.clone();
 
     assert_eq!(time_source.now(), TimeValue::from_secs_f64(0.0));

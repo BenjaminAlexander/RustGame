@@ -9,7 +9,7 @@ pub struct SendMetaData {
 impl SendMetaData {
     pub fn new(factory: &impl FactoryTrait) -> Self {
         return SendMetaData {
-            time_sent: factory.now(),
+            time_sent: factory.get_time_source().now(),
         };
     }
 

@@ -51,9 +51,9 @@ impl<GameFactory: GameFactoryTrait> UdpInput<GameFactory> {
             manager_sender,
 
             //metrics
-            time_of_last_state_receive: factory.now(),
-            time_of_last_input_receive: factory.now(),
-            time_of_last_server_input_receive: factory.now(),
+            time_of_last_state_receive: factory.get_time_source().now(),
+            time_of_last_input_receive: factory.get_time_source().now(),
+            time_of_last_server_input_receive: factory.get_time_source().now(),
             factory,
         });
     }
@@ -89,7 +89,7 @@ impl<GameFactory: GameFactoryTrait> UdpInput<GameFactory> {
         &mut self,
         value: ToClientMessageUDP<GameFactory::Game>,
     ) -> ControlFlow<()> {
-        let time_received = self.factory.now();
+        let time_received = self.factory.get_time_source().now();
 
         match value {
             ToClientMessageUDP::TimeMessage(time_message) => {

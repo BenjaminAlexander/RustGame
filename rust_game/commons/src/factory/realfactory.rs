@@ -26,7 +26,7 @@ use crate::threading::{
     channel,
     AsyncJoinCallBackTrait,
 };
-use crate::time::TimeValue;
+use crate::time::TimeSource;
 use std::io::Error;
 use std::net::{
     SocketAddr,
@@ -34,14 +34,17 @@ use std::net::{
     TcpStream,
 };
 use std::sync::mpsc;
-use std::time::SystemTime;
 
-#[derive(Clone, Copy)]
-pub struct RealFactory {}
+#[derive(Clone)]
+pub struct RealFactory {
+    time_source: TimeSource
+}
 
 impl RealFactory {
     pub fn new() -> Self {
-        return Self {};
+        return Self {
+            time_source: TimeSource::new()
+        };
     }
 }
 
@@ -54,8 +57,8 @@ impl FactoryTrait for RealFactory {
 
     type UdpSocket = RealUdpSocket;
 
-    fn now(&self) -> TimeValue {
-        return TimeValue::from_system_time(&SystemTime::now()).unwrap();
+    fn get_time_source(&self) -> &TimeSource {
+        return &self.time_source;
     }
 
     fn new_channel<T: Send>(&self) -> Channel<Self, T> {
