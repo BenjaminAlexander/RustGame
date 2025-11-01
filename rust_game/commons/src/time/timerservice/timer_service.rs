@@ -56,7 +56,7 @@ impl<Factory: FactoryTrait, T: TimerCreationCallBack, U: TimerCallBack>
     }
 
     /// Creates a new timer with an associated callback in the [`TimerService`]
-    pub fn create_timer(&mut self, tick_call_back: U, schedule: Option<Schedule>) -> TimerId {
+    pub fn create_timer(&mut self, tick_call_back: U, schedule: Schedule) -> TimerId {
         return self.event_handler.create_timer(tick_call_back, schedule);
     }
 
@@ -94,11 +94,7 @@ impl<Factory: FactoryTrait, T: TimerCreationCallBack, U: TimerCallBack>
     TimerService<Factory, T, U>
 {
     /// Reschedules an existing timer
-    pub fn reschedule_timer(
-        &self,
-        timer_id: TimerId,
-        schedule: Option<Schedule>,
-    ) -> Result<(), ()> {
+    pub fn reschedule_timer(&self, timer_id: TimerId, schedule: Schedule) -> Result<(), ()> {
         return simplify_result(
             self.sender
                 .send_event(TimerServiceEvent::RescheduleTimer(timer_id, schedule)),
@@ -110,7 +106,7 @@ impl<Factory: FactoryTrait, T: TimerCreationCallBack, U: TimerCallBack>
         &self,
         timer_creation_callback: T,
         timer_callback: U,
-        schedule: Option<Schedule>,
+        schedule: Schedule,
     ) -> Result<(), ()> {
         return simplify_result(self.sender.send_event(TimerServiceEvent::CreateTimer(
             timer_creation_callback,
@@ -140,8 +136,8 @@ fn simplify_result<T, U>(result: Result<T, U>) -> Result<T, ()> {
 
 /// The set of events that can be sent to the [`TimerService`]'s thread.
 enum TimerServiceEvent<T: TimerCreationCallBack, U: TimerCallBack> {
-    CreateTimer(T, U, Option<Schedule>),
-    RescheduleTimer(TimerId, Option<Schedule>),
+    CreateTimer(T, U, Schedule),
+    RescheduleTimer(TimerId, Schedule),
     RemoveTimer(TimerId),
 }
 
@@ -164,11 +160,11 @@ impl<Factory: FactoryTrait, T: TimerCreationCallBack, U: TimerCallBack>
             timer.get_id()
         );
 
-        if timer.get_schedule().is_some() {
+        if let Schedule::Never = timer.get_schedule() {
+            self.unscheduled_timers.insert(*timer.get_id(), timer);
+        } else {
             let index = self.timers.binary_search(&timer).unwrap_or_else(|e| e);
             self.timers.insert(index, timer);
-        } else {
-            self.unscheduled_timers.insert(*timer.get_id(), timer);
         }
     }
 
@@ -237,7 +233,7 @@ impl<Factory: FactoryTrait, T: TimerCreationCallBack, U: TimerCallBack>
         }
     }
 
-    fn create_timer(&mut self, tick_call_back: U, schedule: Option<Schedule>) -> TimerId {
+    fn create_timer(&mut self, tick_call_back: U, schedule: Schedule) -> TimerId {
         let timer_id = TimerId::new(self.next_timer_id);
 
         trace!(
@@ -251,7 +247,7 @@ impl<Factory: FactoryTrait, T: TimerCreationCallBack, U: TimerCallBack>
         return timer_id;
     }
 
-    pub fn reschedule_timer(&mut self, timer_id: &TimerId, schedule: Option<Schedule>) {
+    pub fn reschedule_timer(&mut self, timer_id: &TimerId, schedule: Schedule) {
         trace!(
             "Time is: {:?}\nRescheduling Timer: {:?} to {:?}",
             self.factory.now(),
@@ -281,7 +277,7 @@ impl<Factory: FactoryTrait, T: TimerCreationCallBack, U: TimerCallBack>
         mut self,
         creation_call_back: T,
         tick_call_back: U,
-        schedule: Option<Schedule>,
+        schedule: Schedule,
     ) -> EventHandleResult<Self> {
         let timer_id = self.create_timer(tick_call_back, schedule);
         creation_call_back.timer_created(&timer_id);
@@ -291,7 +287,7 @@ impl<Factory: FactoryTrait, T: TimerCreationCallBack, U: TimerCallBack>
     fn reschedule_timer_event(
         mut self,
         timer_id: &TimerId,
-        schedule: Option<Schedule>,
+        schedule: Schedule,
     ) -> EventHandleResult<Self> {
         self.reschedule_timer(timer_id, schedule);
         return EventHandleResult::TryForNextEvent(self);

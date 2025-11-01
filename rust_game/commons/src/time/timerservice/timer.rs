@@ -1,4 +1,3 @@
-use crate::factory::FactoryTrait;
 use crate::time::timerservice::schedule::Schedule;
 use crate::time::timerservice::timer_call_back::TimerCallBack;
 use crate::time::timerservice::timer_id::TimerId;
@@ -8,12 +7,12 @@ use std::ops::Add;
 
 pub struct Timer<T: TimerCallBack> {
     id: TimerId,
-    schedule: Option<Schedule>,
+    schedule: Schedule,
     call_back: T,
 }
 
 impl<T: TimerCallBack> Timer<T> {
-    pub fn new(id: &TimerId, schedule: Option<Schedule>, call_back: T) -> Self {
+    pub fn new(id: &TimerId, schedule: Schedule, call_back: T) -> Self {
         return Self {
             id: *id,
             schedule,
@@ -25,35 +24,29 @@ impl<T: TimerCallBack> Timer<T> {
         return &self.id;
     }
 
-    pub fn set_schedule(&mut self, schedule: Option<Schedule>) {
+    pub fn set_schedule(&mut self, schedule: Schedule) {
         self.schedule = schedule;
     }
 
-    pub fn get_schedule(&self) -> Option<&Schedule> {
-        return self.schedule.as_ref();
+    pub fn get_schedule(&self) -> &Schedule {
+        return &self.schedule;
     }
 
     pub fn get_trigger_time(&self) -> Option<&TimeValue> {
-        return match &self.schedule {
-            None => None,
-            Some(schedule) => Some(schedule.get_trigger_time()),
-        };
+        return self.schedule.get_trigger_time();
     }
 
     pub fn should_trigger(&self, now: &TimeValue) -> bool {
-        return match &self.schedule {
-            None => false,
-            Some(schedule) => schedule.should_trigger(now),
-        };
+        return self.schedule.should_trigger(now);
     }
 
     pub fn trigger(&mut self) {
         self.call_back.tick();
         self.schedule = match self.schedule {
-            None => None,
-            Some(Schedule::Once(_)) => None,
-            Some(Schedule::Repeating(trigger_time, duration)) => {
-                Some(Schedule::Repeating(trigger_time.add(&duration), duration))
+            Schedule::Never => Schedule::Never,
+            Schedule::Once(_) => Schedule::Never,
+            Schedule::Repeating(trigger_time, duration) => {
+                Schedule::Repeating(trigger_time.add(&duration), duration)
             }
         };
     }

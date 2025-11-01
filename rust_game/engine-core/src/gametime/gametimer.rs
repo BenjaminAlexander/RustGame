@@ -48,7 +48,7 @@ impl<Factory: FactoryTrait, T: TimerCallBack> GameTimer<Factory, T> {
     ) -> Self {
         let mut idle_timer_service = IdleTimerService::new(factory.clone());
 
-        let timer_id = idle_timer_service.create_timer(call_back, None);
+        let timer_id = idle_timer_service.create_timer(call_back, Schedule::Never);
 
         //TODO: remove unwrap
         let timer_service = idle_timer_service.start().unwrap();
@@ -80,9 +80,7 @@ impl<Factory: FactoryTrait, T: TimerCallBack> GameTimer<Factory, T> {
             *self.game_timer_config.get_frame_duration(),
         );
 
-        let send_result = self
-            .timer_service
-            .reschedule_timer(self.timer_id, Some(schedule));
+        let send_result = self.timer_service.reschedule_timer(self.timer_id, schedule);
 
         if send_result.is_err() {
             warn!("Failed to schedule timer");
@@ -140,9 +138,7 @@ impl<Factory: FactoryTrait, T: TimerCallBack> GameTimer<Factory, T> {
                 *self.game_timer_config.get_frame_duration(),
             );
 
-            let send_result = self
-                .timer_service
-                .reschedule_timer(self.timer_id, Some(schedule));
+            let send_result = self.timer_service.reschedule_timer(self.timer_id, schedule);
 
             if send_result.is_err() {
                 warn!("Failed to reschedule timer");

@@ -48,7 +48,7 @@ fn timer_service_test() {
         .create_timer(
             timer_creation_call_back,
             timer_tick_call_back,
-            Some(Schedule::Once(time_value)),
+            Schedule::Once(time_value),
         )
         .unwrap();
 
@@ -72,7 +72,7 @@ fn timer_service_test() {
 
     let new_schedule = Schedule::Repeating(factory.now().add(&seven_seconds), five_seconds);
     timer_service
-        .reschedule_timer(timer_id_cell.lock().unwrap().unwrap(), Some(new_schedule))
+        .reschedule_timer(timer_id_cell.lock().unwrap().unwrap(), new_schedule)
         .unwrap();
 
     factory.get_time_queue().run_events();
