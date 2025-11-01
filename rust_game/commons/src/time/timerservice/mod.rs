@@ -1,15 +1,15 @@
 mod schedule;
 mod timer;
-mod timercallback;
-mod timercreationcallback;
-mod timerid;
-mod timerservice;
+mod timer_call_back;
+mod timer_creation_call_back;
+mod timer_id;
+mod timer_service;
 
 pub use self::schedule::Schedule;
-pub use self::timercallback::TimerCallBack;
-pub use self::timercreationcallback::TimerCreationCallBack;
-pub use self::timerid::TimerId;
-pub use self::timerservice::{
+pub use self::timer_call_back::TimerCallBack;
+pub use self::timer_creation_call_back::TimerCreationCallBack;
+pub use self::timer_id::TimerId;
+pub use self::timer_service::{
     IdleTimerService,
     TimerService,
 };

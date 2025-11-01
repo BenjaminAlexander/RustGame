@@ -16,9 +16,9 @@ use crate::threading::eventhandling::{
 use crate::threading::AsyncJoin;
 use crate::time::timerservice::schedule::Schedule;
 use crate::time::timerservice::timer::Timer;
-use crate::time::timerservice::timercallback::TimerCallBack;
-use crate::time::timerservice::timercreationcallback::TimerCreationCallBack;
-use crate::time::timerservice::timerid::TimerId;
+use crate::time::timerservice::timer_call_back::TimerCallBack;
+use crate::time::timerservice::timer_creation_call_back::TimerCreationCallBack;
+use crate::time::timerservice::timer_id::TimerId;
 use crate::time::TimeValue;
 use log::{
     trace,
@@ -35,6 +35,7 @@ use std::marker::PhantomData;
 ///
 /// This struct can be used to add timers to the service before starting it, as well as starting the [`TimerService`] itself.
 pub struct IdleTimerService<Factory: FactoryTrait, T: TimerCreationCallBack, U: TimerCallBack> {
+    /// used to handle events when the [`TimerService`] thread starts
     event_handler: TimerServiceEventHandler<Factory, T, U>,
 }
 
@@ -85,6 +86,7 @@ impl<Factory: FactoryTrait, T: TimerCreationCallBack, U: TimerCallBack>
 /// To add a timer using a sychronous call, use [`IdleTimerService`] before starting the [`TimerService`].
 #[derive(Clone)]
 pub struct TimerService<Factory: FactoryTrait, T: TimerCreationCallBack, U: TimerCallBack> {
+    /// used to send events to the [`TimerService`] thread
     sender: <Factory as FactoryTrait>::Sender<EventOrStopThread<TimerServiceEvent<T, U>>>,
 }
 
@@ -142,6 +144,8 @@ enum TimerServiceEvent<T: TimerCreationCallBack, U: TimerCallBack> {
     RescheduleTimer(TimerId, Option<Schedule>),
     RemoveTimer(TimerId),
 }
+
+/// An EventHandlerTrait implementation for [`TimerService`]
 struct TimerServiceEventHandler<Factory: FactoryTrait, T: TimerCreationCallBack, U: TimerCallBack> {
     factory: Factory,
     next_timer_id: usize,
@@ -195,7 +199,7 @@ impl<Factory: FactoryTrait, T: TimerCreationCallBack, U: TimerCallBack>
             if let Some(timer) = self.timers.get(0) {
                 if timer.should_trigger(&now) {
                     let mut timer = self.timers.pop_front().unwrap();
-                    timer.trigger(&self.factory);
+                    timer.trigger();
 
                     if timer.get_trigger_time().is_some() {
                         self.insert(timer);
