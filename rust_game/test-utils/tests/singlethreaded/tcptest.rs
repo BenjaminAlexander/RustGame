@@ -3,7 +3,12 @@ use commons::logging::LoggingConfigBuilder;
 use commons::net::{
     TcpConnectionHandlerTrait,
     TcpReadHandlerTrait,
-    TcpWriterTrait,
+    TcpWriter,
+};
+use commons::single_threaded_simulator::{
+    SingleThreadedFactory,
+    SingleThreadedReceiver,
+    SingleThreadedSender,
 };
 use commons::threading::eventhandling::{
     EventOrStopThread,
@@ -25,12 +30,6 @@ use std::ops::ControlFlow::Continue;
 use std::sync::{
     Arc,
     Mutex,
-};
-use test_utils::net::ChannelTcpWriter;
-use test_utils::singlethreaded::{
-    SingleThreadedFactory,
-    SingleThreadedReceiver,
-    SingleThreadedSender,
 };
 
 const PORT: u16 = 1234;
@@ -64,14 +63,14 @@ fn test_tcp() {
 
     let client_factory = server_factory.clone_for_new_host(IpAddr::V4(Ipv4Addr::new(127, 0, 0, 2)));
 
-    let (writer, reader) = client_factory.connect_tcp(listen_socket).unwrap();
+    let (tcp_stream, reader) = client_factory.connect_tcp(listen_socket).unwrap();
 
     let client_thread_builder = client_factory
         .new_thread_builder()
         .build_channel_thread::<EventOrStopThread<()>>();
 
     let client_side = Arc::new(Mutex::new(Some(TestConnection {
-        writer,
+        tcp_stream,
         reader_sender: client_thread_builder.get_sender().clone(),
         last_value: None,
     })));
@@ -117,8 +116,8 @@ fn test_write(
     {
         let mut guard = write_connection.lock().unwrap();
 
-        guard.as_mut().unwrap().writer.write(&value).unwrap();
-        guard.as_mut().unwrap().writer.flush().unwrap();
+        guard.as_mut().unwrap().tcp_stream.write(&value).unwrap();
+        guard.as_mut().unwrap().tcp_stream.flush().unwrap();
     }
 
     factory.get_time_queue().run_events();
@@ -136,7 +135,7 @@ fn test_write(
 }
 
 struct TestConnection {
-    writer: ChannelTcpWriter,
+    tcp_stream: TcpWriter,
     #[allow(dead_code)]
     reader_sender: SingleThreadedSender<EventOrStopThread<()>>,
     last_value: Option<u32>,
@@ -150,13 +149,13 @@ struct ConnectionHandler {
 impl TcpConnectionHandlerTrait<SingleThreadedFactory> for ConnectionHandler {
     fn on_connection(
         &mut self,
-        tcp_sender: ChannelTcpWriter,
+        tcp_stream: TcpWriter,
         tcp_receiver: SingleThreadedReceiver<Vec<u8>>,
     ) -> ControlFlow<()> {
         info!(
             "{:?} is handling a connection from {:?}",
             self.factory.get_host_simulator().get_ip_addr(),
-            tcp_sender.get_peer_addr()
+            tcp_stream.get_peer_addr()
         );
 
         let tcp_read_handler = TcpReadHandler {
@@ -170,7 +169,7 @@ impl TcpConnectionHandlerTrait<SingleThreadedFactory> for ConnectionHandler {
             .unwrap();
 
         let server_side = TestConnection {
-            writer: tcp_sender,
+            tcp_stream,
             reader_sender,
             last_value: None,
         };

@@ -1,13 +1,13 @@
-use crate::singlethreaded::channel::receiverlink::{
+use crate::single_threaded_simulator::channel::receiverlink::{
     ReceiveOrDisconnected,
     ReceiverLink,
 };
-use crate::singlethreaded::channel::senderlink::SenderLink;
-use crate::singlethreaded::{
+use crate::single_threaded_simulator::channel::senderlink::SenderLink;
+use crate::single_threaded_simulator::{
     SingleThreadedFactory,
     SingleThreadedSender,
 };
-use commons::threading::channel::{
+use crate::threading::channel::{
     ReceiveMetaData,
     ReceiverTrait,
     TryRecvError,

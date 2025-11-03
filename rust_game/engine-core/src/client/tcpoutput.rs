@@ -1,7 +1,4 @@
-use crate::interface::{
-    GameFactoryTrait,
-    TcpWriter,
-};
+use commons::net::TcpWriter;
 use commons::threading::channel::ReceiveMetaData;
 use commons::threading::eventhandling::ChannelEvent::{
     ChannelDisconnected,
@@ -16,17 +13,17 @@ use commons::threading::eventhandling::{
 };
 
 //TODO: Send response to time messages to calculate ping
-pub struct TcpOutput<GameFactory: GameFactoryTrait> {
-    tcp_sender: TcpWriter<GameFactory>,
+pub struct TcpOutput {
+    tcp_stream: TcpWriter,
 }
 
-impl<GameFactory: GameFactoryTrait> TcpOutput<GameFactory> {
-    pub fn new(tcp_sender: TcpWriter<GameFactory>) -> Self {
-        return Self { tcp_sender };
+impl TcpOutput {
+    pub fn new(tcp_stream: TcpWriter) -> Self {
+        return Self { tcp_stream };
     }
 }
 
-impl<GameFactory: GameFactoryTrait> EventHandlerTrait for TcpOutput<GameFactory> {
+impl EventHandlerTrait for TcpOutput {
     type Event = ();
     type ThreadReturn = ();
 

@@ -1,6 +1,7 @@
 mod channel;
 mod event;
 pub mod eventhandling;
+pub mod net;
 mod singlethreadedfactory;
 mod timequeue;
 

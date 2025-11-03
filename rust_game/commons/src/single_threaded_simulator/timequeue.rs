@@ -1,6 +1,8 @@
-use crate::singlethreaded::event::Event;
-use commons::time::{
-    SimulatedTimeSource, TimeDuration, TimeValue
+use crate::single_threaded_simulator::event::Event;
+use crate::time::{
+    SimulatedTimeSource,
+    TimeDuration,
+    TimeValue,
 };
 use log::warn;
 use std::collections::VecDeque;

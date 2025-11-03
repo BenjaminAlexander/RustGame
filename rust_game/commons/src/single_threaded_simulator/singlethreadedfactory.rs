@@ -1,35 +1,38 @@
+use crate::factory::FactoryTrait;
 use crate::net::{
-    ChannelTcpWriter,
+    TcpConnectionHandlerTrait,
+    TcpReadHandlerTrait,
+    TcpWriter,
+    UdpReadHandlerTrait,
+};
+use crate::single_threaded_simulator::eventhandling::EventHandlerHolder;
+use crate::single_threaded_simulator::net::{
     HostSimulator,
     NetworkSimulator,
     TcpReaderEventHandler,
     UdpSocketSimulator,
 };
-use crate::singlethreaded::eventhandling::EventHandlerHolder;
-use crate::singlethreaded::{
+use crate::single_threaded_simulator::{
     ReceiveOrDisconnected,
     SingleThreadedReceiver,
     SingleThreadedSender,
     TimeQueue,
 };
-use commons::factory::FactoryTrait;
-use commons::net::{
-    TcpConnectionHandlerTrait,
-    TcpReadHandlerTrait,
-    UdpReadHandlerTrait,
-};
-use commons::threading::channel::{
+use crate::threading::channel::{
     Channel,
     ChannelThreadBuilder,
 };
-use commons::threading::eventhandling::{
+use crate::threading::eventhandling::{
     EventHandlerSender,
     EventHandlerTrait,
     EventOrStopThread,
     EventSenderTrait,
 };
-use commons::threading::AsyncJoinCallBackTrait;
-use commons::time::{SimulatedTimeSource, TimeSource};
+use crate::threading::AsyncJoinCallBackTrait;
+use crate::time::{
+    SimulatedTimeSource,
+    TimeSource,
+};
 use std::io::Error;
 use std::net::{
     IpAddr,
@@ -86,7 +89,6 @@ impl FactoryTrait for SingleThreadedFactory {
     type Sender<T: Send> = SingleThreadedSender<T>;
     type Receiver<T: Send> = SingleThreadedReceiver<T>;
 
-    type TcpWriter = ChannelTcpWriter;
     type TcpReader = SingleThreadedReceiver<Vec<u8>>;
 
     type UdpSocket = UdpSocketSimulator;
@@ -132,10 +134,7 @@ impl FactoryTrait for SingleThreadedFactory {
             );
     }
 
-    fn connect_tcp(
-        &self,
-        socket_addr: SocketAddr,
-    ) -> Result<(Self::TcpWriter, Self::TcpReader), Error> {
+    fn connect_tcp(&self, socket_addr: SocketAddr) -> Result<(TcpWriter, Self::TcpReader), Error> {
         return self.host_simulator.connect_tcp(&self, socket_addr);
     }
 

@@ -1,5 +1,5 @@
-use crate::singlethreaded::channel::senderlink::SenderLink;
-use commons::threading::channel::SenderTrait;
+use crate::single_threaded_simulator::channel::senderlink::SenderLink;
+use crate::threading::channel::SenderTrait;
 use std::sync::{
     Arc,
     Mutex,

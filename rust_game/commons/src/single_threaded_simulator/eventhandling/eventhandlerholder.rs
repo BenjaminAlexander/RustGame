@@ -1,32 +1,32 @@
-use crate::singlethreaded::{
+use crate::single_threaded_simulator::{
     ReceiveOrDisconnected,
     ReceiverLink,
     SingleThreadedFactory,
 };
-use commons::threading::channel::{
+use crate::threading::channel::{
     Channel,
     ChannelThreadBuilder,
     ReceiveMetaData,
 };
-use commons::threading::eventhandling::ChannelEvent::{
+use crate::threading::eventhandling::ChannelEvent::{
     ChannelDisconnected,
     ChannelEmpty,
     ReceivedEvent,
     Timeout,
 };
-use commons::threading::eventhandling::{
+use crate::threading::eventhandling::{
     ChannelEvent,
     EventHandleResult,
     EventHandlerSender,
     EventHandlerTrait,
     EventOrStopThread,
 };
-use commons::threading::{
+use crate::threading::{
     AsyncJoin,
     AsyncJoinCallBackTrait,
     ThreadBuilder,
 };
-use commons::time::TimeDuration;
+use crate::time::TimeDuration;
 use log::trace;
 use std::sync::{
     Arc,

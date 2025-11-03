@@ -1,5 +1,5 @@
-use crate::singlethreaded::SingleThreadedFactory;
-use commons::threading::channel::{
+use crate::single_threaded_simulator::SingleThreadedFactory;
+use crate::threading::channel::{
     ReceiveMetaData,
     SendMetaData,
     TryRecvError,

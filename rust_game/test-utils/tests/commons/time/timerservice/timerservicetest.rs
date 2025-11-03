@@ -1,5 +1,6 @@
 use commons::factory::FactoryTrait;
 use commons::logging::LoggingConfigBuilder;
+use commons::single_threaded_simulator::SingleThreadedFactory;
 use commons::time::timerservice::{
     IdleTimerService,
     Schedule,
@@ -12,7 +13,6 @@ use std::sync::{
     Arc,
     Mutex,
 };
-use test_utils::singlethreaded::SingleThreadedFactory;
 use test_utils::utils::Counter;
 
 #[test]
@@ -70,7 +70,10 @@ fn timer_service_test() {
         .advance_time_for_duration(five_seconds);
     assert_eq!(1, tick_count_cell.get());
 
-    let new_schedule = Schedule::Repeating(factory.get_time_source().now().add(&seven_seconds), five_seconds);
+    let new_schedule = Schedule::Repeating(
+        factory.get_time_source().now().add(&seven_seconds),
+        five_seconds,
+    );
     timer_service
         .reschedule_timer(timer_id_cell.lock().unwrap().unwrap(), new_schedule)
         .unwrap();

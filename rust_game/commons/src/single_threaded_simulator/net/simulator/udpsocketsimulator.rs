@@ -1,5 +1,5 @@
-use crate::net::HostSimulator;
-use commons::net::UdpSocketTrait;
+use crate::net::UdpSocketTrait;
+use crate::single_threaded_simulator::net::HostSimulator;
 use std::io::Error;
 use std::net::SocketAddr;
 use std::sync::{

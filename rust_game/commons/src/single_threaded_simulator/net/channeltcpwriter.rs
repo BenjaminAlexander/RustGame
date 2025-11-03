@@ -1,6 +1,6 @@
-use crate::singlethreaded::SingleThreadedSender;
-use commons::net::TcpWriterTrait;
-use commons::threading::channel::SenderTrait;
+use crate::net::TcpWriterTrait;
+use crate::single_threaded_simulator::SingleThreadedSender;
+use crate::threading::channel::SenderTrait;
 use rmp_serde::encode::Error as EncodeError;
 use serde::de::DeserializeOwned;
 use serde::Serialize;
@@ -10,6 +10,7 @@ use std::io::{
 };
 use std::net::SocketAddr;
 
+#[derive(Clone)]
 pub struct ChannelTcpWriter {
     peer_addr: SocketAddr,
     has_been_closed: bool,

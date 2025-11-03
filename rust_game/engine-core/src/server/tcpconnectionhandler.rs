@@ -2,13 +2,12 @@ use crate::interface::{
     EventSender,
     GameFactoryTrait,
     TcpReader,
-    TcpWriter,
 };
 use crate::server::servercore::ServerCoreEvent;
 use crate::server::servercore::ServerCoreEvent::TcpConnectionEvent;
 use commons::net::{
     TcpConnectionHandlerTrait,
-    TcpWriterTrait,
+    TcpWriter,
 };
 use commons::threading::eventhandling::EventSenderTrait;
 use log::{
@@ -33,14 +32,14 @@ impl<GameFactory: GameFactoryTrait> TcpConnectionHandlerTrait<GameFactory::Facto
 {
     fn on_connection(
         &mut self,
-        tcp_sender: TcpWriter<GameFactory>,
+        tcp_stream: TcpWriter,
         tcp_receiver: TcpReader<GameFactory>,
     ) -> ControlFlow<()> {
-        info!("New TCP connection from {:?}", tcp_sender.get_peer_addr());
+        info!("New TCP connection from {:?}", tcp_stream.get_peer_addr());
 
         let send_result = self
             .server_core_sender
-            .send_event(TcpConnectionEvent(tcp_sender, tcp_receiver));
+            .send_event(TcpConnectionEvent(tcp_stream, tcp_receiver));
 
         return match send_result {
             Ok(_) => Continue(()),

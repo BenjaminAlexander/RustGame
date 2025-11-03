@@ -1,7 +1,7 @@
 use crate::net::{
     TcpConnectionHandlerTrait,
     TcpReadHandlerTrait,
-    TcpWriterTrait,
+    TcpWriter,
     UdpReadHandlerTrait,
     UdpSocketTrait,
     LOCAL_EPHEMERAL_SOCKET_ADDR_V4,
@@ -29,7 +29,6 @@ pub trait FactoryTrait: Clone + Send + 'static {
     type Sender<T: Send>: SenderTrait<T>;
     type Receiver<T: Send>: ReceiverTrait<T>;
 
-    type TcpWriter: TcpWriterTrait;
     type TcpReader: Send + Sized;
 
     type UdpSocket: UdpSocketTrait;
@@ -57,10 +56,7 @@ pub trait FactoryTrait: Clone + Send + 'static {
         join_call_back: impl AsyncJoinCallBackTrait<Self, T>,
     ) -> Result<EventHandlerSender<Self, ()>, Error>;
 
-    fn connect_tcp(
-        &self,
-        socket_addr: SocketAddr,
-    ) -> Result<(Self::TcpWriter, Self::TcpReader), Error>;
+    fn connect_tcp(&self, socket_addr: SocketAddr) -> Result<(TcpWriter, Self::TcpReader), Error>;
 
     fn spawn_tcp_reader<T: TcpReadHandlerTrait>(
         &self,

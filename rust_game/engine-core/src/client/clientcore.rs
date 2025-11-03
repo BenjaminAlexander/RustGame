@@ -101,10 +101,7 @@ impl<GameFactory: GameFactoryTrait> ClientCore<GameFactory> {
         let tcp_output_sender = factory
             .new_thread_builder()
             .name("ClientTcpOutput")
-            .spawn_event_handler(
-                TcpOutput::<GameFactory>::new(tcp_sender),
-                AsyncJoin::log_async_join,
-            )
+            .spawn_event_handler(TcpOutput::new(tcp_sender), AsyncJoin::log_async_join)
             .unwrap();
 
         let state = State::WaitingForHello {

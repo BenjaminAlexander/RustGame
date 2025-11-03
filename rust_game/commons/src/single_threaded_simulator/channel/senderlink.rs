@@ -1,4 +1,4 @@
-use crate::singlethreaded::channel::receiverlink::ReceiverLink;
+use crate::single_threaded_simulator::channel::receiverlink::ReceiverLink;
 
 pub struct SenderLink<T> {
     receiver_link: ReceiverLink<T>,

@@ -1,13 +1,11 @@
 use crate::interface::{
-    GameFactoryTrait,
     GameTrait,
     InitialInformation,
-    TcpWriter,
 };
 use crate::messaging::ToClientMessageTCP;
 use crate::server::tcpoutput::TcpOutputEvent::SendInitialInformation;
 use crate::server::ServerConfig;
-use commons::net::TcpWriterTrait;
+use commons::net::TcpWriter;
 use commons::threading::channel::ReceiveMetaData;
 use commons::threading::eventhandling::{
     ChannelEvent,
@@ -15,21 +13,24 @@ use commons::threading::eventhandling::{
     EventHandlerTrait,
 };
 use log::debug;
+use std::marker::PhantomData;
 
 pub enum TcpOutputEvent<Game: GameTrait> {
     SendInitialInformation(ServerConfig, usize, Game::State),
 }
 
-pub struct TcpOutput<GameFactory: GameFactoryTrait> {
+pub struct TcpOutput<Game: GameTrait> {
     player_index: usize,
-    tcp_sender: TcpWriter<GameFactory>,
+    tcp_stream: TcpWriter,
+    phantom: PhantomData<Game>,
 }
 
-impl<GameFactory: GameFactoryTrait> TcpOutput<GameFactory> {
-    pub fn new(player_index: usize, tcp_sender: TcpWriter<GameFactory>) -> Self {
+impl<Game: GameTrait> TcpOutput<Game> {
+    pub fn new(player_index: usize, tcp_stream: TcpWriter) -> Self {
         return TcpOutput {
             player_index,
-            tcp_sender,
+            tcp_stream,
+            phantom: PhantomData,
         };
     }
 
@@ -37,19 +38,18 @@ impl<GameFactory: GameFactoryTrait> TcpOutput<GameFactory> {
         mut self,
         server_config: ServerConfig,
         player_count: usize,
-        initial_state: <GameFactory::Game as GameTrait>::State,
+        initial_state: Game::State,
     ) -> EventHandleResult<Self> {
-        let initial_information = InitialInformation::<GameFactory::Game>::new(
+        let initial_information = InitialInformation::<Game>::new(
             server_config,
             player_count,
             self.player_index,
             initial_state,
         );
 
-        let message =
-            ToClientMessageTCP::<GameFactory::Game>::InitialInformation(initial_information);
-        self.tcp_sender.write(&message).unwrap();
-        self.tcp_sender.flush().unwrap();
+        let message = ToClientMessageTCP::<Game>::InitialInformation(initial_information);
+        self.tcp_stream.write(&message).unwrap();
+        self.tcp_stream.flush().unwrap();
 
         debug!("Sent InitialInformation");
 
@@ -57,8 +57,8 @@ impl<GameFactory: GameFactoryTrait> TcpOutput<GameFactory> {
     }
 }
 
-impl<GameFactory: GameFactoryTrait> EventHandlerTrait for TcpOutput<GameFactory> {
-    type Event = TcpOutputEvent<GameFactory::Game>;
+impl<Game: GameTrait> EventHandlerTrait for TcpOutput<Game> {
+    type Event = TcpOutputEvent<Game>;
     type ThreadReturn = ();
 
     fn on_channel_event(self, channel_event: ChannelEvent<Self::Event>) -> EventHandleResult<Self> {

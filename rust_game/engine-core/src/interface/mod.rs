@@ -28,6 +28,5 @@ pub use self::types::InterpolationResult;
 pub use self::types::Receiver;
 pub use self::types::Sender;
 pub use self::types::TcpReader;
-pub use self::types::TcpWriter;
 pub use self::types::UdpSocket;
 pub use self::updatearg::ClientUpdateArg;

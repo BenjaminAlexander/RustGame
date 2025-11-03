@@ -1,7 +1,7 @@
-use crate::net::NetworkSimulator;
-use commons::net::UdpReadHandlerTrait;
-use commons::threading::channel::ReceiveMetaData;
-use commons::threading::eventhandling::{
+use crate::net::UdpReadHandlerTrait;
+use crate::single_threaded_simulator::net::NetworkSimulator;
+use crate::threading::channel::ReceiveMetaData;
+use crate::threading::eventhandling::{
     ChannelEvent,
     EventHandleResult,
     EventHandlerTrait,

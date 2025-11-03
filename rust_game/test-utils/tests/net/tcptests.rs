@@ -88,7 +88,7 @@ fn test_non_blocking_tcp_reader() {
     let expected_struct =
         async_expects.new_async_expect("A struct to send and receive", EXPECTED_STRUCT);
     let mut tcp_reader_senders = Vec::new();
-    tcp_connection_handler.set_on_connection(move |tcp_stream, _| {
+    tcp_connection_handler.set_on_connection(move |_, tcp_reader| {
         expect_one_tcp_connection.set_actual(());
 
         let listener_sender = listener_sender.clone();
@@ -99,13 +99,11 @@ fn test_non_blocking_tcp_reader() {
             return ControlFlow::Break(());
         });
 
-        let tcp_stream_clone = tcp_stream.try_clone().unwrap();
-
         let reader_sender: RealSender<RealFactory, EventOrStopThread<()>> = RealFactory::new()
             .new_thread_builder()
             .name("TcpReader-ListenerSide")
             .spawn_tcp_reader(
-                tcp_stream_clone,
+                tcp_reader,
                 tcp_read_handler,
                 async_expects_clone.new_expect_async_join("Expect TcpReader-ListenerSide Join"),
             )

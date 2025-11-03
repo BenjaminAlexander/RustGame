@@ -1,4 +1,8 @@
 use commons::factory::FactoryTrait;
+use commons::single_threaded_simulator::{
+    ReceiveOrDisconnected,
+    SingleThreadedFactory,
+};
 use commons::threading::channel::{
     ReceiverTrait,
     SenderTrait,
@@ -7,10 +11,6 @@ use commons::threading::channel::{
 use std::sync::{
     Arc,
     Mutex,
-};
-use test_utils::singlethreaded::{
-    ReceiveOrDisconnected,
-    SingleThreadedFactory,
 };
 
 #[test]

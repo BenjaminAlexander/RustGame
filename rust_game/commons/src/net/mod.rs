@@ -22,6 +22,7 @@ pub(crate) use self::tcplistenereventhandler::TcpListenerEventHandler;
 pub(crate) use self::tcpreadereventhandler::TcpReaderEventHandler;
 pub use self::tcpreadhandlertrait::TcpReadHandler;
 pub use self::tcpreadhandlertrait::TcpReadHandlerTrait;
+pub use self::tcpwritertrait::TcpWriter;
 pub use self::tcpwritertrait::TcpWriterTrait;
 pub(crate) use self::udpreadereventhandler::UdpReaderEventHandler;
 pub use self::udpreadhandlertrait::UdpReadHandlerTrait;

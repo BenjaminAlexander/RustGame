@@ -1,11 +1,14 @@
-use crate::net::ChannelTcpWriter;
-use crate::singlethreaded::{
+use crate::net::{
+    TcpConnectionHandlerTrait,
+    TcpWriter,
+};
+use crate::single_threaded_simulator::net::ChannelTcpWriter;
+use crate::single_threaded_simulator::{
     SingleThreadedFactory,
     SingleThreadedReceiver,
 };
-use commons::net::TcpConnectionHandlerTrait;
-use commons::threading::channel::ReceiveMetaData;
-use commons::threading::eventhandling::{
+use crate::threading::channel::ReceiveMetaData;
+use crate::threading::eventhandling::{
     ChannelEvent,
     EventHandleResult,
     EventHandlerTrait,
@@ -43,7 +46,10 @@ impl<TcpConnectionHandler: TcpConnectionHandlerTrait<SingleThreadedFactory>>
         writer: ChannelTcpWriter,
         reader: SingleThreadedReceiver<Vec<u8>>,
     ) -> EventHandleResult<Self> {
-        return match self.connection_handler.on_connection(writer, reader) {
+        return match self
+            .connection_handler
+            .on_connection(TcpWriter::new_simulated(writer), reader)
+        {
             Continue(()) => EventHandleResult::TryForNextEvent(self),
             Break(()) => EventHandleResult::StopThread(self.connection_handler),
         };

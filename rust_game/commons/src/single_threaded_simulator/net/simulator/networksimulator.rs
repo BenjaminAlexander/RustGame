@@ -1,31 +1,32 @@
-use crate::net::simulator::hostsimulator::HostSimulator;
-use crate::net::simulator::tcplistenereventhandler::{
+use crate::factory::FactoryTrait;
+use crate::net::{
+    TcpConnectionHandlerTrait,
+    TcpWriter,
+    UdpReadHandlerTrait,
+};
+use crate::single_threaded_simulator::net::simulator::hostsimulator::HostSimulator;
+use crate::single_threaded_simulator::net::simulator::tcplistenereventhandler::{
     TcpListenerEvent,
     TcpListenerEventHandler,
 };
-use crate::net::simulator::udpreadeventhandler::UdpReadEventHandler;
-use crate::net::{
+use crate::single_threaded_simulator::net::simulator::udpreadeventhandler::UdpReadEventHandler;
+use crate::single_threaded_simulator::net::{
     ChannelTcpWriter,
     UdpSocketSimulator,
 };
-use crate::singlethreaded::{
+use crate::single_threaded_simulator::{
     ReceiveOrDisconnected,
     SingleThreadedFactory,
     SingleThreadedReceiver,
     SingleThreadedSender,
 };
-use commons::factory::FactoryTrait;
-use commons::net::{
-    TcpConnectionHandlerTrait,
-    UdpReadHandlerTrait,
-};
-use commons::threading::channel::ChannelThreadBuilder;
-use commons::threading::eventhandling::{
+use crate::threading::channel::ChannelThreadBuilder;
+use crate::threading::eventhandling::{
     EventHandlerSender,
     EventOrStopThread,
     EventSenderTrait,
 };
-use commons::threading::AsyncJoinCallBackTrait;
+use crate::threading::AsyncJoinCallBackTrait;
 use log::{
     info,
     warn,
@@ -142,7 +143,7 @@ impl NetworkSimulator {
         factory: &SingleThreadedFactory,
         client_socket_addr: SocketAddr,
         server_socket_addr: SocketAddr,
-    ) -> Result<(ChannelTcpWriter, SingleThreadedReceiver<Vec<u8>>), Error> {
+    ) -> Result<(TcpWriter, SingleThreadedReceiver<Vec<u8>>), Error> {
         let guard = self.internal.lock().unwrap();
 
         if let Some(sender) = guard.tcp_listeners.get(&server_socket_addr) {
@@ -160,7 +161,10 @@ impl NetworkSimulator {
                 panic!("Failed to send event");
             }
 
-            return Ok((write_client_to_server, read_server_to_client));
+            return Ok((
+                TcpWriter::new_simulated(write_client_to_server),
+                read_server_to_client,
+            ));
         } else {
             info!(
                 "{:?} tried to connect (TCP) to {:?} but there is no listener at that SocketAddr.",

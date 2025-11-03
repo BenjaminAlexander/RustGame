@@ -1,4 +1,7 @@
-use commons::time::{TimeSource, TimeValue};
+use commons::time::{
+    TimeSource,
+    TimeValue,
+};
 
 #[test]
 fn test_simulated_time_provider() {

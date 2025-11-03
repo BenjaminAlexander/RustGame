@@ -6,6 +6,7 @@ use crate::net::{
     TcpListenerEventHandler,
     TcpReadHandlerTrait,
     TcpReaderEventHandler,
+    TcpWriter,
     UdpReadHandlerTrait,
     UdpReaderEventHandler,
 };
@@ -31,19 +32,18 @@ use std::io::Error;
 use std::net::{
     SocketAddr,
     TcpListener,
-    TcpStream,
 };
 use std::sync::mpsc;
 
 #[derive(Clone)]
 pub struct RealFactory {
-    time_source: TimeSource
+    time_source: TimeSource,
 }
 
 impl RealFactory {
     pub fn new() -> Self {
         return Self {
-            time_source: TimeSource::new()
+            time_source: TimeSource::new(),
         };
     }
 }
@@ -52,7 +52,6 @@ impl FactoryTrait for RealFactory {
     type Sender<T: Send> = RealSender<Self, T>;
     type Receiver<T: Send> = RealReceiver<Self, T>;
 
-    type TcpWriter = RealTcpStream;
     type TcpReader = RealTcpStream;
 
     type UdpSocket = RealUdpSocket;
@@ -99,13 +98,13 @@ impl FactoryTrait for RealFactory {
         return thread_builder.spawn_event_handler(event_handler, join_call_back);
     }
 
-    fn connect_tcp(
-        &self,
-        socket_addr: SocketAddr,
-    ) -> Result<(Self::TcpWriter, Self::TcpReader), Error> {
-        let tcp_stream = TcpStream::connect(socket_addr.clone())?;
-        let real_tcp_stream = RealTcpStream::new(tcp_stream, socket_addr);
-        return Ok((real_tcp_stream.try_clone()?, real_tcp_stream));
+    fn connect_tcp(&self, socket_addr: SocketAddr) -> Result<(TcpWriter, Self::TcpReader), Error> {
+        let net_tcp_stream = std::net::TcpStream::connect(socket_addr.clone())?;
+        let real_tcp_stream = RealTcpStream::new(net_tcp_stream, socket_addr.clone());
+        return Ok((
+            TcpWriter::new(real_tcp_stream.try_clone()?),
+            real_tcp_stream,
+        ));
     }
 
     fn spawn_tcp_reader<T: TcpReadHandlerTrait>(

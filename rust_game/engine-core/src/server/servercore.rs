@@ -19,7 +19,6 @@ use crate::interface::{
     InitialInformation,
     RenderReceiverMessage,
     TcpReader,
-    TcpWriter,
     UdpSocket,
 };
 use crate::messaging::InputMessage;
@@ -46,7 +45,7 @@ use crate::server::{
 };
 use commons::factory::FactoryTrait;
 use commons::net::{
-    TcpWriterTrait,
+    TcpWriter,
     UdpSocketTrait,
     MAX_UDP_DATAGRAM_SIZE,
 };
@@ -82,7 +81,7 @@ pub enum ServerCoreEvent<GameFactory: GameFactoryTrait> {
     StartGameEvent(
         <GameFactory::Factory as FactoryTrait>::Sender<RenderReceiverMessage<GameFactory::Game>>,
     ),
-    TcpConnectionEvent(TcpWriter<GameFactory>, TcpReader<GameFactory>),
+    TcpConnectionEvent(TcpWriter, TcpReader<GameFactory>),
     GameTimerTick,
     UdpPacket(SocketAddr, usize, [u8; MAX_UDP_DATAGRAM_SIZE]),
 }
@@ -373,15 +372,15 @@ impl<GameFactory: GameFactoryTrait> ServerCore<GameFactory> {
      */
     fn on_tcp_connection(
         mut self,
-        tcp_sender: TcpWriter<GameFactory>,
+        tcp_stream: TcpWriter,
         tcp_receiver: TcpReader<GameFactory>,
     ) -> EventHandleResult<Self> {
         if !self.game_is_started {
-            info!("TcpStream accepted: {:?}", tcp_sender.get_peer_addr());
+            info!("TcpStream accepted: {:?}", tcp_stream.get_peer_addr());
 
             let player_index = self.tcp_inputs.len();
 
-            let client_address = ClientAddress::new(player_index, tcp_sender.get_peer_addr().ip());
+            let client_address = ClientAddress::new(player_index, tcp_stream.get_peer_addr().ip());
 
             let tcp_input_join_handle = self
                 .factory
@@ -414,7 +413,7 @@ impl<GameFactory: GameFactoryTrait> ServerCore<GameFactory> {
                 .new_thread_builder()
                 .name("ServerTcpOutput")
                 .spawn_event_handler(
-                    TcpOutput::<GameFactory>::new(player_index, tcp_sender),
+                    TcpOutput::<GameFactory::Game>::new(player_index, tcp_stream),
                     AsyncJoin::log_async_join,
                 )
                 .unwrap();
@@ -424,7 +423,7 @@ impl<GameFactory: GameFactoryTrait> ServerCore<GameFactory> {
         } else {
             info!(
                 "TcpStream connected after the core has stated and will be dropped. {:?}",
-                tcp_sender.get_peer_addr()
+                tcp_stream.get_peer_addr()
             );
         }
 
