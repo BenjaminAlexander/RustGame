@@ -1,4 +1,3 @@
-use crate::net::TcpWriterTrait;
 use crate::single_threaded_simulator::SingleThreadedSender;
 use crate::threading::channel::SenderTrait;
 use rmp_serde::encode::Error as EncodeError;
@@ -25,10 +24,8 @@ impl ChannelTcpWriter {
             sender,
         };
     }
-}
 
-impl TcpWriterTrait for ChannelTcpWriter {
-    fn write<T: Serialize + DeserializeOwned>(&mut self, write: &T) -> Result<(), EncodeError> {
+    pub fn write<T: Serialize + DeserializeOwned>(&mut self, write: &T) -> Result<(), EncodeError> {
         let vec = rmp_serde::encode::to_vec(write)?;
 
         return match self.sender.send(vec) {
@@ -40,7 +37,7 @@ impl TcpWriterTrait for ChannelTcpWriter {
         };
     }
 
-    fn flush(&mut self) -> Result<(), Error> {
+    pub fn flush(&mut self) -> Result<(), Error> {
         if self.has_been_closed {
             return Err(Error::from(ErrorKind::NotConnected));
         } else {
@@ -48,7 +45,7 @@ impl TcpWriterTrait for ChannelTcpWriter {
         }
     }
 
-    fn get_peer_addr(&self) -> &SocketAddr {
+    pub fn get_peer_addr(&self) -> &SocketAddr {
         return &self.peer_addr;
     }
 }

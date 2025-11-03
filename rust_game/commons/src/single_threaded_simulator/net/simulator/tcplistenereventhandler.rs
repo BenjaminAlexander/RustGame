@@ -1,6 +1,6 @@
 use crate::net::{
     TcpConnectionHandlerTrait,
-    TcpWriter,
+    TcpStream,
 };
 use crate::single_threaded_simulator::net::ChannelTcpWriter;
 use crate::single_threaded_simulator::{
@@ -48,7 +48,7 @@ impl<TcpConnectionHandler: TcpConnectionHandlerTrait<SingleThreadedFactory>>
     ) -> EventHandleResult<Self> {
         return match self
             .connection_handler
-            .on_connection(TcpWriter::new_simulated(writer), reader)
+            .on_connection(TcpStream::new_simulated(writer), reader)
         {
             Continue(()) => EventHandleResult::TryForNextEvent(self),
             Break(()) => EventHandleResult::StopThread(self.connection_handler),

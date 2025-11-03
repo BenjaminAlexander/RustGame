@@ -1,4 +1,4 @@
-use crate::net::TcpWriter;
+use crate::net::TcpStream;
 use crate::single_threaded_simulator::net::simulator::udpsocketsimulator::UdpSocketSimulator;
 use crate::single_threaded_simulator::net::NetworkSimulator;
 use crate::single_threaded_simulator::{
@@ -57,7 +57,7 @@ impl HostSimulator {
         &self,
         factory: &SingleThreadedFactory,
         server_socket_addr: SocketAddr,
-    ) -> Result<(TcpWriter, SingleThreadedReceiver<Vec<u8>>), Error> {
+    ) -> Result<(TcpStream, SingleThreadedReceiver<Vec<u8>>), Error> {
         let port;
         let ip_addr;
         {

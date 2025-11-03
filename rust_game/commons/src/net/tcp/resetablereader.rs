@@ -1,21 +1,34 @@
+use log::warn;
+use rmp_serde::decode::Error as DecodeError;
+use serde::{
+    de::DeserializeOwned,
+    Serialize,
+};
 use std::{
     cmp::min,
     io::{
         BufReader,
+        ErrorKind,
         Read,
         Result,
     },
 };
 
-pub struct ResetableReader<T: Read> {
-    buf_reader: BufReader<T>,
+pub struct ResetableReader<Reader: Read> {
+    buf_reader: BufReader<Reader>,
     buf: Vec<u8>,
     fill_len: usize,
     read_len: usize,
 }
 
-impl<T: Read> ResetableReader<T> {
-    pub fn new(inner: T) -> Self {
+pub enum DeserializeResult<T> {
+    Ok(T),
+    TimedOut,
+    Err,
+}
+
+impl<Reader: Read> ResetableReader<Reader> {
+    pub fn new(inner: Reader) -> Self {
         return Self {
             buf_reader: BufReader::new(inner),
             buf: Vec::new(),
@@ -33,9 +46,31 @@ impl<T: Read> ResetableReader<T> {
         self.fill_len -= self.read_len;
         self.read_len = 0;
     }
+
+    pub fn deserialize<T: Serialize + DeserializeOwned>(&mut self) -> DeserializeResult<T> {
+        let result = rmp_serde::decode::from_read(&mut *self);
+
+        return match result {
+            Ok(value) => {
+                self.drop_read_bytes();
+                DeserializeResult::Ok(value)
+            }
+            Err(DecodeError::InvalidMarkerRead(ref error))
+                if error.kind() == ErrorKind::TimedOut || error.kind() == ErrorKind::WouldBlock =>
+            {
+                self.reset_cursor();
+                DeserializeResult::TimedOut
+            }
+            Err(error) => {
+                self.drop_read_bytes();
+                warn!("Error on read: {:?}", error);
+                DeserializeResult::Err
+            }
+        };
+    }
 }
 
-impl<T: Read> Read for ResetableReader<T> {
+impl<Reader: Read> Read for ResetableReader<Reader> {
     fn read(&mut self, read_buf: &mut [u8]) -> Result<usize> {
         let unread_bytes_in_buf = self.fill_len - self.read_len;
 

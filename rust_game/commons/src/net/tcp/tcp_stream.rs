@@ -7,8 +7,6 @@ use std::net::SocketAddr;
 use crate::net::RealTcpStream;
 use crate::single_threaded_simulator::net::ChannelTcpWriter;
 
-//TODO: rename this file
-
 enum Implementation {
     Real(RealTcpStream),
 
@@ -16,12 +14,11 @@ enum Implementation {
     Simulated(ChannelTcpWriter),
 }
 
-//TODO: rename TcpStream
-pub struct TcpWriter {
+pub struct TcpStream {
     implementation: Implementation,
 }
 
-impl TcpWriter {
+impl TcpStream {
     pub fn new(real_tcp_stream: RealTcpStream) -> Self {
         return Self {
             implementation: Implementation::Real(real_tcp_stream),
@@ -74,13 +71,4 @@ impl TcpWriter {
             }),
         };
     }
-}
-
-//TODO: remove
-pub trait TcpWriterTrait: Send + Sized {
-    fn write<T: Serialize + DeserializeOwned>(&mut self, write: &T) -> Result<(), EncodeError>;
-
-    fn flush(&mut self) -> Result<(), Error>;
-
-    fn get_peer_addr(&self) -> &SocketAddr;
 }

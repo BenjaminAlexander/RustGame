@@ -2,7 +2,7 @@ use crate::factory::FactoryTrait;
 use crate::net::{
     TcpConnectionHandlerTrait,
     TcpReadHandlerTrait,
-    TcpWriter,
+    TcpStream,
     UdpReadHandlerTrait,
 };
 use crate::single_threaded_simulator::eventhandling::EventHandlerHolder;
@@ -134,7 +134,7 @@ impl FactoryTrait for SingleThreadedFactory {
             );
     }
 
-    fn connect_tcp(&self, socket_addr: SocketAddr) -> Result<(TcpWriter, Self::TcpReader), Error> {
+    fn connect_tcp(&self, socket_addr: SocketAddr) -> Result<(TcpStream, Self::TcpReader), Error> {
         return self.host_simulator.connect_tcp(&self, socket_addr);
     }
 

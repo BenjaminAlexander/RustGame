@@ -1,11 +1,8 @@
-use super::constants::TCP_POLLING_PERIOD;
+use super::constants::NET_POLLING_PERIOD;
 use crate::factory::RealFactory;
-use crate::net::realtcpstream::RealTcpStream;
+use crate::net::tcp::RealTcpStream;
 use crate::net::tcpconnectionhandlertrait::TcpConnectionHandlerTrait;
-use crate::net::{
-    TcpWriter,
-    TcpWriterTrait,
-};
+use crate::net::TcpStream;
 use crate::threading::channel::ReceiveMetaData;
 use crate::threading::eventhandling::{
     ChannelEvent,
@@ -58,7 +55,7 @@ impl<T: TcpConnectionHandlerTrait<RealFactory>> TcpListenerEventHandler<T> {
                     .handle_tcp_stream_clone_result(real_tcp_stream, tcp_stream_clone_result);
             }
             Err(ref error) if error.kind() == io::ErrorKind::WouldBlock => {
-                return EventHandleResult::WaitForNextEventOrTimeout(self, TCP_POLLING_PERIOD);
+                return EventHandleResult::WaitForNextEventOrTimeout(self, NET_POLLING_PERIOD);
             }
             Err(error) => {
                 error!("Error while trying to accept a TCP connection: {:?}", error);
@@ -76,7 +73,7 @@ impl<T: TcpConnectionHandlerTrait<RealFactory>> TcpListenerEventHandler<T> {
             Ok(real_tcp_stream_clone) => {
                 match self
                     .tcp_connection_handler
-                    .on_connection(TcpWriter::new(real_tcp_stream), real_tcp_stream_clone)
+                    .on_connection(TcpStream::new(real_tcp_stream), real_tcp_stream_clone)
                 {
                     Continue(()) => {
                         return EventHandleResult::TryForNextEvent(self);

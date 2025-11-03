@@ -1,4 +1,7 @@
-use crate::net::realtcpstream::RealTcpStream;
+use crate::net::tcp::resetablereader::{
+    DeserializeResult,
+    ResetableReader,
+};
 use crate::net::tcpreadhandlertrait::TcpReadHandlerTrait;
 use crate::threading::channel::ReceiveMetaData;
 use crate::threading::eventhandling::{
@@ -8,34 +11,31 @@ use crate::threading::eventhandling::{
 };
 use std::ops::ControlFlow;
 
-use super::realtcpstream::{
-    TcpDeserializer,
-    TcpReadResult,
-};
+use crate::net::tcp::RealTcpStream;
 
 pub struct TcpReaderEventHandler<T: TcpReadHandlerTrait> {
-    tcp_deserializer: TcpDeserializer,
+    tcp_resetable_reader: ResetableReader<std::net::TcpStream>,
     tcp_read_handler: T,
 }
 
 impl<T: TcpReadHandlerTrait> TcpReaderEventHandler<T> {
     pub fn new(tcp_reader: RealTcpStream, tcp_read_handler: T) -> Self {
         return Self {
-            tcp_deserializer: tcp_reader.to_deserializer(),
+            tcp_resetable_reader: ResetableReader::new(tcp_reader.take_std_net_tcp_reader()),
             tcp_read_handler,
         };
     }
 
     fn read(mut self) -> EventHandleResult<Self> {
-        match self.tcp_deserializer.read::<T::ReadType>() {
-            TcpReadResult::Ok(read_value) => {
+        match self.tcp_resetable_reader.deserialize::<T::ReadType>() {
+            DeserializeResult::Ok(read_value) => {
                 return match self.tcp_read_handler.on_read(read_value) {
                     ControlFlow::Continue(()) => EventHandleResult::TryForNextEvent(self),
                     ControlFlow::Break(()) => EventHandleResult::StopThread(self.tcp_read_handler),
                 };
             }
-            TcpReadResult::TimedOut => EventHandleResult::TryForNextEvent(self),
-            TcpReadResult::Err => EventHandleResult::StopThread(self.tcp_read_handler),
+            DeserializeResult::TimedOut => EventHandleResult::TryForNextEvent(self),
+            DeserializeResult::Err => EventHandleResult::StopThread(self.tcp_read_handler),
         }
     }
 }

@@ -3,7 +3,7 @@ use commons::logging::LoggingConfigBuilder;
 use commons::net::{
     TcpConnectionHandlerTrait,
     TcpReadHandlerTrait,
-    TcpWriter,
+    TcpStream,
 };
 use commons::single_threaded_simulator::{
     SingleThreadedFactory,
@@ -135,7 +135,7 @@ fn test_write(
 }
 
 struct TestConnection {
-    tcp_stream: TcpWriter,
+    tcp_stream: TcpStream,
     #[allow(dead_code)]
     reader_sender: SingleThreadedSender<EventOrStopThread<()>>,
     last_value: Option<u32>,
@@ -149,7 +149,7 @@ struct ConnectionHandler {
 impl TcpConnectionHandlerTrait<SingleThreadedFactory> for ConnectionHandler {
     fn on_connection(
         &mut self,
-        tcp_stream: TcpWriter,
+        tcp_stream: TcpStream,
         tcp_receiver: SingleThreadedReceiver<Vec<u8>>,
     ) -> ControlFlow<()> {
         info!(

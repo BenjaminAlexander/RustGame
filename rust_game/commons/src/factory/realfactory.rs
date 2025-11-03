@@ -6,7 +6,7 @@ use crate::net::{
     TcpListenerEventHandler,
     TcpReadHandlerTrait,
     TcpReaderEventHandler,
-    TcpWriter,
+    TcpStream,
     UdpReadHandlerTrait,
     UdpReaderEventHandler,
 };
@@ -98,11 +98,11 @@ impl FactoryTrait for RealFactory {
         return thread_builder.spawn_event_handler(event_handler, join_call_back);
     }
 
-    fn connect_tcp(&self, socket_addr: SocketAddr) -> Result<(TcpWriter, Self::TcpReader), Error> {
+    fn connect_tcp(&self, socket_addr: SocketAddr) -> Result<(TcpStream, Self::TcpReader), Error> {
         let net_tcp_stream = std::net::TcpStream::connect(socket_addr.clone())?;
         let real_tcp_stream = RealTcpStream::new(net_tcp_stream, socket_addr.clone());
         return Ok((
-            TcpWriter::new(real_tcp_stream.try_clone()?),
+            TcpStream::new(real_tcp_stream.try_clone()?),
             real_tcp_stream,
         ));
     }

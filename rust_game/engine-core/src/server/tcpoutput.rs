@@ -5,7 +5,7 @@ use crate::interface::{
 use crate::messaging::ToClientMessageTCP;
 use crate::server::tcpoutput::TcpOutputEvent::SendInitialInformation;
 use crate::server::ServerConfig;
-use commons::net::TcpWriter;
+use commons::net::TcpStream;
 use commons::threading::channel::ReceiveMetaData;
 use commons::threading::eventhandling::{
     ChannelEvent,
@@ -21,12 +21,12 @@ pub enum TcpOutputEvent<Game: GameTrait> {
 
 pub struct TcpOutput<Game: GameTrait> {
     player_index: usize,
-    tcp_stream: TcpWriter,
+    tcp_stream: TcpStream,
     phantom: PhantomData<Game>,
 }
 
 impl<Game: GameTrait> TcpOutput<Game> {
-    pub fn new(player_index: usize, tcp_stream: TcpWriter) -> Self {
+    pub fn new(player_index: usize, tcp_stream: TcpStream) -> Self {
         return TcpOutput {
             player_index,
             tcp_stream,

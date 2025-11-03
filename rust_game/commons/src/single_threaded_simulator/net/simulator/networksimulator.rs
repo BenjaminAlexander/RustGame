@@ -1,7 +1,7 @@
 use crate::factory::FactoryTrait;
 use crate::net::{
     TcpConnectionHandlerTrait,
-    TcpWriter,
+    TcpStream,
     UdpReadHandlerTrait,
 };
 use crate::single_threaded_simulator::net::simulator::hostsimulator::HostSimulator;
@@ -143,7 +143,7 @@ impl NetworkSimulator {
         factory: &SingleThreadedFactory,
         client_socket_addr: SocketAddr,
         server_socket_addr: SocketAddr,
-    ) -> Result<(TcpWriter, SingleThreadedReceiver<Vec<u8>>), Error> {
+    ) -> Result<(TcpStream, SingleThreadedReceiver<Vec<u8>>), Error> {
         let guard = self.internal.lock().unwrap();
 
         if let Some(sender) = guard.tcp_listeners.get(&server_socket_addr) {
@@ -162,7 +162,7 @@ impl NetworkSimulator {
             }
 
             return Ok((
-                TcpWriter::new_simulated(write_client_to_server),
+                TcpStream::new_simulated(write_client_to_server),
                 read_server_to_client,
             ));
         } else {

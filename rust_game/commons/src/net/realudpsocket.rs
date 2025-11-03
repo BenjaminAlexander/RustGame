@@ -5,7 +5,7 @@ use std::net::{
     UdpSocket,
 };
 
-use super::TCP_POLLING_PERIOD;
+use super::NET_POLLING_PERIOD;
 
 pub struct RealUdpSocket {
     udp_socket: UdpSocket,
@@ -14,7 +14,7 @@ pub struct RealUdpSocket {
 impl RealUdpSocket {
     pub fn bind(socket_addr: SocketAddr) -> Result<Self, Error> {
         let udp_socket = UdpSocket::bind(socket_addr)?;
-        udp_socket.set_read_timeout(Some(TCP_POLLING_PERIOD.to_duration().unwrap()))?;
+        udp_socket.set_read_timeout(Some(NET_POLLING_PERIOD.to_duration().unwrap()))?;
 
         return Ok(Self { udp_socket });
     }
