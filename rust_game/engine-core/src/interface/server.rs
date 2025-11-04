@@ -37,7 +37,7 @@ impl<GameFactory: GameFactoryTrait> Server<GameFactory> {
         let server_core_thread_builder = factory
             .new_thread_builder()
             .name("ServerCore")
-            .build_channel_for_event_handler::<ServerCore<GameFactory>>();
+            .build_channel_for_event_handler::<GameFactory::Factory, ServerCore<GameFactory>>(factory.clone());
 
         let server_core = ServerCore::<GameFactory>::new(
             factory.clone(),

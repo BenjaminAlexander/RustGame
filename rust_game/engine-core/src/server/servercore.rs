@@ -193,6 +193,7 @@ impl<GameFactory: GameFactoryTrait> ServerCore<GameFactory> {
             .new_thread_builder()
             .name("ServerUdpInput")
             .spawn_udp_reader(
+                self.factory.clone(),
                 udp_socket.try_clone().unwrap(),
                 udp_input,
                 AsyncJoin::log_async_join,
@@ -218,6 +219,7 @@ impl<GameFactory: GameFactoryTrait> ServerCore<GameFactory> {
             .new_thread_builder()
             .name("ServerTcpListener")
             .spawn_tcp_listener(
+                self.factory.clone(),
                 socket_addr,
                 TcpConnectionHandler::<GameFactory>::new(self.sender.clone()),
                 AsyncJoin::log_async_join,
@@ -281,7 +283,7 @@ impl<GameFactory: GameFactoryTrait> ServerCore<GameFactory> {
                 .factory
                 .new_thread_builder()
                 .name("ServerManager")
-                .build_channel_for_event_handler::<Manager<ServerManagerObserver<GameFactory>>>();
+                .build_channel_for_event_handler::<GameFactory::Factory, Manager<ServerManagerObserver<GameFactory>>>(self.factory.clone());
 
             let server_game_timer_observer =
                 ServerGameTimerObserver::new(self.factory.clone(), self.sender.clone());
@@ -386,7 +388,7 @@ impl<GameFactory: GameFactoryTrait> ServerCore<GameFactory> {
                 .factory
                 .new_thread_builder()
                 .name("ServerTcpInput")
-                .spawn_tcp_reader(tcp_receiver, TcpInput::new(), AsyncJoin::log_async_join)
+                .spawn_tcp_reader(self.factory.clone(), tcp_receiver, TcpInput::new(), AsyncJoin::log_async_join)
                 .unwrap();
 
             self.tcp_inputs.push(tcp_input_join_handle);
@@ -396,6 +398,7 @@ impl<GameFactory: GameFactoryTrait> ServerCore<GameFactory> {
                 .new_thread_builder()
                 .name("ServerUdpOutput")
                 .spawn_event_handler(
+                    self.factory.clone(),
                     UdpOutput::<GameFactory>::new(
                         self.factory.clone(),
                         player_index,
@@ -413,6 +416,7 @@ impl<GameFactory: GameFactoryTrait> ServerCore<GameFactory> {
                 .new_thread_builder()
                 .name("ServerTcpOutput")
                 .spawn_event_handler(
+                    self.factory.clone(),
                     TcpOutput::<GameFactory::Game>::new(player_index, tcp_stream),
                     AsyncJoin::log_async_join,
                 )

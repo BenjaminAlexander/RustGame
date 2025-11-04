@@ -24,7 +24,7 @@ impl<GameFactory: GameFactoryTrait> Client<GameFactory> {
         let client_core_thread_builder = factory
             .new_thread_builder()
             .name("ClientCore")
-            .build_channel_for_event_handler::<ClientCore<GameFactory>>();
+            .build_channel_for_event_handler::<GameFactory::Factory, ClientCore<GameFactory>>(factory.clone());
 
         let (render_receiver_sender, render_receiver) =
             RenderReceiver::<GameFactory>::new(factory.clone());
