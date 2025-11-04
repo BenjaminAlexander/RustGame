@@ -41,7 +41,7 @@ pub trait FactoryTrait: Clone + Send + 'static {
         return ThreadBuilder::new(self.clone());
     }
 
-    fn new_channel<T: Send>(&self) -> Channel<T>;
+    fn new_channel<T: Send>(&self) -> Channel<Self, T>;
 
     fn spawn_event_handler<U: EventHandlerTrait>(
         &self,

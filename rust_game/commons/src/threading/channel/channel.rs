@@ -1,6 +1,6 @@
 use std::sync::mpsc;
 
-use crate::{single_threaded_simulator::{SingleThreadedFactory, SingleThreadedReceiver, SingleThreadedSender}, threading::channel::{RealReceiver, RealSender, ReceiveMetaData, ReceiverTrait, SendMetaData, SenderTrait, TryRecvError}, time::TimeSource};
+use crate::{factory::FactoryTrait, single_threaded_simulator::{SingleThreadedFactory, SingleThreadedReceiver, SingleThreadedSender}, threading::channel::{RealReceiver, RealSender, ReceiveMetaData, ReceiverTrait, SendMetaData, SenderTrait, TryRecvError}, time::TimeSource};
 
 //TODO: cleanup
 enum ChannelImplementation<T: Send> {
@@ -10,46 +10,22 @@ enum ChannelImplementation<T: Send> {
     Simulated(SingleThreadedSender<T>, SingleThreadedReceiver<T>)
 }
 
-pub struct Channel<T: Send + 'static> {
-    sender: Sender<T>,
-    receiver: Receiver<T>,
+pub struct Channel<Factory: FactoryTrait, T: Send + 'static> {
+    sender: Factory::Sender<T>,
+    receiver: Factory::Receiver<T>,
 }
 
-impl<T: Send + 'static> Channel<T> {
+impl<Factory: FactoryTrait, T: Send + 'static> Channel<Factory, T> {
 
-    pub fn new_real_channel(time_source: TimeSource) -> (RealSender<T>, RealReceiver<T>) {
-        let (sender, receiver) = mpsc::channel::<(SendMetaData, T)>();
-        let sender = RealSender::new(time_source.clone(), sender);
-        let receiver = RealReceiver::new(time_source, receiver);
-        return (sender, receiver);
-    }
-
-    //TODO: clean this
-    pub fn new_simulated_channel(factory: SingleThreadedFactory) -> (SingleThreadedSender<T>, SingleThreadedReceiver<T>) {
-        return SingleThreadedReceiver::new(factory);
-    }
-
-    pub fn new(time_source: TimeSource) -> Self {
-        let (sender, receiver) = mpsc::channel::<(SendMetaData, T)>();
-        let sender = RealSender::new(time_source.clone(), sender);
-        let sender = Sender::new(SenderImplementation::Real(sender));
-        let receiver = RealReceiver::new(time_source, receiver);
-        let receiver = Receiver::new(ReceiverImplementation::Real(receiver));
+    pub fn new(sender: Factory::Sender<T>, receiver: Factory::Receiver<T>) -> Self {
         return Self { sender, receiver };
     }
 
-    pub fn new_simulated(factory: SingleThreadedFactory) -> Self {
-        let (sender, receiver) = SingleThreadedReceiver::new(factory);
-        let sender = Sender::new(SenderImplementation::Simulated(sender));
-        let receiver = Receiver::new(ReceiverImplementation::Simulated(receiver));
-        return Self { sender, receiver };
-    }
-
-    pub fn get_sender(&self) -> &Sender<T> {
+    pub fn get_sender(&self) -> &Factory::Sender<T> {
         return &self.sender;
     }
 
-    pub fn take(self) -> (Sender<T>, Receiver<T>) {
+    pub fn take(self) -> (Factory::Sender<T>, Factory::Receiver<T>) {
         return (self.sender, self.receiver);
     }
 }
