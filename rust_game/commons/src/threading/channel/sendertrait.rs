@@ -5,6 +5,7 @@ pub trait SenderTrait<T>: Clone + Send {
     fn send(&self, value: T) -> Result<(), T>;
 }
 
+//TODO: hide EventOrStopThread enum
 impl<T, U: SenderTrait<EventOrStopThread<T>>> EventSenderTrait<T> for U {
     fn send_event(&self, event: T) -> Result<(), T> {
         return match self.send(EventOrStopThread::Event(event)) {

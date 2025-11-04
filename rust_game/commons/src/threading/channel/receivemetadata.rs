@@ -1,8 +1,6 @@
-use crate::factory::FactoryTrait;
 use crate::threading::channel::SendMetaData;
 use crate::time::{
-    TimeDuration,
-    TimeValue,
+    TimeDuration, TimeSource, TimeValue
 };
 
 #[derive(Debug)]
@@ -12,10 +10,10 @@ pub struct ReceiveMetaData {
 }
 
 impl ReceiveMetaData {
-    pub fn new(factory: &impl FactoryTrait, send_meta_data: SendMetaData) -> Self {
+    pub fn new(time_source: &TimeSource, send_meta_data: SendMetaData) -> Self {
         return ReceiveMetaData {
             send_meta_data,
-            time_received: factory.get_time_source().now(),
+            time_received: time_source.now(),
         };
     }
 

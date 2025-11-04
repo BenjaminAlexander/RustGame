@@ -97,9 +97,8 @@ impl FactoryTrait for SingleThreadedFactory {
         return &self.time_source;
     }
 
-    fn new_channel<T: Send>(&self) -> Channel<Self, T> {
-        let (sender, receiver) = SingleThreadedReceiver::new(self.clone());
-        return Channel::new(sender, receiver);
+    fn new_channel<T: Send>(&self) -> Channel<T> {
+        return Channel::new_simulated(self.clone());
     }
 
     fn spawn_event_handler<U: EventHandlerTrait>(

@@ -99,7 +99,7 @@ fn test_non_blocking_tcp_reader() {
             return ControlFlow::Break(());
         });
 
-        let reader_sender: RealSender<RealFactory, EventOrStopThread<()>> = RealFactory::new()
+        let reader_sender: RealSender<EventOrStopThread<()>> = RealFactory::new()
             .new_thread_builder()
             .name("TcpReader-ListenerSide")
             .spawn_tcp_reader(

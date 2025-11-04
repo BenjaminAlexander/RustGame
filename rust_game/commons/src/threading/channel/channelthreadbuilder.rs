@@ -5,7 +5,7 @@ use crate::net::{
     UdpReadHandlerTrait,
 };
 use crate::threading;
-use crate::threading::channel::Channel;
+use crate::threading::channel::{Channel, Sender};
 use crate::threading::eventhandling::{
     EventHandlerSender,
     EventHandlerTrait,
@@ -17,7 +17,7 @@ use std::net::SocketAddr;
 
 pub struct ChannelThreadBuilder<Factory: FactoryTrait, T: Send + 'static> {
     thread_builder: threading::ThreadBuilder<Factory>,
-    channel: Channel<Factory, T>,
+    channel: Channel<T>,
 }
 
 impl<Factory: FactoryTrait, T: Send + 'static> ChannelThreadBuilder<Factory, T> {
@@ -28,19 +28,20 @@ impl<Factory: FactoryTrait, T: Send + 'static> ChannelThreadBuilder<Factory, T> 
         };
     }
 
-    pub fn get_channel(&self) -> &Channel<Factory, T> {
+    pub fn get_channel(&self) -> &Channel<T> {
         return &self.channel;
     }
 
-    pub fn get_sender(&self) -> &Factory::Sender<T> {
+    pub fn get_sender(&self) -> &Sender<T> {
         return self.get_channel().get_sender();
     }
 
-    pub fn clone_sender(&self) -> Factory::Sender<T> {
-        return self.get_channel().get_sender().clone();
+    //TODO: maybe remove this guy
+    pub fn clone_sender(&self) -> Sender<T> {
+        return (*self.get_channel().get_sender()).clone();
     }
 
-    pub fn take(self) -> (threading::ThreadBuilder<Factory>, Channel<Factory, T>) {
+    pub fn take(self) -> (threading::ThreadBuilder<Factory>, Channel<T>) {
         return (self.thread_builder, self.channel);
     }
 }

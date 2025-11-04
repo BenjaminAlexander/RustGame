@@ -1,3 +1,4 @@
+use crate::factory::FactoryTrait;
 use crate::single_threaded_simulator::SingleThreadedFactory;
 use crate::threading::channel::{
     ReceiveMetaData,
@@ -77,7 +78,7 @@ impl<T> ReceiverLink<T> {
                     }
                 }
                 Some((send_meta_data, t)) => {
-                    let receive_meta_data = ReceiveMetaData::new(&self.factory, send_meta_data);
+                    let receive_meta_data = ReceiveMetaData::new(&self.factory.get_time_source(), send_meta_data);
                     return Ok((receive_meta_data, t));
                 }
             }
@@ -95,7 +96,7 @@ impl<T> ReceiverLink<T> {
 
         if let Mode::Queue(ref mut queue) = internal.mode {
             while let Some((send_meta_data, t)) = queue.pop_front() {
-                let receive_meta_data = ReceiveMetaData::new(&self.factory, send_meta_data);
+                let receive_meta_data = ReceiveMetaData::new(&self.factory.get_time_source(), send_meta_data);
 
                 if consumer(ReceiveOrDisconnected::Receive(receive_meta_data, t)).is_err() {
                     warn!("Consumer returned an error.")
@@ -113,7 +114,7 @@ impl<T> ReceiverLink<T> {
     }
 
     pub(super) fn send(&self, t: T) -> Result<(), T> {
-        let send_meta_data = SendMetaData::new(&self.factory);
+        let send_meta_data = SendMetaData::new(&self.factory.get_time_source());
 
         let mut internal = self.internal.lock().unwrap();
 
@@ -123,7 +124,7 @@ impl<T> ReceiverLink<T> {
                 return Ok(());
             }
             Mode::Consumer(ref consumer) => {
-                let receive_meta_data = ReceiveMetaData::new(&self.factory, send_meta_data);
+                let receive_meta_data = ReceiveMetaData::new(&self.factory.get_time_source(), send_meta_data);
                 return consumer(ReceiveOrDisconnected::Receive(receive_meta_data, t));
             }
             Mode::ReceiverDisconnected => {

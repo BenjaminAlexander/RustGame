@@ -1,4 +1,3 @@
-use crate::factory::FactoryTrait;
 use crate::threading;
 use crate::threading::channel::{
     RealReceiver,
@@ -25,15 +24,15 @@ use crate::threading::eventhandling::{
 use crate::time::TimeDuration;
 use log::info;
 
-type EventReceiver<Factory, T> = RealReceiver<Factory, EventOrStopThread<T>>;
+type EventReceiver<T> = RealReceiver<EventOrStopThread<T>>;
 
-pub struct EventHandlerThread<Factory: FactoryTrait, T: EventHandlerTrait> {
-    receiver: EventReceiver<Factory, T::Event>,
+pub struct EventHandlerThread<T: EventHandlerTrait> {
+    receiver: EventReceiver<T::Event>,
     event_handler: T,
 }
 
-impl<Factory: FactoryTrait, T: EventHandlerTrait> EventHandlerThread<Factory, T> {
-    pub(crate) fn new(receiver: EventReceiver<Factory, T::Event>, event_handler: T) -> Self {
+impl<T: EventHandlerTrait> EventHandlerThread<T> {
+    pub(crate) fn new(receiver: EventReceiver<T::Event>, event_handler: T) -> Self {
         return Self {
             receiver,
             event_handler,
@@ -42,7 +41,7 @@ impl<Factory: FactoryTrait, T: EventHandlerTrait> EventHandlerThread<Factory, T>
 
     fn wait_for_message_or_timeout(
         message_handler: T,
-        receiver: &mut EventReceiver<Factory, T::Event>,
+        receiver: &mut EventReceiver<T::Event>,
         time_duration: TimeDuration,
     ) -> EventHandleResult<T> {
         return match receiver.recv_timeout_meta_data(time_duration) {
@@ -59,7 +58,7 @@ impl<Factory: FactoryTrait, T: EventHandlerTrait> EventHandlerThread<Factory, T>
 
     fn wait_for_message(
         message_handler: T,
-        receiver: &mut EventReceiver<Factory, T::Event>,
+        receiver: &mut EventReceiver<T::Event>,
     ) -> EventHandleResult<T> {
         return match receiver.recv_meta_data() {
             Ok((receive_meta_data, Event(event))) => {
@@ -74,7 +73,7 @@ impl<Factory: FactoryTrait, T: EventHandlerTrait> EventHandlerThread<Factory, T>
 
     fn try_for_message(
         message_handler: T,
-        receiver: &mut EventReceiver<Factory, T::Event>,
+        receiver: &mut EventReceiver<T::Event>,
     ) -> EventHandleResult<T> {
         return match receiver.try_recv_meta_data() {
             Ok((receive_meta_data, Event(event))) => {
@@ -115,8 +114,8 @@ impl<Factory: FactoryTrait, T: EventHandlerTrait> EventHandlerThread<Factory, T>
     }
 }
 
-impl<Factory: FactoryTrait, T: EventHandlerTrait> threading::Thread
-    for EventHandlerThread<Factory, T>
+impl<T: EventHandlerTrait> threading::Thread
+    for EventHandlerThread<T>
 {
     type ReturnType = T::ThreadReturn;
 

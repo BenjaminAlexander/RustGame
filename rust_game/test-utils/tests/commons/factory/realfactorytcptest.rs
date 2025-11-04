@@ -85,7 +85,7 @@ fn test_real_factory_tcp() {
             return ControlFlow::Continue(());
         });
 
-        let sender: RealSender<RealFactory, EventOrStopThread<()>> = RealFactory::new()
+        let sender: RealSender<EventOrStopThread<()>> = RealFactory::new()
             .new_thread_builder()
             .name("TcpReader")
             .spawn_tcp_reader(
@@ -236,7 +236,7 @@ fn test_stop_tcp_reader() {
             return ControlFlow::Continue(());
         });
 
-        let sender: RealSender<RealFactory, EventOrStopThread<()>> = RealFactory::new()
+        let sender: RealSender<EventOrStopThread<()>> = RealFactory::new()
             .new_thread_builder()
             .name("TcpReader-ConnectorSide")
             .spawn_tcp_reader(
@@ -279,7 +279,7 @@ fn test_stop_tcp_reader() {
             listener_sender.send_stop_thread().unwrap();
         };
 
-        let reader_sender: RealSender<RealFactory, EventOrStopThread<()>> = RealFactory::new()
+        let reader_sender: RealSender<EventOrStopThread<()>> = RealFactory::new()
             .new_thread_builder()
             .name("TcpReader-ListenerSide")
             .spawn_tcp_reader(tcp_reader, tcp_read_handler, join_callback)

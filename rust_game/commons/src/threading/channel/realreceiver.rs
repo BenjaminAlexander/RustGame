@@ -1,33 +1,32 @@
-use crate::factory::FactoryTrait;
 use crate::threading::channel::{
     ReceiveMetaData,
     ReceiverTrait,
     SendMetaData,
     TryRecvError,
 };
-use crate::time::TimeDuration;
+use crate::time::{TimeDuration, TimeSource};
 use std::sync::mpsc;
 
 pub type RecvError = mpsc::RecvError;
 
 pub type RecvTimeoutError = mpsc::RecvTimeoutError;
 
-pub struct RealReceiver<Factory: FactoryTrait, T: Send> {
-    factory: Factory,
+pub struct RealReceiver<T: Send> {
+    time_source: TimeSource,
     receiver: mpsc::Receiver<(SendMetaData, T)>, //duration_in_queue_logger: RollingStatsLogger<TimeDuration>
 }
 
-impl<Factory: FactoryTrait, T: Send> ReceiverTrait<T> for RealReceiver<Factory, T> {
+impl<T: Send> ReceiverTrait<T> for RealReceiver<T> {
     fn try_recv_meta_data(&mut self) -> Result<(ReceiveMetaData, T), TryRecvError> {
         let (send_meta_data, value) = self.receiver.try_recv()?;
         return Ok((self.make_receive_meta_data(send_meta_data), value));
     }
 }
 
-impl<Factory: FactoryTrait, T: Send> RealReceiver<Factory, T> {
-    pub fn new(factory: Factory, receiver: mpsc::Receiver<(SendMetaData, T)>) -> Self {
+impl<T: Send> RealReceiver<T> {
+    pub fn new(time_source: TimeSource, receiver: mpsc::Receiver<(SendMetaData, T)>) -> Self {
         return Self {
-            factory,
+            time_source,
             receiver, //duration_in_queue_logger: RollingStatsLogger::new(100, 3.5, TimeDuration::from_seconds(30.0))
         };
     }
@@ -60,7 +59,7 @@ impl<Factory: FactoryTrait, T: Send> RealReceiver<Factory, T> {
     }
 
     fn make_receive_meta_data(&mut self, send_meta_data: SendMetaData) -> ReceiveMetaData {
-        let receive_meta_data = ReceiveMetaData::new(&self.factory, send_meta_data);
+        let receive_meta_data = ReceiveMetaData::new(&self.time_source, send_meta_data);
         //self.duration_in_queue_logger.add_value(receive_meta_data.get_duration_in_queue());
         return receive_meta_data;
     }

@@ -28,7 +28,7 @@ type Runnable = Box<dyn FnOnce() + Send>;
 #[derive(Clone)]
 pub struct SingleThreadExecutor {
     join_signal: Arc<(Mutex<bool>, Condvar)>,
-    sender: RealSender<RealFactory, EventOrStopThread<Runnable>>,
+    sender: RealSender<EventOrStopThread<Runnable>>,
 }
 
 impl SingleThreadExecutor {

@@ -1,5 +1,4 @@
-use crate::factory::FactoryTrait;
-use crate::time::TimeValue;
+use crate::time::{TimeSource, TimeValue};
 
 #[derive(Debug, Clone, Copy)]
 pub struct SendMetaData {
@@ -7,9 +6,9 @@ pub struct SendMetaData {
 }
 
 impl SendMetaData {
-    pub fn new(factory: &impl FactoryTrait) -> Self {
+    pub fn new(time_source: &TimeSource) -> Self {
         return SendMetaData {
-            time_sent: factory.get_time_source().now(),
+            time_sent: time_source.now(),
         };
     }
 

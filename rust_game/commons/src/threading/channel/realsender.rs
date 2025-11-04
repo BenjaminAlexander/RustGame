@@ -1,27 +1,27 @@
-use crate::factory::FactoryTrait;
 use crate::threading::channel::{
     SendMetaData,
     SenderTrait,
 };
+use crate::time::TimeSource;
 use std::sync::mpsc::{
     self,
     SendError,
 };
 
-pub struct RealSender<Factory: FactoryTrait, T: Send> {
-    factory: Factory,
+pub struct RealSender<T: Send> {
+    time_source: TimeSource,
     sender: mpsc::Sender<(SendMetaData, T)>,
 }
 
-impl<Factory: FactoryTrait, T: Send> RealSender<Factory, T> {
-    pub fn new(factory: Factory, sender: mpsc::Sender<(SendMetaData, T)>) -> Self {
-        return Self { factory, sender };
+impl<T: Send> RealSender<T> {
+    pub fn new(time_source: TimeSource, sender: mpsc::Sender<(SendMetaData, T)>) -> Self {
+        return Self { time_source, sender };
     }
 }
 
-impl<Factory: FactoryTrait, T: Send> SenderTrait<T> for RealSender<Factory, T> {
+impl<T: Send> SenderTrait<T> for RealSender<T> {
     fn send(&self, value: T) -> Result<(), T> {
-        let send_meta_data = SendMetaData::new(&self.factory);
+        let send_meta_data = SendMetaData::new(&self.time_source);
 
         return match self.sender.send((send_meta_data, value)) {
             Ok(()) => Result::Ok(()),
@@ -30,10 +30,10 @@ impl<Factory: FactoryTrait, T: Send> SenderTrait<T> for RealSender<Factory, T> {
     }
 }
 
-impl<Factory: FactoryTrait, T: Send> Clone for RealSender<Factory, T> {
+impl<T: Send> Clone for RealSender<T> {
     fn clone(&self) -> Self {
         return Self {
-            factory: self.factory.clone(),
+            time_source: self.time_source.clone(),
             sender: self.sender.clone(),
         };
     }

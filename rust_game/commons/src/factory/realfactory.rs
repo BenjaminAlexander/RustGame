@@ -11,11 +11,7 @@ use crate::net::{
     UdpReaderEventHandler,
 };
 use crate::threading::channel::{
-    Channel,
-    ChannelThreadBuilder,
-    RealReceiver,
-    RealSender,
-    SendMetaData,
+    Channel, ChannelThreadBuilder, RealReceiver, RealSender,
 };
 use crate::threading::eventhandling::{
     EventHandlerSender,
@@ -33,7 +29,6 @@ use std::net::{
     SocketAddr,
     TcpListener,
 };
-use std::sync::mpsc;
 
 #[derive(Clone)]
 pub struct RealFactory {
@@ -49,8 +44,8 @@ impl RealFactory {
 }
 
 impl FactoryTrait for RealFactory {
-    type Sender<T: Send> = RealSender<Self, T>;
-    type Receiver<T: Send> = RealReceiver<Self, T>;
+    type Sender<T: Send> = RealSender<T>;
+    type Receiver<T: Send> = RealReceiver<T>;
 
     type TcpReader = RealTcpStream;
 
@@ -60,11 +55,8 @@ impl FactoryTrait for RealFactory {
         return &self.time_source;
     }
 
-    fn new_channel<T: Send>(&self) -> Channel<Self, T> {
-        let (sender, receiver) = mpsc::channel::<(SendMetaData, T)>();
-        let sender = RealSender::new(self.clone(), sender);
-        let receiver = RealReceiver::new(self.clone(), receiver);
-        return Channel::new(sender, receiver);
+    fn new_channel<T: Send>(&self) -> Channel<T> {
+        return Channel::new(self.time_source.clone());
     }
 
     fn spawn_event_handler<U: EventHandlerTrait>(

@@ -7,7 +7,11 @@ mod receivertrait;
 mod sendertrait;
 mod sendmetadata;
 
-pub use self::channel::Channel;
+pub use self::channel::{
+    Channel,
+    Receiver,
+    Sender
+};
 pub use self::channelthreadbuilder::ChannelThreadBuilder;
 pub use self::realreceiver::{
     RealReceiver,
