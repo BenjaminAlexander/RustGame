@@ -37,8 +37,9 @@ pub trait FactoryTrait: Clone + Send + 'static {
 
     fn get_time_source(&self) -> &TimeSource;
 
-    fn new_thread_builder(&self) -> ThreadBuilder<Self> {
-        return ThreadBuilder::new(self.clone());
+    //TODO: remove this, or add it back as a way to propogate the factory
+    fn new_thread_builder(&self) -> ThreadBuilder {
+        return ThreadBuilder::new();
     }
 
     fn new_channel<T: Send>(&self) -> Channel<Self, T>;
@@ -47,7 +48,7 @@ pub trait FactoryTrait: Clone + Send + 'static {
         &self,
         thread_builder: ChannelThreadBuilder<Self, EventOrStopThread<U::Event>>,
         event_handler: U,
-        join_call_back: impl AsyncJoinCallBackTrait<Self, U::ThreadReturn>,
+        join_call_back: impl AsyncJoinCallBackTrait<U::ThreadReturn>,
     ) -> Result<EventHandlerSender<Self, U::Event>, Error>;
 
     fn spawn_tcp_listener<T: TcpConnectionHandlerTrait<Self>>(
@@ -55,7 +56,7 @@ pub trait FactoryTrait: Clone + Send + 'static {
         thread_builder: ChannelThreadBuilder<Self, EventOrStopThread<()>>,
         socket_addr: SocketAddr,
         tcp_connection_handler: T,
-        join_call_back: impl AsyncJoinCallBackTrait<Self, T>,
+        join_call_back: impl AsyncJoinCallBackTrait<T>,
     ) -> Result<EventHandlerSender<Self, ()>, Error>;
 
     fn connect_tcp(&self, socket_addr: SocketAddr) -> Result<(TcpStream, Self::TcpReader), Error>;
@@ -65,7 +66,7 @@ pub trait FactoryTrait: Clone + Send + 'static {
         thread_builder: ChannelThreadBuilder<Self, EventOrStopThread<()>>,
         tcp_reader: Self::TcpReader,
         tcp_read_handler: T,
-        join_call_back: impl AsyncJoinCallBackTrait<Self, T>,
+        join_call_back: impl AsyncJoinCallBackTrait<T>,
     ) -> Result<EventHandlerSender<Self, ()>, Error>;
 
     fn bind_udp_socket(&self, socket_addr: SocketAddr) -> Result<Self::UdpSocket, Error>;
@@ -79,6 +80,6 @@ pub trait FactoryTrait: Clone + Send + 'static {
         thread_builder: ChannelThreadBuilder<Self, EventOrStopThread<()>>,
         udp_socket: Self::UdpSocket,
         udp_read_handler: T,
-        join_call_back: impl AsyncJoinCallBackTrait<Self, T>,
+        join_call_back: impl AsyncJoinCallBackTrait<T>,
     ) -> Result<EventHandlerSender<Self, ()>, Error>;
 }

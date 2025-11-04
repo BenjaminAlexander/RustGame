@@ -35,7 +35,7 @@ use std::sync::{
 
 pub struct EventHandlerHolder<
     T: EventHandlerTrait,
-    U: AsyncJoinCallBackTrait<SingleThreadedFactory, T::ThreadReturn>,
+    U: AsyncJoinCallBackTrait<T::ThreadReturn>,
 > {
     internal: Arc<Mutex<Option<EventHandlerHolderInternal<T, U>>>>,
     factory: SingleThreadedFactory,
@@ -43,16 +43,16 @@ pub struct EventHandlerHolder<
 
 struct EventHandlerHolderInternal<
     T: EventHandlerTrait,
-    U: AsyncJoinCallBackTrait<SingleThreadedFactory, T::ThreadReturn>,
+    U: AsyncJoinCallBackTrait<T::ThreadReturn>,
 > {
     receiver_link: ReceiverLink<EventOrStopThread<T::Event>>,
     event_handler: T,
     join_call_back: U,
-    thread_builder: ThreadBuilder<SingleThreadedFactory>,
+    thread_builder: ThreadBuilder,
     pending_channel_event: Option<usize>,
 }
 
-impl<T: EventHandlerTrait, U: AsyncJoinCallBackTrait<SingleThreadedFactory, T::ThreadReturn>> Clone
+impl<T: EventHandlerTrait, U: AsyncJoinCallBackTrait<T::ThreadReturn>> Clone
     for EventHandlerHolder<T, U>
 {
     fn clone(&self) -> Self {
@@ -64,7 +64,7 @@ impl<T: EventHandlerTrait, U: AsyncJoinCallBackTrait<SingleThreadedFactory, T::T
     }
 }
 
-impl<T: EventHandlerTrait, U: AsyncJoinCallBackTrait<SingleThreadedFactory, T::ThreadReturn>>
+impl<T: EventHandlerTrait, U: AsyncJoinCallBackTrait<T::ThreadReturn>>
     EventHandlerHolder<T, U>
 {
     pub fn spawn_event_handler(
@@ -86,7 +86,7 @@ impl<T: EventHandlerTrait, U: AsyncJoinCallBackTrait<SingleThreadedFactory, T::T
 
     pub fn spawn_event_handler_helper(
         factory: SingleThreadedFactory,
-        thread_builder: ThreadBuilder<SingleThreadedFactory>,
+        thread_builder: ThreadBuilder,
         channel: Channel<SingleThreadedFactory, EventOrStopThread<T::Event>>,
         event_handler: T,
         join_call_back: U,
@@ -156,7 +156,7 @@ impl<T: EventHandlerTrait, U: AsyncJoinCallBackTrait<SingleThreadedFactory, T::T
     }
 }
 
-impl<T: EventHandlerTrait, U: AsyncJoinCallBackTrait<SingleThreadedFactory, T::ThreadReturn>>
+impl<T: EventHandlerTrait, U: AsyncJoinCallBackTrait<T::ThreadReturn>>
     EventHandlerHolderInternal<T, U>
 {
     fn cancel_pending_event(&mut self, holder: &EventHandlerHolder<T, U>) {

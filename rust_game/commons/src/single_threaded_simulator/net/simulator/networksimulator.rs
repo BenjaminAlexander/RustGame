@@ -88,10 +88,11 @@ impl NetworkSimulator {
         TcpConnectionHandler: TcpConnectionHandlerTrait<SingleThreadedFactory>,
     >(
         &self,
+        factory: SingleThreadedFactory,
         socket_addr: SocketAddr,
         thread_builder: ChannelThreadBuilder<SingleThreadedFactory, EventOrStopThread<()>>,
         connection_handler: TcpConnectionHandler,
-        join_call_back: impl AsyncJoinCallBackTrait<SingleThreadedFactory, TcpConnectionHandler>,
+        join_call_back: impl AsyncJoinCallBackTrait<TcpConnectionHandler>,
     ) -> Result<EventHandlerSender<SingleThreadedFactory, ()>, Error> {
         let mut guard = self.internal.lock().unwrap();
 
@@ -105,7 +106,7 @@ impl NetworkSimulator {
             TcpListenerEventHandler::new(socket_addr, connection_handler);
 
         let sender = thread_builder
-            .spawn_event_handler(tcp_listener_event_handler, join_call_back)
+            .spawn_event_handler(factory, tcp_listener_event_handler, join_call_back)
             .unwrap();
 
         let (sender_to_return, receiver) = channel.take();
@@ -176,10 +177,11 @@ impl NetworkSimulator {
 
     pub fn spawn_udp_reader<T: UdpReadHandlerTrait>(
         &self,
+        factory: SingleThreadedFactory,
         thread_builder: ChannelThreadBuilder<SingleThreadedFactory, EventOrStopThread<()>>,
         udp_socket: UdpSocketSimulator,
         udp_read_handler: T,
-        join_call_back: impl AsyncJoinCallBackTrait<SingleThreadedFactory, T>,
+        join_call_back: impl AsyncJoinCallBackTrait<T>,
     ) -> Result<EventHandlerSender<SingleThreadedFactory, ()>, Error> {
         let mut guard = self.internal.lock().unwrap();
 
@@ -195,7 +197,7 @@ impl NetworkSimulator {
             UdpReadEventHandler::new(self.clone(), udp_socket.get_socket_addr(), udp_read_handler);
 
         let sender = thread_builder
-            .spawn_event_handler(udp_read_event_handler, join_call_back)
+            .spawn_event_handler(factory, udp_read_event_handler, join_call_back)
             .unwrap();
 
         let (sender_to_return, receiver) = channel.take();

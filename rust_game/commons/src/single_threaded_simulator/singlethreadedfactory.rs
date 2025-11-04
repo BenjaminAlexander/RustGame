@@ -106,7 +106,7 @@ impl FactoryTrait for SingleThreadedFactory {
         &self,
         thread_builder: ChannelThreadBuilder<Self, EventOrStopThread<U::Event>>,
         event_handler: U,
-        join_call_back: impl AsyncJoinCallBackTrait<Self, U::ThreadReturn>,
+        join_call_back: impl AsyncJoinCallBackTrait<U::ThreadReturn>,
     ) -> Result<EventHandlerSender<Self, U::Event>, Error> {
         return Ok(EventHandlerHolder::spawn_event_handler(
             self.clone(),
@@ -121,12 +121,13 @@ impl FactoryTrait for SingleThreadedFactory {
         thread_builder: ChannelThreadBuilder<Self, EventOrStopThread<()>>,
         socket_addr: SocketAddr,
         tcp_connection_handler: T,
-        join_call_back: impl AsyncJoinCallBackTrait<Self, T>,
+        join_call_back: impl AsyncJoinCallBackTrait<T>,
     ) -> Result<EventHandlerSender<Self, ()>, Error> {
         return self
             .host_simulator
             .get_network_simulator()
             .spawn_tcp_listener(
+                self.clone(),
                 socket_addr,
                 thread_builder,
                 tcp_connection_handler,
@@ -143,14 +144,14 @@ impl FactoryTrait for SingleThreadedFactory {
         thread_builder: ChannelThreadBuilder<Self, EventOrStopThread<()>>,
         tcp_reader: Self::TcpReader,
         read_handler: T,
-        join_call_back: impl AsyncJoinCallBackTrait<Self, T>,
+        join_call_back: impl AsyncJoinCallBackTrait<T>,
     ) -> Result<EventHandlerSender<Self, ()>, Error> {
         let (thread_builder, channel) = thread_builder.take();
 
         let tcp_reader_event_handler = TcpReaderEventHandler::new(read_handler);
 
         let sender = thread_builder
-            .spawn_event_handler(tcp_reader_event_handler, join_call_back)
+            .spawn_event_handler(self.clone(), tcp_reader_event_handler, join_call_back)
             .unwrap();
 
         let sender_clone = sender.clone();
@@ -198,11 +199,11 @@ impl FactoryTrait for SingleThreadedFactory {
         thread_builder: ChannelThreadBuilder<Self, EventOrStopThread<()>>,
         udp_socket: Self::UdpSocket,
         udp_read_handler: T,
-        join_call_back: impl AsyncJoinCallBackTrait<Self, T>,
+        join_call_back: impl AsyncJoinCallBackTrait<T>,
     ) -> Result<EventHandlerSender<Self, ()>, Error> {
         return self
             .host_simulator
             .get_network_simulator()
-            .spawn_udp_reader(thread_builder, udp_socket, udp_read_handler, join_call_back);
+            .spawn_udp_reader(self.clone(), thread_builder, udp_socket, udp_read_handler, join_call_back);
     }
 }

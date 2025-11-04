@@ -41,7 +41,9 @@ impl SingleThreadExecutor {
         let sender = factory
             .new_thread_builder()
             .name("SingleThreadExecutor")
-            .spawn_event_handler(SingleThreadExecutorEventHandler(), move |_| {
+            .spawn_event_handler(
+                factory, 
+                SingleThreadExecutorEventHandler(), move |_| {
                 let (wait_for_join_mutex, condvar) = join_signal_clone.as_ref();
                 *wait_for_join_mutex.lock().unwrap() = false;
                 condvar.notify_all();

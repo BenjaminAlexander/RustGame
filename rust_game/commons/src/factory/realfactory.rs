@@ -67,7 +67,7 @@ impl FactoryTrait for RealFactory {
         &self,
         thread_builder: ChannelThreadBuilder<Self, EventOrStopThread<U::Event>>,
         event_handler: U,
-        join_call_back: impl AsyncJoinCallBackTrait<Self, U::ThreadReturn>,
+        join_call_back: impl AsyncJoinCallBackTrait<U::ThreadReturn>,
     ) -> std::io::Result<EventHandlerSender<Self, U::Event>> {
         let (thread_builder, channel) = thread_builder.take();
         let (sender, receiver) = channel.take();
@@ -84,7 +84,7 @@ impl FactoryTrait for RealFactory {
         thread_builder: channel::ChannelThreadBuilder<Self, EventOrStopThread<()>>,
         socket_addr: SocketAddr,
         mut tcp_connection_handler: T,
-        join_call_back: impl AsyncJoinCallBackTrait<Self, T>,
+        join_call_back: impl AsyncJoinCallBackTrait<T>,
     ) -> Result<EventHandlerSender<Self, ()>, Error> {
         let tcp_listener = TcpListener::bind(socket_addr)?;
 
@@ -108,7 +108,7 @@ impl FactoryTrait for RealFactory {
         thread_builder: channel::ChannelThreadBuilder<Self, EventOrStopThread<()>>,
         tcp_reader: Self::TcpReader,
         tcp_read_handler: T,
-        join_call_back: impl AsyncJoinCallBackTrait<Self, T>,
+        join_call_back: impl AsyncJoinCallBackTrait<T>,
     ) -> Result<EventHandlerSender<Self, ()>, Error> {
         let event_handler = TcpReaderEventHandler::new(tcp_reader, tcp_read_handler);
         return thread_builder.spawn_event_handler(event_handler, join_call_back);
@@ -123,7 +123,7 @@ impl FactoryTrait for RealFactory {
         thread_builder: ChannelThreadBuilder<Self, EventOrStopThread<()>>,
         udp_socket: Self::UdpSocket,
         udp_read_handler: T,
-        join_call_back: impl AsyncJoinCallBackTrait<Self, T>,
+        join_call_back: impl AsyncJoinCallBackTrait<T>,
     ) -> Result<EventHandlerSender<Self, ()>, Error> {
         let event_handler = UdpReaderEventHandler::new(udp_socket, udp_read_handler);
         return thread_builder.spawn_event_handler(event_handler, join_call_back);

@@ -7,8 +7,6 @@ use std::sync::{
     Condvar,
     Mutex,
 };
-
-use commons::factory::FactoryTrait;
 use commons::threading::AsyncJoinCallBackTrait;
 use log::{
     error,
@@ -84,10 +82,10 @@ impl AsyncExpects {
         };
     }
 
-    pub fn new_expect_async_join<Factory: FactoryTrait, T: Send + 'static>(
+    pub fn new_expect_async_join<T: Send + 'static>(
         &self,
         description: &str,
-    ) -> ExpectAsyncJoin<Factory, T> {
+    ) -> ExpectAsyncJoin<T> {
         return ExpectAsyncJoin {
             async_expect: self.new_async_expect(description, ()),
             phantom: PhantomData,
@@ -226,15 +224,14 @@ impl<T: Debug + Eq + Send + 'static> AsyncExpect<T> {
     }
 }
 
-pub struct ExpectAsyncJoin<Factory: FactoryTrait, T: Send + 'static> {
+pub struct ExpectAsyncJoin<T: Send + 'static> {
     async_expect: AsyncExpect<()>,
-    phantom: PhantomData<(Factory, T)>,
+    phantom: PhantomData<T>,
 }
 
-impl<Factory: FactoryTrait, T: Send> AsyncJoinCallBackTrait<Factory, T>
-    for ExpectAsyncJoin<Factory, T>
+impl<T: Send> AsyncJoinCallBackTrait<T> for ExpectAsyncJoin<T>
 {
-    fn join(self, async_join: commons::threading::AsyncJoin<Factory, T>) {
+    fn join(self, async_join: commons::threading::AsyncJoin<T>) {
         info!(
             "Thread Name: {:?} joined as expected.",
             async_join.get_thread_name()

@@ -67,7 +67,7 @@ impl<Factory: FactoryTrait, T: TimerCreationCallBack, U: TimerCallBack>
             .factory
             .new_thread_builder()
             .name("TimerServiceThread")
-            .spawn_event_handler(self.event_handler, AsyncJoin::log_async_join)?;
+            .spawn_event_handler(self.event_handler.factory.clone(), self.event_handler, AsyncJoin::log_async_join)?;
 
         return Ok(TimerService { sender });
     }
