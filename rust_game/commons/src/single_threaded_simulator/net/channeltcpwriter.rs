@@ -9,6 +9,8 @@ use std::io::{
 };
 use std::net::SocketAddr;
 
+//TODO: move to TCP
+
 #[derive(Clone)]
 pub struct ChannelTcpWriter {
     peer_addr: SocketAddr,

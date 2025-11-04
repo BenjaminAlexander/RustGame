@@ -49,9 +49,6 @@ fn test_real_factory_tcp() {
 
         let (mut tcp_stream, _) = RealFactory::new().connect_tcp(socket_addr).unwrap();
 
-        let connector_local_socket_addr = tcp_stream.get_local_addr().unwrap();
-        info!("Connected local {:?}", connector_local_socket_addr);
-
         tcp_stream.write(&A_NUMBER).unwrap();
         tcp_stream.flush().unwrap();
     });

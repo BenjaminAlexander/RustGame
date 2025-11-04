@@ -52,15 +52,6 @@ impl TcpStream {
         };
     }
 
-    pub fn get_local_addr(&self) -> Result<SocketAddr, Error> {
-        return match &self.implementation {
-            Implementation::Real(real_tcp_stream) => real_tcp_stream.get_local_addr(),
-            Implementation::Simulated(_) => {
-                panic!("Simulated TcpStreams don't implement a local addr")
-            }
-        };
-    }
-
     pub fn try_clone(&self) -> Result<Self, Error> {
         return match &self.implementation {
             Implementation::Real(real_tcp_stream) => Ok(Self {
