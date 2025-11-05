@@ -26,7 +26,6 @@ use std::io::Error;
 use std::net::SocketAddr;
 
 pub trait FactoryTrait: Clone + Send + 'static {
-
     //TODO: remove these
     type Sender<T: Send>: SenderTrait<T>;
     type Receiver<T: Send>: ReceiverTrait<T>;

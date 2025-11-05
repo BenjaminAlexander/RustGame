@@ -11,7 +11,11 @@ use crate::net::{
     UdpReaderEventHandler,
 };
 use crate::threading::channel::{
-    Channel, ChannelThreadBuilder, RealReceiver, RealSender, SendMetaData,
+    Channel,
+    ChannelThreadBuilder,
+    RealReceiver,
+    RealSender,
+    SendMetaData,
 };
 use crate::threading::eventhandling::{
     EventHandlerSender,
@@ -91,7 +95,8 @@ impl FactoryTrait for RealFactory {
         tcp_connection_handler.on_bind(tcp_listener.local_addr()?);
 
         let event_handler = TcpListenerEventHandler::new(tcp_listener, tcp_connection_handler)?;
-        return thread_builder.spawn_event_handler(event_handler, join_call_back);
+
+        return self.spawn_event_handler(thread_builder, event_handler, join_call_back);
     }
 
     fn connect_tcp(&self, socket_addr: SocketAddr) -> Result<(TcpStream, Self::TcpReader), Error> {
@@ -111,7 +116,7 @@ impl FactoryTrait for RealFactory {
         join_call_back: impl AsyncJoinCallBackTrait<T>,
     ) -> Result<EventHandlerSender<Self, ()>, Error> {
         let event_handler = TcpReaderEventHandler::new(tcp_reader, tcp_read_handler);
-        return thread_builder.spawn_event_handler(event_handler, join_call_back);
+        return self.spawn_event_handler(thread_builder, event_handler, join_call_back);
     }
 
     fn bind_udp_socket(&self, socket_addr: SocketAddr) -> Result<Self::UdpSocket, Error> {
@@ -126,6 +131,6 @@ impl FactoryTrait for RealFactory {
         join_call_back: impl AsyncJoinCallBackTrait<T>,
     ) -> Result<EventHandlerSender<Self, ()>, Error> {
         let event_handler = UdpReaderEventHandler::new(udp_socket, udp_read_handler);
-        return thread_builder.spawn_event_handler(event_handler, join_call_back);
+        return self.spawn_event_handler(thread_builder, event_handler, join_call_back);
     }
 }

@@ -37,7 +37,9 @@ impl<GameFactory: GameFactoryTrait> Server<GameFactory> {
         let server_core_thread_builder = factory
             .new_thread_builder()
             .name("ServerCore")
-            .build_channel_for_event_handler::<GameFactory::Factory, ServerCore<GameFactory>>(factory.clone());
+            .build_channel_for_event_handler::<GameFactory::Factory, ServerCore<GameFactory>>(
+            factory.clone(),
+        );
 
         let server_core = ServerCore::<GameFactory>::new(
             factory.clone(),
@@ -53,8 +55,12 @@ impl<GameFactory: GameFactoryTrait> Server<GameFactory> {
             return Err(());
         }
 
-        let core_sender = server_core_thread_builder
-            .spawn_event_handler(server_core, AsyncJoin::log_async_join)
+        let core_sender = factory
+            .spawn_event_handler(
+                server_core_thread_builder,
+                server_core,
+                AsyncJoin::log_async_join,
+            )
             .unwrap();
 
         let (render_receiver_sender, render_receiver) =

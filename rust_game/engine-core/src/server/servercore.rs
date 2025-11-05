@@ -353,8 +353,9 @@ impl<GameFactory: GameFactoryTrait> ServerCore<GameFactory> {
             self.game_timer = Some(game_timer);
 
             self.manager_sender_option = Some(
-                manager_builder
+                self.factory
                     .spawn_event_handler(
+                        manager_builder,
                         Manager::new(self.factory.clone(), server_manager_observer),
                         AsyncJoin::log_async_join,
                     )
@@ -388,7 +389,12 @@ impl<GameFactory: GameFactoryTrait> ServerCore<GameFactory> {
                 .factory
                 .new_thread_builder()
                 .name("ServerTcpInput")
-                .spawn_tcp_reader(self.factory.clone(), tcp_receiver, TcpInput::new(), AsyncJoin::log_async_join)
+                .spawn_tcp_reader(
+                    self.factory.clone(),
+                    tcp_receiver,
+                    TcpInput::new(),
+                    AsyncJoin::log_async_join,
+                )
                 .unwrap();
 
             self.tcp_inputs.push(tcp_input_join_handle);

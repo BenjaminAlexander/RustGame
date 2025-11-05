@@ -15,7 +15,10 @@ pub struct RealSender<T: Send> {
 
 impl<T: Send> RealSender<T> {
     pub fn new(time_source: TimeSource, sender: mpsc::Sender<(SendMetaData, T)>) -> Self {
-        return Self { time_source, sender };
+        return Self {
+            time_source,
+            sender,
+        };
     }
 }
 

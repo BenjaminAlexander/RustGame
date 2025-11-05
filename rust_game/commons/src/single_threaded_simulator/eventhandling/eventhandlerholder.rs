@@ -33,18 +33,13 @@ use std::sync::{
     Mutex,
 };
 
-pub struct EventHandlerHolder<
-    T: EventHandlerTrait,
-    U: AsyncJoinCallBackTrait<T::ThreadReturn>,
-> {
+pub struct EventHandlerHolder<T: EventHandlerTrait, U: AsyncJoinCallBackTrait<T::ThreadReturn>> {
     internal: Arc<Mutex<Option<EventHandlerHolderInternal<T, U>>>>,
     factory: SingleThreadedFactory,
 }
 
-struct EventHandlerHolderInternal<
-    T: EventHandlerTrait,
-    U: AsyncJoinCallBackTrait<T::ThreadReturn>,
-> {
+struct EventHandlerHolderInternal<T: EventHandlerTrait, U: AsyncJoinCallBackTrait<T::ThreadReturn>>
+{
     receiver_link: ReceiverLink<EventOrStopThread<T::Event>>,
     event_handler: T,
     join_call_back: U,
@@ -64,9 +59,7 @@ impl<T: EventHandlerTrait, U: AsyncJoinCallBackTrait<T::ThreadReturn>> Clone
     }
 }
 
-impl<T: EventHandlerTrait, U: AsyncJoinCallBackTrait<T::ThreadReturn>>
-    EventHandlerHolder<T, U>
-{
+impl<T: EventHandlerTrait, U: AsyncJoinCallBackTrait<T::ThreadReturn>> EventHandlerHolder<T, U> {
     pub fn spawn_event_handler(
         factory: SingleThreadedFactory,
         thread_builder: ChannelThreadBuilder<SingleThreadedFactory, EventOrStopThread<T::Event>>,

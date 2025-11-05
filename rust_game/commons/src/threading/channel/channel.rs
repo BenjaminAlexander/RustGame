@@ -1,13 +1,30 @@
 use std::sync::mpsc;
 
-use crate::{factory::FactoryTrait, single_threaded_simulator::{SingleThreadedFactory, SingleThreadedReceiver, SingleThreadedSender}, threading::channel::{RealReceiver, RealSender, ReceiveMetaData, ReceiverTrait, SendMetaData, SenderTrait, TryRecvError}, time::TimeSource};
+use crate::{
+    factory::FactoryTrait,
+    single_threaded_simulator::{
+        SingleThreadedFactory,
+        SingleThreadedReceiver,
+        SingleThreadedSender,
+    },
+    threading::channel::{
+        RealReceiver,
+        RealSender,
+        ReceiveMetaData,
+        ReceiverTrait,
+        SendMetaData,
+        SenderTrait,
+        TryRecvError,
+    },
+    time::TimeSource,
+};
 
 //TODO: cleanup
 enum ChannelImplementation<T: Send> {
     Real(RealSender<T>, RealReceiver<T>),
 
     //TODO: conditionally compile
-    Simulated(SingleThreadedSender<T>, SingleThreadedReceiver<T>)
+    Simulated(SingleThreadedSender<T>, SingleThreadedReceiver<T>),
 }
 
 pub struct Channel<Factory: FactoryTrait, T: Send + 'static> {
@@ -16,7 +33,6 @@ pub struct Channel<Factory: FactoryTrait, T: Send + 'static> {
 }
 
 impl<Factory: FactoryTrait, T: Send + 'static> Channel<Factory, T> {
-
     pub fn new(sender: Factory::Sender<T>, receiver: Factory::Receiver<T>) -> Self {
         return Self { sender, receiver };
     }
@@ -41,27 +57,30 @@ enum SenderImplementation<T: Send> {
     Real(RealSender<T>),
 
     //TODO: conditionally compile
-    Simulated(SingleThreadedSender<T>)
+    Simulated(SingleThreadedSender<T>),
 }
 
 impl<T: Send> SenderImplementation<T> {
     fn clone(&self) -> Self {
         match &self {
-            SenderImplementation::Real(real_sender) => SenderImplementation::Real(real_sender.clone()),
-            SenderImplementation::Simulated(simulated_sender) => SenderImplementation::Simulated(simulated_sender.clone())
+            SenderImplementation::Real(real_sender) => {
+                SenderImplementation::Real(real_sender.clone())
+            }
+            SenderImplementation::Simulated(simulated_sender) => {
+                SenderImplementation::Simulated(simulated_sender.clone())
+            }
         }
     }
 }
 
 #[derive(Clone)]
 pub struct Sender<T: Send> {
-    implementation: SenderImplementation<T>
+    implementation: SenderImplementation<T>,
 }
 
 impl<T: Send> Sender<T> {
-
     fn new(implementation: SenderImplementation<T>) -> Self {
-        return Self { implementation }
+        return Self { implementation };
     }
 
     pub fn send(&self, value: T) -> Result<(), T> {
@@ -73,7 +92,7 @@ impl<T: Send> Sender<T> {
 
     pub fn clone(&self) -> Self {
         return Self {
-            implementation: self.implementation.clone()
+            implementation: self.implementation.clone(),
         };
     }
 }
@@ -82,23 +101,24 @@ enum ReceiverImplementation<T: Send> {
     Real(RealReceiver<T>),
 
     //TODO: conditionally compile
-    Simulated(SingleThreadedReceiver<T>)
+    Simulated(SingleThreadedReceiver<T>),
 }
 
 pub struct Receiver<T: Send> {
-    implementation: ReceiverImplementation<T>
+    implementation: ReceiverImplementation<T>,
 }
 
 impl<T: Send> Receiver<T> {
-
     fn new(implementation: ReceiverImplementation<T>) -> Self {
-        return Self { implementation }
+        return Self { implementation };
     }
 
     pub fn try_recv_meta_data(&mut self) -> Result<(ReceiveMetaData, T), TryRecvError> {
         match &mut self.implementation {
             ReceiverImplementation::Real(real_receiver) => real_receiver.try_recv_meta_data(),
-            ReceiverImplementation::Simulated(simulated_receiver) => simulated_receiver.try_recv_meta_data(),
+            ReceiverImplementation::Simulated(simulated_receiver) => {
+                simulated_receiver.try_recv_meta_data()
+            }
         }
     }
 

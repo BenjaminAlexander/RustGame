@@ -7,13 +7,20 @@ use crate::single_threaded_simulator::{
     SingleThreadedFactory,
     SingleThreadedSender,
 };
-use crate::threading::{AsyncJoinCallBackTrait, ThreadBuilder};
 use crate::threading::channel::{
     ReceiveMetaData,
     ReceiverTrait,
     TryRecvError,
 };
-use crate::threading::eventhandling::{EventHandlerSender, EventHandlerTrait, EventOrStopThread};
+use crate::threading::eventhandling::{
+    EventHandlerSender,
+    EventHandlerTrait,
+    EventOrStopThread,
+};
+use crate::threading::{
+    AsyncJoinCallBackTrait,
+    ThreadBuilder,
+};
 
 pub struct SingleThreadedReceiver<T: Send> {
     link: ReceiverLink<T>,

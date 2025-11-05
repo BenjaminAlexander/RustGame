@@ -114,9 +114,7 @@ impl<T: EventHandlerTrait> EventHandlerThread<T> {
     }
 }
 
-impl<T: EventHandlerTrait> threading::Thread
-    for EventHandlerThread<T>
-{
+impl<T: EventHandlerTrait> threading::Thread for EventHandlerThread<T> {
     type ReturnType = T::ThreadReturn;
 
     fn run(mut self) -> Self::ReturnType {

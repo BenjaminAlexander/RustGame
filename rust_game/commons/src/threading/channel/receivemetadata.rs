@@ -1,6 +1,8 @@
 use crate::threading::channel::SendMetaData;
 use crate::time::{
-    TimeDuration, TimeSource, TimeValue
+    TimeDuration,
+    TimeSource,
+    TimeValue,
 };
 
 #[derive(Debug)]

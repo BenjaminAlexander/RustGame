@@ -4,7 +4,10 @@ use crate::threading::channel::{
     SendMetaData,
     TryRecvError,
 };
-use crate::time::{TimeDuration, TimeSource};
+use crate::time::{
+    TimeDuration,
+    TimeSource,
+};
 use std::sync::mpsc;
 
 pub type RecvError = mpsc::RecvError;

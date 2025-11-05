@@ -1,3 +1,8 @@
+use commons::threading::AsyncJoinCallBackTrait;
+use log::{
+    error,
+    info,
+};
 use std::fmt::Debug;
 use std::marker::PhantomData;
 use std::ops::Deref;
@@ -6,11 +11,6 @@ use std::sync::{
     Arc,
     Condvar,
     Mutex,
-};
-use commons::threading::AsyncJoinCallBackTrait;
-use log::{
-    error,
-    info,
 };
 
 //TODO: Add a wait_or_timeout variant to panic if expects are not met by a timeout
@@ -229,8 +229,7 @@ pub struct ExpectAsyncJoin<T: Send + 'static> {
     phantom: PhantomData<T>,
 }
 
-impl<T: Send> AsyncJoinCallBackTrait<T> for ExpectAsyncJoin<T>
-{
+impl<T: Send> AsyncJoinCallBackTrait<T> for ExpectAsyncJoin<T> {
     fn join(self, async_join: commons::threading::AsyncJoin<T>) {
         info!(
             "Thread Name: {:?} joined as expected.",

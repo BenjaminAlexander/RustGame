@@ -79,7 +79,9 @@ fn test_non_blocking_tcp_reader() {
     let tcp_listener_builder = real_factory
         .new_thread_builder()
         .name("TcpListener")
-        .build_channel_for_tcp_listener::<RealFactory, TcpConnectionHandler<RealFactory>>(real_factory.clone());
+        .build_channel_for_tcp_listener::<RealFactory, TcpConnectionHandler<RealFactory>>(
+        real_factory.clone(),
+    );
 
     let listener_sender = tcp_listener_builder.clone_sender();
     let expect_one_tcp_connection = async_expects.new_async_expect("Expect one TCP connection", ());
@@ -118,8 +120,8 @@ fn test_non_blocking_tcp_reader() {
         return ControlFlow::Continue(());
     });
 
-    
-    real_factory.spawn_tcp_listener(
+    real_factory
+        .spawn_tcp_listener(
             tcp_listener_builder,
             SocketAddr::from(LOCAL_EPHEMERAL_SOCKET_ADDR_V4),
             tcp_connection_handler,

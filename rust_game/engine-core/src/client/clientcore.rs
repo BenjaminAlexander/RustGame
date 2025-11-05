@@ -95,13 +95,22 @@ impl<GameFactory: GameFactoryTrait> ClientCore<GameFactory> {
         let tcp_input_sender = factory
             .new_thread_builder()
             .name("ClientTcpInput")
-            .spawn_tcp_reader(factory.clone(), tcp_receiver, tcp_input, AsyncJoin::log_async_join)
+            .spawn_tcp_reader(
+                factory.clone(),
+                tcp_receiver,
+                tcp_input,
+                AsyncJoin::log_async_join,
+            )
             .unwrap();
 
         let tcp_output_sender = factory
             .new_thread_builder()
             .name("ClientTcpOutput")
-            .spawn_event_handler(factory.clone(), TcpOutput::new(tcp_sender), AsyncJoin::log_async_join)
+            .spawn_event_handler(
+                factory.clone(),
+                TcpOutput::new(tcp_sender),
+                AsyncJoin::log_async_join,
+            )
             .unwrap();
 
         let state = State::WaitingForHello {
@@ -241,8 +250,9 @@ impl<GameFactory: GameFactoryTrait> State<GameFactory> {
                     .build_channel_for_event_handler::<GameFactory::Factory, UdpOutput<GameFactory>>(factory.clone());
 
                 //TODO: unwrap after try_clone is not good
-                let udp_output_sender = udp_output_builder
+                let udp_output_sender = factory
                     .spawn_event_handler(
+                        udp_output_builder,
                         UdpOutput::<GameFactory>::new(
                             server_udp_socket_addr,
                             udp_socket.try_clone().unwrap(),

@@ -10,7 +10,7 @@ mod sendmetadata;
 pub use self::channel::{
     Channel,
     Receiver,
-    Sender
+    Sender,
 };
 pub use self::channelthreadbuilder::ChannelThreadBuilder;
 pub use self::realreceiver::{

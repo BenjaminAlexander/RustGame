@@ -78,7 +78,8 @@ impl<T> ReceiverLink<T> {
                     }
                 }
                 Some((send_meta_data, t)) => {
-                    let receive_meta_data = ReceiveMetaData::new(&self.factory.get_time_source(), send_meta_data);
+                    let receive_meta_data =
+                        ReceiveMetaData::new(&self.factory.get_time_source(), send_meta_data);
                     return Ok((receive_meta_data, t));
                 }
             }
@@ -96,7 +97,8 @@ impl<T> ReceiverLink<T> {
 
         if let Mode::Queue(ref mut queue) = internal.mode {
             while let Some((send_meta_data, t)) = queue.pop_front() {
-                let receive_meta_data = ReceiveMetaData::new(&self.factory.get_time_source(), send_meta_data);
+                let receive_meta_data =
+                    ReceiveMetaData::new(&self.factory.get_time_source(), send_meta_data);
 
                 if consumer(ReceiveOrDisconnected::Receive(receive_meta_data, t)).is_err() {
                     warn!("Consumer returned an error.")
@@ -124,7 +126,8 @@ impl<T> ReceiverLink<T> {
                 return Ok(());
             }
             Mode::Consumer(ref consumer) => {
-                let receive_meta_data = ReceiveMetaData::new(&self.factory.get_time_source(), send_meta_data);
+                let receive_meta_data =
+                    ReceiveMetaData::new(&self.factory.get_time_source(), send_meta_data);
                 return consumer(ReceiveOrDisconnected::Receive(receive_meta_data, t));
             }
             Mode::ReceiverDisconnected => {

@@ -204,6 +204,12 @@ impl FactoryTrait for SingleThreadedFactory {
         return self
             .host_simulator
             .get_network_simulator()
-            .spawn_udp_reader(self.clone(), thread_builder, udp_socket, udp_read_handler, join_call_back);
+            .spawn_udp_reader(
+                self.clone(),
+                thread_builder,
+                udp_socket,
+                udp_read_handler,
+                join_call_back,
+            );
     }
 }

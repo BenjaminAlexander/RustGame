@@ -1,4 +1,7 @@
-use crate::time::{TimeSource, TimeValue};
+use crate::time::{
+    TimeSource,
+    TimeValue,
+};
 
 #[derive(Debug, Clone, Copy)]
 pub struct SendMetaData {

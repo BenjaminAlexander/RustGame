@@ -24,17 +24,20 @@ impl<GameFactory: GameFactoryTrait> Client<GameFactory> {
         let client_core_thread_builder = factory
             .new_thread_builder()
             .name("ClientCore")
-            .build_channel_for_event_handler::<GameFactory::Factory, ClientCore<GameFactory>>(factory.clone());
+            .build_channel_for_event_handler::<GameFactory::Factory, ClientCore<GameFactory>>(
+            factory.clone(),
+        );
 
         let (render_receiver_sender, render_receiver) =
             RenderReceiver::<GameFactory>::new(factory.clone());
 
         let core_sender = client_core_thread_builder.get_sender().clone();
 
-        client_core_thread_builder
+        factory
             .spawn_event_handler(
+                client_core_thread_builder,
                 ClientCore::<GameFactory>::new(
-                    factory,
+                    factory.clone(),
                     Ipv4Addr::from_str("127.0.0.1").unwrap(),
                     core_sender.clone(),
                     render_receiver_sender,
