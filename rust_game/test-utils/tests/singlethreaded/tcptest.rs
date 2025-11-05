@@ -8,12 +8,9 @@ use commons::net::{
 use commons::single_threaded_simulator::{
     SingleThreadedFactory,
     SingleThreadedReceiver,
-    SingleThreadedSender,
 };
-use commons::threading::eventhandling::{
-    EventOrStopThread,
-    EventSenderTrait,
-};
+use commons::threading::channel::Sender;
+use commons::threading::eventhandling::EventOrStopThread;
 use commons::threading::AsyncJoin;
 use log::{
     error,
@@ -145,7 +142,7 @@ fn test_write(
 struct TestConnection {
     tcp_stream: TcpStream,
     #[allow(dead_code)]
-    reader_sender: SingleThreadedSender<EventOrStopThread<()>>,
+    reader_sender: Sender<EventOrStopThread<()>>,
     last_value: Option<u32>,
 }
 

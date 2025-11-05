@@ -10,13 +10,12 @@ use crate::interface::{
     RenderReceiver,
 };
 use commons::factory::FactoryTrait;
-use commons::threading::eventhandling::EventSenderTrait;
 use commons::threading::AsyncJoin;
 use std::net::Ipv4Addr;
 use std::str::FromStr;
 
 pub struct Client<GameFactory: GameFactoryTrait> {
-    core_sender: EventSender<GameFactory, ClientCoreEvent<GameFactory>>,
+    core_sender: EventSender<ClientCoreEvent<GameFactory>>,
 }
 
 impl<GameFactory: GameFactoryTrait> Client<GameFactory> {

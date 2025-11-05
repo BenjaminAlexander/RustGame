@@ -9,11 +9,11 @@ use crate::interface::{
     InterpolationArg,
     InterpolationResult,
     Receiver,
-    Sender,
 };
 use commons::factory::FactoryTrait;
 use commons::threading::channel::{
     ReceiverTrait,
+    Sender,
     TryRecvError,
 };
 use commons::time::TimeDuration;
@@ -47,10 +47,7 @@ struct Data<GameFactory: GameFactoryTrait> {
 impl<GameFactory: GameFactoryTrait> RenderReceiver<GameFactory> {
     pub fn new(
         factory: Factory<GameFactory>,
-    ) -> (
-        Sender<GameFactory, RenderReceiverMessage<Game<GameFactory>>>,
-        Self,
-    ) {
+    ) -> (Sender<RenderReceiverMessage<Game<GameFactory>>>, Self) {
         let (sender, receiver) = factory.new_channel().take();
 
         let data = Data::<GameFactory> {

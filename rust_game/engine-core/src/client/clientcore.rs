@@ -22,20 +22,18 @@ use crate::interface::{
     GameTrait,
     InitialInformation,
     RenderReceiverMessage,
-    Sender,
 };
 use crate::messaging::InputMessage;
 use commons::factory::FactoryTrait;
 use commons::net::UdpSocketTrait;
 use commons::threading::channel::{
     ReceiveMetaData,
-    SenderTrait,
+    Sender,
 };
 use commons::threading::eventhandling::{
     ChannelEvent,
     EventHandleResult,
     EventHandlerTrait,
-    EventSenderTrait,
 };
 use commons::threading::AsyncJoin;
 use log::{
@@ -64,8 +62,8 @@ impl<GameFactory: GameFactoryTrait> ClientCore<GameFactory> {
     pub fn new(
         factory: GameFactory::Factory,
         server_ip: Ipv4Addr,
-        sender: EventSender<GameFactory, ClientCoreEvent<GameFactory>>,
-        render_receiver_sender: Sender<GameFactory, RenderReceiverMessage<GameFactory::Game>>,
+        sender: EventSender<ClientCoreEvent<GameFactory>>,
+        render_receiver_sender: Sender<RenderReceiverMessage<GameFactory::Game>>,
     ) -> Self {
         let client_manager_observer = ClientManagerObserver::<GameFactory>::new(
             factory.clone(),
@@ -148,22 +146,22 @@ impl<GameFactory: GameFactoryTrait> EventHandlerTrait for ClientCore<GameFactory
 enum State<GameFactory: GameFactoryTrait> {
     WaitingForHello {
         factory: GameFactory::Factory,
-        sender: EventSender<GameFactory, ClientCoreEvent<GameFactory>>,
+        sender: EventSender<ClientCoreEvent<GameFactory>>,
         server_ip: Ipv4Addr,
-        manager_sender: EventSender<GameFactory, ManagerEvent<GameFactory::Game>>,
-        tcp_input_sender: EventSender<GameFactory, ()>,
-        tcp_output_sender: EventSender<GameFactory, ()>,
-        render_receiver_sender: Sender<GameFactory, RenderReceiverMessage<GameFactory::Game>>,
+        manager_sender: EventSender<ManagerEvent<GameFactory::Game>>,
+        tcp_input_sender: EventSender<()>,
+        tcp_output_sender: EventSender<()>,
+        render_receiver_sender: Sender<RenderReceiverMessage<GameFactory::Game>>,
     },
     Running {
         input_event_handler: <GameFactory::Game as GameTrait>::ClientInputEventHandler,
-        manager_sender: EventSender<GameFactory, ManagerEvent<GameFactory::Game>>,
+        manager_sender: EventSender<ManagerEvent<GameFactory::Game>>,
         game_timer: GameTimer<GameFactory::Factory, ClientGameTimerObserver<GameFactory>>,
-        udp_input_sender: EventSender<GameFactory, ()>,
-        udp_output_sender: EventSender<GameFactory, UdpOutputEvent<GameFactory::Game>>,
-        tcp_input_sender: EventSender<GameFactory, ()>,
-        tcp_output_sender: EventSender<GameFactory, ()>,
-        render_receiver_sender: Sender<GameFactory, RenderReceiverMessage<GameFactory::Game>>,
+        udp_input_sender: EventSender<()>,
+        udp_output_sender: EventSender<UdpOutputEvent<GameFactory::Game>>,
+        tcp_input_sender: EventSender<()>,
+        tcp_output_sender: EventSender<()>,
+        render_receiver_sender: Sender<RenderReceiverMessage<GameFactory::Game>>,
         initial_information: InitialInformation<GameFactory::Game>,
         last_time_message: Option<TimeMessage>,
     },

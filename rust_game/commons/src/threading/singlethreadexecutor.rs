@@ -5,15 +5,14 @@ use crate::{
     },
     threading::{
         channel::{
-            RealSender,
             ReceiveMetaData,
+            Sender,
         },
         eventhandling::{
             ChannelEvent,
             EventHandleResult,
             EventHandlerTrait,
             EventOrStopThread,
-            EventSenderTrait,
         },
     },
 };
@@ -28,7 +27,7 @@ type Runnable = Box<dyn FnOnce() + Send>;
 #[derive(Clone)]
 pub struct SingleThreadExecutor {
     join_signal: Arc<(Mutex<bool>, Condvar)>,
-    sender: RealSender<EventOrStopThread<Runnable>>,
+    sender: Sender<EventOrStopThread<Runnable>>,
 }
 
 impl SingleThreadExecutor {

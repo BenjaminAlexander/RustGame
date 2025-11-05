@@ -49,7 +49,6 @@ impl RealFactory {
 }
 
 impl FactoryTrait for RealFactory {
-    type Sender<T: Send> = RealSender<T>;
     type Receiver<T: Send> = RealReceiver<T>;
 
     type TcpReader = RealTcpStream;
@@ -72,7 +71,7 @@ impl FactoryTrait for RealFactory {
         thread_builder: ChannelThreadBuilder<Self, EventOrStopThread<U::Event>>,
         event_handler: U,
         join_call_back: impl AsyncJoinCallBackTrait<U::ThreadReturn>,
-    ) -> std::io::Result<EventHandlerSender<Self, U::Event>> {
+    ) -> std::io::Result<EventHandlerSender<U::Event>> {
         let (thread_builder, channel) = thread_builder.take();
         let (sender, receiver) = channel.take();
 
@@ -89,7 +88,7 @@ impl FactoryTrait for RealFactory {
         socket_addr: SocketAddr,
         mut tcp_connection_handler: T,
         join_call_back: impl AsyncJoinCallBackTrait<T>,
-    ) -> Result<EventHandlerSender<Self, ()>, Error> {
+    ) -> Result<EventHandlerSender<()>, Error> {
         let tcp_listener = TcpListener::bind(socket_addr)?;
 
         tcp_connection_handler.on_bind(tcp_listener.local_addr()?);
@@ -114,7 +113,7 @@ impl FactoryTrait for RealFactory {
         tcp_reader: Self::TcpReader,
         tcp_read_handler: T,
         join_call_back: impl AsyncJoinCallBackTrait<T>,
-    ) -> Result<EventHandlerSender<Self, ()>, Error> {
+    ) -> Result<EventHandlerSender<()>, Error> {
         let event_handler = TcpReaderEventHandler::new(tcp_reader, tcp_read_handler);
         return self.spawn_event_handler(thread_builder, event_handler, join_call_back);
     }
@@ -129,7 +128,7 @@ impl FactoryTrait for RealFactory {
         udp_socket: Self::UdpSocket,
         udp_read_handler: T,
         join_call_back: impl AsyncJoinCallBackTrait<T>,
-    ) -> Result<EventHandlerSender<Self, ()>, Error> {
+    ) -> Result<EventHandlerSender<()>, Error> {
         let event_handler = UdpReaderEventHandler::new(udp_socket, udp_read_handler);
         return self.spawn_event_handler(thread_builder, event_handler, join_call_back);
     }

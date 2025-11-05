@@ -72,7 +72,7 @@ impl ThreadBuilder {
         factory: Factory,
         event_handler: T,
         join_call_back: impl AsyncJoinCallBackTrait<T::ThreadReturn>,
-    ) -> Result<EventHandlerSender<Factory, T::Event>, Error> {
+    ) -> Result<EventHandlerSender<T::Event>, Error> {
         let thread_builder = self.build_channel_for_event_handler::<Factory, T>(factory.clone());
 
         return factory.spawn_event_handler(thread_builder, event_handler, join_call_back);
@@ -84,7 +84,7 @@ impl ThreadBuilder {
         socket_addr: SocketAddr,
         tcp_connection_handler: T,
         join_call_back: impl AsyncJoinCallBackTrait<T>,
-    ) -> Result<EventHandlerSender<Factory, ()>, Error> {
+    ) -> Result<EventHandlerSender<()>, Error> {
         let thread_builder =
             self.build_channel_thread::<Factory, EventOrStopThread<()>>(factory.clone());
 
@@ -102,8 +102,8 @@ impl ThreadBuilder {
         tcp_reader: Factory::TcpReader,
         tcp_read_handler: T,
         join_call_back: impl AsyncJoinCallBackTrait<T>,
-    ) -> Result<EventHandlerSender<Factory, ()>, Error> {
-        let thread_builder =
+    ) -> Result<EventHandlerSender<()>, Error> {
+        let thread_builder: channel::ChannelThreadBuilder<Factory, EventOrStopThread<()>> =
             self.build_channel_thread::<Factory, EventOrStopThread<()>>(factory.clone());
 
         return factory.spawn_tcp_reader(
@@ -120,7 +120,7 @@ impl ThreadBuilder {
         udp_socket: Factory::UdpSocket,
         udp_read_handler: T,
         join_call_back: impl AsyncJoinCallBackTrait<T>,
-    ) -> Result<EventHandlerSender<Factory, ()>, Error> {
+    ) -> Result<EventHandlerSender<()>, Error> {
         let thread_builder =
             self.build_channel_thread::<Factory, EventOrStopThread<()>>(factory.clone());
 

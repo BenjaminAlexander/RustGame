@@ -2,11 +2,6 @@ use commons::net::{
     LOCAL_EPHEMERAL_SOCKET_ADDR_V4,
     NET_POLLING_PERIOD,
 };
-use commons::threading::channel::RealSender;
-use commons::threading::eventhandling::{
-    EventOrStopThread,
-    EventSenderTrait,
-};
 use commons::threading::{
     AsyncJoinCallBackTrait,
     SingleThreadExecutor,
@@ -88,7 +83,7 @@ fn test_real_factory_tcp() {
 
         let real_factory = RealFactory::new();
 
-        let sender: RealSender<EventOrStopThread<()>> = real_factory
+        let sender = real_factory
             .new_thread_builder()
             .name("TcpReader")
             .spawn_tcp_reader(
@@ -253,7 +248,7 @@ fn test_stop_tcp_reader() {
 
         let real_factory = RealFactory::new();
 
-        let sender: RealSender<EventOrStopThread<()>> = real_factory
+        let sender = real_factory
             .new_thread_builder()
             .name("TcpReader-ConnectorSide")
             .spawn_tcp_reader(
@@ -300,7 +295,7 @@ fn test_stop_tcp_reader() {
 
         let real_factory = RealFactory::new();
 
-        let reader_sender: RealSender<EventOrStopThread<()>> = real_factory
+        let reader_sender = real_factory
             .new_thread_builder()
             .name("TcpReader-ListenerSide")
             .spawn_tcp_reader(

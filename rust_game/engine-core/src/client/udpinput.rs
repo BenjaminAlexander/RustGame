@@ -12,7 +12,6 @@ use crate::messaging::{
 };
 use commons::factory::FactoryTrait;
 use commons::net::UdpReadHandlerTrait;
-use commons::threading::eventhandling::EventSenderTrait;
 use commons::time::{
     TimeDuration,
     TimeValue,
@@ -29,8 +28,8 @@ use std::ops::ControlFlow;
 pub struct UdpInput<GameFactory: GameFactoryTrait> {
     factory: GameFactory::Factory,
     fragment_assembler: FragmentAssembler,
-    core_sender: EventSender<GameFactory, ClientCoreEvent<GameFactory>>,
-    manager_sender: EventSender<GameFactory, ManagerEvent<GameFactory::Game>>,
+    core_sender: EventSender<ClientCoreEvent<GameFactory>>,
+    manager_sender: EventSender<ManagerEvent<GameFactory::Game>>,
 
     //metrics
     time_of_last_state_receive: TimeValue,
@@ -41,8 +40,8 @@ pub struct UdpInput<GameFactory: GameFactoryTrait> {
 impl<GameFactory: GameFactoryTrait> UdpInput<GameFactory> {
     pub fn new(
         factory: GameFactory::Factory,
-        core_sender: EventSender<GameFactory, ClientCoreEvent<GameFactory>>,
-        manager_sender: EventSender<GameFactory, ManagerEvent<GameFactory::Game>>,
+        core_sender: EventSender<ClientCoreEvent<GameFactory>>,
+        manager_sender: EventSender<ManagerEvent<GameFactory::Game>>,
     ) -> io::Result<Self> {
         return Ok(Self {
             //TODO: make this more configurable

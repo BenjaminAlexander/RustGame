@@ -65,7 +65,7 @@ impl<T: EventHandlerTrait, U: AsyncJoinCallBackTrait<T::ThreadReturn>> EventHand
         thread_builder: ChannelThreadBuilder<SingleThreadedFactory, EventOrStopThread<T::Event>>,
         event_handler: T,
         join_call_back: U,
-    ) -> EventHandlerSender<SingleThreadedFactory, T::Event> {
+    ) -> EventHandlerSender<T::Event> {
         let (thread_builder, channel) = thread_builder.take();
 
         return Self::spawn_event_handler_helper(
@@ -83,7 +83,7 @@ impl<T: EventHandlerTrait, U: AsyncJoinCallBackTrait<T::ThreadReturn>> EventHand
         channel: Channel<SingleThreadedFactory, EventOrStopThread<T::Event>>,
         event_handler: T,
         join_call_back: U,
-    ) -> EventHandlerSender<SingleThreadedFactory, T::Event> {
+    ) -> EventHandlerSender<T::Event> {
         let (sender, receiver) = channel.take();
 
         let holder = Self {

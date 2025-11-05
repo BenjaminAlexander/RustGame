@@ -1,5 +1,8 @@
 use crate::factory::FactoryTrait;
-use crate::threading::channel::ReceiveMetaData;
+use crate::threading::channel::{
+    ReceiveMetaData,
+    Sender,
+};
 use crate::threading::eventhandling::ChannelEvent::{
     ChannelDisconnected,
     ChannelEmpty,
@@ -11,7 +14,6 @@ use crate::threading::eventhandling::{
     EventHandleResult,
     EventHandlerTrait,
     EventOrStopThread,
-    EventSenderTrait,
 };
 use crate::threading::AsyncJoin;
 use crate::time::timerservice::schedule::Schedule;
@@ -61,7 +63,7 @@ impl<Factory: FactoryTrait, T: TimerCreationCallBack, U: TimerCallBack>
     }
 
     /// Starts the [`TimerService`] thread and begins triggering timers
-    pub fn start(self) -> Result<TimerService<Factory, T, U>, Error> {
+    pub fn start(self) -> Result<TimerService<T, U>, Error> {
         let sender = self
             .event_handler
             .factory
@@ -89,14 +91,12 @@ impl<Factory: FactoryTrait, T: TimerCreationCallBack, U: TimerCallBack>
 ///
 /// To add a timer using a sychronous call, use [`IdleTimerService`] before starting the [`TimerService`].
 #[derive(Clone)]
-pub struct TimerService<Factory: FactoryTrait, T: TimerCreationCallBack, U: TimerCallBack> {
+pub struct TimerService<T: TimerCreationCallBack, U: TimerCallBack> {
     /// used to send events to the [`TimerService`] thread
-    sender: <Factory as FactoryTrait>::Sender<EventOrStopThread<TimerServiceEvent<T, U>>>,
+    sender: Sender<EventOrStopThread<TimerServiceEvent<T, U>>>,
 }
 
-impl<Factory: FactoryTrait, T: TimerCreationCallBack, U: TimerCallBack>
-    TimerService<Factory, T, U>
-{
+impl<T: TimerCreationCallBack, U: TimerCallBack> TimerService<T, U> {
     /// Reschedules an existing timer
     pub fn reschedule_timer(&self, timer_id: TimerId, schedule: Schedule) -> Result<(), ()> {
         return simplify_result(

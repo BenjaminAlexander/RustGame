@@ -1,4 +1,7 @@
-use crate::factory::FactoryTrait;
-use crate::threading::eventhandling::EventOrStopThread;
+use crate::threading::{
+    channel::Sender,
+    eventhandling::EventOrStopThread,
+};
 
-pub type EventHandlerSender<Factory, T> = <Factory as FactoryTrait>::Sender<EventOrStopThread<T>>;
+//TODO: see if this can be removed
+pub type EventHandlerSender<T> = Sender<EventOrStopThread<T>>;

@@ -1,3 +1,5 @@
+use commons::threading::channel::Sender;
+
 use crate::gamemanager::{
     ManagerObserverTrait,
     StepMessage,
@@ -10,21 +12,16 @@ use crate::messaging::{
     ServerInputMessage,
     StateMessage,
 };
-use commons::factory::FactoryTrait;
-use commons::threading::channel::SenderTrait;
 
 pub struct ClientManagerObserver<GameFactory: GameFactoryTrait> {
     factory: GameFactory::Factory,
-    render_receiver_sender:
-        <GameFactory::Factory as FactoryTrait>::Sender<RenderReceiverMessage<GameFactory::Game>>,
+    render_receiver_sender: Sender<RenderReceiverMessage<GameFactory::Game>>,
 }
 
 impl<GameFactory: GameFactoryTrait> ClientManagerObserver<GameFactory> {
     pub fn new(
         factory: GameFactory::Factory,
-        render_receiver_sender: <GameFactory::Factory as FactoryTrait>::Sender<
-            RenderReceiverMessage<GameFactory::Game>,
-        >,
+        render_receiver_sender: Sender<RenderReceiverMessage<GameFactory::Game>>,
     ) -> Self {
         return Self {
             factory,

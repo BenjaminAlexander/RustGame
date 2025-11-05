@@ -3,18 +3,17 @@ use crate::interface::{
     GameFactoryTrait,
 };
 use crate::server::servercore::ServerCoreEvent;
-use commons::threading::eventhandling::EventSenderTrait;
 use commons::time::timerservice::TimerCallBack;
 
 pub struct ServerGameTimerObserver<GameFactory: GameFactoryTrait> {
     factory: GameFactory::Factory,
-    core_sender: EventSender<GameFactory, ServerCoreEvent<GameFactory>>,
+    core_sender: EventSender<ServerCoreEvent<GameFactory>>,
 }
 
 impl<GameFactory: GameFactoryTrait> ServerGameTimerObserver<GameFactory> {
     pub fn new(
         factory: GameFactory::Factory,
-        core_sender: EventSender<GameFactory, ServerCoreEvent<GameFactory>>,
+        core_sender: EventSender<ServerCoreEvent<GameFactory>>,
     ) -> Self {
         return Self {
             factory,

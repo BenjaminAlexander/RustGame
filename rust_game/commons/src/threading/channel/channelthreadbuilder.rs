@@ -1,6 +1,9 @@
 use crate::factory::FactoryTrait;
 use crate::threading;
-use crate::threading::channel::Channel;
+use crate::threading::channel::{
+    Channel,
+    Sender,
+};
 
 pub struct ChannelThreadBuilder<Factory: FactoryTrait, T: Send + 'static> {
     thread_builder: threading::ThreadBuilder,
@@ -19,12 +22,12 @@ impl<Factory: FactoryTrait, T: Send + 'static> ChannelThreadBuilder<Factory, T> 
         return &self.channel;
     }
 
-    pub fn get_sender(&self) -> &Factory::Sender<T> {
+    pub fn get_sender(&self) -> &Sender<T> {
         return self.get_channel().get_sender();
     }
 
     //TODO: maybe remove this guy
-    pub fn clone_sender(&self) -> Factory::Sender<T> {
+    pub fn clone_sender(&self) -> Sender<T> {
         return (*self.get_channel().get_sender()).clone();
     }
 

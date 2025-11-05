@@ -9,7 +9,6 @@ use commons::{
             ChannelEvent,
             EventHandleResult,
             EventHandlerTrait,
-            EventSenderTrait,
         },
         AsyncJoin,
     },

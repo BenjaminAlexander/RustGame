@@ -5,7 +5,6 @@ use commons::single_threaded_simulator::{
 };
 use commons::threading::channel::{
     ReceiverTrait,
-    SenderTrait,
     TryRecvError,
 };
 use std::sync::{

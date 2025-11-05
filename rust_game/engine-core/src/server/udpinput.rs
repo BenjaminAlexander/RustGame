@@ -7,16 +7,15 @@ use commons::net::{
     UdpReadHandlerTrait,
     MAX_UDP_DATAGRAM_SIZE,
 };
-use commons::threading::eventhandling::EventSenderTrait;
 use std::net::SocketAddr;
 use std::ops::ControlFlow;
 
 pub struct UdpInput<GameFactory: GameFactoryTrait> {
-    core_sender: EventSender<GameFactory, ServerCoreEvent<GameFactory>>,
+    core_sender: EventSender<ServerCoreEvent<GameFactory>>,
 }
 
 impl<GameFactory: GameFactoryTrait> UdpInput<GameFactory> {
-    pub fn new(core_sender: EventSender<GameFactory, ServerCoreEvent<GameFactory>>) -> Self {
+    pub fn new(core_sender: EventSender<ServerCoreEvent<GameFactory>>) -> Self {
         return Self { core_sender };
     }
 }

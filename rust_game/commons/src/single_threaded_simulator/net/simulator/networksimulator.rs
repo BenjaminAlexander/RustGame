@@ -18,13 +18,14 @@ use crate::single_threaded_simulator::{
     ReceiveOrDisconnected,
     SingleThreadedFactory,
     SingleThreadedReceiver,
-    SingleThreadedSender,
 };
-use crate::threading::channel::ChannelThreadBuilder;
+use crate::threading::channel::{
+    ChannelThreadBuilder,
+    Sender,
+};
 use crate::threading::eventhandling::{
     EventHandlerSender,
     EventOrStopThread,
-    EventSenderTrait,
 };
 use crate::threading::AsyncJoinCallBackTrait;
 use log::{
@@ -52,9 +53,8 @@ pub struct NetworkSimulator {
 
 struct Internal {
     //TODO: add a way to remove TCP listeners when they stop listening
-    tcp_listeners: HashMap<SocketAddr, EventHandlerSender<SingleThreadedFactory, TcpListenerEvent>>,
-    udp_readers:
-        HashMap<SocketAddr, EventHandlerSender<SingleThreadedFactory, (SocketAddr, Vec<u8>)>>,
+    tcp_listeners: HashMap<SocketAddr, EventHandlerSender<TcpListenerEvent>>,
+    udp_readers: HashMap<SocketAddr, EventHandlerSender<(SocketAddr, Vec<u8>)>>,
 }
 
 impl NetworkSimulator {
@@ -93,7 +93,7 @@ impl NetworkSimulator {
         thread_builder: ChannelThreadBuilder<SingleThreadedFactory, EventOrStopThread<()>>,
         connection_handler: TcpConnectionHandler,
         join_call_back: impl AsyncJoinCallBackTrait<TcpConnectionHandler>,
-    ) -> Result<EventHandlerSender<SingleThreadedFactory, ()>, Error> {
+    ) -> Result<EventHandlerSender<()>, Error> {
         let mut guard = self.internal.lock().unwrap();
 
         if guard.tcp_listeners.contains_key(&socket_addr) {
@@ -182,7 +182,7 @@ impl NetworkSimulator {
         udp_socket: UdpSocketSimulator,
         udp_read_handler: T,
         join_call_back: impl AsyncJoinCallBackTrait<T>,
-    ) -> Result<EventHandlerSender<SingleThreadedFactory, ()>, Error> {
+    ) -> Result<EventHandlerSender<()>, Error> {
         let mut guard = self.internal.lock().unwrap();
 
         let socket_addr = udp_socket.get_socket_addr();
@@ -240,7 +240,7 @@ impl NetworkSimulator {
     pub(super) fn remove_udp_reader(
         &self,
         socket_addr: &SocketAddr,
-    ) -> Option<SingleThreadedSender<EventOrStopThread<(SocketAddr, Vec<u8>)>>> {
+    ) -> Option<Sender<EventOrStopThread<(SocketAddr, Vec<u8>)>>> {
         return self
             .internal
             .lock()

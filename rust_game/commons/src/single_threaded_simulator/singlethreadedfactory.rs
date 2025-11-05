@@ -15,7 +15,6 @@ use crate::single_threaded_simulator::net::{
 use crate::single_threaded_simulator::{
     ReceiveOrDisconnected,
     SingleThreadedReceiver,
-    SingleThreadedSender,
     TimeQueue,
 };
 use crate::threading::channel::{
@@ -26,7 +25,6 @@ use crate::threading::eventhandling::{
     EventHandlerSender,
     EventHandlerTrait,
     EventOrStopThread,
-    EventSenderTrait,
 };
 use crate::threading::AsyncJoinCallBackTrait;
 use crate::time::{
@@ -86,7 +84,6 @@ impl SingleThreadedFactory {
 }
 
 impl FactoryTrait for SingleThreadedFactory {
-    type Sender<T: Send> = SingleThreadedSender<T>;
     type Receiver<T: Send> = SingleThreadedReceiver<T>;
 
     type TcpReader = SingleThreadedReceiver<Vec<u8>>;
@@ -99,7 +96,7 @@ impl FactoryTrait for SingleThreadedFactory {
 
     fn new_channel<T: Send>(&self) -> Channel<Self, T> {
         let (sender, receiver) = SingleThreadedReceiver::new(self.clone());
-        return Channel::new(sender, receiver);
+        return Channel::new_simulated(sender, receiver);
     }
 
     fn spawn_event_handler<U: EventHandlerTrait>(
@@ -107,7 +104,7 @@ impl FactoryTrait for SingleThreadedFactory {
         thread_builder: ChannelThreadBuilder<Self, EventOrStopThread<U::Event>>,
         event_handler: U,
         join_call_back: impl AsyncJoinCallBackTrait<U::ThreadReturn>,
-    ) -> Result<EventHandlerSender<Self, U::Event>, Error> {
+    ) -> Result<EventHandlerSender<U::Event>, Error> {
         return Ok(EventHandlerHolder::spawn_event_handler(
             self.clone(),
             thread_builder,
@@ -122,7 +119,7 @@ impl FactoryTrait for SingleThreadedFactory {
         socket_addr: SocketAddr,
         tcp_connection_handler: T,
         join_call_back: impl AsyncJoinCallBackTrait<T>,
-    ) -> Result<EventHandlerSender<Self, ()>, Error> {
+    ) -> Result<EventHandlerSender<()>, Error> {
         return self
             .host_simulator
             .get_network_simulator()
@@ -145,7 +142,7 @@ impl FactoryTrait for SingleThreadedFactory {
         tcp_reader: Self::TcpReader,
         read_handler: T,
         join_call_back: impl AsyncJoinCallBackTrait<T>,
-    ) -> Result<EventHandlerSender<Self, ()>, Error> {
+    ) -> Result<EventHandlerSender<()>, Error> {
         let (thread_builder, channel) = thread_builder.take();
 
         let tcp_reader_event_handler = TcpReaderEventHandler::new(read_handler);
@@ -200,7 +197,7 @@ impl FactoryTrait for SingleThreadedFactory {
         udp_socket: Self::UdpSocket,
         udp_read_handler: T,
         join_call_back: impl AsyncJoinCallBackTrait<T>,
-    ) -> Result<EventHandlerSender<Self, ()>, Error> {
+    ) -> Result<EventHandlerSender<()>, Error> {
         return self
             .host_simulator
             .get_network_simulator()

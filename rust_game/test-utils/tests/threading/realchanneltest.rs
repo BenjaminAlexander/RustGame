@@ -3,10 +3,7 @@ use commons::{
         FactoryTrait,
         RealFactory,
     },
-    threading::channel::{
-        RecvTimeoutError,
-        SenderTrait,
-    },
+    threading::channel::RecvTimeoutError,
     time::TimeDuration,
 };
 use test_utils::utils::setup_test_logging;

@@ -9,7 +9,6 @@ use commons::net::{
     TcpConnectionHandlerTrait,
     TcpStream,
 };
-use commons::threading::eventhandling::EventSenderTrait;
 use log::{
     info,
     warn,
@@ -18,11 +17,11 @@ use std::ops::ControlFlow;
 use std::ops::ControlFlow::*;
 
 pub struct TcpConnectionHandler<GameFactory: GameFactoryTrait> {
-    server_core_sender: EventSender<GameFactory, ServerCoreEvent<GameFactory>>,
+    server_core_sender: EventSender<ServerCoreEvent<GameFactory>>,
 }
 
 impl<GameFactory: GameFactoryTrait> TcpConnectionHandler<GameFactory> {
-    pub fn new(server_core_sender: EventSender<GameFactory, ServerCoreEvent<GameFactory>>) -> Self {
+    pub fn new(server_core_sender: EventSender<ServerCoreEvent<GameFactory>>) -> Self {
         return Self { server_core_sender };
     }
 }

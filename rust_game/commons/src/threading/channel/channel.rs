@@ -7,14 +7,17 @@ use crate::{
         SingleThreadedReceiver,
         SingleThreadedSender,
     },
-    threading::channel::{
-        RealReceiver,
-        RealSender,
-        ReceiveMetaData,
-        ReceiverTrait,
-        SendMetaData,
-        SenderTrait,
-        TryRecvError,
+    threading::{
+        channel::{
+            RealReceiver,
+            RealSender,
+            ReceiveMetaData,
+            ReceiverTrait,
+            SendMetaData,
+            SenderTrait,
+            TryRecvError,
+        },
+        eventhandling::EventOrStopThread,
     },
     time::TimeSource,
 };
@@ -28,20 +31,29 @@ enum ChannelImplementation<T: Send> {
 }
 
 pub struct Channel<Factory: FactoryTrait, T: Send + 'static> {
-    sender: Factory::Sender<T>,
+    sender: Sender<T>,
     receiver: Factory::Receiver<T>,
 }
 
 impl<Factory: FactoryTrait, T: Send + 'static> Channel<Factory, T> {
-    pub fn new(sender: Factory::Sender<T>, receiver: Factory::Receiver<T>) -> Self {
+    pub fn new(real_sender: RealSender<T>, receiver: Factory::Receiver<T>) -> Self {
+        let sender = Sender::new(SenderImplementation::Real(real_sender));
         return Self { sender, receiver };
     }
 
-    pub fn get_sender(&self) -> &Factory::Sender<T> {
+    pub fn new_simulated(
+        simulated_sender: SingleThreadedSender<T>,
+        receiver: Factory::Receiver<T>,
+    ) -> Self {
+        let sender = Sender::new(SenderImplementation::Simulated(simulated_sender));
+        return Self { sender, receiver };
+    }
+
+    pub fn get_sender(&self) -> &Sender<T> {
         return &self.sender;
     }
 
-    pub fn take(self) -> (Factory::Sender<T>, Factory::Receiver<T>) {
+    pub fn take(self) -> (Sender<T>, Factory::Receiver<T>) {
         return (self.sender, self.receiver);
     }
 }
@@ -52,7 +64,6 @@ struct RealChannel<T: Send> {
     receiver: Receiver<T>,
 }
 
-#[derive(Clone)]
 enum SenderImplementation<T: Send> {
     Real(RealSender<T>),
 
@@ -60,7 +71,7 @@ enum SenderImplementation<T: Send> {
     Simulated(SingleThreadedSender<T>),
 }
 
-impl<T: Send> SenderImplementation<T> {
+impl<T: Send> Clone for SenderImplementation<T> {
     fn clone(&self) -> Self {
         match &self {
             SenderImplementation::Real(real_sender) => {
@@ -73,7 +84,6 @@ impl<T: Send> SenderImplementation<T> {
     }
 }
 
-#[derive(Clone)]
 pub struct Sender<T: Send> {
     implementation: SenderImplementation<T>,
 }
@@ -89,10 +99,30 @@ impl<T: Send> Sender<T> {
             SenderImplementation::Simulated(simulated_sender) => simulated_sender.send(value),
         }
     }
+}
 
-    pub fn clone(&self) -> Self {
+impl<T: Send> Clone for Sender<T> {
+    fn clone(&self) -> Self {
         return Self {
             implementation: self.implementation.clone(),
+        };
+    }
+}
+
+impl<T: Send> Sender<EventOrStopThread<T>> {
+    pub fn send_event(&self, event: T) -> Result<(), T> {
+        return match self.send(EventOrStopThread::Event(event)) {
+            Ok(_) => Ok(()),
+            Err(EventOrStopThread::Event(event)) => Err(event),
+            _ => panic!("Unreachable"),
+        };
+    }
+
+    pub fn send_stop_thread(&self) -> Result<(), ()> {
+        return match self.send(EventOrStopThread::StopThread) {
+            Ok(_) => Ok(()),
+            Err(EventOrStopThread::StopThread) => Err(()),
+            _ => panic!("Unreachable"),
         };
     }
 }

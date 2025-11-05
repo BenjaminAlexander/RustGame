@@ -36,7 +36,7 @@ pub struct GameTimer<Factory: FactoryTrait, T: TimerCallBack> {
     start: Option<TimeValue>,
     rolling_average: RollingAverage,
     timer_id: TimerId,
-    timer_service: TimerService<Factory, GameTimerCreationCallBack, T>,
+    timer_service: TimerService<GameTimerCreationCallBack, T>,
 }
 
 impl<Factory: FactoryTrait, T: TimerCallBack> GameTimer<Factory, T> {

@@ -12,10 +12,8 @@ use crate::{
 use commons::{
     factory::FactoryTrait,
     threading::{
-        eventhandling::{
-            EventHandlerSender,
-            EventSenderTrait,
-        },
+        channel::Sender,
+        eventhandling::EventHandlerSender,
         AsyncJoin,
     },
 };
@@ -25,10 +23,8 @@ use log::{
 };
 
 pub struct Server<GameFactory: GameFactoryTrait> {
-    core_sender: EventHandlerSender<GameFactory::Factory, ServerCoreEvent<GameFactory>>,
-    render_receiver_sender_option: Option<
-        <GameFactory::Factory as FactoryTrait>::Sender<RenderReceiverMessage<GameFactory::Game>>,
-    >,
+    core_sender: EventHandlerSender<ServerCoreEvent<GameFactory>>,
+    render_receiver_sender_option: Option<Sender<RenderReceiverMessage<GameFactory::Game>>>,
     render_receiver_option: Option<RenderReceiver<GameFactory>>,
 }
 

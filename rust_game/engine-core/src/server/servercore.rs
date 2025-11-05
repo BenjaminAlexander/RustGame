@@ -51,13 +51,12 @@ use commons::net::{
 };
 use commons::threading::channel::{
     ReceiveMetaData,
-    SenderTrait,
+    Sender,
 };
 use commons::threading::eventhandling::{
     ChannelEvent,
     EventHandleResult,
     EventHandlerTrait,
-    EventSenderTrait,
 };
 use commons::threading::AsyncJoin;
 use log::{
@@ -78,9 +77,7 @@ pub enum ServerCoreEvent<GameFactory: GameFactoryTrait> {
     StartListenerEvent,
 
     //TODO: create render receiver sender before spawning event handler
-    StartGameEvent(
-        <GameFactory::Factory as FactoryTrait>::Sender<RenderReceiverMessage<GameFactory::Game>>,
-    ),
+    StartGameEvent(Sender<RenderReceiverMessage<GameFactory::Game>>),
     TcpConnectionEvent(TcpStream, TcpReader<GameFactory>),
     GameTimerTick,
     UdpPacket(SocketAddr, usize, [u8; MAX_UDP_DATAGRAM_SIZE]),
@@ -88,21 +85,19 @@ pub enum ServerCoreEvent<GameFactory: GameFactoryTrait> {
 
 pub struct ServerCore<GameFactory: GameFactoryTrait> {
     factory: GameFactory::Factory,
-    sender: EventSender<GameFactory, ServerCoreEvent<GameFactory>>,
+    sender: EventSender<ServerCoreEvent<GameFactory>>,
     game_is_started: bool,
     server_config: ServerConfig,
-    tcp_listener_sender_option: Option<EventSender<GameFactory, ()>>,
+    tcp_listener_sender_option: Option<EventSender<()>>,
     game_timer: Option<GameTimer<GameFactory::Factory, ServerGameTimerObserver<GameFactory>>>,
-    tcp_inputs: Vec<EventSender<GameFactory, ()>>,
-    tcp_outputs: Vec<EventSender<GameFactory, TcpOutputEvent<GameFactory::Game>>>,
+    tcp_inputs: Vec<EventSender<()>>,
+    tcp_outputs: Vec<EventSender<TcpOutputEvent<GameFactory::Game>>>,
     udp_socket: Option<UdpSocket<GameFactory>>,
-    udp_outputs: Vec<EventSender<GameFactory, UdpOutputEvent<GameFactory::Game>>>,
-    udp_input_sender_option: Option<EventSender<GameFactory, ()>>,
+    udp_outputs: Vec<EventSender<UdpOutputEvent<GameFactory::Game>>>,
+    udp_input_sender_option: Option<EventSender<()>>,
     udp_handler: UdpHandler<GameFactory>,
-    manager_sender_option: Option<EventSender<GameFactory, ManagerEvent<GameFactory::Game>>>,
-    render_receiver_sender: Option<
-        <GameFactory::Factory as FactoryTrait>::Sender<RenderReceiverMessage<GameFactory::Game>>,
-    >,
+    manager_sender_option: Option<EventSender<ManagerEvent<GameFactory::Game>>>,
+    render_receiver_sender: Option<Sender<RenderReceiverMessage<GameFactory::Game>>>,
     drop_steps_before: usize,
 }
 
@@ -137,7 +132,7 @@ impl<GameFactory: GameFactoryTrait> EventHandlerTrait for ServerCore<GameFactory
 impl<GameFactory: GameFactoryTrait> ServerCore<GameFactory> {
     pub fn new(
         factory: GameFactory::Factory,
-        sender: EventSender<GameFactory, ServerCoreEvent<GameFactory>>,
+        sender: EventSender<ServerCoreEvent<GameFactory>>,
     ) -> Self {
         let game_timer_config = GameTimerConfig::new(GameFactory::Game::STEP_PERIOD);
         let server_config = ServerConfig::new(game_timer_config);
@@ -253,9 +248,7 @@ impl<GameFactory: GameFactoryTrait> ServerCore<GameFactory> {
 
     fn start_game(
         mut self,
-        render_receiver_sender: <GameFactory::Factory as FactoryTrait>::Sender<
-            RenderReceiverMessage<GameFactory::Game>,
-        >,
+        render_receiver_sender: Sender<RenderReceiverMessage<GameFactory::Game>>,
     ) -> EventHandleResult<Self> {
         //TODO: remove this line
         //let (render_receiver_sender, render_receiver) = RenderReceiver::<Game>::new();
@@ -265,9 +258,8 @@ impl<GameFactory: GameFactoryTrait> ServerCore<GameFactory> {
 
             let initial_state = GameFactory::Game::get_initial_state(self.tcp_outputs.len());
 
-            let mut udp_output_senders: Vec<
-                EventSender<GameFactory, UdpOutputEvent<GameFactory::Game>>,
-            > = Vec::new();
+            let mut udp_output_senders: Vec<EventSender<UdpOutputEvent<GameFactory::Game>>> =
+                Vec::new();
 
             for udp_output_sender in self.udp_outputs.iter() {
                 udp_output_senders.push(udp_output_sender.clone());

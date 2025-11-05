@@ -12,15 +12,6 @@ use crate::threading::channel::{
     ReceiverTrait,
     TryRecvError,
 };
-use crate::threading::eventhandling::{
-    EventHandlerSender,
-    EventHandlerTrait,
-    EventOrStopThread,
-};
-use crate::threading::{
-    AsyncJoinCallBackTrait,
-    ThreadBuilder,
-};
 
 pub struct SingleThreadedReceiver<T: Send> {
     link: ReceiverLink<T>,
