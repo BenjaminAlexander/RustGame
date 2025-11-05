@@ -98,6 +98,8 @@ fn test_non_blocking_tcp_reader() {
             return ControlFlow::Break(());
         });
 
+        let real_factory = RealFactory::new();
+
         let reader_sender: RealSender<EventOrStopThread<()>> = RealFactory::new()
             .new_thread_builder()
             .name("TcpReader-ListenerSide")
@@ -116,8 +118,9 @@ fn test_non_blocking_tcp_reader() {
         return ControlFlow::Continue(());
     });
 
-    tcp_listener_builder
-        .spawn_tcp_listener(
+    
+    real_factory.spawn_tcp_listener(
+            tcp_listener_builder,
             SocketAddr::from(LOCAL_EPHEMERAL_SOCKET_ADDR_V4),
             tcp_connection_handler,
             async_expects.new_expect_async_join("Expect listener join"),

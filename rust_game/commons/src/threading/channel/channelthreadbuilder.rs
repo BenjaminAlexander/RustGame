@@ -61,7 +61,7 @@ impl<Factory: FactoryTrait, T: Send + 'static> ChannelThreadBuilder<Factory, Eve
 }
 
 impl<Factory: FactoryTrait> ChannelThreadBuilder<Factory, EventOrStopThread<()>> {
-    /* */
+    /* 
     pub fn spawn_tcp_listener<T: TcpConnectionHandlerTrait<Factory>>(
         self,
         socket_addr: SocketAddr,
@@ -76,6 +76,7 @@ impl<Factory: FactoryTrait> ChannelThreadBuilder<Factory, EventOrStopThread<()>>
             join_call_back,
         );
     }
+    */
 
     pub fn spawn_tcp_reader<T: TcpReadHandlerTrait>(
         self,
