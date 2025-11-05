@@ -79,8 +79,7 @@ fn test_non_blocking_tcp_reader() {
     let tcp_listener_builder = real_factory
         .new_thread_builder()
         .name("TcpListener")
-        .build_channel_for_tcp_listener::<TcpConnectionHandler<RealFactory>>(
-    );
+        .build_channel_for_tcp_listener::<RealFactory, TcpConnectionHandler<RealFactory>>(real_factory.clone());
 
     let listener_sender = tcp_listener_builder.clone_sender();
     let expect_one_tcp_connection = async_expects.new_async_expect("Expect one TCP connection", ());
@@ -103,6 +102,7 @@ fn test_non_blocking_tcp_reader() {
             .new_thread_builder()
             .name("TcpReader-ListenerSide")
             .spawn_tcp_reader(
+                real_factory.clone(),
                 tcp_reader,
                 tcp_read_handler,
                 async_expects_clone.new_expect_async_join("Expect TcpReader-ListenerSide Join"),

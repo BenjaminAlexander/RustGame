@@ -59,6 +59,7 @@ fn test_real_factory_udp() {
         .new_thread_builder()
         .name("UdpReader")
         .spawn_udp_reader(
+            real_factory.clone(),
             udp_socket_clone,
             udp_read_handler,
             async_expects.new_expect_async_join("UdpReader Join"),
@@ -108,6 +109,7 @@ fn test_udp_reader_break() {
         .new_thread_builder()
         .name("UdpReader")
         .spawn_udp_reader(
+            real_factory.clone(),
             udp_socket_1,
             udp_read_handler,
             async_expects.new_expect_async_join("UdpReader Join"),
@@ -140,6 +142,7 @@ fn test_drop_udp_reader_sender() {
         .new_thread_builder()
         .name("UdpReader")
         .spawn_udp_reader(
+            real_factory.clone(),
             udp_socket_1,
             udp_read_handler,
             async_expects.new_expect_async_join("UdpReader Join"),

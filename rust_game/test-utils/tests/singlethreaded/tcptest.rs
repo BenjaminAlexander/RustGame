@@ -55,6 +55,7 @@ fn test_tcp() {
         .new_thread_builder()
         .name("TcpConnectionListener")
         .spawn_tcp_listener(
+            server_factory.clone(),
             listen_socket.clone(),
             connection_handler,
             AsyncJoin::log_async_join,
@@ -67,7 +68,7 @@ fn test_tcp() {
 
     let client_thread_builder = client_factory
         .new_thread_builder()
-        .build_channel_thread::<EventOrStopThread<()>>();
+        .build_channel_thread::<SingleThreadedFactory, EventOrStopThread<()>>(client_factory.clone());
 
     let client_side = Arc::new(Mutex::new(Some(TestConnection {
         tcp_stream,
@@ -165,7 +166,7 @@ impl TcpConnectionHandlerTrait<SingleThreadedFactory> for ConnectionHandler {
         let reader_sender = self
             .factory
             .new_thread_builder()
-            .spawn_tcp_reader(tcp_receiver, tcp_read_handler, AsyncJoin::log_async_join)
+            .spawn_tcp_reader(self.factory.clone(), tcp_receiver, tcp_read_handler, AsyncJoin::log_async_join)
             .unwrap();
 
         let server_side = TestConnection {

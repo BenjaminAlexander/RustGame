@@ -72,13 +72,15 @@ fn test_async_join() {
 
     let async_expects = AsyncExpects::new();
     let expect_five = async_expects.new_async_expect("Five", 5);
-    let join_call_back = move |async_join: AsyncJoin<RealFactory, i32>| {
+    let join_call_back = move |async_join: AsyncJoin<i32>| {
         expect_five.set_actual(*async_join.get_result());
     };
 
-    let sender = RealFactory::new()
+    let real_factory = RealFactory::new();
+
+    let sender = real_factory
         .new_thread_builder()
-        .spawn_event_handler(event_handler, join_call_back)
+        .spawn_event_handler(real_factory.clone(), event_handler, join_call_back)
         .unwrap();
 
     sender.send_event(CountEvent::Add(7)).unwrap();
@@ -96,13 +98,15 @@ fn test_no_timeout() {
 
     let async_expects = AsyncExpects::new();
     let expect_five = async_expects.new_async_expect("Five", 5);
-    let join_call_back = move |async_join: AsyncJoin<RealFactory, i32>| {
+    let join_call_back = move |async_join: AsyncJoin<i32>| {
         expect_five.set_actual(*async_join.get_result());
     };
 
-    let sender = RealFactory::new()
+    let real_factory = RealFactory::new();
+
+    let sender = real_factory
         .new_thread_builder()
-        .spawn_event_handler(event_handler, join_call_back)
+        .spawn_event_handler(real_factory.clone(), event_handler, join_call_back)
         .unwrap();
 
     sender.send_event(CountEvent::Add(7)).unwrap();
@@ -121,13 +125,15 @@ fn test_timeout() {
 
     let async_expects = AsyncExpects::new();
     let expect_five = async_expects.new_async_expect("A Number", NUMBER);
-    let join_call_back = move |async_join: AsyncJoin<RealFactory, i32>| {
+    let join_call_back = move |async_join: AsyncJoin<i32>| {
         expect_five.set_actual(*async_join.get_result());
     };
 
-    let sender = RealFactory::new()
+    let real_factory = RealFactory::new();
+
+    let sender = real_factory
         .new_thread_builder()
-        .spawn_event_handler(event_handler, join_call_back)
+        .spawn_event_handler(real_factory.clone(), event_handler, join_call_back)
         .unwrap();
 
     sender.send_event(CountEvent::Add(7)).unwrap();
@@ -145,14 +151,16 @@ fn test_drop_sender_while_waiting_for_timeout() {
 
     let async_expects = AsyncExpects::new();
     let expect_five = async_expects.new_async_expect("Five", 5);
-    let join_call_back = move |async_join: AsyncJoin<RealFactory, i32>| {
+    let join_call_back = move |async_join: AsyncJoin<i32>| {
         expect_five.set_actual(*async_join.get_result());
     };
 
     {
-        let sender = RealFactory::new()
+        let real_factory = RealFactory::new();
+
+        let sender = real_factory
             .new_thread_builder()
-            .spawn_event_handler(event_handler, join_call_back)
+            .spawn_event_handler(real_factory.clone(), event_handler, join_call_back)
             .unwrap();
 
         sender.send_event(CountEvent::Add(7)).unwrap();
