@@ -9,7 +9,6 @@ use crate::net::{
 use crate::threading::channel::{
     Channel,
     ChannelThreadBuilder,
-    ReceiverTrait,
 };
 use crate::threading::eventhandling::{
     EventHandlerSender,
@@ -25,8 +24,6 @@ use std::io::Error;
 use std::net::SocketAddr;
 
 pub trait FactoryTrait: Clone + Send + 'static {
-    //TODO: remove these
-    type Receiver<T: Send>: ReceiverTrait<T>;
 
     type TcpReader: Send + Sized;
 

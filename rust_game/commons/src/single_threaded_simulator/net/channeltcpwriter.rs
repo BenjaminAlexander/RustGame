@@ -1,4 +1,5 @@
-use crate::threading::channel::Sender;
+use crate::single_threaded_simulator::SingleThreadedSender;
+use crate::threading::channel::SenderTrait;
 use rmp_serde::encode::Error as EncodeError;
 use serde::de::DeserializeOwned;
 use serde::Serialize;
@@ -9,16 +10,15 @@ use std::io::{
 use std::net::SocketAddr;
 
 //TODO: move to TCP
-
 #[derive(Clone)]
 pub struct ChannelTcpWriter {
     peer_addr: SocketAddr,
     has_been_closed: bool,
-    sender: Sender<Vec<u8>>,
+    sender: SingleThreadedSender<Vec<u8>>,
 }
 
 impl ChannelTcpWriter {
-    pub fn new(peer_addr: SocketAddr, sender: Sender<Vec<u8>>) -> Self {
+    pub fn new(peer_addr: SocketAddr, sender: SingleThreadedSender<Vec<u8>>) -> Self {
         return Self {
             peer_addr,
             has_been_closed: false,

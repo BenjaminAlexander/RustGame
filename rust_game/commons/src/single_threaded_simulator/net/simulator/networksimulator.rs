@@ -79,7 +79,10 @@ impl NetworkSimulator {
     ) -> (ChannelTcpWriter, SingleThreadedReceiver<Vec<u8>>) {
         //TODO: make this an EventOrStop so it can be used for an event handler
         //TODO: or, even better, make a channel thread builder and stash it in the reader
-        let (sender, reader) = factory.new_channel::<Vec<u8>>().take();
+        let (sender, reader) = SingleThreadedReceiver::new(factory.clone());
+
+
+
         let writer = ChannelTcpWriter::new(dest_socket_addr, sender);
         return (writer, reader);
     }
@@ -90,7 +93,7 @@ impl NetworkSimulator {
         &self,
         factory: SingleThreadedFactory,
         socket_addr: SocketAddr,
-        thread_builder: ChannelThreadBuilder<SingleThreadedFactory, EventOrStopThread<()>>,
+        thread_builder: ChannelThreadBuilder<EventOrStopThread<()>>,
         connection_handler: TcpConnectionHandler,
         join_call_back: impl AsyncJoinCallBackTrait<TcpConnectionHandler>,
     ) -> Result<EventHandlerSender<()>, Error> {
@@ -178,7 +181,7 @@ impl NetworkSimulator {
     pub fn spawn_udp_reader<T: UdpReadHandlerTrait>(
         &self,
         factory: SingleThreadedFactory,
-        thread_builder: ChannelThreadBuilder<SingleThreadedFactory, EventOrStopThread<()>>,
+        thread_builder: ChannelThreadBuilder<EventOrStopThread<()>>,
         udp_socket: UdpSocketSimulator,
         udp_read_handler: T,
         join_call_back: impl AsyncJoinCallBackTrait<T>,

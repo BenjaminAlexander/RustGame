@@ -84,7 +84,8 @@ impl SingleThreadedFactory {
 }
 
 impl FactoryTrait for SingleThreadedFactory {
-    type Receiver<T: Send> = SingleThreadedReceiver<T>;
+    //TODO: clean up
+    //type Receiver<T: Send> = SingleThreadedReceiver<T>;
 
     type TcpReader = SingleThreadedReceiver<Vec<u8>>;
 

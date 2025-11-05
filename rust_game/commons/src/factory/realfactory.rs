@@ -48,8 +48,7 @@ impl RealFactory {
 }
 
 impl FactoryTrait for RealFactory {
-    type Receiver<T: Send> = RealReceiver<T>;
-
+    
     type TcpReader = RealTcpStream;
 
     type UdpSocket = RealUdpSocket;
