@@ -1,7 +1,5 @@
 use crate::factory::FactoryTrait;
 use crate::net::{
-    TcpConnectionHandlerTrait,
-    TcpReadHandlerTrait,
     UdpReadHandlerTrait,
 };
 use crate::threading;
@@ -13,7 +11,6 @@ use crate::threading::eventhandling::{
 };
 use crate::threading::AsyncJoinCallBackTrait;
 use std::io::Error;
-use std::net::SocketAddr;
 
 pub struct ChannelThreadBuilder<Factory: FactoryTrait, T: Send + 'static> {
     factory: Factory,
@@ -57,44 +54,5 @@ impl<Factory: FactoryTrait, T: Send + 'static> ChannelThreadBuilder<Factory, Eve
     ) -> Result<EventHandlerSender<Factory, T>, Error> {
         let factory = self.factory.clone();
         return factory.spawn_event_handler(self, event_handler, join_call_back);
-    }
-}
-
-impl<Factory: FactoryTrait> ChannelThreadBuilder<Factory, EventOrStopThread<()>> {
-    /* 
-    pub fn spawn_tcp_listener<T: TcpConnectionHandlerTrait<Factory>>(
-        self,
-        socket_addr: SocketAddr,
-        tcp_connection_handler: T,
-        join_call_back: impl AsyncJoinCallBackTrait<T>,
-    ) -> Result<EventHandlerSender<Factory, ()>, Error> {
-        let factory = self.factory.clone();
-        return factory.spawn_tcp_listener(
-            self,
-            socket_addr,
-            tcp_connection_handler,
-            join_call_back,
-        );
-    }
-    */
-
-    pub fn spawn_tcp_reader<T: TcpReadHandlerTrait>(
-        self,
-        tcp_reader: Factory::TcpReader,
-        tcp_read_handler: T,
-        join_call_back: impl AsyncJoinCallBackTrait<T>,
-    ) -> Result<EventHandlerSender<Factory, ()>, Error> {
-        let factory = self.factory.clone();
-        return factory.spawn_tcp_reader(self, tcp_reader, tcp_read_handler, join_call_back);
-    }
-
-    pub fn spawn_udp_reader<T: UdpReadHandlerTrait>(
-        self,
-        udp_socket: Factory::UdpSocket,
-        udp_read_handler: T,
-        join_call_back: impl AsyncJoinCallBackTrait<T>,
-    ) -> Result<EventHandlerSender<Factory, ()>, Error> {
-        let factory = self.factory.clone();
-        return factory.spawn_udp_reader(self, udp_socket, udp_read_handler, join_call_back);
     }
 }

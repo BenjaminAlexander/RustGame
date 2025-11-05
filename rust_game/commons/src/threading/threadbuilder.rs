@@ -101,9 +101,10 @@ impl ThreadBuilder {
         tcp_read_handler: T,
         join_call_back: impl AsyncJoinCallBackTrait<T>,
     ) -> Result<EventHandlerSender<Factory, ()>, Error> {
-        return self
-            .build_channel_thread::<Factory, EventOrStopThread<()>>(factory)
-            .spawn_tcp_reader(tcp_reader, tcp_read_handler, join_call_back);
+        let thread_builder = self
+            .build_channel_thread::<Factory, EventOrStopThread<()>>(factory.clone());
+
+        return factory.spawn_tcp_reader(thread_builder, tcp_reader, tcp_read_handler, join_call_back);
     }
 
     pub fn spawn_udp_reader<Factory: FactoryTrait, T: UdpReadHandlerTrait>(
@@ -113,9 +114,9 @@ impl ThreadBuilder {
         udp_read_handler: T,
         join_call_back: impl AsyncJoinCallBackTrait<T>,
     ) -> Result<EventHandlerSender<Factory, ()>, Error> {
-        return self
-            .build_channel_thread::<Factory, EventOrStopThread<()>>(factory)
-            .spawn_udp_reader(udp_socket, udp_read_handler, join_call_back);
+        let thread_builder = self.build_channel_thread::<Factory, EventOrStopThread<()>>(factory.clone());
+
+        return factory.spawn_udp_reader(thread_builder, udp_socket, udp_read_handler, join_call_back);
     }
 
     pub(crate) fn spawn_thread<T: Thread>(

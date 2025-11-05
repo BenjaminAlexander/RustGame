@@ -80,9 +80,7 @@ fn test_tcp() {
         test_connection: client_side.clone(),
     };
 
-    let client_read_sender = client_thread_builder
-        .spawn_tcp_reader(reader, client_read_handler, AsyncJoin::log_async_join)
-        .unwrap();
+    let client_read_sender = client_factory.spawn_tcp_reader(client_thread_builder, reader, client_read_handler, AsyncJoin::log_async_join).unwrap();
 
     server_factory.get_time_queue().run_events();
 
