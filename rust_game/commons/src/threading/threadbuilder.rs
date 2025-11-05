@@ -45,7 +45,7 @@ impl ThreadBuilder {
     pub fn build_channel_thread<Factory: FactoryTrait, T: Send + 'static>(
         self,
         factory: Factory,
-    ) -> channel::ChannelThreadBuilder<Factory, T> {
+    ) -> channel::ChannelThreadBuilder<T> {
         let channel = factory.new_channel();
         return channel::ChannelThreadBuilder::new(channel, self);
     }
@@ -53,7 +53,7 @@ impl ThreadBuilder {
     pub fn build_channel_for_event_handler<Factory: FactoryTrait, T: EventHandlerTrait>(
         self,
         factory: Factory,
-    ) -> channel::ChannelThreadBuilder<Factory, EventOrStopThread<T::Event>> {
+    ) -> channel::ChannelThreadBuilder<EventOrStopThread<T::Event>> {
         return self.build_channel_thread(factory);
     }
 
@@ -63,7 +63,7 @@ impl ThreadBuilder {
     >(
         self,
         factory: Factory,
-    ) -> channel::ChannelThreadBuilder<Factory, EventOrStopThread<()>> {
+    ) -> channel::ChannelThreadBuilder<EventOrStopThread<()>> {
         return self.build_channel_thread(factory);
     }
 
@@ -103,7 +103,7 @@ impl ThreadBuilder {
         tcp_read_handler: T,
         join_call_back: impl AsyncJoinCallBackTrait<T>,
     ) -> Result<EventHandlerSender<()>, Error> {
-        let thread_builder: channel::ChannelThreadBuilder<Factory, EventOrStopThread<()>> =
+        let thread_builder: channel::ChannelThreadBuilder<EventOrStopThread<()>> =
             self.build_channel_thread::<Factory, EventOrStopThread<()>>(factory.clone());
 
         return factory.spawn_tcp_reader(

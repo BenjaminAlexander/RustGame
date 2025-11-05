@@ -1,24 +1,23 @@
-use crate::factory::FactoryTrait;
 use crate::threading;
 use crate::threading::channel::{
     Channel,
     Sender,
 };
 
-pub struct ChannelThreadBuilder<Factory: FactoryTrait, T: Send + 'static> {
+pub struct ChannelThreadBuilder<T: Send + 'static> {
     thread_builder: threading::ThreadBuilder,
-    channel: Channel<Factory, T>,
+    channel: Channel<T>,
 }
 
-impl<Factory: FactoryTrait, T: Send + 'static> ChannelThreadBuilder<Factory, T> {
-    pub fn new(channel: Channel<Factory, T>, thread_builder: threading::ThreadBuilder) -> Self {
+impl<T: Send + 'static> ChannelThreadBuilder<T> {
+    pub fn new(channel: Channel<T>, thread_builder: threading::ThreadBuilder) -> Self {
         return Self {
             channel,
             thread_builder,
         };
     }
 
-    pub fn get_channel(&self) -> &Channel<Factory, T> {
+    pub fn get_channel(&self) -> &Channel<T> {
         return &self.channel;
     }
 
@@ -31,7 +30,7 @@ impl<Factory: FactoryTrait, T: Send + 'static> ChannelThreadBuilder<Factory, T> 
         return (*self.get_channel().get_sender()).clone();
     }
 
-    pub fn take(self) -> (threading::ThreadBuilder, Channel<Factory, T>) {
+    pub fn take(self) -> (threading::ThreadBuilder, Channel<T>) {
         return (self.thread_builder, self.channel);
     }
 }

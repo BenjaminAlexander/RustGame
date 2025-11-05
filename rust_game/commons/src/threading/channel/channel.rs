@@ -1,25 +1,18 @@
-use std::sync::mpsc;
-
 use crate::{
-    factory::FactoryTrait,
     single_threaded_simulator::{
-        SingleThreadedFactory,
         SingleThreadedReceiver,
         SingleThreadedSender,
     },
     threading::{
-        channel::{
+        AsyncJoinCallBackTrait, ThreadBuilder, channel::{
             RealReceiver,
             RealSender,
             ReceiveMetaData,
             ReceiverTrait,
-            SendMetaData,
             SenderTrait,
             TryRecvError,
-        },
-        eventhandling::EventOrStopThread,
+        }, eventhandling::{EventHandlerTrait, EventOrStopThread}
     },
-    time::TimeSource,
 };
 
 //TODO: cleanup
@@ -30,22 +23,24 @@ enum ChannelImplementation<T: Send> {
     Simulated(SingleThreadedSender<T>, SingleThreadedReceiver<T>),
 }
 
-pub struct Channel<Factory: FactoryTrait, T: Send + 'static> {
+pub struct Channel<T: Send + 'static> {
     sender: Sender<T>,
-    receiver: Factory::Receiver<T>,
+    receiver: Receiver<T>,
 }
 
-impl<Factory: FactoryTrait, T: Send + 'static> Channel<Factory, T> {
-    pub fn new(real_sender: RealSender<T>, receiver: Factory::Receiver<T>) -> Self {
+impl<T: Send + 'static> Channel<T> {
+    pub fn new(real_sender: RealSender<T>, real_receiver: RealReceiver<T>) -> Self {
         let sender = Sender::new(SenderImplementation::Real(real_sender));
+        let receiver = Receiver::new(ReceiverImplementation::Real(real_receiver));
         return Self { sender, receiver };
     }
 
     pub fn new_simulated(
         simulated_sender: SingleThreadedSender<T>,
-        receiver: Factory::Receiver<T>,
+        simulated_receiver: SingleThreadedReceiver<T>,
     ) -> Self {
         let sender = Sender::new(SenderImplementation::Simulated(simulated_sender));
+        let receiver = Receiver::new(ReceiverImplementation::Simulated(simulated_receiver));
         return Self { sender, receiver };
     }
 
@@ -53,7 +48,7 @@ impl<Factory: FactoryTrait, T: Send + 'static> Channel<Factory, T> {
         return &self.sender;
     }
 
-    pub fn take(self) -> (Sender<T>, Factory::Receiver<T>) {
+    pub fn take(self) -> (Sender<T>, Receiver<T>) {
         return (self.sender, self.receiver);
     }
 }
@@ -156,6 +151,15 @@ impl<T: Send> Receiver<T> {
         match &mut self.implementation {
             ReceiverImplementation::Real(real_receiver) => real_receiver.try_recv(),
             ReceiverImplementation::Simulated(simulated_receiver) => simulated_receiver.try_recv(),
+        }
+    }
+}
+
+impl<T: Send> Receiver<EventOrStopThread<T>> {
+    pub fn spawn_thread<U: EventHandlerTrait<Event = T>>(self, thread_builder: ThreadBuilder, event_handler: U, join_call_back: impl AsyncJoinCallBackTrait<U::ThreadReturn>) -> std::io::Result<()> {
+        match self.implementation {
+            ReceiverImplementation::Real(real_receiver) => real_receiver.spawn_thread(thread_builder, event_handler, join_call_back),
+            ReceiverImplementation::Simulated(single_threaded_receiver) => single_threaded_receiver.spawn_thread(thread_builder, event_handler, join_call_back),
         }
     }
 }

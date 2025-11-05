@@ -62,7 +62,7 @@ impl<T: EventHandlerTrait, U: AsyncJoinCallBackTrait<T::ThreadReturn>> Clone
 impl<T: EventHandlerTrait, U: AsyncJoinCallBackTrait<T::ThreadReturn>> EventHandlerHolder<T, U> {
     pub fn spawn_event_handler(
         factory: SingleThreadedFactory,
-        thread_builder: ChannelThreadBuilder<SingleThreadedFactory, EventOrStopThread<T::Event>>,
+        thread_builder: ChannelThreadBuilder<EventOrStopThread<T::Event>>,
         event_handler: T,
         join_call_back: U,
     ) -> EventHandlerSender<T::Event> {
@@ -80,7 +80,7 @@ impl<T: EventHandlerTrait, U: AsyncJoinCallBackTrait<T::ThreadReturn>> EventHand
     pub fn spawn_event_handler_helper(
         factory: SingleThreadedFactory,
         thread_builder: ThreadBuilder,
-        channel: Channel<SingleThreadedFactory, EventOrStopThread<T::Event>>,
+        channel: Channel<EventOrStopThread<T::Event>>,
         event_handler: T,
         join_call_back: U,
     ) -> EventHandlerSender<T::Event> {

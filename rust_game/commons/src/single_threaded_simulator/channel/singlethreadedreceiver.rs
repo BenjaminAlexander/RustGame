@@ -7,11 +7,13 @@ use crate::single_threaded_simulator::{
     SingleThreadedFactory,
     SingleThreadedSender,
 };
+use crate::threading::{AsyncJoinCallBackTrait, ThreadBuilder};
 use crate::threading::channel::{
     ReceiveMetaData,
     ReceiverTrait,
     TryRecvError,
 };
+use crate::threading::eventhandling::{EventHandlerTrait, EventOrStopThread};
 
 pub struct SingleThreadedReceiver<T: Send> {
     link: ReceiverLink<T>,
@@ -41,5 +43,13 @@ impl<T: Send> SingleThreadedReceiver<T> {
     ) -> ReceiverLink<T> {
         self.link.to_consumer(consumer);
         return self.link;
+    }
+}
+
+impl<T: Send> SingleThreadedReceiver<EventOrStopThread<T>> {
+    pub fn spawn_thread<U: EventHandlerTrait<Event = T>>(self, thread_builder: ThreadBuilder, event_handler: U, join_call_back: impl AsyncJoinCallBackTrait<U::ThreadReturn>) -> std::io::Result<()> {
+
+
+        //return Ok(());
     }
 }

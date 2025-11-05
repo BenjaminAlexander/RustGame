@@ -19,7 +19,6 @@ use crate::threading::channel::{
 };
 use crate::threading::eventhandling::{
     EventHandlerSender,
-    EventHandlerThread,
     EventHandlerTrait,
     EventOrStopThread,
 };
@@ -59,7 +58,7 @@ impl FactoryTrait for RealFactory {
         return &self.time_source;
     }
 
-    fn new_channel<T: Send>(&self) -> Channel<Self, T> {
+    fn new_channel<T: Send>(&self) -> Channel<T> {
         let (sender, receiver) = mpsc::channel::<(SendMetaData, T)>();
         let sender = RealSender::new(self.time_source.clone(), sender);
         let receiver = RealReceiver::new(self.time_source.clone(), receiver);
@@ -68,23 +67,21 @@ impl FactoryTrait for RealFactory {
 
     fn spawn_event_handler<U: EventHandlerTrait>(
         &self,
-        thread_builder: ChannelThreadBuilder<Self, EventOrStopThread<U::Event>>,
+        thread_builder: ChannelThreadBuilder<EventOrStopThread<U::Event>>,
         event_handler: U,
         join_call_back: impl AsyncJoinCallBackTrait<U::ThreadReturn>,
     ) -> std::io::Result<EventHandlerSender<U::Event>> {
         let (thread_builder, channel) = thread_builder.take();
         let (sender, receiver) = channel.take();
 
-        let thread = EventHandlerThread::new(receiver, event_handler);
-
-        thread_builder.spawn_thread(thread, join_call_back)?;
+        receiver.spawn_thread(thread_builder, event_handler, join_call_back)?;
 
         return Ok(sender);
     }
 
     fn spawn_tcp_listener<T: TcpConnectionHandlerTrait<Self>>(
         &self,
-        thread_builder: channel::ChannelThreadBuilder<Self, EventOrStopThread<()>>,
+        thread_builder: channel::ChannelThreadBuilder<EventOrStopThread<()>>,
         socket_addr: SocketAddr,
         mut tcp_connection_handler: T,
         join_call_back: impl AsyncJoinCallBackTrait<T>,
@@ -109,7 +106,7 @@ impl FactoryTrait for RealFactory {
 
     fn spawn_tcp_reader<T: TcpReadHandlerTrait>(
         &self,
-        thread_builder: channel::ChannelThreadBuilder<Self, EventOrStopThread<()>>,
+        thread_builder: channel::ChannelThreadBuilder<EventOrStopThread<()>>,
         tcp_reader: Self::TcpReader,
         tcp_read_handler: T,
         join_call_back: impl AsyncJoinCallBackTrait<T>,
@@ -124,7 +121,7 @@ impl FactoryTrait for RealFactory {
 
     fn spawn_udp_reader<T: UdpReadHandlerTrait>(
         &self,
-        thread_builder: ChannelThreadBuilder<Self, EventOrStopThread<()>>,
+        thread_builder: ChannelThreadBuilder<EventOrStopThread<()>>,
         udp_socket: Self::UdpSocket,
         udp_read_handler: T,
         join_call_back: impl AsyncJoinCallBackTrait<T>,

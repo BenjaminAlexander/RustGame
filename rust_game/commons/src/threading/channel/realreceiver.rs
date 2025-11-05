@@ -1,9 +1,11 @@
+use crate::threading::{AsyncJoinCallBackTrait, ThreadBuilder};
 use crate::threading::channel::{
     ReceiveMetaData,
     ReceiverTrait,
     SendMetaData,
     TryRecvError,
 };
+use crate::threading::eventhandling::{EventHandlerThread, EventHandlerTrait, EventOrStopThread};
 use crate::time::{
     TimeDuration,
     TimeSource,
@@ -65,5 +67,13 @@ impl<T: Send> RealReceiver<T> {
         let receive_meta_data = ReceiveMetaData::new(&self.time_source, send_meta_data);
         //self.duration_in_queue_logger.add_value(receive_meta_data.get_duration_in_queue());
         return receive_meta_data;
+    }
+}
+
+impl<T: Send> RealReceiver<EventOrStopThread<T>> {
+    pub fn spawn_thread<U: EventHandlerTrait<Event = T>>(self, thread_builder: ThreadBuilder, event_handler: U, join_call_back: impl AsyncJoinCallBackTrait<U::ThreadReturn>) -> std::io::Result<()> {
+        let thread = EventHandlerThread::new(self, event_handler);
+        thread_builder.spawn_thread(thread, join_call_back)?;
+        return Ok(());
     }
 }
