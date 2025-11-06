@@ -1,10 +1,5 @@
 use crate::net::{
-    TcpConnectionHandlerTrait,
-    TcpReadHandlerTrait,
-    TcpStream,
-    UdpReadHandlerTrait,
-    UdpSocketTrait,
-    LOCAL_EPHEMERAL_SOCKET_ADDR_V4,
+    LOCAL_EPHEMERAL_SOCKET_ADDR_V4, TcpConnectionHandlerTrait, TcpReadHandlerTrait, TcpReceiver, TcpStream, UdpReadHandlerTrait, UdpSocketTrait
 };
 use crate::threading::channel::{
     Channel,
@@ -24,8 +19,6 @@ use std::io::Error;
 use std::net::SocketAddr;
 
 pub trait FactoryTrait: Clone + Send + 'static {
-
-    type TcpReader: Send + Sized;
 
     type UdpSocket: UdpSocketTrait;
 
@@ -56,17 +49,27 @@ pub trait FactoryTrait: Clone + Send + 'static {
         socket_addr: SocketAddr,
         tcp_connection_handler: T,
         join_call_back: impl AsyncJoinCallBackTrait<T>,
-    ) -> Result<EventHandlerSender<()>, Error>;
+    ) -> Result<EventHandlerSender<()>, Error> {
+        let (thread_builder, channel) = thread_builder.take();
+        let (sender, receiver) = channel.take();
+        receiver.spawn_tcp_listener(thread_builder, socket_addr, tcp_connection_handler, join_call_back)?;
+        return Ok(sender);
+    }
 
-    fn connect_tcp(&self, socket_addr: SocketAddr) -> Result<(TcpStream, Self::TcpReader), Error>;
+    fn connect_tcp(&self, socket_addr: SocketAddr) -> Result<(TcpStream, TcpReceiver), Error>;
 
     fn spawn_tcp_reader<T: TcpReadHandlerTrait>(
         &self,
         thread_builder: ChannelThreadBuilder<EventOrStopThread<()>>,
-        tcp_reader: Self::TcpReader,
+        tcp_reader: TcpReceiver,
         tcp_read_handler: T,
         join_call_back: impl AsyncJoinCallBackTrait<T>,
-    ) -> Result<EventHandlerSender<()>, Error>;
+    ) -> Result<EventHandlerSender<()>, Error> {
+        let (thread_builder, channel) = thread_builder.take();
+        let (sender, receiver) = channel.take();
+        tcp_reader.spawn_tcp_reader(thread_builder, receiver, tcp_read_handler, join_call_back)?;
+        return Ok(sender);
+    }
 
     fn bind_udp_socket(&self, socket_addr: SocketAddr) -> Result<Self::UdpSocket, Error>;
 

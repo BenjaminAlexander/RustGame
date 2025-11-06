@@ -1,7 +1,7 @@
-use std::net::SocketAddr;
+use std::{io::Error, net::SocketAddr};
 
 use crate::{
-    factory::FactoryTrait, net::TcpConnectionHandlerTrait, single_threaded_simulator::{
+    factory::FactoryTrait, net::{RealTcpStream, TcpConnectionHandlerTrait, TcpReadHandlerTrait, TcpReaderEventHandler, TcpReceiver}, single_threaded_simulator::{
         SingleThreadedReceiver,
         SingleThreadedSender,
     }, threading::{
@@ -12,7 +12,7 @@ use crate::{
             ReceiverTrait,
             SenderTrait,
             TryRecvError,
-        }, eventhandling::{EventHandlerTrait, EventOrStopThread}
+        }, eventhandling::{EventHandlerSender, EventHandlerTrait, EventOrStopThread}
     }
 };
 
@@ -168,6 +168,7 @@ impl<T: Send> Receiver<EventOrStopThread<T>> {
 
 
 impl Receiver<EventOrStopThread<()>> {
+
     pub fn spawn_tcp_listener<Factory: FactoryTrait, T: TcpConnectionHandlerTrait<Factory>>(
         self, 
         thread_builder: ThreadBuilder, 
@@ -178,6 +179,32 @@ impl Receiver<EventOrStopThread<()>> {
         match self.implementation {
             ReceiverImplementation::Real(real_receiver) => real_receiver.spawn_tcp_listener(thread_builder, socket_addr, tcp_connection_handler, join_call_back),
             ReceiverImplementation::Simulated(single_threaded_receiver) => single_threaded_receiver.spawn_tcp_listener(thread_builder, socket_addr, tcp_connection_handler, join_call_back),
+        }
+    }
+
+    pub fn spawn_real_tcp_reader<T: TcpReadHandlerTrait>(
+        self,
+        thread_builder: ThreadBuilder,
+        real_tcp_stream: RealTcpStream,
+        tcp_read_handler: T,
+        join_call_back: impl AsyncJoinCallBackTrait<T>,
+    ) -> Result<(), Error> {
+        match self.implementation {
+            ReceiverImplementation::Real(real_receiver) => real_receiver.spawn_tcp_reader(thread_builder, real_tcp_stream, tcp_read_handler, join_call_back),
+            ReceiverImplementation::Simulated(_) => panic!("Spawning a TCP reader thread with a real TCP stream and a simulated channel isn't implemented"),
+        }
+    }
+
+    pub fn spawn_simulated_tcp_reader<T: TcpReadHandlerTrait>(
+        self,
+        thread_builder: ThreadBuilder,
+        simulated_tcp_reader: SingleThreadedReceiver<Vec<u8>>,
+        tcp_read_handler: T,
+        join_call_back: impl AsyncJoinCallBackTrait<T>,
+    ) -> Result<(), Error> {
+        match self.implementation {
+            ReceiverImplementation::Real(_) => panic!("Spawning a TCP reader thread with a simulated TCP reader and a real channel isn't implemented"),
+            ReceiverImplementation::Simulated(single_threaded_receiver) => single_threaded_receiver.spawn_simulated_tcp_reader(thread_builder, simulated_tcp_reader, tcp_read_handler, join_call_back),
         }
     }
 }

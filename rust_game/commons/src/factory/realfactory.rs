@@ -1,14 +1,6 @@
 use crate::factory::FactoryTrait;
 use crate::net::{
-    RealTcpStream,
-    RealUdpSocket,
-    TcpConnectionHandlerTrait,
-    TcpListenerEventHandler,
-    TcpReadHandlerTrait,
-    TcpReaderEventHandler,
-    TcpStream,
-    UdpReadHandlerTrait,
-    UdpReaderEventHandler,
+    RealTcpStream, RealUdpSocket, TcpReadHandlerTrait, TcpReceiver, TcpStream, UdpReadHandlerTrait, UdpReaderEventHandler
 };
 use crate::threading::channel::{
     Channel,
@@ -29,7 +21,6 @@ use crate::time::TimeSource;
 use std::io::Error;
 use std::net::{
     SocketAddr,
-    TcpListener,
 };
 use std::sync::mpsc;
 
@@ -48,8 +39,6 @@ impl RealFactory {
 
 impl FactoryTrait for RealFactory {
     
-    type TcpReader = RealTcpStream;
-
     type UdpSocket = RealUdpSocket;
 
     fn get_time_source(&self) -> &TimeSource {
@@ -63,40 +52,15 @@ impl FactoryTrait for RealFactory {
         return Channel::new(sender, receiver);
     }
 
-    fn spawn_tcp_listener<T: TcpConnectionHandlerTrait<Self>>(
-        &self,
-        thread_builder: channel::ChannelThreadBuilder<EventOrStopThread<()>>,
-        socket_addr: SocketAddr,
-        mut tcp_connection_handler: T,
-        join_call_back: impl AsyncJoinCallBackTrait<T>,
-    ) -> Result<EventHandlerSender<()>, Error> {
-        let tcp_listener = TcpListener::bind(socket_addr)?;
-
-        tcp_connection_handler.on_bind(tcp_listener.local_addr()?);
-
-        let event_handler = TcpListenerEventHandler::new(tcp_listener, tcp_connection_handler)?;
-
-        return self.spawn_event_handler(thread_builder, event_handler, join_call_back);
-    }
-
-    fn connect_tcp(&self, socket_addr: SocketAddr) -> Result<(TcpStream, Self::TcpReader), Error> {
+    fn connect_tcp(&self, socket_addr: SocketAddr) -> Result<(TcpStream, TcpReceiver), Error> {
         let net_tcp_stream = std::net::TcpStream::connect(socket_addr.clone())?;
         let real_tcp_stream = RealTcpStream::new(net_tcp_stream, socket_addr.clone());
+        let tcp_stream = TcpStream::new(real_tcp_stream.try_clone()?);
+        let tcp_reader = TcpReceiver::new(real_tcp_stream);
         return Ok((
-            TcpStream::new(real_tcp_stream.try_clone()?),
-            real_tcp_stream,
+            tcp_stream,
+            tcp_reader,
         ));
-    }
-
-    fn spawn_tcp_reader<T: TcpReadHandlerTrait>(
-        &self,
-        thread_builder: channel::ChannelThreadBuilder<EventOrStopThread<()>>,
-        tcp_reader: Self::TcpReader,
-        tcp_read_handler: T,
-        join_call_back: impl AsyncJoinCallBackTrait<T>,
-    ) -> Result<EventHandlerSender<()>, Error> {
-        let event_handler = TcpReaderEventHandler::new(tcp_reader, tcp_read_handler);
-        return self.spawn_event_handler(thread_builder, event_handler, join_call_back);
     }
 
     fn bind_udp_socket(&self, socket_addr: SocketAddr) -> Result<Self::UdpSocket, Error> {

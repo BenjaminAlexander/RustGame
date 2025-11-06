@@ -1,5 +1,5 @@
 use crate::factory::FactoryTrait;
-use crate::net::{TcpConnectionHandlerTrait, TcpListenerEventHandler};
+use crate::net::{RealTcpStream, TcpConnectionHandlerTrait, TcpListenerEventHandler, TcpReadHandlerTrait, TcpReaderEventHandler};
 use crate::threading::{AsyncJoinCallBackTrait, ThreadBuilder};
 use crate::threading::channel::{
     ReceiveMetaData,
@@ -12,6 +12,7 @@ use crate::time::{
     TimeDuration,
     TimeSource,
 };
+use std::io::Error;
 use std::net::{SocketAddr, TcpListener};
 use std::sync::mpsc;
 
@@ -95,6 +96,17 @@ impl RealReceiver<EventOrStopThread<()>> {
 
         let event_handler = TcpListenerEventHandler::new(tcp_listener, tcp_connection_handler)?;
 
+        return self.spawn_event_handler(thread_builder, event_handler, join_call_back);
+    }
+
+    pub fn spawn_tcp_reader<T: TcpReadHandlerTrait>(
+        self,
+        thread_builder: ThreadBuilder,
+        real_tcp_stream: RealTcpStream,
+        tcp_read_handler: T,
+        join_call_back: impl AsyncJoinCallBackTrait<T>,
+    ) -> Result<(), Error> {
+        let event_handler = TcpReaderEventHandler::new(real_tcp_stream, tcp_read_handler);
         return self.spawn_event_handler(thread_builder, event_handler, join_call_back);
     }
 }

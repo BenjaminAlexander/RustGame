@@ -8,6 +8,7 @@ mod udpreadereventhandler;
 mod udpreadhandlertrait;
 mod udpsockettrait;
 
+//TODO: probably just pub mod tcp;
 pub use self::constants::LOCAL_EPHEMERAL_SOCKET_ADDR_V4;
 pub use self::constants::MAX_UDP_DATAGRAM_SIZE;
 pub use self::constants::NET_POLLING_PERIOD;
@@ -15,6 +16,7 @@ pub use self::realudpsocket::RealUdpSocket;
 pub use self::tcp::RealTcpStream;
 pub(crate) use self::tcp::TcpReaderEventHandler;
 pub use self::tcp::TcpStream;
+pub use self::tcp::TcpReceiver;
 pub use self::tcpconnectionhandlertrait::TcpConnectionHandler;
 pub use self::tcpconnectionhandlertrait::TcpConnectionHandlerTrait;
 pub(crate) use self::tcplistenereventhandler::TcpListenerEventHandler;

@@ -1,19 +1,13 @@
 use crate::factory::FactoryTrait;
 use crate::net::{
-    TcpConnectionHandlerTrait,
-    TcpReadHandlerTrait,
-    TcpStream,
-    UdpReadHandlerTrait,
+    TcpReceiver, TcpStream, UdpReadHandlerTrait
 };
-use crate::single_threaded_simulator::eventhandling::EventHandlerHolder;
 use crate::single_threaded_simulator::net::{
     HostSimulator,
     NetworkSimulator,
-    TcpReaderEventHandler,
     UdpSocketSimulator,
 };
 use crate::single_threaded_simulator::{
-    ReceiveOrDisconnected,
     SingleThreadedReceiver,
     TimeQueue,
 };
@@ -23,7 +17,6 @@ use crate::threading::channel::{
 };
 use crate::threading::eventhandling::{
     EventHandlerSender,
-    EventHandlerTrait,
     EventOrStopThread,
 };
 use crate::threading::AsyncJoinCallBackTrait;
@@ -84,10 +77,6 @@ impl SingleThreadedFactory {
 }
 
 impl FactoryTrait for SingleThreadedFactory {
-    //TODO: clean up
-    //type Receiver<T: Send> = SingleThreadedReceiver<T>;
-
-    type TcpReader = SingleThreadedReceiver<Vec<u8>>;
 
     type UdpSocket = UdpSocketSimulator;
 
@@ -100,86 +89,8 @@ impl FactoryTrait for SingleThreadedFactory {
         return Channel::new_simulated(sender, receiver);
     }
 
-    fn spawn_tcp_listener<T: TcpConnectionHandlerTrait<Self>>(
-        &self,
-        thread_builder: ChannelThreadBuilder<EventOrStopThread<()>>,
-        socket_addr: SocketAddr,
-        tcp_connection_handler: T,
-        join_call_back: impl AsyncJoinCallBackTrait<T>,
-    ) -> Result<EventHandlerSender<()>, Error> {
-
-
-        let (thread_builder, channel) = thread_builder.take();
-        let (sender, receiver) = channel.take();
-        receiver.spawn_tcp_listener(thread_builder, event_handler, join_call_back)?;
-
-
-
-        return self
-            .host_simulator
-            .get_network_simulator()
-            .spawn_tcp_listener(
-                self.clone(),
-                socket_addr,
-                thread_builder,
-                tcp_connection_handler,
-                join_call_back,
-            );
-    }
-
-    fn connect_tcp(&self, socket_addr: SocketAddr) -> Result<(TcpStream, Self::TcpReader), Error> {
+    fn connect_tcp(&self, socket_addr: SocketAddr) -> Result<(TcpStream, TcpReceiver), Error> {
         return self.host_simulator.connect_tcp(&self, socket_addr);
-    }
-
-    fn spawn_tcp_reader<T: TcpReadHandlerTrait>(
-        &self,
-        thread_builder: ChannelThreadBuilder<EventOrStopThread<()>>,
-        tcp_reader: Self::TcpReader,
-        read_handler: T,
-        join_call_back: impl AsyncJoinCallBackTrait<T>,
-    ) -> Result<EventHandlerSender<()>, Error> {
-        let (thread_builder, channel) = thread_builder.take();
-
-        let tcp_reader_event_handler = TcpReaderEventHandler::new(read_handler);
-
-        let sender = thread_builder
-            .spawn_event_handler(self.clone(), tcp_reader_event_handler, join_call_back)
-            .unwrap();
-
-        let sender_clone = sender.clone();
-        tcp_reader.to_consumer(move |receive_or_disconnect| {
-            match receive_or_disconnect {
-                ReceiveOrDisconnected::Receive(_, buf) => {
-                    return match sender_clone.send_event(buf) {
-                        Ok(_) => Ok(()),
-                        Err(buf) => Err(buf),
-                    };
-                }
-                ReceiveOrDisconnected::Disconnected => {
-                    let _ = sender_clone.send_stop_thread();
-                    return Ok(());
-                }
-            };
-        });
-
-        let (sender_to_return, receiver) = channel.take();
-
-        receiver.to_consumer(move |receive_or_disconnect| {
-            let result = match receive_or_disconnect {
-                ReceiveOrDisconnected::Receive(_, EventOrStopThread::Event(())) => Ok(()),
-                ReceiveOrDisconnected::Receive(_, EventOrStopThread::StopThread) => {
-                    sender.send_stop_thread()
-                }
-                ReceiveOrDisconnected::Disconnected => sender.send_stop_thread(),
-            };
-
-            return match result {
-                Ok(()) => Ok(()),
-                Err(_) => Err(EventOrStopThread::StopThread),
-            };
-        });
-
-        return Ok(sender_to_return);
     }
 
     fn bind_udp_socket(&self, socket_addr: SocketAddr) -> Result<Self::UdpSocket, Error> {
