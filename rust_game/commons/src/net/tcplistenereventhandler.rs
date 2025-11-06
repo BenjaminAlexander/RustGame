@@ -1,5 +1,5 @@
 use super::constants::NET_POLLING_PERIOD;
-use crate::factory::RealFactory;
+use crate::factory::FactoryTrait;
 use crate::net::tcp::RealTcpStream;
 use crate::net::tcpconnectionhandlertrait::TcpConnectionHandlerTrait;
 use crate::net::TcpStream;
@@ -14,6 +14,7 @@ use std::io::{
     self,
     Error,
 };
+use std::marker::PhantomData;
 use std::net::{
     SocketAddr,
     TcpListener,
@@ -23,18 +24,20 @@ use std::ops::ControlFlow::{
     Continue,
 };
 
-pub struct TcpListenerEventHandler<T: TcpConnectionHandlerTrait<RealFactory>> {
+pub struct TcpListenerEventHandler<Factory: FactoryTrait, T: TcpConnectionHandlerTrait<Factory>> {
     tcp_listener: TcpListener,
     tcp_connection_handler: T,
+    phantom: PhantomData<Factory>
 }
 
-impl<T: TcpConnectionHandlerTrait<RealFactory>> TcpListenerEventHandler<T> {
+impl<Factory: FactoryTrait, T: TcpConnectionHandlerTrait<Factory>> TcpListenerEventHandler<Factory, T> {
     pub fn new(tcp_listener: TcpListener, tcp_connection_handler: T) -> io::Result<Self> {
         tcp_listener.set_nonblocking(true)?;
 
         return Ok(Self {
             tcp_listener,
             tcp_connection_handler,
+            phantom: PhantomData
         });
     }
 
@@ -94,7 +97,7 @@ impl<T: TcpConnectionHandlerTrait<RealFactory>> TcpListenerEventHandler<T> {
     }
 }
 
-impl<T: TcpConnectionHandlerTrait<RealFactory>> EventHandlerTrait for TcpListenerEventHandler<T> {
+impl<Factory: FactoryTrait, T: TcpConnectionHandlerTrait<Factory>> EventHandlerTrait for TcpListenerEventHandler<Factory, T> {
     type Event = ();
     type ThreadReturn = T;
 

@@ -19,7 +19,6 @@ use crate::threading::channel::{
 };
 use crate::threading::eventhandling::{
     EventHandlerSender,
-    EventHandlerTrait,
     EventOrStopThread,
 };
 use crate::threading::{
@@ -62,20 +61,6 @@ impl FactoryTrait for RealFactory {
         let sender = RealSender::new(self.time_source.clone(), sender);
         let receiver = RealReceiver::new(self.time_source.clone(), receiver);
         return Channel::new(sender, receiver);
-    }
-
-    fn spawn_event_handler<U: EventHandlerTrait>(
-        &self,
-        thread_builder: ChannelThreadBuilder<EventOrStopThread<U::Event>>,
-        event_handler: U,
-        join_call_back: impl AsyncJoinCallBackTrait<U::ThreadReturn>,
-    ) -> std::io::Result<EventHandlerSender<U::Event>> {
-        let (thread_builder, channel) = thread_builder.take();
-        let (sender, receiver) = channel.take();
-
-        receiver.spawn_thread(thread_builder, event_handler, join_call_back)?;
-
-        return Ok(sender);
     }
 
     fn spawn_tcp_listener<T: TcpConnectionHandlerTrait<Self>>(

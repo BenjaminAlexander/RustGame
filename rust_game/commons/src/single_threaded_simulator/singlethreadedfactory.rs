@@ -100,20 +100,6 @@ impl FactoryTrait for SingleThreadedFactory {
         return Channel::new_simulated(sender, receiver);
     }
 
-    fn spawn_event_handler<U: EventHandlerTrait>(
-        &self,
-        thread_builder: ChannelThreadBuilder<EventOrStopThread<U::Event>>,
-        event_handler: U,
-        join_call_back: impl AsyncJoinCallBackTrait<U::ThreadReturn>,
-    ) -> Result<EventHandlerSender<U::Event>, Error> {
-        return Ok(EventHandlerHolder::spawn_event_handler(
-            self.clone(),
-            thread_builder,
-            event_handler,
-            join_call_back,
-        ));
-    }
-
     fn spawn_tcp_listener<T: TcpConnectionHandlerTrait<Self>>(
         &self,
         thread_builder: ChannelThreadBuilder<EventOrStopThread<()>>,
@@ -121,6 +107,14 @@ impl FactoryTrait for SingleThreadedFactory {
         tcp_connection_handler: T,
         join_call_back: impl AsyncJoinCallBackTrait<T>,
     ) -> Result<EventHandlerSender<()>, Error> {
+
+
+        let (thread_builder, channel) = thread_builder.take();
+        let (sender, receiver) = channel.take();
+        receiver.spawn_tcp_listener(thread_builder, event_handler, join_call_back)?;
+
+
+
         return self
             .host_simulator
             .get_network_simulator()

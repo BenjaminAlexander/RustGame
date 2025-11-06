@@ -43,7 +43,12 @@ pub trait FactoryTrait: Clone + Send + 'static {
         thread_builder: ChannelThreadBuilder<EventOrStopThread<U::Event>>,
         event_handler: U,
         join_call_back: impl AsyncJoinCallBackTrait<U::ThreadReturn>,
-    ) -> Result<EventHandlerSender<U::Event>, Error>;
+    ) -> std::io::Result<EventHandlerSender<U::Event>> {
+        let (thread_builder, channel) = thread_builder.take();
+        let (sender, receiver) = channel.take();
+        receiver.spawn_event_handler(thread_builder, event_handler, join_call_back)?;
+        return Ok(sender);
+    }
 
     fn spawn_tcp_listener<T: TcpConnectionHandlerTrait<Self>>(
         &self,

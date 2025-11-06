@@ -1,3 +1,5 @@
+use crate::factory::FactoryTrait;
+use crate::net::{TcpConnectionHandlerTrait, TcpListenerEventHandler};
 use crate::threading::{AsyncJoinCallBackTrait, ThreadBuilder};
 use crate::threading::channel::{
     ReceiveMetaData,
@@ -10,6 +12,7 @@ use crate::time::{
     TimeDuration,
     TimeSource,
 };
+use std::net::{SocketAddr, TcpListener};
 use std::sync::mpsc;
 
 pub type RecvError = mpsc::RecvError;
@@ -71,9 +74,27 @@ impl<T: Send> RealReceiver<T> {
 }
 
 impl<T: Send> RealReceiver<EventOrStopThread<T>> {
-    pub fn spawn_thread<U: EventHandlerTrait<Event = T>>(self, thread_builder: ThreadBuilder, event_handler: U, join_call_back: impl AsyncJoinCallBackTrait<U::ThreadReturn>) -> std::io::Result<()> {
+    pub fn spawn_event_handler<U: EventHandlerTrait<Event = T>>(self, thread_builder: ThreadBuilder, event_handler: U, join_call_back: impl AsyncJoinCallBackTrait<U::ThreadReturn>) -> std::io::Result<()> {
         let thread = EventHandlerThread::new(self, event_handler);
         thread_builder.spawn_thread(thread, join_call_back)?;
         return Ok(());
+    }
+}
+
+impl RealReceiver<EventOrStopThread<()>> {
+    pub fn spawn_tcp_listener<Factory: FactoryTrait, T: TcpConnectionHandlerTrait<Factory>>(
+        self, 
+        thread_builder: ThreadBuilder, 
+        socket_addr: SocketAddr,
+        mut tcp_connection_handler: T,
+        join_call_back: impl AsyncJoinCallBackTrait<T>,
+    )-> std::io::Result<()> {
+        let tcp_listener = TcpListener::bind(socket_addr)?;
+
+        tcp_connection_handler.on_bind(tcp_listener.local_addr()?);
+
+        let event_handler = TcpListenerEventHandler::new(tcp_listener, tcp_connection_handler)?;
+
+        return self.spawn_event_handler(thread_builder, event_handler, join_call_back);
     }
 }

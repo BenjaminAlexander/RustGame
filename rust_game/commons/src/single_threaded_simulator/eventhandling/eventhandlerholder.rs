@@ -1,13 +1,9 @@
 use crate::single_threaded_simulator::{
     ReceiveOrDisconnected,
     ReceiverLink,
-    SingleThreadedFactory,
+    SingleThreadedFactory, SingleThreadedReceiver,
 };
-use crate::threading::channel::{
-    Channel,
-    ChannelThreadBuilder,
-    ReceiveMetaData,
-};
+use crate::threading::channel::ReceiveMetaData;
 use crate::threading::eventhandling::ChannelEvent::{
     ChannelDisconnected,
     ChannelEmpty,
@@ -17,7 +13,6 @@ use crate::threading::eventhandling::ChannelEvent::{
 use crate::threading::eventhandling::{
     ChannelEvent,
     EventHandleResult,
-    EventHandlerSender,
     EventHandlerTrait,
     EventOrStopThread,
 };
@@ -60,32 +55,15 @@ impl<T: EventHandlerTrait, U: AsyncJoinCallBackTrait<T::ThreadReturn>> Clone
 }
 
 impl<T: EventHandlerTrait, U: AsyncJoinCallBackTrait<T::ThreadReturn>> EventHandlerHolder<T, U> {
-    pub fn spawn_event_handler(
-        factory: SingleThreadedFactory,
-        thread_builder: ChannelThreadBuilder<EventOrStopThread<T::Event>>,
-        event_handler: T,
-        join_call_back: U,
-    ) -> EventHandlerSender<T::Event> {
-        let (thread_builder, channel) = thread_builder.take();
 
-        return Self::spawn_event_handler_helper(
-            factory,
-            thread_builder,
-            channel,
-            event_handler,
-            join_call_back,
-        );
-    }
-
-    pub fn spawn_event_handler_helper(
-        factory: SingleThreadedFactory,
+    //TODO: can this method be moved to its caller?
+    pub fn new(
+        factory: SingleThreadedFactory, 
         thread_builder: ThreadBuilder,
-        channel: Channel<EventOrStopThread<T::Event>>,
+        receiver: SingleThreadedReceiver<EventOrStopThread<T::Event>>,
         event_handler: T,
         join_call_back: U,
-    ) -> EventHandlerSender<T::Event> {
-        let (sender, receiver) = channel.take();
-
+    ) -> Self {
         let holder = Self {
             internal: Arc::new(Mutex::new(None)),
             factory: factory.clone(),
@@ -130,7 +108,7 @@ impl<T: EventHandlerTrait, U: AsyncJoinCallBackTrait<T::ThreadReturn>> EventHand
 
         *holder.internal.lock().unwrap() = Some(internal);
 
-        return sender;
+        return holder;
     }
 
     fn do_if_present(

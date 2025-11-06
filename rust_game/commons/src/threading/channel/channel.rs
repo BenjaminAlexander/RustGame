@@ -1,9 +1,10 @@
+use std::net::SocketAddr;
+
 use crate::{
-    single_threaded_simulator::{
+    factory::FactoryTrait, net::TcpConnectionHandlerTrait, single_threaded_simulator::{
         SingleThreadedReceiver,
         SingleThreadedSender,
-    },
-    threading::{
+    }, threading::{
         AsyncJoinCallBackTrait, ThreadBuilder, channel::{
             RealReceiver,
             RealSender,
@@ -12,7 +13,7 @@ use crate::{
             SenderTrait,
             TryRecvError,
         }, eventhandling::{EventHandlerTrait, EventOrStopThread}
-    },
+    }
 };
 
 //TODO: cleanup
@@ -156,10 +157,28 @@ impl<T: Send> Receiver<T> {
 }
 
 impl<T: Send> Receiver<EventOrStopThread<T>> {
-    pub fn spawn_thread<U: EventHandlerTrait<Event = T>>(self, thread_builder: ThreadBuilder, event_handler: U, join_call_back: impl AsyncJoinCallBackTrait<U::ThreadReturn>) -> std::io::Result<()> {
+    pub fn spawn_event_handler<U: EventHandlerTrait<Event = T>>(self, thread_builder: ThreadBuilder, event_handler: U, join_call_back: impl AsyncJoinCallBackTrait<U::ThreadReturn>) -> std::io::Result<()> {
         match self.implementation {
-            ReceiverImplementation::Real(real_receiver) => real_receiver.spawn_thread(thread_builder, event_handler, join_call_back),
-            ReceiverImplementation::Simulated(single_threaded_receiver) => single_threaded_receiver.spawn_thread(thread_builder, event_handler, join_call_back),
+            ReceiverImplementation::Real(real_receiver) => real_receiver.spawn_event_handler(thread_builder, event_handler, join_call_back),
+            ReceiverImplementation::Simulated(single_threaded_receiver) => single_threaded_receiver.spawn_event_handler(thread_builder, event_handler, join_call_back),
         }
     }
 }
+
+
+
+impl Receiver<EventOrStopThread<()>> {
+    pub fn spawn_tcp_listener<Factory: FactoryTrait, T: TcpConnectionHandlerTrait<Factory>>(
+        self, 
+        thread_builder: ThreadBuilder, 
+        socket_addr: SocketAddr,
+        tcp_connection_handler: T,
+        join_call_back: impl AsyncJoinCallBackTrait<T>,
+    ) -> std::io::Result<()> {
+        match self.implementation {
+            ReceiverImplementation::Real(real_receiver) => real_receiver.spawn_tcp_listener(thread_builder, socket_addr, tcp_connection_handler, join_call_back),
+            ReceiverImplementation::Simulated(single_threaded_receiver) => single_threaded_receiver.spawn_tcp_listener(thread_builder, socket_addr, tcp_connection_handler, join_call_back),
+        }
+    }
+}
+

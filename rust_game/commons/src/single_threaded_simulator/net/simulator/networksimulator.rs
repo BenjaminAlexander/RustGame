@@ -27,7 +27,7 @@ use crate::threading::eventhandling::{
     EventHandlerSender,
     EventOrStopThread,
 };
-use crate::threading::AsyncJoinCallBackTrait;
+use crate::threading::{AsyncJoinCallBackTrait, ThreadBuilder};
 use log::{
     info,
     warn,
@@ -80,30 +80,27 @@ impl NetworkSimulator {
         //TODO: make this an EventOrStop so it can be used for an event handler
         //TODO: or, even better, make a channel thread builder and stash it in the reader
         let (sender, reader) = SingleThreadedReceiver::new(factory.clone());
-
-
-
         let writer = ChannelTcpWriter::new(dest_socket_addr, sender);
         return (writer, reader);
     }
 
     pub fn spawn_tcp_listener<
-        TcpConnectionHandler: TcpConnectionHandlerTrait<SingleThreadedFactory>,
+        Factory: FactoryTrait,
+        TcpConnectionHandler: TcpConnectionHandlerTrait<Factory>,
     >(
         &self,
         factory: SingleThreadedFactory,
         socket_addr: SocketAddr,
-        thread_builder: ChannelThreadBuilder<EventOrStopThread<()>>,
+        thread_builder: ThreadBuilder,
+        receiver: SingleThreadedReceiver<EventOrStopThread<()>>,
         connection_handler: TcpConnectionHandler,
         join_call_back: impl AsyncJoinCallBackTrait<TcpConnectionHandler>,
-    ) -> Result<EventHandlerSender<()>, Error> {
+    ) -> Result<(), Error> {
         let mut guard = self.internal.lock().unwrap();
 
         if guard.tcp_listeners.contains_key(&socket_addr) {
             return Err(Error::from(ErrorKind::AddrInUse));
         }
-
-        let (thread_builder, channel) = thread_builder.take();
 
         let tcp_listener_event_handler =
             TcpListenerEventHandler::new(socket_addr, connection_handler);
@@ -111,8 +108,6 @@ impl NetworkSimulator {
         let sender = thread_builder
             .spawn_event_handler(factory, tcp_listener_event_handler, join_call_back)
             .unwrap();
-
-        let (sender_to_return, receiver) = channel.take();
 
         let sender_clone = sender.clone();
         receiver.to_consumer(move |receive_or_disconnect| {
@@ -139,7 +134,7 @@ impl NetworkSimulator {
             return Err(Error::from(ErrorKind::BrokenPipe));
         }
 
-        return Ok(sender_to_return);
+        return Ok(());
     }
 
     pub fn connect_tcp(

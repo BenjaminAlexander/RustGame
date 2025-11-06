@@ -1,10 +1,10 @@
+use crate::factory::FactoryTrait;
 use crate::net::{
     TcpConnectionHandlerTrait,
     TcpStream,
 };
 use crate::single_threaded_simulator::net::ChannelTcpWriter;
 use crate::single_threaded_simulator::{
-    SingleThreadedFactory,
     SingleThreadedReceiver,
 };
 use crate::threading::channel::ReceiveMetaData;
@@ -13,6 +13,7 @@ use crate::threading::eventhandling::{
     EventHandleResult,
     EventHandlerTrait,
 };
+use std::marker::PhantomData;
 use std::net::SocketAddr;
 use std::ops::ControlFlow::{
     Break,
@@ -25,19 +26,22 @@ pub enum TcpListenerEvent {
 }
 
 pub struct TcpListenerEventHandler<
-    TcpConnectionHandler: TcpConnectionHandlerTrait<SingleThreadedFactory>,
+    Factory: FactoryTrait,
+    TcpConnectionHandler: TcpConnectionHandlerTrait<Factory>,
 > {
     socket_addr: SocketAddr,
     connection_handler: TcpConnectionHandler,
+    phantom: PhantomData<Factory>
 }
 
-impl<TcpConnectionHandler: TcpConnectionHandlerTrait<SingleThreadedFactory>>
-    TcpListenerEventHandler<TcpConnectionHandler>
+impl<Factory: FactoryTrait, TcpConnectionHandler: TcpConnectionHandlerTrait<Factory>>
+    TcpListenerEventHandler<Factory, TcpConnectionHandler>
 {
     pub fn new(socket_addr: SocketAddr, connection_handler: TcpConnectionHandler) -> Self {
         return Self {
             socket_addr,
             connection_handler,
+            phantom: PhantomData
         };
     }
 
@@ -56,8 +60,8 @@ impl<TcpConnectionHandler: TcpConnectionHandlerTrait<SingleThreadedFactory>>
     }
 }
 
-impl<TcpConnectionHandler: TcpConnectionHandlerTrait<SingleThreadedFactory>> EventHandlerTrait
-    for TcpListenerEventHandler<TcpConnectionHandler>
+impl<Factory: FactoryTrait, TcpConnectionHandler: TcpConnectionHandlerTrait<Factory>> EventHandlerTrait
+    for TcpListenerEventHandler<Factory, TcpConnectionHandler>
 {
     type Event = TcpListenerEvent;
     type ThreadReturn = TcpConnectionHandler;
