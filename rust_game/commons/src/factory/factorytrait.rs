@@ -43,7 +43,7 @@ pub trait FactoryTrait: Clone + Send + 'static {
         return Ok(sender);
     }
 
-    fn spawn_tcp_listener<T: TcpConnectionHandlerTrait<Self>>(
+    fn spawn_tcp_listener<T: TcpConnectionHandlerTrait>(
         &self,
         thread_builder: ChannelThreadBuilder<EventOrStopThread<()>>,
         socket_addr: SocketAddr,

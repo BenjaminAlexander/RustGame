@@ -1,4 +1,3 @@
-use crate::factory::FactoryTrait;
 use crate::net::{
     TcpConnectionHandlerTrait, TcpReceiver, TcpStream, UdpReadHandlerTrait
 };
@@ -82,10 +81,7 @@ impl NetworkSimulator {
         return (writer, reader);
     }
 
-    pub fn spawn_tcp_listener<
-        Factory: FactoryTrait,
-        TcpConnectionHandler: TcpConnectionHandlerTrait<Factory>,
-    >(
+    pub fn spawn_tcp_listener<TcpConnectionHandler: TcpConnectionHandlerTrait>(
         &self,
         factory: SingleThreadedFactory,
         socket_addr: SocketAddr,

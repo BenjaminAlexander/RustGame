@@ -1,8 +1,7 @@
 use super::constants::NET_POLLING_PERIOD;
-use crate::factory::FactoryTrait;
 use crate::net::tcp::RealTcpStream;
 use crate::net::tcpconnectionhandlertrait::TcpConnectionHandlerTrait;
-use crate::net::TcpStream;
+use crate::net::{TcpReceiver, TcpStream};
 use crate::threading::channel::ReceiveMetaData;
 use crate::threading::eventhandling::{
     ChannelEvent,
@@ -14,7 +13,6 @@ use std::io::{
     self,
     Error,
 };
-use std::marker::PhantomData;
 use std::net::{
     SocketAddr,
     TcpListener,
@@ -24,20 +22,18 @@ use std::ops::ControlFlow::{
     Continue,
 };
 
-pub struct TcpListenerEventHandler<Factory: FactoryTrait, T: TcpConnectionHandlerTrait<Factory>> {
+pub struct TcpListenerEventHandler<T: TcpConnectionHandlerTrait> {
     tcp_listener: TcpListener,
-    tcp_connection_handler: T,
-    phantom: PhantomData<Factory>
+    tcp_connection_handler: T
 }
 
-impl<Factory: FactoryTrait, T: TcpConnectionHandlerTrait<Factory>> TcpListenerEventHandler<Factory, T> {
+impl<T: TcpConnectionHandlerTrait> TcpListenerEventHandler<T> {
     pub fn new(tcp_listener: TcpListener, tcp_connection_handler: T) -> io::Result<Self> {
         tcp_listener.set_nonblocking(true)?;
 
         return Ok(Self {
             tcp_listener,
-            tcp_connection_handler,
-            phantom: PhantomData
+            tcp_connection_handler
         });
     }
 
@@ -76,7 +72,7 @@ impl<Factory: FactoryTrait, T: TcpConnectionHandlerTrait<Factory>> TcpListenerEv
             Ok(real_tcp_stream_clone) => {
                 match self
                     .tcp_connection_handler
-                    .on_connection(TcpStream::new(real_tcp_stream), real_tcp_stream_clone)
+                    .on_connection(TcpStream::new(real_tcp_stream), TcpReceiver::new(real_tcp_stream_clone))
                 {
                     Continue(()) => {
                         return EventHandleResult::TryForNextEvent(self);
@@ -97,7 +93,7 @@ impl<Factory: FactoryTrait, T: TcpConnectionHandlerTrait<Factory>> TcpListenerEv
     }
 }
 
-impl<Factory: FactoryTrait, T: TcpConnectionHandlerTrait<Factory>> EventHandlerTrait for TcpListenerEventHandler<Factory, T> {
+impl<T: TcpConnectionHandlerTrait> EventHandlerTrait for TcpListenerEventHandler<T> {
     type Event = ();
     type ThreadReturn = T;
 
@@ -126,7 +122,6 @@ mod tests {
 
     use super::*;
     use crate::{
-        factory::RealFactory,
         logging::LoggingConfigBuilder,
         net::{
             TcpConnectionHandler,
@@ -140,7 +135,7 @@ mod tests {
             .add_console_appender()
             .init(LevelFilter::Info);
 
-        let tcp_connection_handler = TcpConnectionHandler::<RealFactory>::new();
+        let tcp_connection_handler = TcpConnectionHandler::new();
 
         let tcp_listener = TcpListener::bind(LOCAL_EPHEMERAL_SOCKET_ADDR_V4).unwrap();
 
@@ -170,7 +165,7 @@ mod tests {
             .add_console_appender()
             .init(LevelFilter::Info);
 
-        let tcp_connection_handler = TcpConnectionHandler::<RealFactory>::new();
+        let tcp_connection_handler = TcpConnectionHandler::new();
 
         let tcp_listener = TcpListener::bind(LOCAL_EPHEMERAL_SOCKET_ADDR_V4).unwrap();
 

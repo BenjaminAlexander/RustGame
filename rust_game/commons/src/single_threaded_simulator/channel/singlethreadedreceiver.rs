@@ -1,7 +1,5 @@
 use std::io::Error;
 use std::net::SocketAddr;
-
-use crate::factory::FactoryTrait;
 use crate::net::{TcpConnectionHandlerTrait, TcpReadHandlerTrait};
 use crate::single_threaded_simulator::channel::receiverlink::{
     ReceiveOrDisconnected,
@@ -69,7 +67,7 @@ impl<T: Send> SingleThreadedReceiver<EventOrStopThread<T>> {
 }
 
 impl SingleThreadedReceiver<EventOrStopThread<()>> {
-    pub fn spawn_tcp_listener<Factory: FactoryTrait, T: TcpConnectionHandlerTrait<Factory>>(
+    pub fn spawn_tcp_listener<T: TcpConnectionHandlerTrait>(
         self, 
         thread_builder: ThreadBuilder, 
         socket_addr: SocketAddr,

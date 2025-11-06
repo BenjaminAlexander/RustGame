@@ -1,7 +1,5 @@
-use crate::factory::FactoryTrait;
 use crate::net::{
-    TcpConnectionHandlerTrait,
-    TcpStream,
+    TcpConnectionHandlerTrait, TcpReceiver, TcpStream
 };
 use crate::single_threaded_simulator::net::ChannelTcpWriter;
 use crate::single_threaded_simulator::{
@@ -13,7 +11,6 @@ use crate::threading::eventhandling::{
     EventHandleResult,
     EventHandlerTrait,
 };
-use std::marker::PhantomData;
 use std::net::SocketAddr;
 use std::ops::ControlFlow::{
     Break,
@@ -25,23 +22,17 @@ pub enum TcpListenerEvent {
     Connection(ChannelTcpWriter, SingleThreadedReceiver<Vec<u8>>),
 }
 
-pub struct TcpListenerEventHandler<
-    Factory: FactoryTrait,
-    TcpConnectionHandler: TcpConnectionHandlerTrait<Factory>,
-> {
+pub struct TcpListenerEventHandler<TcpConnectionHandler: TcpConnectionHandlerTrait> {
     socket_addr: SocketAddr,
-    connection_handler: TcpConnectionHandler,
-    phantom: PhantomData<Factory>
+    connection_handler: TcpConnectionHandler
 }
 
-impl<Factory: FactoryTrait, TcpConnectionHandler: TcpConnectionHandlerTrait<Factory>>
-    TcpListenerEventHandler<Factory, TcpConnectionHandler>
+impl<TcpConnectionHandler: TcpConnectionHandlerTrait> TcpListenerEventHandler<TcpConnectionHandler>
 {
     pub fn new(socket_addr: SocketAddr, connection_handler: TcpConnectionHandler) -> Self {
         return Self {
             socket_addr,
-            connection_handler,
-            phantom: PhantomData
+            connection_handler
         };
     }
 
@@ -52,7 +43,7 @@ impl<Factory: FactoryTrait, TcpConnectionHandler: TcpConnectionHandlerTrait<Fact
     ) -> EventHandleResult<Self> {
         return match self
             .connection_handler
-            .on_connection(TcpStream::new_simulated(writer), reader)
+            .on_connection(TcpStream::new_simulated(writer), TcpReceiver::new_simulated(reader))
         {
             Continue(()) => EventHandleResult::TryForNextEvent(self),
             Break(()) => EventHandleResult::StopThread(self.connection_handler),
@@ -60,8 +51,7 @@ impl<Factory: FactoryTrait, TcpConnectionHandler: TcpConnectionHandlerTrait<Fact
     }
 }
 
-impl<Factory: FactoryTrait, TcpConnectionHandler: TcpConnectionHandlerTrait<Factory>> EventHandlerTrait
-    for TcpListenerEventHandler<Factory, TcpConnectionHandler>
+impl<TcpConnectionHandler: TcpConnectionHandlerTrait> EventHandlerTrait for TcpListenerEventHandler<TcpConnectionHandler>
 {
     type Event = TcpListenerEvent;
     type ThreadReturn = TcpConnectionHandler;

@@ -1,30 +1,27 @@
-use crate::{
-    factory::FactoryTrait,
-    net::TcpStream,
-};
+use crate::net::{TcpReceiver, TcpStream};
 use std::{
     net::SocketAddr,
     ops::ControlFlow,
 };
 
 //TODO: get rid of this trait
-pub trait TcpConnectionHandlerTrait<Factory: FactoryTrait>: Send + 'static {
+pub trait TcpConnectionHandlerTrait: Send + 'static {
     fn on_bind(&mut self, _socket_addr: SocketAddr) {}
 
     fn on_connection(
         &mut self,
         tcp_stream: TcpStream,
-        tcp_receiver: Factory::TcpReader,
+        tcp_receiver: TcpReceiver,
     ) -> ControlFlow<()>;
 }
 
-pub struct TcpConnectionHandler<Factory: FactoryTrait> {
+pub struct TcpConnectionHandler {
     on_bind: Box<dyn FnMut(SocketAddr) + Send + 'static>,
     on_connection:
-        Box<dyn FnMut(TcpStream, Factory::TcpReader) -> ControlFlow<()> + Send + 'static>,
+        Box<dyn FnMut(TcpStream, TcpReceiver) -> ControlFlow<()> + Send + 'static>,
 }
 
-impl<Factory: FactoryTrait> TcpConnectionHandler<Factory> {
+impl TcpConnectionHandler {
     pub fn new() -> Self {
         return Self {
             on_bind: Box::new(|_| {}),
@@ -38,13 +35,13 @@ impl<Factory: FactoryTrait> TcpConnectionHandler<Factory> {
 
     pub fn set_on_connection(
         &mut self,
-        on_connection: impl FnMut(TcpStream, Factory::TcpReader) -> ControlFlow<()> + Send + 'static,
+        on_connection: impl FnMut(TcpStream, TcpReceiver) -> ControlFlow<()> + Send + 'static,
     ) {
         self.on_connection = Box::new(on_connection);
     }
 }
 
-impl<Factory: FactoryTrait> TcpConnectionHandlerTrait<Factory> for TcpConnectionHandler<Factory> {
+impl TcpConnectionHandlerTrait for TcpConnectionHandler {
     fn on_bind(&mut self, socket_addr: SocketAddr) {
         return (self.on_bind)(socket_addr);
     }
@@ -52,7 +49,7 @@ impl<Factory: FactoryTrait> TcpConnectionHandlerTrait<Factory> for TcpConnection
     fn on_connection(
         &mut self,
         tcp_stream: TcpStream,
-        tcp_receiver: <Factory as FactoryTrait>::TcpReader,
+        tcp_receiver: TcpReceiver,
     ) -> ControlFlow<()> {
         return (self.on_connection)(tcp_stream, tcp_receiver);
     }

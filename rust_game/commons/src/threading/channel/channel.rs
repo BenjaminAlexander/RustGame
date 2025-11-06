@@ -1,7 +1,7 @@
 use std::{io::Error, net::SocketAddr};
 
 use crate::{
-    factory::FactoryTrait, net::{RealTcpStream, TcpConnectionHandlerTrait, TcpReadHandlerTrait, TcpReaderEventHandler, TcpReceiver}, single_threaded_simulator::{
+    net::{RealTcpStream, TcpConnectionHandlerTrait, TcpReadHandlerTrait}, single_threaded_simulator::{
         SingleThreadedReceiver,
         SingleThreadedSender,
     }, threading::{
@@ -12,7 +12,7 @@ use crate::{
             ReceiverTrait,
             SenderTrait,
             TryRecvError,
-        }, eventhandling::{EventHandlerSender, EventHandlerTrait, EventOrStopThread}
+        }, eventhandling::{EventHandlerTrait, EventOrStopThread}
     }
 };
 
@@ -169,7 +169,7 @@ impl<T: Send> Receiver<EventOrStopThread<T>> {
 
 impl Receiver<EventOrStopThread<()>> {
 
-    pub fn spawn_tcp_listener<Factory: FactoryTrait, T: TcpConnectionHandlerTrait<Factory>>(
+    pub fn spawn_tcp_listener<T: TcpConnectionHandlerTrait>(
         self, 
         thread_builder: ThreadBuilder, 
         socket_addr: SocketAddr,

@@ -1,4 +1,3 @@
-use crate::factory::FactoryTrait;
 use crate::net::{RealTcpStream, TcpConnectionHandlerTrait, TcpListenerEventHandler, TcpReadHandlerTrait, TcpReaderEventHandler};
 use crate::threading::{AsyncJoinCallBackTrait, ThreadBuilder};
 use crate::threading::channel::{
@@ -83,7 +82,7 @@ impl<T: Send> RealReceiver<EventOrStopThread<T>> {
 }
 
 impl RealReceiver<EventOrStopThread<()>> {
-    pub fn spawn_tcp_listener<Factory: FactoryTrait, T: TcpConnectionHandlerTrait<Factory>>(
+    pub fn spawn_tcp_listener<T: TcpConnectionHandlerTrait>(
         self, 
         thread_builder: ThreadBuilder, 
         socket_addr: SocketAddr,

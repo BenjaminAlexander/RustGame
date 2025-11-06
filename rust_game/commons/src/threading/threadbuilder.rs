@@ -57,7 +57,7 @@ impl ThreadBuilder {
 
     pub fn build_channel_for_tcp_listener<
         Factory: FactoryTrait,
-        T: TcpConnectionHandlerTrait<Factory>,
+        T: TcpConnectionHandlerTrait,
     >(
         self,
         factory: Factory,
@@ -76,7 +76,7 @@ impl ThreadBuilder {
         return factory.spawn_event_handler(thread_builder, event_handler, join_call_back);
     }
 
-    pub fn spawn_tcp_listener<Factory: FactoryTrait, T: TcpConnectionHandlerTrait<Factory>>(
+    pub fn spawn_tcp_listener<Factory: FactoryTrait, T: TcpConnectionHandlerTrait>(
         self,
         factory: Factory,
         socket_addr: SocketAddr,

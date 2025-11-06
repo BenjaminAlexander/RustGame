@@ -1,6 +1,6 @@
 use crate::factory::FactoryTrait;
 use crate::net::{
-    RealTcpStream, RealUdpSocket, TcpReadHandlerTrait, TcpReceiver, TcpStream, UdpReadHandlerTrait, UdpReaderEventHandler
+    RealTcpStream, RealUdpSocket, TcpReceiver, TcpStream, UdpReadHandlerTrait, UdpReaderEventHandler
 };
 use crate::threading::channel::{
     Channel,
@@ -13,10 +13,7 @@ use crate::threading::eventhandling::{
     EventHandlerSender,
     EventOrStopThread,
 };
-use crate::threading::{
-    channel,
-    AsyncJoinCallBackTrait,
-};
+use crate::threading::AsyncJoinCallBackTrait;
 use crate::time::TimeSource;
 use std::io::Error;
 use std::net::{
