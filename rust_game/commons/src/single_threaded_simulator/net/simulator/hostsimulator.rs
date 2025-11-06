@@ -3,7 +3,6 @@ use crate::single_threaded_simulator::net::simulator::udpsocketsimulator::UdpSoc
 use crate::single_threaded_simulator::net::NetworkSimulator;
 use crate::single_threaded_simulator::{
     SingleThreadedFactory,
-    SingleThreadedReceiver,
 };
 use std::collections::HashSet;
 use std::io::{
