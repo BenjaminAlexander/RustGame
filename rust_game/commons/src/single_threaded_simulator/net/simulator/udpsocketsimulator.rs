@@ -1,5 +1,8 @@
-use crate::net::UdpSocketTrait;
-use crate::single_threaded_simulator::net::HostSimulator;
+use crate::net::{UdpReadHandlerTrait, UdpSocketTrait};
+use crate::single_threaded_simulator::net::{HostSimulator, NetworkSimulator};
+use crate::threading::{AsyncJoinCallBackTrait, ThreadBuilder};
+use crate::threading::channel::Receiver;
+use crate::threading::eventhandling::EventOrStopThread;
 use std::io::Error;
 use std::net::SocketAddr;
 use std::sync::{
@@ -10,6 +13,7 @@ use std::sync::{
 #[derive(Clone)]
 pub struct UdpSocketSimulator {
     internal: Arc<Mutex<Internal>>,
+    network_simulator: NetworkSimulator,
 }
 
 struct Internal {
@@ -19,18 +23,36 @@ struct Internal {
 
 impl UdpSocketSimulator {
     pub fn new(host_simulator: HostSimulator, socket_addr: SocketAddr) -> Self {
+
+        let network_simulator = host_simulator.get_network_simulator().clone();
+
         let internal = Internal {
             socket_addr,
-            host_simulator,
+            host_simulator: host_simulator.clone(),
         };
 
         return Self {
             internal: Arc::new(Mutex::new(internal)),
+            network_simulator
         };
     }
 
     pub fn get_socket_addr(&self) -> SocketAddr {
         return self.internal.lock().unwrap().socket_addr;
+    }
+
+    pub fn spawn_simulated_udp_reader<T: UdpReadHandlerTrait>(
+        self,
+        thread_builder: ThreadBuilder,
+        receiver: Receiver<EventOrStopThread<()>>,
+        udp_read_handler: T,
+        join_call_back: impl AsyncJoinCallBackTrait<T>,
+    ) -> Result<(), Error> {
+        return receiver.spawn_simulated_udp_reader(self.network_simulator.clone(), thread_builder, self, udp_read_handler, join_call_back);
+    }
+
+    pub fn get_network_simulator(&self) -> &NetworkSimulator {
+        return &self.network_simulator;
     }
 }
 

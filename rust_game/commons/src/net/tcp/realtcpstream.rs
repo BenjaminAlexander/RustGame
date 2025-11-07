@@ -1,4 +1,4 @@
-use crate::net::{NET_POLLING_PERIOD, TcpReadHandlerTrait, TcpReaderEventHandler};
+use crate::net::{NET_POLLING_PERIOD, TcpReadHandlerTrait};
 use crate::threading::eventhandling::EventOrStopThread;
 use crate::threading::{AsyncJoinCallBackTrait, ThreadBuilder};
 use crate::threading::channel::Receiver;
@@ -57,14 +57,13 @@ impl RealTcpStream {
         return self.tcp_stream.flush();
     }
 
-    pub fn spawn_tcp_reader<T: TcpReadHandlerTrait>(
+    pub fn spawn_real_tcp_reader<T: TcpReadHandlerTrait>(
         self,
         thread_builder: ThreadBuilder,
         receiver: Receiver<EventOrStopThread<()>>,
         tcp_read_handler: T,
         join_call_back: impl AsyncJoinCallBackTrait<T>,
     ) -> Result<(), Error> {
-        let event_handler = TcpReaderEventHandler::new(self, tcp_read_handler);
-        return receiver.spawn_event_handler(thread_builder, event_handler, join_call_back);
+        return receiver.spawn_real_tcp_reader(thread_builder, self, tcp_read_handler, join_call_back);
     }
 }

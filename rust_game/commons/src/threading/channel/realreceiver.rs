@@ -1,4 +1,4 @@
-use crate::net::{RealTcpStream, TcpConnectionHandlerTrait, TcpListenerEventHandler, TcpReadHandlerTrait, TcpReaderEventHandler};
+use crate::net::{RealTcpStream, RealUdpSocket, TcpConnectionHandlerTrait, TcpListenerEventHandler, TcpReadHandlerTrait, TcpReaderEventHandler, UdpReadHandlerTrait, UdpReaderEventHandler};
 use crate::threading::{AsyncJoinCallBackTrait, ThreadBuilder};
 use crate::threading::channel::{
     ReceiveMetaData,
@@ -98,7 +98,7 @@ impl RealReceiver<EventOrStopThread<()>> {
         return self.spawn_event_handler(thread_builder, event_handler, join_call_back);
     }
 
-    pub fn spawn_tcp_reader<T: TcpReadHandlerTrait>(
+    pub fn spawn_real_tcp_reader<T: TcpReadHandlerTrait>(
         self,
         thread_builder: ThreadBuilder,
         real_tcp_stream: RealTcpStream,
@@ -106,6 +106,17 @@ impl RealReceiver<EventOrStopThread<()>> {
         join_call_back: impl AsyncJoinCallBackTrait<T>,
     ) -> Result<(), Error> {
         let event_handler = TcpReaderEventHandler::new(real_tcp_stream, tcp_read_handler);
+        return self.spawn_event_handler(thread_builder, event_handler, join_call_back);
+    }
+
+    pub fn spawn_real_udp_reader<T: UdpReadHandlerTrait>(
+        self,
+        thread_builder: ThreadBuilder,
+        udp_socket: RealUdpSocket,
+        udp_read_handler: T,
+        join_call_back: impl AsyncJoinCallBackTrait<T>,
+    ) -> Result<(), Error> {
+        let event_handler = UdpReaderEventHandler::new(udp_socket, udp_read_handler);
         return self.spawn_event_handler(thread_builder, event_handler, join_call_back);
     }
 }

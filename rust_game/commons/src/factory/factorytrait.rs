@@ -1,5 +1,5 @@
 use crate::net::{
-    LOCAL_EPHEMERAL_SOCKET_ADDR_V4, TcpConnectionHandlerTrait, TcpReadHandlerTrait, TcpReceiver, TcpStream, UdpReadHandlerTrait, UdpSocketTrait
+    LOCAL_EPHEMERAL_SOCKET_ADDR_V4, TcpConnectionHandlerTrait, TcpReadHandlerTrait, TcpReceiver, TcpStream, UdpReadHandlerTrait, UdpSocket,
 };
 use crate::threading::channel::{
     Channel,
@@ -19,8 +19,6 @@ use std::io::Error;
 use std::net::SocketAddr;
 
 pub trait FactoryTrait: Clone + Send + 'static {
-
-    type UdpSocket: UdpSocketTrait;
 
     fn get_time_source(&self) -> &TimeSource;
 
@@ -71,16 +69,16 @@ pub trait FactoryTrait: Clone + Send + 'static {
         return Ok(sender);
     }
 
-    fn bind_udp_socket(&self, socket_addr: SocketAddr) -> Result<Self::UdpSocket, Error>;
+    fn bind_udp_socket(&self, socket_addr: SocketAddr) -> Result<UdpSocket, Error>;
 
-    fn bind_udp_ephemeral_port(&self) -> Result<Self::UdpSocket, Error> {
+    fn bind_udp_ephemeral_port(&self) -> Result<UdpSocket, Error> {
         return self.bind_udp_socket(SocketAddr::from(LOCAL_EPHEMERAL_SOCKET_ADDR_V4));
     }
 
     fn spawn_udp_reader<T: UdpReadHandlerTrait>(
         &self,
         thread_builder: ChannelThreadBuilder<EventOrStopThread<()>>,
-        udp_socket: Self::UdpSocket,
+        udp_socket: UdpSocket,
         udp_read_handler: T,
         join_call_back: impl AsyncJoinCallBackTrait<T>,
     ) -> Result<EventHandlerSender<()>, Error>;

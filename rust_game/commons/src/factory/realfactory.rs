@@ -1,6 +1,6 @@
 use crate::factory::FactoryTrait;
 use crate::net::{
-    RealTcpStream, RealUdpSocket, TcpReceiver, TcpStream, UdpReadHandlerTrait, UdpReaderEventHandler
+    RealTcpStream, RealUdpSocket, TcpReceiver, TcpStream, UdpReadHandlerTrait, UdpSocket
 };
 use crate::threading::channel::{
     Channel,
@@ -36,8 +36,6 @@ impl RealFactory {
 
 impl FactoryTrait for RealFactory {
     
-    type UdpSocket = RealUdpSocket;
-
     fn get_time_source(&self) -> &TimeSource {
         return &self.time_source;
     }
@@ -60,18 +58,20 @@ impl FactoryTrait for RealFactory {
         ));
     }
 
-    fn bind_udp_socket(&self, socket_addr: SocketAddr) -> Result<Self::UdpSocket, Error> {
-        return RealUdpSocket::bind(socket_addr);
+    fn bind_udp_socket(&self, socket_addr: SocketAddr) -> Result<UdpSocket, Error> {
+        return Ok(UdpSocket::new(RealUdpSocket::bind(socket_addr)?));
     }
 
     fn spawn_udp_reader<T: UdpReadHandlerTrait>(
         &self,
         thread_builder: ChannelThreadBuilder<EventOrStopThread<()>>,
-        udp_socket: Self::UdpSocket,
+        udp_socket: UdpSocket,
         udp_read_handler: T,
         join_call_back: impl AsyncJoinCallBackTrait<T>,
     ) -> Result<EventHandlerSender<()>, Error> {
-        let event_handler = UdpReaderEventHandler::new(udp_socket, udp_read_handler);
-        return self.spawn_event_handler(thread_builder, event_handler, join_call_back);
+        let (thread_builder, channel) = thread_builder.take();
+        let (sender, receiver) = channel.take();
+        udp_socket.spawn_udp_reader(thread_builder, receiver, udp_read_handler, join_call_back)?;
+        return Ok(sender);
     }
 }

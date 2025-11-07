@@ -1,13 +1,13 @@
 use std::io::Error;
 use std::net::SocketAddr;
-use crate::net::{TcpConnectionHandlerTrait, TcpReadHandlerTrait};
+use crate::net::{TcpConnectionHandlerTrait, TcpReadHandlerTrait, UdpReadHandlerTrait};
 use crate::single_threaded_simulator::channel::receiverlink::{
     ReceiveOrDisconnected,
     ReceiverLink,
 };
 use crate::single_threaded_simulator::channel::senderlink::SenderLink;
 use crate::single_threaded_simulator::eventhandling::EventHandlerHolder;
-use crate::single_threaded_simulator::net::TcpReaderEventHandler;
+use crate::single_threaded_simulator::net::{NetworkSimulator, TcpReaderEventHandler, UdpSocketSimulator};
 use crate::single_threaded_simulator::{
     SingleThreadedFactory,
     SingleThreadedSender,
@@ -135,10 +135,28 @@ impl SingleThreadedReceiver<EventOrStopThread<()>> {
 
         return Ok(());
     }
+
+    pub fn spawn_simulated_udp_reader<T: UdpReadHandlerTrait>(
+        self,
+        network_simulator: NetworkSimulator,
+        thread_builder: ThreadBuilder,
+        udp_socket_simulator: UdpSocketSimulator,
+        udp_read_handler: T,
+        join_call_back: impl AsyncJoinCallBackTrait<T>,
+    ) -> Result<(), Error> {
+        return network_simulator.spawn_udp_reader(
+            self.factory.clone(),
+            thread_builder,
+            self,
+            udp_socket_simulator,
+            udp_read_handler,
+            join_call_back,
+        );
+    }
 }
 
 impl SingleThreadedReceiver<Vec<u8>> {
-    pub fn spawn_tcp_reader<T: TcpReadHandlerTrait>(
+    pub fn spawn_simulated_tcp_reader<T: TcpReadHandlerTrait>(
         self,
         thread_builder: ThreadBuilder,
         receiver: Receiver<EventOrStopThread<()>>,

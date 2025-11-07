@@ -90,10 +90,6 @@ mod tests {
     use log::LevelFilter;
 
     use crate::{
-        factory::{
-            FactoryTrait,
-            RealFactory,
-        },
         logging::LoggingConfigBuilder,
         net::LOCAL_EPHEMERAL_SOCKET_ADDR_V4,
     };
@@ -106,9 +102,7 @@ mod tests {
             .add_console_appender()
             .init(LevelFilter::Info);
 
-        let real_factory = RealFactory::new();
-
-        let udp_socket = real_factory.bind_udp_ephemeral_port().unwrap();
+        let udp_socket = RealUdpSocket::bind(SocketAddr::from(LOCAL_EPHEMERAL_SOCKET_ADDR_V4)).unwrap();
 
         let udp_read_handler = move |_, _: &[u8]| {
             return ControlFlow::Continue(());
