@@ -3,12 +3,10 @@ use commons::logging::LoggingConfigBuilder;
 use commons::net::{
     TcpConnectionHandlerTrait,
     TcpReadHandlerTrait,
+    TcpReceiver,
     TcpStream,
 };
-use commons::single_threaded_simulator::{
-    SingleThreadedFactory,
-    SingleThreadedReceiver,
-};
+use commons::single_threaded_simulator::SingleThreadedFactory;
 use commons::threading::channel::Sender;
 use commons::threading::eventhandling::EventOrStopThread;
 use commons::threading::AsyncJoin;
@@ -151,11 +149,11 @@ struct ConnectionHandler {
     server_side: Arc<Mutex<Option<TestConnection>>>,
 }
 
-impl TcpConnectionHandlerTrait<SingleThreadedFactory> for ConnectionHandler {
+impl TcpConnectionHandlerTrait for ConnectionHandler {
     fn on_connection(
         &mut self,
         tcp_stream: TcpStream,
-        tcp_receiver: SingleThreadedReceiver<Vec<u8>>,
+        tcp_receiver: TcpReceiver,
     ) -> ControlFlow<()> {
         info!(
             "{:?} is handling a connection from {:?}",

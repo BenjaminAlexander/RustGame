@@ -1,7 +1,13 @@
-use crate::net::{NET_POLLING_PERIOD, TcpReadHandlerTrait};
-use crate::threading::eventhandling::EventOrStopThread;
-use crate::threading::{AsyncJoinCallBackTrait, ThreadBuilder};
+use crate::net::{
+    TcpReadHandlerTrait,
+    NET_POLLING_PERIOD,
+};
 use crate::threading::channel::Receiver;
+use crate::threading::eventhandling::EventOrStopThread;
+use crate::threading::{
+    AsyncJoinCallBackTrait,
+    ThreadBuilder,
+};
 use rmp_serde::encode::Error as EncodeError;
 use serde::de::DeserializeOwned;
 use serde::Serialize;
@@ -64,6 +70,11 @@ impl RealTcpStream {
         tcp_read_handler: T,
         join_call_back: impl AsyncJoinCallBackTrait<T>,
     ) -> Result<(), Error> {
-        return receiver.spawn_real_tcp_reader(thread_builder, self, tcp_read_handler, join_call_back);
+        return receiver.spawn_real_tcp_reader(
+            thread_builder,
+            self,
+            tcp_read_handler,
+            join_call_back,
+        );
     }
 }

@@ -2,9 +2,11 @@ use commons::factory::FactoryTrait;
 use commons::single_threaded_simulator::{
     ReceiveOrDisconnected,
     SingleThreadedFactory,
+    SingleThreadedReceiver,
 };
 use commons::threading::channel::{
     ReceiverTrait,
+    SenderTrait,
     TryRecvError,
 };
 use std::sync::{
@@ -16,7 +18,7 @@ use std::sync::{
 fn test_sender() {
     let factory = SingleThreadedFactory::new();
 
-    let (sender, mut receiver) = factory.new_channel::<u32>().take();
+    let (sender, mut receiver) = SingleThreadedReceiver::new(factory.clone());
 
     assert_eq!(TryRecvError::Empty, receiver.try_recv().unwrap_err());
 
@@ -66,7 +68,7 @@ fn test_drop_sender() {
 fn test_sender_error() {
     let factory = SingleThreadedFactory::new();
 
-    let (sender, mut receiver) = factory.new_channel::<u32>().take();
+    let (sender, mut receiver) = SingleThreadedReceiver::new(factory.clone());
 
     sender.send(1).unwrap();
     assert_eq!(1, receiver.try_recv().unwrap());

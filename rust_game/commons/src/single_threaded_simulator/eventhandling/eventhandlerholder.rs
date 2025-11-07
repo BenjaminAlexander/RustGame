@@ -1,7 +1,8 @@
 use crate::single_threaded_simulator::{
     ReceiveOrDisconnected,
     ReceiverLink,
-    SingleThreadedFactory, SingleThreadedReceiver,
+    SingleThreadedFactory,
+    SingleThreadedReceiver,
 };
 use crate::threading::channel::ReceiveMetaData;
 use crate::threading::eventhandling::ChannelEvent::{
@@ -55,10 +56,9 @@ impl<T: EventHandlerTrait, U: AsyncJoinCallBackTrait<T::ThreadReturn>> Clone
 }
 
 impl<T: EventHandlerTrait, U: AsyncJoinCallBackTrait<T::ThreadReturn>> EventHandlerHolder<T, U> {
-
     //TODO: can this method be moved to its caller?
     pub fn new(
-        factory: SingleThreadedFactory, 
+        factory: SingleThreadedFactory,
         thread_builder: ThreadBuilder,
         receiver: SingleThreadedReceiver<EventOrStopThread<T::Event>>,
         event_handler: T,

@@ -17,6 +17,8 @@ use std::sync::{
 
 pub struct ReceiverLink<T> {
     internal: Arc<Mutex<Internal<T>>>,
+
+    //TODO: replace with time source
     factory: SingleThreadedFactory,
 }
 

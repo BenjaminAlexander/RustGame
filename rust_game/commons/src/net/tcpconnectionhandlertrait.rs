@@ -1,4 +1,7 @@
-use crate::net::{TcpReceiver, TcpStream};
+use crate::net::{
+    TcpReceiver,
+    TcpStream,
+};
 use std::{
     net::SocketAddr,
     ops::ControlFlow,
@@ -17,8 +20,7 @@ pub trait TcpConnectionHandlerTrait: Send + 'static {
 
 pub struct TcpConnectionHandler {
     on_bind: Box<dyn FnMut(SocketAddr) + Send + 'static>,
-    on_connection:
-        Box<dyn FnMut(TcpStream, TcpReceiver) -> ControlFlow<()> + Send + 'static>,
+    on_connection: Box<dyn FnMut(TcpStream, TcpReceiver) -> ControlFlow<()> + Send + 'static>,
 }
 
 impl TcpConnectionHandler {

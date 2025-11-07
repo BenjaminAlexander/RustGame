@@ -1,6 +1,9 @@
 use crate::factory::FactoryTrait;
 use crate::net::{
-    TcpReceiver, TcpStream, UdpReadHandlerTrait, UdpSocket
+    TcpReceiver,
+    TcpStream,
+    UdpReadHandlerTrait,
+    UdpSocket,
 };
 use crate::single_threaded_simulator::net::{
     HostSimulator,
@@ -76,7 +79,6 @@ impl SingleThreadedFactory {
 }
 
 impl FactoryTrait for SingleThreadedFactory {
-
     fn get_time_source(&self) -> &TimeSource {
         return &self.time_source;
     }
@@ -91,7 +93,9 @@ impl FactoryTrait for SingleThreadedFactory {
     }
 
     fn bind_udp_socket(&self, socket_addr: SocketAddr) -> Result<UdpSocket, Error> {
-        return Ok(UdpSocket::new_simulated(self.host_simulator.bind_udp_socket(socket_addr)?));
+        return Ok(UdpSocket::new_simulated(
+            self.host_simulator.bind_udp_socket(socket_addr)?,
+        ));
     }
 
     fn spawn_udp_reader<T: UdpReadHandlerTrait>(

@@ -1,12 +1,12 @@
 use crate::interface::{
     EventSender,
     GameFactoryTrait,
-    TcpReader,
 };
 use crate::server::servercore::ServerCoreEvent;
 use crate::server::servercore::ServerCoreEvent::TcpConnectionEvent;
 use commons::net::{
     TcpConnectionHandlerTrait,
+    TcpReceiver,
     TcpStream,
 };
 use log::{
@@ -26,13 +26,13 @@ impl<GameFactory: GameFactoryTrait> TcpConnectionHandler<GameFactory> {
     }
 }
 
-impl<GameFactory: GameFactoryTrait> TcpConnectionHandlerTrait<GameFactory::Factory>
+impl<GameFactory: GameFactoryTrait> TcpConnectionHandlerTrait
     for TcpConnectionHandler<GameFactory>
 {
     fn on_connection(
         &mut self,
         tcp_stream: TcpStream,
-        tcp_receiver: TcpReader<GameFactory>,
+        tcp_receiver: TcpReceiver,
     ) -> ControlFlow<()> {
         info!("New TCP connection from {:?}", tcp_stream.get_peer_addr());
 

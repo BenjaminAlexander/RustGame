@@ -1,5 +1,8 @@
 use crate::net::{
-    TcpConnectionHandlerTrait, TcpReceiver, TcpStream, UdpReadHandlerTrait
+    TcpConnectionHandlerTrait,
+    TcpReceiver,
+    TcpStream,
+    UdpReadHandlerTrait,
 };
 use crate::single_threaded_simulator::net::simulator::hostsimulator::HostSimulator;
 use crate::single_threaded_simulator::net::simulator::tcplistenereventhandler::{
@@ -21,7 +24,10 @@ use crate::threading::eventhandling::{
     EventHandlerSender,
     EventOrStopThread,
 };
-use crate::threading::{AsyncJoinCallBackTrait, ThreadBuilder};
+use crate::threading::{
+    AsyncJoinCallBackTrait,
+    ThreadBuilder,
+};
 use log::{
     info,
     warn,
@@ -175,14 +181,14 @@ impl NetworkSimulator {
     ) -> Result<(), Error> {
         let mut guard = self.internal.lock().unwrap();
 
-        let socket_addr = udp_socket.get_socket_addr();
+        let socket_addr = udp_socket.local_addr();
 
         if guard.udp_readers.contains_key(&socket_addr) {
             return Err(Error::from(ErrorKind::AddrInUse));
         }
 
         let udp_read_event_handler =
-            UdpReadEventHandler::new(self.clone(), udp_socket.get_socket_addr(), udp_read_handler);
+            UdpReadEventHandler::new(self.clone(), udp_socket.local_addr(), udp_read_handler);
 
         let sender = thread_builder
             .spawn_event_handler(factory, udp_read_event_handler, join_call_back)

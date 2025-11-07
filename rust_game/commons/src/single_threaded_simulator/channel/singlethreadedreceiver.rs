@@ -1,22 +1,39 @@
-use std::io::Error;
-use std::net::SocketAddr;
-use crate::net::{TcpConnectionHandlerTrait, TcpReadHandlerTrait, UdpReadHandlerTrait};
+use crate::net::{
+    TcpConnectionHandlerTrait,
+    TcpReadHandlerTrait,
+    UdpReadHandlerTrait,
+};
 use crate::single_threaded_simulator::channel::receiverlink::{
     ReceiveOrDisconnected,
     ReceiverLink,
 };
 use crate::single_threaded_simulator::channel::senderlink::SenderLink;
 use crate::single_threaded_simulator::eventhandling::EventHandlerHolder;
-use crate::single_threaded_simulator::net::{NetworkSimulator, TcpReaderEventHandler, UdpSocketSimulator};
+use crate::single_threaded_simulator::net::{
+    NetworkSimulator,
+    TcpReaderEventHandler,
+    UdpSocketSimulator,
+};
 use crate::single_threaded_simulator::{
     SingleThreadedFactory,
     SingleThreadedSender,
 };
-use crate::threading::{AsyncJoinCallBackTrait, ThreadBuilder};
 use crate::threading::channel::{
-    ReceiveMetaData, Receiver, ReceiverTrait, TryRecvError
+    ReceiveMetaData,
+    Receiver,
+    ReceiverTrait,
+    TryRecvError,
 };
-use crate::threading::eventhandling::{EventHandlerTrait, EventOrStopThread};
+use crate::threading::eventhandling::{
+    EventHandlerTrait,
+    EventOrStopThread,
+};
+use crate::threading::{
+    AsyncJoinCallBackTrait,
+    ThreadBuilder,
+};
+use std::io::Error;
+use std::net::SocketAddr;
 
 pub struct SingleThreadedReceiver<T: Send> {
     factory: SingleThreadedFactory,
@@ -52,14 +69,18 @@ impl<T: Send> SingleThreadedReceiver<T> {
 }
 
 impl<T: Send> SingleThreadedReceiver<EventOrStopThread<T>> {
-    pub fn spawn_event_handler<U: EventHandlerTrait<Event = T>>(self, thread_builder: ThreadBuilder, event_handler: U, join_call_back: impl AsyncJoinCallBackTrait<U::ThreadReturn>) -> std::io::Result<()> {
-
+    pub fn spawn_event_handler<U: EventHandlerTrait<Event = T>>(
+        self,
+        thread_builder: ThreadBuilder,
+        event_handler: U,
+        join_call_back: impl AsyncJoinCallBackTrait<U::ThreadReturn>,
+    ) -> std::io::Result<()> {
         EventHandlerHolder::new(
             self.factory.clone(),
             thread_builder,
             self,
             event_handler,
-            join_call_back
+            join_call_back,
         );
 
         return Ok(());
@@ -68,14 +89,15 @@ impl<T: Send> SingleThreadedReceiver<EventOrStopThread<T>> {
 
 impl SingleThreadedReceiver<EventOrStopThread<()>> {
     pub fn spawn_tcp_listener<T: TcpConnectionHandlerTrait>(
-        self, 
-        thread_builder: ThreadBuilder, 
+        self,
+        thread_builder: ThreadBuilder,
         socket_addr: SocketAddr,
         tcp_connection_handler: T,
         join_call_back: impl AsyncJoinCallBackTrait<T>,
-    )-> std::io::Result<()> {
-
-        return self.factory.clone()
+    ) -> std::io::Result<()> {
+        return self
+            .factory
+            .clone()
             .get_host_simulator()
             .get_network_simulator()
             .spawn_tcp_listener(
@@ -86,7 +108,6 @@ impl SingleThreadedReceiver<EventOrStopThread<()>> {
                 tcp_connection_handler,
                 join_call_back,
             );
-        
     }
 
     pub fn spawn_simulated_tcp_reader<T: TcpReadHandlerTrait>(
@@ -99,7 +120,11 @@ impl SingleThreadedReceiver<EventOrStopThread<()>> {
         let tcp_reader_event_handler = TcpReaderEventHandler::new(tcp_read_handler);
 
         let sender = thread_builder
-            .spawn_event_handler(self.factory.clone(), tcp_reader_event_handler, join_call_back)
+            .spawn_event_handler(
+                self.factory.clone(),
+                tcp_reader_event_handler,
+                join_call_back,
+            )
             .unwrap();
 
         let sender_clone = sender.clone();
@@ -163,6 +188,11 @@ impl SingleThreadedReceiver<Vec<u8>> {
         tcp_read_handler: T,
         join_call_back: impl AsyncJoinCallBackTrait<T>,
     ) -> Result<(), Error> {
-        return receiver.spawn_simulated_tcp_reader(thread_builder, self, tcp_read_handler, join_call_back);
+        return receiver.spawn_simulated_tcp_reader(
+            thread_builder,
+            self,
+            tcp_read_handler,
+            join_call_back,
+        );
     }
 }

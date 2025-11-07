@@ -25,7 +25,6 @@ use crate::interface::{
 };
 use crate::messaging::InputMessage;
 use commons::factory::FactoryTrait;
-use commons::net::UdpSocketTrait;
 use commons::threading::channel::{
     ReceiveMetaData,
     Sender,

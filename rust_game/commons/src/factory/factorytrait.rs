@@ -1,5 +1,11 @@
 use crate::net::{
-    LOCAL_EPHEMERAL_SOCKET_ADDR_V4, TcpConnectionHandlerTrait, TcpReadHandlerTrait, TcpReceiver, TcpStream, UdpReadHandlerTrait, UdpSocket,
+    TcpConnectionHandlerTrait,
+    TcpReadHandlerTrait,
+    TcpReceiver,
+    TcpStream,
+    UdpReadHandlerTrait,
+    UdpSocket,
+    LOCAL_EPHEMERAL_SOCKET_ADDR_V4,
 };
 use crate::threading::channel::{
     Channel,
@@ -19,7 +25,6 @@ use std::io::Error;
 use std::net::SocketAddr;
 
 pub trait FactoryTrait: Clone + Send + 'static {
-
     fn get_time_source(&self) -> &TimeSource;
 
     //TODO: remove this, or add it back as a way to propogate the factory
@@ -50,7 +55,12 @@ pub trait FactoryTrait: Clone + Send + 'static {
     ) -> Result<EventHandlerSender<()>, Error> {
         let (thread_builder, channel) = thread_builder.take();
         let (sender, receiver) = channel.take();
-        receiver.spawn_tcp_listener(thread_builder, socket_addr, tcp_connection_handler, join_call_back)?;
+        receiver.spawn_tcp_listener(
+            thread_builder,
+            socket_addr,
+            tcp_connection_handler,
+            join_call_back,
+        )?;
         return Ok(sender);
     }
 

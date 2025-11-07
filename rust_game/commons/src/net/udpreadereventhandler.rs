@@ -102,7 +102,8 @@ mod tests {
             .add_console_appender()
             .init(LevelFilter::Info);
 
-        let udp_socket = RealUdpSocket::bind(SocketAddr::from(LOCAL_EPHEMERAL_SOCKET_ADDR_V4)).unwrap();
+        let udp_socket =
+            RealUdpSocket::bind(SocketAddr::from(LOCAL_EPHEMERAL_SOCKET_ADDR_V4)).unwrap();
 
         let udp_read_handler = move |_, _: &[u8]| {
             return ControlFlow::Continue(());

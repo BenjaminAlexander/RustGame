@@ -2,7 +2,6 @@ use crate::interface::{
     GameFactoryTrait,
     GameTrait,
     InitialInformation,
-    UdpSocket,
 };
 use crate::messaging::{
     Fragmenter,
@@ -10,7 +9,7 @@ use crate::messaging::{
     ToServerMessageUDP,
 };
 use commons::net::{
-    UdpSocketTrait,
+    UdpSocket,
     MAX_UDP_DATAGRAM_SIZE,
 };
 use commons::threading::channel::ReceiveMetaData;
@@ -32,7 +31,7 @@ pub enum UdpOutputEvent<Game: GameTrait> {
 
 pub struct UdpOutput<GameFactory: GameFactoryTrait> {
     server_address: SocketAddr,
-    socket: UdpSocket<GameFactory>,
+    socket: UdpSocket,
     fragmenter: Fragmenter,
     input_queue: Vec<InputMessage<GameFactory::Game>>,
     max_observed_input_queue: usize,
@@ -42,7 +41,7 @@ pub struct UdpOutput<GameFactory: GameFactoryTrait> {
 impl<GameFactory: GameFactoryTrait> UdpOutput<GameFactory> {
     pub fn new(
         server_address: SocketAddr,
-        socket: UdpSocket<GameFactory>,
+        socket: UdpSocket,
         initial_information: InitialInformation<GameFactory::Game>,
     ) -> Self {
         let mut udp_output = Self {

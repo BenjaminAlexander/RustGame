@@ -1,6 +1,11 @@
 use crate::factory::FactoryTrait;
 use crate::net::{
-    RealTcpStream, RealUdpSocket, TcpReceiver, TcpStream, UdpReadHandlerTrait, UdpSocket
+    RealTcpStream,
+    RealUdpSocket,
+    TcpReceiver,
+    TcpStream,
+    UdpReadHandlerTrait,
+    UdpSocket,
 };
 use crate::threading::channel::{
     Channel,
@@ -16,9 +21,7 @@ use crate::threading::eventhandling::{
 use crate::threading::AsyncJoinCallBackTrait;
 use crate::time::TimeSource;
 use std::io::Error;
-use std::net::{
-    SocketAddr,
-};
+use std::net::SocketAddr;
 use std::sync::mpsc;
 
 #[derive(Clone)]
@@ -35,7 +38,6 @@ impl RealFactory {
 }
 
 impl FactoryTrait for RealFactory {
-    
     fn get_time_source(&self) -> &TimeSource {
         return &self.time_source;
     }
@@ -52,10 +54,7 @@ impl FactoryTrait for RealFactory {
         let real_tcp_stream = RealTcpStream::new(net_tcp_stream, socket_addr.clone());
         let tcp_stream = TcpStream::new(real_tcp_stream.try_clone()?);
         let tcp_reader = TcpReceiver::new(real_tcp_stream);
-        return Ok((
-            tcp_stream,
-            tcp_reader,
-        ));
+        return Ok((tcp_stream, tcp_reader));
     }
 
     fn bind_udp_socket(&self, socket_addr: SocketAddr) -> Result<UdpSocket, Error> {

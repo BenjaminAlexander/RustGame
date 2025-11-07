@@ -37,7 +37,7 @@ fn test_real_factory_tcp() {
 
     let real_factory = RealFactory::new();
 
-    let mut tcp_connection_handler = TcpConnectionHandler::<RealFactory>::new();
+    let mut tcp_connection_handler = TcpConnectionHandler::new();
 
     tcp_connection_handler.set_on_bind(move |socket_addr| {
         info!("TcpListener bound to {:?}", socket_addr);
@@ -51,7 +51,7 @@ fn test_real_factory_tcp() {
     let tcp_listener_builder = real_factory
         .new_thread_builder()
         .name("TcpListener")
-        .build_channel_for_tcp_listener::<RealFactory, TcpConnectionHandler<RealFactory>>(
+        .build_channel_for_tcp_listener::<RealFactory, TcpConnectionHandler>(
         real_factory.clone(),
     );
 
@@ -125,7 +125,7 @@ fn test_tcp_listener_channel_disconnect() {
         .spawn_tcp_listener(
             real_factory.clone(),
             SocketAddr::from(LOCAL_EPHEMERAL_SOCKET_ADDR_V4),
-            TcpConnectionHandler::<RealFactory>::new(),
+            TcpConnectionHandler::new(),
             async_expects.new_expect_async_join("Expect listener join"),
         )
         .unwrap();
@@ -143,7 +143,7 @@ fn test_tcp_listener_polling_timeout() {
 
     let executor = SingleThreadExecutor::new();
 
-    let mut tcp_connection_handler = TcpConnectionHandler::<RealFactory>::new();
+    let mut tcp_connection_handler = TcpConnectionHandler::new();
 
     tcp_connection_handler.set_on_bind(move |socket_addr| {
         executor.execute_function_or_panic(move || {
@@ -190,11 +190,9 @@ fn test_tcp_listener_send_event() {
     let thread_builder = real_factory
         .new_thread_builder()
         .name("TcpListener")
-        .build_channel_for_tcp_listener::<RealFactory, TcpConnectionHandler<RealFactory>>(
-            real_factory.clone(),
-        );
+        .build_channel_for_tcp_listener::<RealFactory, TcpConnectionHandler>(real_factory.clone());
 
-    let mut tcp_connection_handler = TcpConnectionHandler::<RealFactory>::new();
+    let mut tcp_connection_handler = TcpConnectionHandler::new();
 
     let sender = thread_builder.clone_sender();
     tcp_connection_handler.set_on_bind(move |socket_addr| {
@@ -233,7 +231,7 @@ fn test_stop_tcp_reader() {
 
     let real_factory = RealFactory::new();
 
-    let mut tcp_connection_handler = TcpConnectionHandler::<RealFactory>::new();
+    let mut tcp_connection_handler = TcpConnectionHandler::new();
 
     let async_expects_clone = async_expects.clone();
     let mut tcp_reader_senders = Vec::new();
@@ -265,7 +263,7 @@ fn test_stop_tcp_reader() {
     let tcp_listener_builder = real_factory
         .new_thread_builder()
         .name("TcpListener")
-        .build_channel_for_tcp_listener::<RealFactory, TcpConnectionHandler<RealFactory>>(
+        .build_channel_for_tcp_listener::<RealFactory, TcpConnectionHandler>(
         real_factory.clone(),
     );
 
@@ -334,7 +332,7 @@ fn test_tcp_reader_channel_disconnect() {
 
     let real_factory = RealFactory::new();
 
-    let mut tcp_connection_handler = TcpConnectionHandler::<RealFactory>::new();
+    let mut tcp_connection_handler = TcpConnectionHandler::new();
 
     let async_expects_clone = async_expects.clone();
     tcp_connection_handler.set_on_bind(move |socket_addr| {
@@ -396,9 +394,7 @@ fn test_tcp_reader_channel_disconnect() {
     let thread_builder = real_factory
         .new_thread_builder()
         .name("TcpListener")
-        .build_channel_for_tcp_listener::<RealFactory, TcpConnectionHandler<RealFactory>>(
-            real_factory.clone(),
-        );
+        .build_channel_for_tcp_listener::<RealFactory, TcpConnectionHandler>(real_factory.clone());
 
     let _sender = real_factory
         .spawn_tcp_listener(

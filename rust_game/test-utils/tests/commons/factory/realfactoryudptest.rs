@@ -4,8 +4,6 @@ use commons::{
         RealFactory,
     },
     logging::LoggingConfigBuilder,
-    net::UdpSocketTrait,
-    threading::eventhandling::EventSenderTrait,
 };
 use log::{
     info,
@@ -74,8 +72,6 @@ fn test_real_factory_udp() {
     udp_reader_sender.send_stop_thread().unwrap();
 
     async_expects.wait_for_all();
-
-    assert_eq! {true, udp_socket_1.peer_addr().is_err()}
 }
 
 #[test]

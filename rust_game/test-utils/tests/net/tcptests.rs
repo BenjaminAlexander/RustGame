@@ -48,7 +48,7 @@ fn test_non_blocking_tcp_reader() {
 
     let executor = SingleThreadExecutor::new();
 
-    let mut tcp_connection_handler = TcpConnectionHandler::<RealFactory>::new();
+    let mut tcp_connection_handler = TcpConnectionHandler::new();
 
     let executor_clone = executor.clone();
     tcp_connection_handler.set_on_bind(move |socket_addr| {
@@ -74,7 +74,7 @@ fn test_non_blocking_tcp_reader() {
     let tcp_listener_builder = real_factory
         .new_thread_builder()
         .name("TcpListener")
-        .build_channel_for_tcp_listener::<RealFactory, TcpConnectionHandler<RealFactory>>(
+        .build_channel_for_tcp_listener::<RealFactory, TcpConnectionHandler>(
         real_factory.clone(),
     );
 

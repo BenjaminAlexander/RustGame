@@ -1,9 +1,17 @@
+use std::sync::mpsc;
+
 use commons::{
     factory::{
         FactoryTrait,
         RealFactory,
     },
-    threading::channel::RecvTimeoutError,
+    threading::channel::{
+        RealReceiver,
+        RealSender,
+        RecvTimeoutError,
+        SendMetaData,
+        SenderTrait,
+    },
     time::TimeDuration,
 };
 use test_utils::utils::setup_test_logging;
@@ -13,13 +21,14 @@ fn test_channel() {
     setup_test_logging();
 
     let factory = RealFactory::new();
-    let channel = factory.new_channel::<i32>();
+    let (sender, receiver) = mpsc::channel::<(SendMetaData, i32)>();
+    let sender = RealSender::new(factory.get_time_source().clone(), sender);
+    let mut receiver = RealReceiver::new(factory.get_time_source().clone(), receiver);
+
     let value1 = 1234;
     let value2 = 789;
 
-    channel.get_sender().send(value1).unwrap();
-
-    let (sender, mut receiver) = channel.take();
+    sender.send(value1).unwrap();
 
     let recieved_value1 = receiver.recv().unwrap();
     assert_eq!(value1, recieved_value1);
@@ -41,12 +50,15 @@ fn test_recv_timeout() {
     setup_test_logging();
 
     let factory = RealFactory::new();
-    let channel = factory.new_channel::<i32>();
+    let (sender, receiver) = mpsc::channel::<(SendMetaData, i32)>();
+    let sender = RealSender::new(factory.get_time_source().clone(), sender);
+    let mut receiver = RealReceiver::new(factory.get_time_source().clone(), receiver);
+
     let value = 1234;
 
-    channel.get_sender().send(value).unwrap();
+    sender.send(value).unwrap();
 
-    let (_, mut receiver) = channel.take();
+    drop(sender);
 
     let recieved_value = receiver
         .recv_timeout(TimeDuration::from_millis_f64(1.0))
@@ -60,9 +72,9 @@ fn test_recv_timeout_timeout() {
     setup_test_logging();
 
     let factory = RealFactory::new();
-    let channel = factory.new_channel::<i32>();
-
-    let (sender, mut receiver) = channel.take();
+    let (sender, receiver) = mpsc::channel::<(SendMetaData, i32)>();
+    let _sender = RealSender::new(factory.get_time_source().clone(), sender);
+    let mut receiver = RealReceiver::new(factory.get_time_source().clone(), receiver);
 
     let recieved_value = receiver
         .recv_timeout(TimeDuration::from_millis_f64(1.0))
@@ -76,9 +88,9 @@ fn test_recv_timeout_negetive_timeout() {
     setup_test_logging();
 
     let factory = RealFactory::new();
-    let channel = factory.new_channel::<i32>();
-
-    let (_sender, mut receiver) = channel.take();
+    let (sender, receiver) = mpsc::channel::<(SendMetaData, i32)>();
+    let _sender = RealSender::new(factory.get_time_source().clone(), sender);
+    let mut receiver = RealReceiver::new(factory.get_time_source().clone(), receiver);
 
     let error = receiver
         .recv_timeout(TimeDuration::from_millis_f64(-1.0))

@@ -25,7 +25,4 @@ pub use self::types::EventSender;
 pub use self::types::Factory;
 pub use self::types::Game;
 pub use self::types::InterpolationResult;
-pub use self::types::Receiver;
-pub use self::types::TcpReader;
-pub use self::types::UdpSocket;
 pub use self::updatearg::ClientUpdateArg;

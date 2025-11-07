@@ -1,7 +1,13 @@
-use crate::net::{UdpReadHandlerTrait, UdpSocketTrait};
-use crate::threading::{AsyncJoinCallBackTrait, ThreadBuilder};
+use crate::net::{
+    UdpReadHandlerTrait,
+    UdpSocketTrait,
+};
 use crate::threading::channel::Receiver;
 use crate::threading::eventhandling::EventOrStopThread;
+use crate::threading::{
+    AsyncJoinCallBackTrait,
+    ThreadBuilder,
+};
 use std::io::Error;
 use std::net::{
     SocketAddr,
@@ -30,10 +36,6 @@ impl RealUdpSocket {
         return self.udp_socket.local_addr();
     }
 
-    pub fn peer_addr(&self) -> Result<SocketAddr, Error> {
-        return self.udp_socket.peer_addr();
-    }
-
     pub fn spawn_real_udp_reader<T: UdpReadHandlerTrait>(
         self,
         thread_builder: ThreadBuilder,
@@ -41,7 +43,12 @@ impl RealUdpSocket {
         udp_read_handler: T,
         join_call_back: impl AsyncJoinCallBackTrait<T>,
     ) -> Result<(), Error> {
-        return receiver.spawn_real_udp_reader(thread_builder, self, udp_read_handler, join_call_back)
+        return receiver.spawn_real_udp_reader(
+            thread_builder,
+            self,
+            udp_read_handler,
+            join_call_back,
+        );
     }
 }
 

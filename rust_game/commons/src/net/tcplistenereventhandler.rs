@@ -1,7 +1,10 @@
 use super::constants::NET_POLLING_PERIOD;
 use crate::net::tcp::RealTcpStream;
 use crate::net::tcpconnectionhandlertrait::TcpConnectionHandlerTrait;
-use crate::net::{TcpReceiver, TcpStream};
+use crate::net::{
+    TcpReceiver,
+    TcpStream,
+};
 use crate::threading::channel::ReceiveMetaData;
 use crate::threading::eventhandling::{
     ChannelEvent,
@@ -24,7 +27,7 @@ use std::ops::ControlFlow::{
 
 pub struct TcpListenerEventHandler<T: TcpConnectionHandlerTrait> {
     tcp_listener: TcpListener,
-    tcp_connection_handler: T
+    tcp_connection_handler: T,
 }
 
 impl<T: TcpConnectionHandlerTrait> TcpListenerEventHandler<T> {
@@ -33,7 +36,7 @@ impl<T: TcpConnectionHandlerTrait> TcpListenerEventHandler<T> {
 
         return Ok(Self {
             tcp_listener,
-            tcp_connection_handler
+            tcp_connection_handler,
         });
     }
 
@@ -70,10 +73,10 @@ impl<T: TcpConnectionHandlerTrait> TcpListenerEventHandler<T> {
     ) -> EventHandleResult<Self> {
         match clone_result {
             Ok(real_tcp_stream_clone) => {
-                match self
-                    .tcp_connection_handler
-                    .on_connection(TcpStream::new(real_tcp_stream), TcpReceiver::new(real_tcp_stream_clone))
-                {
+                match self.tcp_connection_handler.on_connection(
+                    TcpStream::new(real_tcp_stream),
+                    TcpReceiver::new(real_tcp_stream_clone),
+                ) {
                     Continue(()) => {
                         return EventHandleResult::TryForNextEvent(self);
                     }

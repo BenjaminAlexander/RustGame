@@ -1,10 +1,16 @@
 use std::io::Error;
 
-use crate::net::{RealTcpStream, TcpReadHandlerTrait};
+use crate::net::{
+    RealTcpStream,
+    TcpReadHandlerTrait,
+};
 use crate::single_threaded_simulator::SingleThreadedReceiver;
-use crate::threading::eventhandling::EventOrStopThread;
-use crate::threading::{AsyncJoinCallBackTrait, ThreadBuilder};
 use crate::threading::channel::Receiver;
+use crate::threading::eventhandling::EventOrStopThread;
+use crate::threading::{
+    AsyncJoinCallBackTrait,
+    ThreadBuilder,
+};
 
 enum Implementation {
     Real(RealTcpStream),
@@ -39,8 +45,19 @@ impl TcpReceiver {
         join_call_back: impl AsyncJoinCallBackTrait<T>,
     ) -> Result<(), Error> {
         match self.implementation {
-            Implementation::Real(real_tcp_stream) => real_tcp_stream.spawn_real_tcp_reader(thread_builder, receiver, tcp_read_handler, join_call_back),
-            Implementation::Simulated(single_threaded_receiver) => single_threaded_receiver.spawn_simulated_tcp_reader(thread_builder, receiver, tcp_read_handler, join_call_back),
+            Implementation::Real(real_tcp_stream) => real_tcp_stream.spawn_real_tcp_reader(
+                thread_builder,
+                receiver,
+                tcp_read_handler,
+                join_call_back,
+            ),
+            Implementation::Simulated(single_threaded_receiver) => single_threaded_receiver
+                .spawn_simulated_tcp_reader(
+                    thread_builder,
+                    receiver,
+                    tcp_read_handler,
+                    join_call_back,
+                ),
         }
     }
 }

@@ -18,8 +18,6 @@ use crate::interface::{
     GameTrait,
     InitialInformation,
     RenderReceiverMessage,
-    TcpReader,
-    UdpSocket,
 };
 use crate::messaging::InputMessage;
 use crate::server::clientaddress::ClientAddress;
@@ -45,8 +43,9 @@ use crate::server::{
 };
 use commons::factory::FactoryTrait;
 use commons::net::{
+    TcpReceiver,
     TcpStream,
-    UdpSocketTrait,
+    UdpSocket,
     MAX_UDP_DATAGRAM_SIZE,
 };
 use commons::threading::channel::{
@@ -78,7 +77,7 @@ pub enum ServerCoreEvent<GameFactory: GameFactoryTrait> {
 
     //TODO: create render receiver sender before spawning event handler
     StartGameEvent(Sender<RenderReceiverMessage<GameFactory::Game>>),
-    TcpConnectionEvent(TcpStream, TcpReader<GameFactory>),
+    TcpConnectionEvent(TcpStream, TcpReceiver),
     GameTimerTick,
     UdpPacket(SocketAddr, usize, [u8; MAX_UDP_DATAGRAM_SIZE]),
 }
@@ -92,7 +91,7 @@ pub struct ServerCore<GameFactory: GameFactoryTrait> {
     game_timer: Option<GameTimer<GameFactory::Factory, ServerGameTimerObserver<GameFactory>>>,
     tcp_inputs: Vec<EventSender<()>>,
     tcp_outputs: Vec<EventSender<TcpOutputEvent<GameFactory::Game>>>,
-    udp_socket: Option<UdpSocket<GameFactory>>,
+    udp_socket: Option<UdpSocket>,
     udp_outputs: Vec<EventSender<UdpOutputEvent<GameFactory::Game>>>,
     udp_input_sender_option: Option<EventSender<()>>,
     udp_handler: UdpHandler<GameFactory>,
@@ -368,7 +367,7 @@ impl<GameFactory: GameFactoryTrait> ServerCore<GameFactory> {
     fn on_tcp_connection(
         mut self,
         tcp_stream: TcpStream,
-        tcp_receiver: TcpReader<GameFactory>,
+        tcp_receiver: TcpReceiver,
     ) -> EventHandleResult<Self> {
         if !self.game_is_started {
             info!("TcpStream accepted: {:?}", tcp_stream.get_peer_addr());

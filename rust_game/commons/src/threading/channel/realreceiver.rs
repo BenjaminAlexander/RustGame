@@ -1,18 +1,37 @@
-use crate::net::{RealTcpStream, RealUdpSocket, TcpConnectionHandlerTrait, TcpListenerEventHandler, TcpReadHandlerTrait, TcpReaderEventHandler, UdpReadHandlerTrait, UdpReaderEventHandler};
-use crate::threading::{AsyncJoinCallBackTrait, ThreadBuilder};
+use crate::net::{
+    RealTcpStream,
+    RealUdpSocket,
+    TcpConnectionHandlerTrait,
+    TcpListenerEventHandler,
+    TcpReadHandlerTrait,
+    TcpReaderEventHandler,
+    UdpReadHandlerTrait,
+    UdpReaderEventHandler,
+};
 use crate::threading::channel::{
     ReceiveMetaData,
     ReceiverTrait,
     SendMetaData,
     TryRecvError,
 };
-use crate::threading::eventhandling::{EventHandlerThread, EventHandlerTrait, EventOrStopThread};
+use crate::threading::eventhandling::{
+    EventHandlerThread,
+    EventHandlerTrait,
+    EventOrStopThread,
+};
+use crate::threading::{
+    AsyncJoinCallBackTrait,
+    ThreadBuilder,
+};
 use crate::time::{
     TimeDuration,
     TimeSource,
 };
 use std::io::Error;
-use std::net::{SocketAddr, TcpListener};
+use std::net::{
+    SocketAddr,
+    TcpListener,
+};
 use std::sync::mpsc;
 
 pub type RecvError = mpsc::RecvError;
@@ -74,7 +93,12 @@ impl<T: Send> RealReceiver<T> {
 }
 
 impl<T: Send> RealReceiver<EventOrStopThread<T>> {
-    pub fn spawn_event_handler<U: EventHandlerTrait<Event = T>>(self, thread_builder: ThreadBuilder, event_handler: U, join_call_back: impl AsyncJoinCallBackTrait<U::ThreadReturn>) -> std::io::Result<()> {
+    pub fn spawn_event_handler<U: EventHandlerTrait<Event = T>>(
+        self,
+        thread_builder: ThreadBuilder,
+        event_handler: U,
+        join_call_back: impl AsyncJoinCallBackTrait<U::ThreadReturn>,
+    ) -> std::io::Result<()> {
         let thread = EventHandlerThread::new(self, event_handler);
         thread_builder.spawn_thread(thread, join_call_back)?;
         return Ok(());
@@ -83,12 +107,12 @@ impl<T: Send> RealReceiver<EventOrStopThread<T>> {
 
 impl RealReceiver<EventOrStopThread<()>> {
     pub fn spawn_tcp_listener<T: TcpConnectionHandlerTrait>(
-        self, 
-        thread_builder: ThreadBuilder, 
+        self,
+        thread_builder: ThreadBuilder,
         socket_addr: SocketAddr,
         mut tcp_connection_handler: T,
         join_call_back: impl AsyncJoinCallBackTrait<T>,
-    )-> std::io::Result<()> {
+    ) -> std::io::Result<()> {
         let tcp_listener = TcpListener::bind(socket_addr)?;
 
         tcp_connection_handler.on_bind(tcp_listener.local_addr()?);

@@ -1,10 +1,10 @@
 use crate::net::{
-    TcpConnectionHandlerTrait, TcpReceiver, TcpStream
+    TcpConnectionHandlerTrait,
+    TcpReceiver,
+    TcpStream,
 };
 use crate::single_threaded_simulator::net::ChannelTcpWriter;
-use crate::single_threaded_simulator::{
-    SingleThreadedReceiver,
-};
+use crate::single_threaded_simulator::SingleThreadedReceiver;
 use crate::threading::channel::ReceiveMetaData;
 use crate::threading::eventhandling::{
     ChannelEvent,
@@ -24,15 +24,16 @@ pub enum TcpListenerEvent {
 
 pub struct TcpListenerEventHandler<TcpConnectionHandler: TcpConnectionHandlerTrait> {
     socket_addr: SocketAddr,
-    connection_handler: TcpConnectionHandler
+    connection_handler: TcpConnectionHandler,
 }
 
-impl<TcpConnectionHandler: TcpConnectionHandlerTrait> TcpListenerEventHandler<TcpConnectionHandler>
+impl<TcpConnectionHandler: TcpConnectionHandlerTrait>
+    TcpListenerEventHandler<TcpConnectionHandler>
 {
     pub fn new(socket_addr: SocketAddr, connection_handler: TcpConnectionHandler) -> Self {
         return Self {
             socket_addr,
-            connection_handler
+            connection_handler,
         };
     }
 
@@ -41,17 +42,18 @@ impl<TcpConnectionHandler: TcpConnectionHandlerTrait> TcpListenerEventHandler<Tc
         writer: ChannelTcpWriter,
         reader: SingleThreadedReceiver<Vec<u8>>,
     ) -> EventHandleResult<Self> {
-        return match self
-            .connection_handler
-            .on_connection(TcpStream::new_simulated(writer), TcpReceiver::new_simulated(reader))
-        {
+        return match self.connection_handler.on_connection(
+            TcpStream::new_simulated(writer),
+            TcpReceiver::new_simulated(reader),
+        ) {
             Continue(()) => EventHandleResult::TryForNextEvent(self),
             Break(()) => EventHandleResult::StopThread(self.connection_handler),
         };
     }
 }
 
-impl<TcpConnectionHandler: TcpConnectionHandlerTrait> EventHandlerTrait for TcpListenerEventHandler<TcpConnectionHandler>
+impl<TcpConnectionHandler: TcpConnectionHandlerTrait> EventHandlerTrait
+    for TcpListenerEventHandler<TcpConnectionHandler>
 {
     type Event = TcpListenerEvent;
     type ThreadReturn = TcpConnectionHandler;

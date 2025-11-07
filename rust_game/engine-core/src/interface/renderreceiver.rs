@@ -8,11 +8,10 @@ use crate::interface::{
     InitialInformation,
     InterpolationArg,
     InterpolationResult,
-    Receiver,
 };
 use commons::factory::FactoryTrait;
 use commons::threading::channel::{
-    ReceiverTrait,
+    Receiver,
     Sender,
     TryRecvError,
 };
@@ -32,7 +31,7 @@ pub enum RenderReceiverMessage<Game: GameTrait> {
 //TODO: make the difference between the render receiver and the Data more clear
 pub struct RenderReceiver<GameFactory: GameFactoryTrait> {
     factory: Factory<GameFactory>,
-    receiver: Receiver<GameFactory, RenderReceiverMessage<Game<GameFactory>>>,
+    receiver: Receiver<RenderReceiverMessage<Game<GameFactory>>>,
     data: Data<GameFactory>,
 }
 

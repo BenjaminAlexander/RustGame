@@ -1,6 +1,10 @@
 use crate::factory::FactoryTrait;
 use crate::net::{
-    TcpConnectionHandlerTrait, TcpReadHandlerTrait, TcpReceiver, UdpReadHandlerTrait, UdpSocket
+    TcpConnectionHandlerTrait,
+    TcpReadHandlerTrait,
+    TcpReceiver,
+    UdpReadHandlerTrait,
+    UdpSocket,
 };
 use crate::threading::asyncjoin::AsyncJoin;
 use crate::threading::eventhandling::{
@@ -55,10 +59,7 @@ impl ThreadBuilder {
         return self.build_channel_thread(factory);
     }
 
-    pub fn build_channel_for_tcp_listener<
-        Factory: FactoryTrait,
-        T: TcpConnectionHandlerTrait,
-    >(
+    pub fn build_channel_for_tcp_listener<Factory: FactoryTrait, T: TcpConnectionHandlerTrait>(
         self,
         factory: Factory,
     ) -> channel::ChannelThreadBuilder<EventOrStopThread<()>> {

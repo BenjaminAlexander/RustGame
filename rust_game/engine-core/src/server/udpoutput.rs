@@ -2,7 +2,6 @@ use crate::gametime::TimeMessage;
 use crate::interface::{
     GameFactoryTrait,
     GameTrait,
-    UdpSocket,
 };
 use crate::messaging::{
     Fragmenter,
@@ -21,7 +20,7 @@ use crate::server::udpoutput::UdpOutputEvent::{
 };
 use commons::factory::FactoryTrait;
 use commons::net::{
-    UdpSocketTrait,
+    UdpSocket,
     MAX_UDP_DATAGRAM_SIZE,
 };
 use commons::stats::RollingAverage;
@@ -55,7 +54,7 @@ pub enum UdpOutputEvent<Game: GameTrait> {
 pub struct UdpOutput<GameFactory: GameFactoryTrait> {
     factory: GameFactory::Factory,
     player_index: usize,
-    socket: UdpSocket<GameFactory>,
+    socket: UdpSocket,
     remote_peer: Option<RemoteUdpPeer>,
     fragmenter: Fragmenter,
     last_time_message: Option<TimeMessage>,
@@ -72,7 +71,7 @@ impl<GameFactory: GameFactoryTrait> UdpOutput<GameFactory> {
     pub fn new(
         factory: GameFactory::Factory,
         player_index: usize,
-        socket: &UdpSocket<GameFactory>,
+        socket: &UdpSocket,
     ) -> io::Result<Self> {
         Ok(UdpOutput {
             player_index,
