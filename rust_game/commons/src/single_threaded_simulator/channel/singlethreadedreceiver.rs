@@ -1,3 +1,4 @@
+use crate::factory::FactoryTrait;
 use crate::net::{
     TcpConnectionHandlerTrait,
     TcpReadHandlerTrait,
@@ -48,7 +49,7 @@ impl<T: Send> ReceiverTrait<T> for SingleThreadedReceiver<T> {
 impl<T: Send> SingleThreadedReceiver<T> {
 
     pub fn new(factory: SingleThreadedFactory) -> (SingleThreadedSender<T>, Self) {
-        let receiver_link = ReceiverLink::new(factory.clone());
+        let receiver_link = ReceiverLink::new(factory.get_time_source().clone());
         let sender_link = SenderLink::new(receiver_link.clone());
         let sender = SingleThreadedSender::new(sender_link);
         let receiver = Self {

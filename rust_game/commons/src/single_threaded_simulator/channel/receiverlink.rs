@@ -1,9 +1,8 @@
-use crate::factory::FactoryTrait;
-use crate::single_threaded_simulator::SingleThreadedFactory;
 use crate::threading::channel::{
     ReceiveMetaData,
     SendMetaData,
 };
+use crate::time::TimeSource;
 use log::{
     error,
     warn,
@@ -17,9 +16,7 @@ use std::sync::{
 
 pub struct ReceiverLink<T> {
     internal: Arc<Mutex<Internal<T>>>,
-
-    //TODO: replace with time source
-    factory: SingleThreadedFactory,
+    time_source: TimeSource,
 }
 
 pub enum ReceiveOrDisconnected<T> {
@@ -39,7 +36,7 @@ struct Internal<T> {
 }
 
 impl<T> ReceiverLink<T> {
-    pub(super) fn new(factory: SingleThreadedFactory) -> Self {
+    pub(super) fn new(time_source: TimeSource) -> Self {
         let internal = Internal {
             is_sender_disconnected: false,
             mode: Mode::Queue(VecDeque::new()),
@@ -47,7 +44,7 @@ impl<T> ReceiverLink<T> {
 
         return Self {
             internal: Arc::new(Mutex::new(internal)),
-            factory,
+            time_source,
         };
     }
 
@@ -81,7 +78,7 @@ impl<T> ReceiverLink<T> {
                 }
                 Some((send_meta_data, t)) => {
                     let receive_meta_data =
-                        ReceiveMetaData::new(&self.factory.get_time_source(), send_meta_data);
+                        ReceiveMetaData::new(&self.time_source, send_meta_data);
                     return Ok((receive_meta_data, t));
                 }
             }
@@ -100,7 +97,7 @@ impl<T> ReceiverLink<T> {
         if let Mode::Queue(ref mut queue) = internal.mode {
             while let Some((send_meta_data, t)) = queue.pop_front() {
                 let receive_meta_data =
-                    ReceiveMetaData::new(&self.factory.get_time_source(), send_meta_data);
+                    ReceiveMetaData::new(&self.time_source, send_meta_data);
 
                 if consumer(ReceiveOrDisconnected::Receive(receive_meta_data, t)).is_err() {
                     warn!("Consumer returned an error.")
@@ -118,7 +115,7 @@ impl<T> ReceiverLink<T> {
     }
 
     pub(super) fn send(&self, t: T) -> Result<(), T> {
-        let send_meta_data = SendMetaData::new(&self.factory.get_time_source());
+        let send_meta_data = SendMetaData::new(&self.time_source);
 
         let mut internal = self.internal.lock().unwrap();
 
@@ -129,7 +126,7 @@ impl<T> ReceiverLink<T> {
             }
             Mode::Consumer(ref consumer) => {
                 let receive_meta_data =
-                    ReceiveMetaData::new(&self.factory.get_time_source(), send_meta_data);
+                    ReceiveMetaData::new(&self.time_source, send_meta_data);
                 return consumer(ReceiveOrDisconnected::Receive(receive_meta_data, t));
             }
             Mode::ReceiverDisconnected => {
@@ -143,7 +140,7 @@ impl<T> Clone for ReceiverLink<T> {
     fn clone(&self) -> Self {
         return Self {
             internal: self.internal.clone(),
-            factory: self.factory.clone(),
+            time_source: self.time_source.clone(),
         };
     }
 }

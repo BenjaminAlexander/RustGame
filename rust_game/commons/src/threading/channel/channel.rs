@@ -33,6 +33,8 @@ pub struct Channel<T: Send + 'static> {
 }
 
 impl<T: Send + 'static> Channel<T> {
+
+    //TODO: don't expose new functions
     pub fn new(real_sender: RealSender<T>, real_receiver: RealReceiver<T>) -> Self {
         let sender = Sender::new(SenderImplementation::Real(real_sender));
         let receiver = Receiver::new(ReceiverImplementation::Real(real_receiver));
