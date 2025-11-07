@@ -2,7 +2,7 @@ use crate::factory::FactoryTrait;
 use crate::net::{
     TcpConnectionHandlerTrait,
     TcpReadHandlerTrait,
-    TcpReceiver,
+    TcpReader,
     UdpReadHandlerTrait,
     UdpSocket,
 };
@@ -98,7 +98,7 @@ impl ThreadBuilder {
     pub fn spawn_tcp_reader<Factory: FactoryTrait, T: TcpReadHandlerTrait>(
         self,
         factory: Factory,
-        tcp_reader: TcpReceiver,
+        tcp_reader: TcpReader,
         tcp_read_handler: T,
         join_call_back: impl AsyncJoinCallBackTrait<T>,
     ) -> Result<EventHandlerSender<()>, Error> {

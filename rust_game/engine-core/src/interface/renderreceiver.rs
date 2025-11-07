@@ -1,3 +1,5 @@
+use std::sync::mpsc::TryRecvError;
+
 use crate::gamemanager::StepMessage;
 use crate::gametime::TimeMessage;
 use crate::interface::{
@@ -11,9 +13,7 @@ use crate::interface::{
 };
 use commons::factory::FactoryTrait;
 use commons::threading::channel::{
-    Receiver,
-    Sender,
-    TryRecvError,
+    Receiver, ReceiverTrait, Sender
 };
 use commons::time::TimeDuration;
 use log::{

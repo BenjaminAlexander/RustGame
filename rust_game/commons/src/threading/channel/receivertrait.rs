@@ -1,7 +1,6 @@
-use crate::threading::channel::ReceiveMetaData;
-use std::sync::mpsc;
+use std::sync::mpsc::TryRecvError;
 
-pub type TryRecvError = mpsc::TryRecvError;
+use crate::threading::channel::ReceiveMetaData;
 
 pub trait ReceiverTrait<T: Send> {
     fn try_recv_meta_data(&mut self) -> Result<(ReceiveMetaData, T), TryRecvError>;

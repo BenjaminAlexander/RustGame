@@ -1,8 +1,7 @@
 use crate::factory::FactoryTrait;
 use crate::net::{
-    TcpReceiver,
+    TcpReader,
     TcpStream,
-    UdpReadHandlerTrait,
     UdpSocket,
 };
 use crate::single_threaded_simulator::net::{
@@ -15,13 +14,7 @@ use crate::single_threaded_simulator::{
 };
 use crate::threading::channel::{
     Channel,
-    ChannelThreadBuilder,
 };
-use crate::threading::eventhandling::{
-    EventHandlerSender,
-    EventOrStopThread,
-};
-use crate::threading::AsyncJoinCallBackTrait;
 use crate::time::{
     SimulatedTimeSource,
     TimeSource,
@@ -88,7 +81,7 @@ impl FactoryTrait for SingleThreadedFactory {
         return Channel::new_simulated(sender, receiver);
     }
 
-    fn connect_tcp(&self, socket_addr: SocketAddr) -> Result<(TcpStream, TcpReceiver), Error> {
+    fn connect_tcp(&self, socket_addr: SocketAddr) -> Result<(TcpStream, TcpReader), Error> {
         return self.host_simulator.connect_tcp(&self, socket_addr);
     }
 
@@ -96,18 +89,5 @@ impl FactoryTrait for SingleThreadedFactory {
         return Ok(UdpSocket::new_simulated(
             self.host_simulator.bind_udp_socket(socket_addr)?,
         ));
-    }
-
-    fn spawn_udp_reader<T: UdpReadHandlerTrait>(
-        &self,
-        thread_builder: ChannelThreadBuilder<EventOrStopThread<()>>,
-        udp_socket: UdpSocket,
-        udp_read_handler: T,
-        join_call_back: impl AsyncJoinCallBackTrait<T>,
-    ) -> Result<EventHandlerSender<()>, Error> {
-        let (thread_builder, channel) = thread_builder.take();
-        let (sender, receiver) = channel.take();
-        udp_socket.spawn_udp_reader(thread_builder, receiver, udp_read_handler, join_call_back)?;
-        return Ok(sender);
     }
 }

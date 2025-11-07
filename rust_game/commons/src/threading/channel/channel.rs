@@ -1,6 +1,6 @@
 use std::{
     io::Error,
-    net::SocketAddr,
+    net::SocketAddr, sync::mpsc::TryRecvError,
 };
 
 use crate::{
@@ -12,38 +12,20 @@ use crate::{
         UdpReadHandlerTrait,
     },
     single_threaded_simulator::{
-        net::{
+        SingleThreadedReceiver, SingleThreadedSender, net::{
             NetworkSimulator,
             UdpSocketSimulator,
-        },
-        SingleThreadedReceiver,
-        SingleThreadedSender,
+        }
     },
     threading::{
-        channel::{
-            RealReceiver,
-            RealSender,
-            ReceiveMetaData,
-            ReceiverTrait,
-            SenderTrait,
-            TryRecvError,
-        },
-        eventhandling::{
+        AsyncJoinCallBackTrait, ThreadBuilder, channel::{
+            RealReceiver, RealSender, ReceiveMetaData, ReceiverTrait, SenderTrait
+        }, eventhandling::{
             EventHandlerTrait,
             EventOrStopThread,
-        },
-        AsyncJoinCallBackTrait,
-        ThreadBuilder,
+        }
     },
 };
-
-//TODO: cleanup
-enum ChannelImplementation<T: Send> {
-    Real(RealSender<T>, RealReceiver<T>),
-
-    //TODO: conditionally compile
-    Simulated(SingleThreadedSender<T>, SingleThreadedReceiver<T>),
-}
 
 pub struct Channel<T: Send + 'static> {
     sender: Sender<T>,
@@ -73,12 +55,6 @@ impl<T: Send + 'static> Channel<T> {
     pub fn take(self) -> (Sender<T>, Receiver<T>) {
         return (self.sender, self.receiver);
     }
-}
-
-//TODO: cleanup
-struct RealChannel<T: Send> {
-    sender: Sender<T>,
-    receiver: Receiver<T>,
 }
 
 enum SenderImplementation<T: Send> {
@@ -159,20 +135,15 @@ impl<T: Send> Receiver<T> {
     fn new(implementation: ReceiverImplementation<T>) -> Self {
         return Self { implementation };
     }
+}
 
-    pub fn try_recv_meta_data(&mut self) -> Result<(ReceiveMetaData, T), TryRecvError> {
+impl<T: Send> ReceiverTrait<T> for Receiver<T> {
+    fn try_recv_meta_data(&mut self) -> Result<(ReceiveMetaData, T), TryRecvError> {
         match &mut self.implementation {
             ReceiverImplementation::Real(real_receiver) => real_receiver.try_recv_meta_data(),
             ReceiverImplementation::Simulated(simulated_receiver) => {
                 simulated_receiver.try_recv_meta_data()
             }
-        }
-    }
-
-    pub fn try_recv(&mut self) -> Result<T, TryRecvError> {
-        match &mut self.implementation {
-            ReceiverImplementation::Real(real_receiver) => real_receiver.try_recv(),
-            ReceiverImplementation::Simulated(simulated_receiver) => simulated_receiver.try_recv(),
         }
     }
 }

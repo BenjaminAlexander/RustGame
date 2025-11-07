@@ -78,7 +78,7 @@ fn test_non_blocking_tcp_reader() {
         real_factory.clone(),
     );
 
-    let listener_sender = tcp_listener_builder.clone_sender();
+    let listener_sender = tcp_listener_builder.get_sender().clone();
     let expect_one_tcp_connection = async_expects.new_async_expect("Expect one TCP connection", ());
     let async_expects_clone = async_expects.clone();
     let expected_struct =

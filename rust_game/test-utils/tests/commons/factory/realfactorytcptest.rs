@@ -55,7 +55,7 @@ fn test_real_factory_tcp() {
         real_factory.clone(),
     );
 
-    let tcp_listener_sender = tcp_listener_builder.clone_sender();
+    let tcp_listener_sender = tcp_listener_builder.get_sender().clone();
     let expect_one_tcp_connection = async_expects.new_async_expect("Expect one TCP connection", ());
     let async_expects_clone = async_expects.clone();
     let mut tcp_reader_senders = Vec::new();
@@ -194,7 +194,7 @@ fn test_tcp_listener_send_event() {
 
     let mut tcp_connection_handler = TcpConnectionHandler::new();
 
-    let sender = thread_builder.clone_sender();
+    let sender = thread_builder.get_sender().clone();
     tcp_connection_handler.set_on_bind(move |socket_addr| {
         let sender = sender.clone();
         executor.execute_function_or_panic(move || {
@@ -204,7 +204,7 @@ fn test_tcp_listener_send_event() {
         });
     });
 
-    let sender = thread_builder.clone_sender();
+    let sender = thread_builder.get_sender().clone();
     tcp_connection_handler.set_on_connection(move |_, _| {
         expect_connection.set_actual(());
         sender.send_stop_thread().unwrap();
@@ -267,7 +267,7 @@ fn test_stop_tcp_reader() {
         real_factory.clone(),
     );
 
-    let listener_sender = tcp_listener_builder.clone_sender();
+    let listener_sender = tcp_listener_builder.get_sender().clone();
     let expect_one_tcp_connection = async_expects.new_async_expect("Expect one TCP connection", ());
     let async_expects_clone = async_expects.clone();
     tcp_connection_handler.set_on_connection(move |tcp_stream, tcp_reader| {

@@ -3,13 +3,13 @@ use crate::single_threaded_simulator::SingleThreadedFactory;
 use crate::threading::channel::{
     ReceiveMetaData,
     SendMetaData,
-    TryRecvError,
 };
 use log::{
     error,
     warn,
 };
 use std::collections::VecDeque;
+use std::sync::mpsc::TryRecvError;
 use std::sync::{
     Arc,
     Mutex,

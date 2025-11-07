@@ -1,5 +1,5 @@
 use crate::net::{
-    TcpReceiver,
+    TcpReader,
     TcpStream,
 };
 use std::{
@@ -14,13 +14,13 @@ pub trait TcpConnectionHandlerTrait: Send + 'static {
     fn on_connection(
         &mut self,
         tcp_stream: TcpStream,
-        tcp_receiver: TcpReceiver,
+        tcp_receiver: TcpReader,
     ) -> ControlFlow<()>;
 }
 
 pub struct TcpConnectionHandler {
     on_bind: Box<dyn FnMut(SocketAddr) + Send + 'static>,
-    on_connection: Box<dyn FnMut(TcpStream, TcpReceiver) -> ControlFlow<()> + Send + 'static>,
+    on_connection: Box<dyn FnMut(TcpStream, TcpReader) -> ControlFlow<()> + Send + 'static>,
 }
 
 impl TcpConnectionHandler {
@@ -37,7 +37,7 @@ impl TcpConnectionHandler {
 
     pub fn set_on_connection(
         &mut self,
-        on_connection: impl FnMut(TcpStream, TcpReceiver) -> ControlFlow<()> + Send + 'static,
+        on_connection: impl FnMut(TcpStream, TcpReader) -> ControlFlow<()> + Send + 'static,
     ) {
         self.on_connection = Box::new(on_connection);
     }
@@ -51,7 +51,7 @@ impl TcpConnectionHandlerTrait for TcpConnectionHandler {
     fn on_connection(
         &mut self,
         tcp_stream: TcpStream,
-        tcp_receiver: TcpReceiver,
+        tcp_receiver: TcpReader,
     ) -> ControlFlow<()> {
         return (self.on_connection)(tcp_stream, tcp_receiver);
     }

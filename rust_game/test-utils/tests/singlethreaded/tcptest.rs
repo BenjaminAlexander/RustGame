@@ -3,7 +3,7 @@ use commons::logging::LoggingConfigBuilder;
 use commons::net::{
     TcpConnectionHandlerTrait,
     TcpReadHandlerTrait,
-    TcpReceiver,
+    TcpReader,
     TcpStream,
 };
 use commons::single_threaded_simulator::SingleThreadedFactory;
@@ -153,7 +153,7 @@ impl TcpConnectionHandlerTrait for ConnectionHandler {
     fn on_connection(
         &mut self,
         tcp_stream: TcpStream,
-        tcp_receiver: TcpReceiver,
+        tcp_receiver: TcpReader,
     ) -> ControlFlow<()> {
         info!(
             "{:?} is handling a connection from {:?}",

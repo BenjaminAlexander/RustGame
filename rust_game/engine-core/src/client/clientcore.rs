@@ -220,10 +220,7 @@ impl<GameFactory: GameFactoryTrait> State<GameFactory> {
                 let server_udp_socket_addr =
                     SocketAddr::V4(SocketAddrV4::new(server_ip, GameFactory::Game::UDP_PORT));
 
-                let addr = Ipv4Addr::new(127, 0, 0, 1);
-                let socket_addr = SocketAddr::V4(SocketAddrV4::new(addr, 0));
-
-                let udp_socket = factory.bind_udp_socket(socket_addr).unwrap();
+                let udp_socket = factory.bind_udp_ephemeral_port().unwrap();
 
                 let udp_input_sender = factory
                     .new_thread_builder()

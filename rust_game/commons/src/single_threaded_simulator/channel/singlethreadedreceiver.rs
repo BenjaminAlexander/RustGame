@@ -20,9 +20,7 @@ use crate::single_threaded_simulator::{
 };
 use crate::threading::channel::{
     ReceiveMetaData,
-    Receiver,
-    ReceiverTrait,
-    TryRecvError,
+    Receiver, ReceiverTrait,
 };
 use crate::threading::eventhandling::{
     EventHandlerTrait,
@@ -34,6 +32,7 @@ use crate::threading::{
 };
 use std::io::Error;
 use std::net::SocketAddr;
+use std::sync::mpsc::TryRecvError;
 
 pub struct SingleThreadedReceiver<T: Send> {
     factory: SingleThreadedFactory,
@@ -47,6 +46,7 @@ impl<T: Send> ReceiverTrait<T> for SingleThreadedReceiver<T> {
 }
 
 impl<T: Send> SingleThreadedReceiver<T> {
+
     pub fn new(factory: SingleThreadedFactory) -> (SingleThreadedSender<T>, Self) {
         let receiver_link = ReceiverLink::new(factory.clone());
         let sender_link = SenderLink::new(receiver_link.clone());

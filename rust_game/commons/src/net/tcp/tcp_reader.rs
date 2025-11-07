@@ -20,11 +20,11 @@ enum Implementation {
 }
 
 //TODO: rename to Reader
-pub struct TcpReceiver {
+pub struct TcpReader {
     implementation: Implementation,
 }
 
-impl TcpReceiver {
+impl TcpReader {
     pub fn new(real_tcp_stream: RealTcpStream) -> Self {
         return Self {
             implementation: Implementation::Real(real_tcp_stream),

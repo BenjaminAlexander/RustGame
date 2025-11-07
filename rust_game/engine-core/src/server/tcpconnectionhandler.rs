@@ -6,7 +6,7 @@ use crate::server::servercore::ServerCoreEvent;
 use crate::server::servercore::ServerCoreEvent::TcpConnectionEvent;
 use commons::net::{
     TcpConnectionHandlerTrait,
-    TcpReceiver,
+    TcpReader,
     TcpStream,
 };
 use log::{
@@ -32,7 +32,7 @@ impl<GameFactory: GameFactoryTrait> TcpConnectionHandlerTrait
     fn on_connection(
         &mut self,
         tcp_stream: TcpStream,
-        tcp_receiver: TcpReceiver,
+        tcp_receiver: TcpReader,
     ) -> ControlFlow<()> {
         info!("New TCP connection from {:?}", tcp_stream.get_peer_addr());
 

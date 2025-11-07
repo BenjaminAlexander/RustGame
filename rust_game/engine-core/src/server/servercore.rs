@@ -43,7 +43,7 @@ use crate::server::{
 };
 use commons::factory::FactoryTrait;
 use commons::net::{
-    TcpReceiver,
+    TcpReader,
     TcpStream,
     UdpSocket,
     MAX_UDP_DATAGRAM_SIZE,
@@ -77,7 +77,7 @@ pub enum ServerCoreEvent<GameFactory: GameFactoryTrait> {
 
     //TODO: create render receiver sender before spawning event handler
     StartGameEvent(Sender<RenderReceiverMessage<GameFactory::Game>>),
-    TcpConnectionEvent(TcpStream, TcpReceiver),
+    TcpConnectionEvent(TcpStream, TcpReader),
     GameTimerTick,
     UdpPacket(SocketAddr, usize, [u8; MAX_UDP_DATAGRAM_SIZE]),
 }
@@ -367,7 +367,7 @@ impl<GameFactory: GameFactoryTrait> ServerCore<GameFactory> {
     fn on_tcp_connection(
         mut self,
         tcp_stream: TcpStream,
-        tcp_receiver: TcpReceiver,
+        tcp_receiver: TcpReader,
     ) -> EventHandleResult<Self> {
         if !self.game_is_started {
             info!("TcpStream accepted: {:?}", tcp_stream.get_peer_addr());

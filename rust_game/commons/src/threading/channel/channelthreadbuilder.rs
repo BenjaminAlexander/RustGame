@@ -25,11 +25,6 @@ impl<T: Send + 'static> ChannelThreadBuilder<T> {
         return self.get_channel().get_sender();
     }
 
-    //TODO: maybe remove this guy
-    pub fn clone_sender(&self) -> Sender<T> {
-        return (*self.get_channel().get_sender()).clone();
-    }
-
     pub fn take(self) -> (threading::ThreadBuilder, Channel<T>) {
         return (self.thread_builder, self.channel);
     }

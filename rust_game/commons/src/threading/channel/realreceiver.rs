@@ -9,10 +9,7 @@ use crate::net::{
     UdpReaderEventHandler,
 };
 use crate::threading::channel::{
-    ReceiveMetaData,
-    ReceiverTrait,
-    SendMetaData,
-    TryRecvError,
+    ReceiveMetaData, ReceiverTrait, SendMetaData
 };
 use crate::threading::eventhandling::{
     EventHandlerThread,
@@ -32,7 +29,7 @@ use std::net::{
     SocketAddr,
     TcpListener,
 };
-use std::sync::mpsc;
+use std::sync::mpsc::{self, TryRecvError};
 
 pub type RecvError = mpsc::RecvError;
 

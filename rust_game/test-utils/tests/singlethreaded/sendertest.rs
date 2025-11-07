@@ -4,11 +4,8 @@ use commons::single_threaded_simulator::{
     SingleThreadedFactory,
     SingleThreadedReceiver,
 };
-use commons::threading::channel::{
-    ReceiverTrait,
-    SenderTrait,
-    TryRecvError,
-};
+use commons::threading::channel::{ReceiverTrait, SenderTrait};
+use std::sync::mpsc::TryRecvError;
 use std::sync::{
     Arc,
     Mutex,

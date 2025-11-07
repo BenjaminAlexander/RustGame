@@ -1,10 +1,8 @@
+use std::sync::mpsc::TryRecvError;
+
 use crate::threading;
 use crate::threading::channel::{
-    RealReceiver,
-    ReceiveMetaData,
-    ReceiverTrait,
-    RecvTimeoutError,
-    TryRecvError,
+    RealReceiver, ReceiveMetaData, ReceiverTrait, RecvTimeoutError
 };
 use crate::threading::eventhandling::ChannelEvent::{
     ChannelDisconnected,
