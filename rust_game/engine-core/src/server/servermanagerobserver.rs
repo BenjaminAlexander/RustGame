@@ -3,7 +3,6 @@ use crate::gamemanager::{
     StepMessage,
 };
 use crate::interface::{
-    EventSender,
     GameFactoryTrait,
     RenderReceiverMessage,
 };
@@ -13,6 +12,7 @@ use crate::messaging::{
 };
 use crate::server::udpoutput::UdpOutputEvent;
 use commons::threading::channel::Sender;
+use commons::threading::eventhandling::EventSender;
 
 pub struct ServerManagerObserver<GameFactory: GameFactoryTrait> {
     factory: GameFactory::Factory,

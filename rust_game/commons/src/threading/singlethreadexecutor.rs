@@ -1,17 +1,14 @@
 use crate::{
     factory::RealFactory,
     threading::{
-        channel::{
-            ReceiveMetaData,
-            Sender,
-        },
+        channel::ReceiveMetaData,
         eventhandling::{
             ChannelEvent,
             EventHandleResult,
+            EventHandlerBuilder,
             EventHandlerTrait,
-            EventOrStopThread,
+            EventSender,
         },
-        ThreadBuilder,
     },
 };
 use std::sync::{
@@ -25,7 +22,7 @@ type Runnable = Box<dyn FnOnce() + Send>;
 #[derive(Clone)]
 pub struct SingleThreadExecutor {
     join_signal: Arc<(Mutex<bool>, Condvar)>,
-    sender: Sender<EventOrStopThread<Runnable>>,
+    sender: EventSender<Runnable>,
 }
 
 impl SingleThreadExecutor {
@@ -35,7 +32,7 @@ impl SingleThreadExecutor {
 
         let factory = RealFactory::new();
 
-        let sender = ThreadBuilder::spawn_event_handler(
+        let sender = EventHandlerBuilder::new_thread(
             &factory,
             "SingleThreadExecutor".to_string(),
             SingleThreadExecutorEventHandler(),

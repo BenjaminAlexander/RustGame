@@ -1,10 +1,7 @@
 use crate::client::ClientCoreEvent;
 use crate::gamemanager::ManagerEvent;
 use crate::gametime::TimeReceived;
-use crate::interface::{
-    self,
-    GameFactoryTrait,
-};
+use crate::interface::GameFactoryTrait;
 use crate::messaging::{
     FragmentAssembler,
     MessageFragment,
@@ -30,7 +27,7 @@ pub struct UdpInput<GameFactory: GameFactoryTrait> {
     factory: GameFactory::Factory,
     fragment_assembler: FragmentAssembler,
     core_sender: EventSender<ClientCoreEvent<GameFactory>>,
-    manager_sender: interface::EventSender<ManagerEvent<GameFactory::Game>>,
+    manager_sender: EventSender<ManagerEvent<GameFactory::Game>>,
 
     //metrics
     time_of_last_state_receive: TimeValue,
@@ -42,7 +39,7 @@ impl<GameFactory: GameFactoryTrait> UdpInput<GameFactory> {
     pub fn new(
         factory: GameFactory::Factory,
         core_sender: EventSender<ClientCoreEvent<GameFactory>>,
-        manager_sender: interface::EventSender<ManagerEvent<GameFactory::Game>>,
+        manager_sender: EventSender<ManagerEvent<GameFactory::Game>>,
     ) -> io::Result<Self> {
         return Ok(Self {
             //TODO: make this more configurable

@@ -5,10 +5,10 @@ use commons::{
         eventhandling::{
             ChannelEvent,
             EventHandleResult,
+            EventHandlerBuilder,
             EventHandlerTrait,
         },
         AsyncJoin,
-        ThreadBuilder,
     },
     time::TimeDuration,
 };
@@ -75,7 +75,7 @@ fn test_async_join() {
 
     let real_factory = RealFactory::new();
 
-    let sender = ThreadBuilder::spawn_event_handler(
+    let sender = EventHandlerBuilder::new_thread(
         &real_factory,
         "EventHandler".to_string(),
         event_handler,
@@ -104,7 +104,7 @@ fn test_no_timeout() {
 
     let real_factory = RealFactory::new();
 
-    let sender = ThreadBuilder::spawn_event_handler(
+    let sender = EventHandlerBuilder::new_thread(
         &real_factory,
         "EventHandler".to_string(),
         event_handler,
@@ -134,7 +134,7 @@ fn test_timeout() {
 
     let real_factory = RealFactory::new();
 
-    let sender = ThreadBuilder::spawn_event_handler(
+    let sender = EventHandlerBuilder::new_thread(
         &real_factory,
         "EventHandler".to_string(),
         event_handler,
@@ -164,7 +164,7 @@ fn test_drop_sender_while_waiting_for_timeout() {
     {
         let real_factory = RealFactory::new();
 
-        let sender = ThreadBuilder::spawn_event_handler(
+        let sender = EventHandlerBuilder::new_thread(
             &real_factory,
             "EventHandler".to_string(),
             event_handler,

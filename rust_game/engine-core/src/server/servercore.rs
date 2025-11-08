@@ -95,9 +95,9 @@ pub struct ServerCore<GameFactory: GameFactoryTrait> {
     tcp_listener_sender_option: Option<interface::EventSender<()>>,
     game_timer: Option<GameTimer<GameFactory::Factory, ServerGameTimerObserver<GameFactory>>>,
     tcp_inputs: Vec<interface::EventSender<()>>,
-    tcp_outputs: Vec<interface::EventSender<TcpOutputEvent<GameFactory::Game>>>,
+    tcp_outputs: Vec<EventSender<TcpOutputEvent<GameFactory::Game>>>,
     udp_socket: Option<UdpSocket>,
-    udp_outputs: Vec<interface::EventSender<UdpOutputEvent<GameFactory::Game>>>,
+    udp_outputs: Vec<EventSender<UdpOutputEvent<GameFactory::Game>>>,
     udp_input_sender_option: Option<interface::EventSender<()>>,
     udp_handler: UdpHandler<GameFactory>,
     manager_sender_option: Option<EventSender<ManagerEvent<GameFactory::Game>>>,
@@ -256,9 +256,8 @@ impl<GameFactory: GameFactoryTrait> ServerCore<GameFactory> {
 
             let initial_state = GameFactory::Game::get_initial_state(self.tcp_outputs.len());
 
-            let mut udp_output_senders: Vec<
-                interface::EventSender<UdpOutputEvent<GameFactory::Game>>,
-            > = Vec::new();
+            let mut udp_output_senders =
+                Vec::<EventSender<UdpOutputEvent<GameFactory::Game>>>::new();
 
             for udp_output_sender in self.udp_outputs.iter() {
                 udp_output_senders.push(udp_output_sender.clone());
@@ -385,7 +384,7 @@ impl<GameFactory: GameFactoryTrait> ServerCore<GameFactory> {
 
             self.tcp_inputs.push(tcp_input_join_handle);
 
-            let udp_out_sender = ThreadBuilder::spawn_event_handler(
+            let udp_out_sender = EventHandlerBuilder::new_thread(
                 &self.factory,
                 "ServerUdpOutput".to_string(),
                 UdpOutput::<GameFactory>::new(
@@ -400,7 +399,7 @@ impl<GameFactory: GameFactoryTrait> ServerCore<GameFactory> {
 
             self.udp_handler.on_client_address(client_address);
 
-            let tcp_output_sender = ThreadBuilder::spawn_event_handler(
+            let tcp_output_sender = EventHandlerBuilder::new_thread(
                 &self.factory,
                 "ServerTcpOutput".to_string(),
                 TcpOutput::<GameFactory::Game>::new(player_index, tcp_stream),

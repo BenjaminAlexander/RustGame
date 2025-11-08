@@ -32,6 +32,7 @@ use commons::threading::channel::{
 use commons::threading::eventhandling::{
     ChannelEvent,
     EventHandleResult,
+    EventHandlerBuilder,
     EventHandlerTrait,
     EventSender,
 };
@@ -75,7 +76,7 @@ impl<GameFactory: GameFactoryTrait> ClientCore<GameFactory> {
 
         let manager = Manager::new(factory.clone(), client_manager_observer);
 
-        let manager_sender = ThreadBuilder::spawn_event_handler(
+        let manager_sender = EventHandlerBuilder::new_thread(
             &factory,
             "ClientManager".to_string(),
             manager,
@@ -104,7 +105,7 @@ impl<GameFactory: GameFactoryTrait> ClientCore<GameFactory> {
         )
         .unwrap();
 
-        let tcp_output_sender = ThreadBuilder::spawn_event_handler(
+        let tcp_output_sender = EventHandlerBuilder::new_thread(
             &factory,
             "ClientTcpOutput".to_string(),
             TcpOutput::new(tcp_sender),
@@ -149,19 +150,19 @@ enum State<GameFactory: GameFactoryTrait> {
         factory: GameFactory::Factory,
         sender: EventSender<ClientCoreEvent<GameFactory>>,
         server_ip: Ipv4Addr,
-        manager_sender: interface::EventSender<ManagerEvent<GameFactory::Game>>,
+        manager_sender: EventSender<ManagerEvent<GameFactory::Game>>,
         tcp_input_sender: interface::EventSender<()>,
-        tcp_output_sender: interface::EventSender<()>,
+        tcp_output_sender: EventSender<()>,
         render_receiver_sender: Sender<RenderReceiverMessage<GameFactory::Game>>,
     },
     Running {
         input_event_handler: <GameFactory::Game as GameTrait>::ClientInputEventHandler,
-        manager_sender: interface::EventSender<ManagerEvent<GameFactory::Game>>,
+        manager_sender: EventSender<ManagerEvent<GameFactory::Game>>,
         game_timer: GameTimer<GameFactory::Factory, ClientGameTimerObserver<GameFactory>>,
         udp_input_sender: interface::EventSender<()>,
-        udp_output_sender: interface::EventSender<UdpOutputEvent<GameFactory::Game>>,
+        udp_output_sender: EventSender<UdpOutputEvent<GameFactory::Game>>,
         tcp_input_sender: interface::EventSender<()>,
-        tcp_output_sender: interface::EventSender<()>,
+        tcp_output_sender: EventSender<()>,
         render_receiver_sender: Sender<RenderReceiverMessage<GameFactory::Game>>,
         initial_information: InitialInformation<GameFactory::Game>,
         last_time_message: Option<TimeMessage>,
@@ -239,7 +240,7 @@ impl<GameFactory: GameFactoryTrait> State<GameFactory> {
                 .unwrap();
 
                 //TODO: unwrap after try_clone is not good
-                let udp_output_sender = ThreadBuilder::spawn_event_handler(
+                let udp_output_sender = EventHandlerBuilder::new_thread(
                     &factory,
                     "ClientUdpOutput".to_string(),
                     UdpOutput::<GameFactory>::new(

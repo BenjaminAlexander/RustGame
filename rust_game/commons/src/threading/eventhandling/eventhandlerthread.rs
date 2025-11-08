@@ -25,6 +25,7 @@ use crate::threading::eventhandling::{
 use crate::time::TimeDuration;
 use log::info;
 
+//TODO: remove
 type EventReceiver<T> = RealReceiver<EventOrStopThread<T>>;
 
 pub struct EventHandlerThread<T: EventHandlerTrait> {

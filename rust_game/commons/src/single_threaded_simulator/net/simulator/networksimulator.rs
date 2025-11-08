@@ -19,15 +19,12 @@ use crate::single_threaded_simulator::{
     SingleThreadedFactory,
     SingleThreadedReceiver,
 };
-use crate::threading::channel::Sender;
 use crate::threading::eventhandling::{
-    EventHandlerSender,
+    EventHandlerBuilder,
     EventOrStopThread,
+    EventSender,
 };
-use crate::threading::{
-    AsyncJoinCallBackTrait,
-    ThreadBuilder,
-};
+use crate::threading::AsyncJoinCallBackTrait;
 use log::{
     info,
     warn,
@@ -53,8 +50,8 @@ pub struct NetworkSimulator {
 
 struct Internal {
     //TODO: add a way to remove TCP listeners when they stop listening
-    tcp_listeners: HashMap<SocketAddr, EventHandlerSender<TcpListenerEvent>>,
-    udp_readers: HashMap<SocketAddr, EventHandlerSender<(SocketAddr, Vec<u8>)>>,
+    tcp_listeners: HashMap<SocketAddr, EventSender<TcpListenerEvent>>,
+    udp_readers: HashMap<SocketAddr, EventSender<(SocketAddr, Vec<u8>)>>,
 }
 
 impl NetworkSimulator {
@@ -102,7 +99,8 @@ impl NetworkSimulator {
         let tcp_listener_event_handler =
             TcpListenerEventHandler::new(socket_addr, connection_handler);
 
-        let sender = ThreadBuilder::spawn_event_handler(
+        //TODO: can this call a method that more directly/obviously doesn't spawn a thread
+        let sender = EventHandlerBuilder::new_thread(
             &factory,
             thread_name,
             tcp_listener_event_handler,
@@ -194,7 +192,7 @@ impl NetworkSimulator {
         let udp_read_event_handler =
             UdpReadEventHandler::new(self.clone(), udp_socket.local_addr(), udp_read_handler);
 
-        let sender = ThreadBuilder::spawn_event_handler(
+        let sender = EventHandlerBuilder::new_thread(
             &factory,
             thread_name,
             udp_read_event_handler,
@@ -240,7 +238,7 @@ impl NetworkSimulator {
     pub(super) fn remove_udp_reader(
         &self,
         socket_addr: &SocketAddr,
-    ) -> Option<Sender<EventOrStopThread<(SocketAddr, Vec<u8>)>>> {
+    ) -> Option<EventSender<(SocketAddr, Vec<u8>)>> {
         return self
             .internal
             .lock()

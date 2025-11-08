@@ -25,13 +25,11 @@ use crate::threading::channel::{
     ReceiverTrait,
 };
 use crate::threading::eventhandling::{
+    EventHandlerBuilder,
     EventHandlerTrait,
     EventOrStopThread,
 };
-use crate::threading::{
-    AsyncJoinCallBackTrait,
-    ThreadBuilder,
-};
+use crate::threading::AsyncJoinCallBackTrait;
 use std::io::Error;
 use std::net::SocketAddr;
 use std::sync::mpsc::TryRecvError;
@@ -120,7 +118,7 @@ impl SingleThreadedReceiver<EventOrStopThread<()>> {
     ) -> Result<(), Error> {
         let tcp_reader_event_handler = TcpReaderEventHandler::new(tcp_read_handler);
 
-        let sender = ThreadBuilder::spawn_event_handler(
+        let sender = EventHandlerBuilder::new_thread(
             &self.factory,
             thread_name,
             tcp_reader_event_handler,

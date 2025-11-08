@@ -1,8 +1,5 @@
 use crate::factory::FactoryTrait;
-use crate::threading::channel::{
-    ReceiveMetaData,
-    Sender,
-};
+use crate::threading::channel::ReceiveMetaData;
 use crate::threading::eventhandling::ChannelEvent::{
     ChannelDisconnected,
     ChannelEmpty,
@@ -12,13 +9,11 @@ use crate::threading::eventhandling::ChannelEvent::{
 use crate::threading::eventhandling::{
     ChannelEvent,
     EventHandleResult,
+    EventHandlerBuilder,
     EventHandlerTrait,
-    EventOrStopThread,
+    EventSender,
 };
-use crate::threading::{
-    AsyncJoin,
-    ThreadBuilder,
-};
+use crate::threading::AsyncJoin;
 use crate::time::timerservice::schedule::Schedule;
 use crate::time::timerservice::timer::Timer;
 use crate::time::timerservice::timer_call_back::TimerCallBack;
@@ -67,7 +62,7 @@ impl<Factory: FactoryTrait, T: TimerCreationCallBack, U: TimerCallBack>
 
     /// Starts the [`TimerService`] thread and begins triggering timers
     pub fn start(self) -> Result<TimerService<T, U>, Error> {
-        let sender = ThreadBuilder::spawn_event_handler(
+        let sender = EventHandlerBuilder::new_thread(
             &self.event_handler.factory.clone(),
             "TimerServiceThread".to_string(),
             self.event_handler,
@@ -92,7 +87,7 @@ impl<Factory: FactoryTrait, T: TimerCreationCallBack, U: TimerCallBack>
 #[derive(Clone)]
 pub struct TimerService<T: TimerCreationCallBack, U: TimerCallBack> {
     /// used to send events to the [`TimerService`] thread
-    sender: Sender<EventOrStopThread<TimerServiceEvent<T, U>>>,
+    sender: EventSender<TimerServiceEvent<T, U>>,
 }
 
 impl<T: TimerCreationCallBack, U: TimerCallBack> TimerService<T, U> {
