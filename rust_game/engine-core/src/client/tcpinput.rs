@@ -2,7 +2,9 @@ use crate::client::clientcore::ClientCoreEvent;
 use crate::client::ClientCoreEvent::OnInitialInformation;
 use crate::gamemanager::ManagerEvent;
 use crate::interface::{
-    self, GameFactoryTrait, RenderReceiverMessage
+    self,
+    GameFactoryTrait,
+    RenderReceiverMessage,
 };
 use crate::messaging::ToClientMessageTCP;
 use commons::net::TcpReadHandlerTrait;

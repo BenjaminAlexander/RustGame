@@ -1,14 +1,15 @@
-use crate::threading::{channel::Sender, eventhandling::EventOrStopThread};
+use crate::threading::{
+    channel::Sender,
+    eventhandling::EventOrStopThread,
+};
 
 pub struct EventSender<T: Send> {
-    sender: Sender<EventOrStopThread<T>>
+    sender: Sender<EventOrStopThread<T>>,
 }
 
 impl<T: Send> EventSender<T> {
     pub(super) fn new(sender: Sender<EventOrStopThread<T>>) -> Self {
-        return Self {
-            sender
-        };
+        return Self { sender };
     }
 
     pub fn send_event(&self, event: T) -> Result<(), T> {
@@ -30,6 +31,8 @@ impl<T: Send> EventSender<T> {
 
 impl<T: Send> Clone for EventSender<T> {
     fn clone(&self) -> Self {
-        Self { sender: self.sender.clone() }
+        Self {
+            sender: self.sender.clone(),
+        }
     }
 }

@@ -1,7 +1,4 @@
-use crate::interface::{
-    EventSender,
-    GameFactoryTrait,
-};
+use crate::interface::GameFactoryTrait;
 use crate::server::servercore::ServerCoreEvent;
 use crate::server::servercore::ServerCoreEvent::TcpConnectionEvent;
 use commons::net::{
@@ -9,6 +6,7 @@ use commons::net::{
     TcpReader,
     TcpStream,
 };
+use commons::threading::eventhandling::EventSender;
 use log::{
     info,
     warn,

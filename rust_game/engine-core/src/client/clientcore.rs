@@ -17,7 +17,11 @@ use crate::gametime::{
     TimeReceived,
 };
 use crate::interface::{
-    self, GameFactoryTrait, GameTrait, InitialInformation, RenderReceiverMessage
+    self,
+    GameFactoryTrait,
+    GameTrait,
+    InitialInformation,
+    RenderReceiverMessage,
 };
 use crate::messaging::InputMessage;
 use commons::factory::FactoryTrait;
@@ -26,7 +30,10 @@ use commons::threading::channel::{
     Sender,
 };
 use commons::threading::eventhandling::{
-    ChannelEvent, EventHandleResult, EventHandlerTrait, EventSender
+    ChannelEvent,
+    EventHandleResult,
+    EventHandlerTrait,
+    EventSender,
 };
 use commons::threading::{
     AsyncJoin,
@@ -233,16 +240,16 @@ impl<GameFactory: GameFactoryTrait> State<GameFactory> {
 
                 //TODO: unwrap after try_clone is not good
                 let udp_output_sender = ThreadBuilder::spawn_event_handler(
-                        &factory,
-                        "ClientUdpOutput".to_string(),
-                        UdpOutput::<GameFactory>::new(
-                            server_udp_socket_addr,
-                            udp_socket.try_clone().unwrap(),
-                            initial_information.clone(),
-                        ),
-                        AsyncJoin::log_async_join,
-                    )
-                    .unwrap();
+                    &factory,
+                    "ClientUdpOutput".to_string(),
+                    UdpOutput::<GameFactory>::new(
+                        server_udp_socket_addr,
+                        udp_socket.try_clone().unwrap(),
+                        initial_information.clone(),
+                    ),
+                    AsyncJoin::log_async_join,
+                )
+                .unwrap();
 
                 let state = State::Running {
                     input_event_handler: GameFactory::Game::new_input_event_handler(),

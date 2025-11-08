@@ -9,14 +9,13 @@ use crate::{
         ServerCoreEvent,
     },
 };
-use commons::{
-    factory::FactoryTrait,
-    threading::{
-        channel::Sender,
-        eventhandling::EventHandlerSender,
-        AsyncJoin,
-        ThreadBuilder,
+use commons::threading::{
+    channel::Sender,
+    eventhandling::{
+        EventHandlerBuilder,
+        EventSender,
     },
+    AsyncJoin,
 };
 use log::{
     error,
@@ -24,7 +23,7 @@ use log::{
 };
 
 pub struct Server<GameFactory: GameFactoryTrait> {
-    core_sender: EventHandlerSender<ServerCoreEvent<GameFactory>>,
+    core_sender: EventSender<ServerCoreEvent<GameFactory>>,
     render_receiver_sender_option: Option<Sender<RenderReceiverMessage<GameFactory::Game>>>,
     render_receiver_option: Option<RenderReceiver<GameFactory>>,
 }
@@ -32,7 +31,7 @@ pub struct Server<GameFactory: GameFactoryTrait> {
 impl<GameFactory: GameFactoryTrait> Server<GameFactory> {
     pub fn new(factory: GameFactory::Factory) -> Result<Self, ()> {
         let server_core_thread_builder =
-            ThreadBuilder::build_channel_for_event_handler::<ServerCore<GameFactory>>(&factory);
+            EventHandlerBuilder::<ServerCore<GameFactory>>::new(&factory);
 
         let server_core = ServerCore::<GameFactory>::new(
             factory.clone(),
@@ -48,10 +47,9 @@ impl<GameFactory: GameFactoryTrait> Server<GameFactory> {
             return Err(());
         }
 
-        let core_sender = factory
-            .spawn_event_handler(
+        let core_sender = server_core_thread_builder
+            .spawn_thread(
                 "ServerCore".to_string(),
-                server_core_thread_builder,
                 server_core,
                 AsyncJoin::log_async_join,
             )

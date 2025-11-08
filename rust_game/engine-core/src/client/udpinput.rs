@@ -1,7 +1,10 @@
 use crate::client::ClientCoreEvent;
 use crate::gamemanager::ManagerEvent;
 use crate::gametime::TimeReceived;
-use crate::interface::{self, GameFactoryTrait};
+use crate::interface::{
+    self,
+    GameFactoryTrait,
+};
 use crate::messaging::{
     FragmentAssembler,
     MessageFragment,

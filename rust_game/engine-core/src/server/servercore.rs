@@ -13,7 +13,7 @@ use crate::gametime::{
     GameTimerConfig,
 };
 use crate::interface::{
-    EventSender,
+    self,
     GameFactoryTrait,
     GameTrait,
     InitialInformation,
@@ -56,6 +56,7 @@ use commons::threading::eventhandling::{
     ChannelEvent,
     EventHandleResult,
     EventHandlerTrait,
+    EventSender,
 };
 use commons::threading::{
     AsyncJoin,
@@ -90,15 +91,15 @@ pub struct ServerCore<GameFactory: GameFactoryTrait> {
     sender: EventSender<ServerCoreEvent<GameFactory>>,
     game_is_started: bool,
     server_config: ServerConfig,
-    tcp_listener_sender_option: Option<EventSender<()>>,
+    tcp_listener_sender_option: Option<interface::EventSender<()>>,
     game_timer: Option<GameTimer<GameFactory::Factory, ServerGameTimerObserver<GameFactory>>>,
-    tcp_inputs: Vec<EventSender<()>>,
-    tcp_outputs: Vec<EventSender<TcpOutputEvent<GameFactory::Game>>>,
+    tcp_inputs: Vec<interface::EventSender<()>>,
+    tcp_outputs: Vec<interface::EventSender<TcpOutputEvent<GameFactory::Game>>>,
     udp_socket: Option<UdpSocket>,
-    udp_outputs: Vec<EventSender<UdpOutputEvent<GameFactory::Game>>>,
-    udp_input_sender_option: Option<EventSender<()>>,
+    udp_outputs: Vec<interface::EventSender<UdpOutputEvent<GameFactory::Game>>>,
+    udp_input_sender_option: Option<interface::EventSender<()>>,
     udp_handler: UdpHandler<GameFactory>,
-    manager_sender_option: Option<EventSender<ManagerEvent<GameFactory::Game>>>,
+    manager_sender_option: Option<interface::EventSender<ManagerEvent<GameFactory::Game>>>,
     render_receiver_sender: Option<Sender<RenderReceiverMessage<GameFactory::Game>>>,
     drop_steps_before: usize,
 }
@@ -254,8 +255,9 @@ impl<GameFactory: GameFactoryTrait> ServerCore<GameFactory> {
 
             let initial_state = GameFactory::Game::get_initial_state(self.tcp_outputs.len());
 
-            let mut udp_output_senders: Vec<EventSender<UdpOutputEvent<GameFactory::Game>>> =
-                Vec::new();
+            let mut udp_output_senders: Vec<
+                interface::EventSender<UdpOutputEvent<GameFactory::Game>>,
+            > = Vec::new();
 
             for udp_output_sender in self.udp_outputs.iter() {
                 udp_output_senders.push(udp_output_sender.clone());
@@ -271,8 +273,7 @@ impl<GameFactory: GameFactoryTrait> ServerCore<GameFactory> {
                 Manager<ServerManagerObserver<GameFactory>>,
             >(&self.factory);
 
-            let server_game_timer_observer =
-                ServerGameTimerObserver::new(self.factory.clone(), self.sender.clone());
+            let server_game_timer_observer = ServerGameTimerObserver::new(self.sender.clone());
 
             let mut game_timer = GameTimer::new(
                 self.factory.clone(),

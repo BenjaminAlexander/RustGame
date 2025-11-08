@@ -1,12 +1,10 @@
-use crate::interface::{
-    EventSender,
-    GameFactoryTrait,
-};
+use crate::interface::GameFactoryTrait;
 use crate::server::servercore::ServerCoreEvent;
 use commons::net::{
     UdpReadHandlerTrait,
     MAX_UDP_DATAGRAM_SIZE,
 };
+use commons::threading::eventhandling::EventSender;
 use std::net::SocketAddr;
 use std::ops::ControlFlow;
 
