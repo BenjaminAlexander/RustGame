@@ -68,7 +68,7 @@ impl<Factory: FactoryTrait, T: TimerCreationCallBack, U: TimerCallBack>
     /// Starts the [`TimerService`] thread and begins triggering timers
     pub fn start(self) -> Result<TimerService<T, U>, Error> {
         let sender = ThreadBuilder::spawn_event_handler(
-            self.event_handler.factory.clone(),
+            &self.event_handler.factory.clone(),
             "TimerServiceThread".to_string(),
             self.event_handler,
             AsyncJoin::log_async_join,

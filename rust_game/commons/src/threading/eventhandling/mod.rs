@@ -1,4 +1,5 @@
 mod enums;
+mod event_handler_builder;
 mod eventhandlerthread;
 mod eventhandlertrait;
 mod eventsendertrait;

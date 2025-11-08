@@ -23,10 +23,8 @@ pub struct Client<GameFactory: GameFactoryTrait> {
 
 impl<GameFactory: GameFactoryTrait> Client<GameFactory> {
     pub fn new(factory: Factory<GameFactory>) -> (Self, RenderReceiver<GameFactory>) {
-        let client_core_thread_builder = ThreadBuilder::build_channel_for_event_handler::<
-            GameFactory::Factory,
-            ClientCore<GameFactory>,
-        >(factory.clone());
+        let client_core_thread_builder =
+            ThreadBuilder::build_channel_for_event_handler::<ClientCore<GameFactory>>(&factory);
 
         let (render_receiver_sender, render_receiver) =
             RenderReceiver::<GameFactory>::new(factory.clone());

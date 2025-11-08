@@ -76,7 +76,7 @@ fn test_async_join() {
     let real_factory = RealFactory::new();
 
     let sender = ThreadBuilder::spawn_event_handler(
-        real_factory.clone(),
+        &real_factory,
         "EventHandler".to_string(),
         event_handler,
         join_call_back,
@@ -105,7 +105,7 @@ fn test_no_timeout() {
     let real_factory = RealFactory::new();
 
     let sender = ThreadBuilder::spawn_event_handler(
-        real_factory.clone(),
+        &real_factory,
         "EventHandler".to_string(),
         event_handler,
         join_call_back,
@@ -135,7 +135,7 @@ fn test_timeout() {
     let real_factory = RealFactory::new();
 
     let sender = ThreadBuilder::spawn_event_handler(
-        real_factory.clone(),
+        &real_factory,
         "EventHandler".to_string(),
         event_handler,
         join_call_back,
@@ -165,7 +165,7 @@ fn test_drop_sender_while_waiting_for_timeout() {
         let real_factory = RealFactory::new();
 
         let sender = ThreadBuilder::spawn_event_handler(
-            real_factory.clone(),
+            &real_factory,
             "EventHandler".to_string(),
             event_handler,
             join_call_back,

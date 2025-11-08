@@ -29,32 +29,32 @@ impl ThreadBuilder {
         return Self {};
     }
 
-    pub fn build_channel_thread<Factory: FactoryTrait, T: Send + 'static>(
-        factory: Factory,
+    pub fn build_channel_thread<T: Send + 'static>(
+        factory: &impl FactoryTrait,
     ) -> channel::ChannelThreadBuilder<T> {
         let channel = factory.new_channel();
         return channel::ChannelThreadBuilder::new(channel);
     }
 
-    pub fn build_channel_for_event_handler<Factory: FactoryTrait, T: EventHandlerTrait>(
-        factory: Factory,
+    pub fn build_channel_for_event_handler<T: EventHandlerTrait>(
+        factory: &impl FactoryTrait,
     ) -> channel::ChannelThreadBuilder<EventOrStopThread<T::Event>> {
         return Self::build_channel_thread(factory);
     }
 
-    pub fn build_channel_for_tcp_listener<Factory: FactoryTrait, T: TcpConnectionHandlerTrait>(
-        factory: Factory,
+    pub fn build_channel_for_tcp_listener<T: TcpConnectionHandlerTrait>(
+        factory: &impl FactoryTrait,
     ) -> channel::ChannelThreadBuilder<EventOrStopThread<()>> {
         return Self::build_channel_thread(factory);
     }
 
-    pub fn spawn_event_handler<Factory: FactoryTrait, T: EventHandlerTrait>(
-        factory: Factory,
+    pub fn spawn_event_handler<T: EventHandlerTrait>(
+        factory: &impl FactoryTrait,
         thread_name: String,
         event_handler: T,
         join_call_back: impl AsyncJoinCallBackTrait<T::ThreadReturn>,
     ) -> Result<EventHandlerSender<T::Event>, Error> {
-        let thread_builder = Self::build_channel_for_event_handler::<Factory, T>(factory.clone());
+        let thread_builder = Self::build_channel_for_event_handler::<T>(factory);
 
         return factory.spawn_event_handler(
             thread_name,
@@ -64,15 +64,14 @@ impl ThreadBuilder {
         );
     }
 
-    pub fn spawn_tcp_listener<Factory: FactoryTrait, T: TcpConnectionHandlerTrait>(
-        factory: Factory,
+    pub fn spawn_tcp_listener<T: TcpConnectionHandlerTrait>(
+        factory: &impl FactoryTrait,
         thread_name: String,
         socket_addr: SocketAddr,
         tcp_connection_handler: T,
         join_call_back: impl AsyncJoinCallBackTrait<T>,
     ) -> Result<EventHandlerSender<()>, Error> {
-        let thread_builder =
-            Self::build_channel_thread::<Factory, EventOrStopThread<()>>(factory.clone());
+        let thread_builder = Self::build_channel_thread::<EventOrStopThread<()>>(factory);
 
         return factory.spawn_tcp_listener(
             thread_name,
@@ -83,15 +82,15 @@ impl ThreadBuilder {
         );
     }
 
-    pub fn spawn_tcp_reader<Factory: FactoryTrait, T: TcpReadHandlerTrait>(
-        factory: Factory,
+    pub fn spawn_tcp_reader<T: TcpReadHandlerTrait>(
+        factory: &impl FactoryTrait,
         thread_name: String,
         tcp_reader: TcpReader,
         tcp_read_handler: T,
         join_call_back: impl AsyncJoinCallBackTrait<T>,
     ) -> Result<EventHandlerSender<()>, Error> {
         let thread_builder: channel::ChannelThreadBuilder<EventOrStopThread<()>> =
-            Self::build_channel_thread::<Factory, EventOrStopThread<()>>(factory.clone());
+            Self::build_channel_thread::<EventOrStopThread<()>>(factory);
 
         return factory.spawn_tcp_reader(
             thread_name,
@@ -102,15 +101,14 @@ impl ThreadBuilder {
         );
     }
 
-    pub fn spawn_udp_reader<Factory: FactoryTrait, T: UdpReadHandlerTrait>(
-        factory: Factory,
+    pub fn spawn_udp_reader<T: UdpReadHandlerTrait>(
+        factory: &impl FactoryTrait,
         thread_name: String,
         udp_socket: UdpSocket,
         udp_read_handler: T,
         join_call_back: impl AsyncJoinCallBackTrait<T>,
     ) -> Result<EventHandlerSender<()>, Error> {
-        let thread_builder =
-            Self::build_channel_thread::<Factory, EventOrStopThread<()>>(factory.clone());
+        let thread_builder = Self::build_channel_thread::<EventOrStopThread<()>>(factory);
 
         return factory.spawn_udp_reader(
             thread_name,

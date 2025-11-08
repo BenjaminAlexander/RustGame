@@ -49,10 +49,8 @@ fn test_real_factory_tcp() {
         tcp_stream.flush().unwrap();
     });
 
-    let tcp_listener_builder = ThreadBuilder::build_channel_for_tcp_listener::<
-        RealFactory,
-        TcpConnectionHandler,
-    >(real_factory.clone());
+    let tcp_listener_builder =
+        ThreadBuilder::build_channel_for_tcp_listener::<TcpConnectionHandler>(&real_factory);
 
     let tcp_listener_sender = tcp_listener_builder.get_sender().clone();
     let expect_one_tcp_connection = async_expects.new_async_expect("Expect one TCP connection", ());
@@ -83,7 +81,7 @@ fn test_real_factory_tcp() {
         let real_factory = RealFactory::new();
 
         let sender = ThreadBuilder::spawn_tcp_reader(
-            real_factory.clone(),
+            &real_factory,
             "TcpReader".to_string(),
             tcp_reader,
             tcp_read_handler,
@@ -118,7 +116,7 @@ fn test_tcp_listener_channel_disconnect() {
 
     //Drop the sender to cause a channel disconnect
     ThreadBuilder::spawn_tcp_listener(
-        real_factory.clone(),
+        &real_factory,
         "TcpListener".to_string(),
         SocketAddr::from(LOCAL_EPHEMERAL_SOCKET_ADDR_V4),
         TcpConnectionHandler::new(),
@@ -158,7 +156,7 @@ fn test_tcp_listener_polling_timeout() {
     let real_factory = RealFactory::new();
 
     let _sender = ThreadBuilder::spawn_tcp_listener(
-        real_factory.clone(),
+        &real_factory,
         "TcpListener".to_string(),
         SocketAddr::from(LOCAL_EPHEMERAL_SOCKET_ADDR_V4),
         tcp_connection_handler,
@@ -181,10 +179,8 @@ fn test_tcp_listener_send_event() {
 
     let real_factory = RealFactory::new();
 
-    let thread_builder = ThreadBuilder::build_channel_for_tcp_listener::<
-        RealFactory,
-        TcpConnectionHandler,
-    >(real_factory.clone());
+    let thread_builder =
+        ThreadBuilder::build_channel_for_tcp_listener::<TcpConnectionHandler>(&real_factory);
 
     let mut tcp_connection_handler = TcpConnectionHandler::new();
 
@@ -242,7 +238,7 @@ fn test_stop_tcp_reader() {
         let real_factory = RealFactory::new();
 
         let sender = ThreadBuilder::spawn_tcp_reader(
-            real_factory.clone(),
+            &real_factory,
             "TcpReader-ConnectorSide".to_string(),
             tcp_reader,
             tcp_read_handler,
@@ -253,10 +249,8 @@ fn test_stop_tcp_reader() {
         tcp_reader_senders.push(sender);
     });
 
-    let tcp_listener_builder = ThreadBuilder::build_channel_for_tcp_listener::<
-        RealFactory,
-        TcpConnectionHandler,
-    >(real_factory.clone());
+    let tcp_listener_builder =
+        ThreadBuilder::build_channel_for_tcp_listener::<TcpConnectionHandler>(&real_factory);
 
     let listener_sender = tcp_listener_builder.get_sender().clone();
     let expect_one_tcp_connection = async_expects.new_async_expect("Expect one TCP connection", ());
@@ -285,7 +279,7 @@ fn test_stop_tcp_reader() {
         let real_factory = RealFactory::new();
 
         let reader_sender = ThreadBuilder::spawn_tcp_reader(
-            real_factory.clone(),
+            &real_factory,
             "TcpReader-ListenerSide".to_string(),
             tcp_reader,
             tcp_read_handler,
@@ -338,7 +332,7 @@ fn test_tcp_reader_channel_disconnect() {
 
         // Drop the sender so the reader gets a channel disconnect
         ThreadBuilder::spawn_tcp_reader(
-            real_factory.clone(),
+            &real_factory,
             "TcpReader-ConnectorSide".to_string(),
             tcp_reader,
             tcp_read_handler,
@@ -366,7 +360,7 @@ fn test_tcp_reader_channel_disconnect() {
 
         // Drop the sender so the reader gets a channel disconnect
         ThreadBuilder::spawn_tcp_reader(
-            real_factory.clone(),
+            &real_factory,
             "TcpReader-ListenerSide".to_string(),
             tcp_reader,
             tcp_read_handler,
@@ -377,10 +371,8 @@ fn test_tcp_reader_channel_disconnect() {
         return ControlFlow::Break(());
     });
 
-    let thread_builder = ThreadBuilder::build_channel_for_tcp_listener::<
-        RealFactory,
-        TcpConnectionHandler,
-    >(real_factory.clone());
+    let thread_builder =
+        ThreadBuilder::build_channel_for_tcp_listener::<TcpConnectionHandler>(&real_factory);
 
     let _sender = real_factory
         .spawn_tcp_listener(

@@ -121,7 +121,7 @@ impl SingleThreadedReceiver<EventOrStopThread<()>> {
         let tcp_reader_event_handler = TcpReaderEventHandler::new(tcp_read_handler);
 
         let sender = ThreadBuilder::spawn_event_handler(
-            self.factory.clone(),
+            &self.factory,
             thread_name,
             tcp_reader_event_handler,
             join_call_back,

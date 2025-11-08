@@ -31,10 +31,8 @@ pub struct Server<GameFactory: GameFactoryTrait> {
 
 impl<GameFactory: GameFactoryTrait> Server<GameFactory> {
     pub fn new(factory: GameFactory::Factory) -> Result<Self, ()> {
-        let server_core_thread_builder = ThreadBuilder::build_channel_for_event_handler::<
-            GameFactory::Factory,
-            ServerCore<GameFactory>,
-        >(factory.clone());
+        let server_core_thread_builder =
+            ThreadBuilder::build_channel_for_event_handler::<ServerCore<GameFactory>>(&factory);
 
         let server_core = ServerCore::<GameFactory>::new(
             factory.clone(),

@@ -103,7 +103,7 @@ impl NetworkSimulator {
             TcpListenerEventHandler::new(socket_addr, connection_handler);
 
         let sender = ThreadBuilder::spawn_event_handler(
-            factory,
+            &factory,
             thread_name,
             tcp_listener_event_handler,
             join_call_back,
@@ -195,7 +195,7 @@ impl NetworkSimulator {
             UdpReadEventHandler::new(self.clone(), udp_socket.local_addr(), udp_read_handler);
 
         let sender = ThreadBuilder::spawn_event_handler(
-            factory,
+            &factory,
             thread_name,
             udp_read_event_handler,
             join_call_back,
