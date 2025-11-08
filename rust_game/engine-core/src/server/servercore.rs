@@ -55,6 +55,7 @@ use commons::threading::channel::{
 use commons::threading::eventhandling::{
     ChannelEvent,
     EventHandleResult,
+    EventHandlerBuilder,
     EventHandlerTrait,
     EventSender,
 };
@@ -99,7 +100,7 @@ pub struct ServerCore<GameFactory: GameFactoryTrait> {
     udp_outputs: Vec<interface::EventSender<UdpOutputEvent<GameFactory::Game>>>,
     udp_input_sender_option: Option<interface::EventSender<()>>,
     udp_handler: UdpHandler<GameFactory>,
-    manager_sender_option: Option<interface::EventSender<ManagerEvent<GameFactory::Game>>>,
+    manager_sender_option: Option<EventSender<ManagerEvent<GameFactory::Game>>>,
     render_receiver_sender: Option<Sender<RenderReceiverMessage<GameFactory::Game>>>,
     drop_steps_before: usize,
 }
@@ -269,9 +270,10 @@ impl<GameFactory: GameFactoryTrait> ServerCore<GameFactory> {
                 render_receiver_sender.clone(),
             );
 
-            let manager_builder = ThreadBuilder::build_channel_for_event_handler::<
-                Manager<ServerManagerObserver<GameFactory>>,
-            >(&self.factory);
+            let manager_builder =
+                EventHandlerBuilder::<Manager<ServerManagerObserver<GameFactory>>>::new(
+                    &self.factory,
+                );
 
             let server_game_timer_observer = ServerGameTimerObserver::new(self.sender.clone());
 
@@ -340,10 +342,9 @@ impl<GameFactory: GameFactoryTrait> ServerCore<GameFactory> {
             self.game_timer = Some(game_timer);
 
             self.manager_sender_option = Some(
-                self.factory
-                    .spawn_event_handler(
+                manager_builder
+                    .spawn_thread(
                         "ServerManager".to_string(),
-                        manager_builder,
                         Manager::new(self.factory.clone(), server_manager_observer),
                         AsyncJoin::log_async_join,
                     )
