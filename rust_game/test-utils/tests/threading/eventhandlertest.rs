@@ -1,8 +1,5 @@
 use commons::{
-    factory::{
-        FactoryTrait,
-        RealFactory,
-    },
+    factory::RealFactory,
     threading::{
         channel::ReceiveMetaData,
         eventhandling::{
@@ -11,6 +8,7 @@ use commons::{
             EventHandlerTrait,
         },
         AsyncJoin,
+        ThreadBuilder,
     },
     time::TimeDuration,
 };
@@ -77,10 +75,13 @@ fn test_async_join() {
 
     let real_factory = RealFactory::new();
 
-    let sender = real_factory
-        .new_thread_builder()
-        .spawn_event_handler(real_factory.clone(), event_handler, join_call_back)
-        .unwrap();
+    let sender = ThreadBuilder::spawn_event_handler(
+        real_factory.clone(),
+        "EventHandler".to_string(),
+        event_handler,
+        join_call_back,
+    )
+    .unwrap();
 
     sender.send_event(CountEvent::Add(7)).unwrap();
     sender.send_event(CountEvent::Subtract(2)).unwrap();
@@ -103,10 +104,13 @@ fn test_no_timeout() {
 
     let real_factory = RealFactory::new();
 
-    let sender = real_factory
-        .new_thread_builder()
-        .spawn_event_handler(real_factory.clone(), event_handler, join_call_back)
-        .unwrap();
+    let sender = ThreadBuilder::spawn_event_handler(
+        real_factory.clone(),
+        "EventHandler".to_string(),
+        event_handler,
+        join_call_back,
+    )
+    .unwrap();
 
     sender.send_event(CountEvent::Add(7)).unwrap();
     sender.send_event(CountEvent::WaitForTimeout).unwrap();
@@ -130,10 +134,13 @@ fn test_timeout() {
 
     let real_factory = RealFactory::new();
 
-    let sender = real_factory
-        .new_thread_builder()
-        .spawn_event_handler(real_factory.clone(), event_handler, join_call_back)
-        .unwrap();
+    let sender = ThreadBuilder::spawn_event_handler(
+        real_factory.clone(),
+        "EventHandler".to_string(),
+        event_handler,
+        join_call_back,
+    )
+    .unwrap();
 
     sender.send_event(CountEvent::Add(7)).unwrap();
     sender.send_event(CountEvent::Subtract(2)).unwrap();
@@ -157,10 +164,13 @@ fn test_drop_sender_while_waiting_for_timeout() {
     {
         let real_factory = RealFactory::new();
 
-        let sender = real_factory
-            .new_thread_builder()
-            .spawn_event_handler(real_factory.clone(), event_handler, join_call_back)
-            .unwrap();
+        let sender = ThreadBuilder::spawn_event_handler(
+            real_factory.clone(),
+            "EventHandler".to_string(),
+            event_handler,
+            join_call_back,
+        )
+        .unwrap();
 
         sender.send_event(CountEvent::Add(7)).unwrap();
         sender.send_event(CountEvent::Subtract(2)).unwrap();

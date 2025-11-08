@@ -10,7 +10,10 @@ use crate::interface::{
     RenderReceiver,
 };
 use commons::factory::FactoryTrait;
-use commons::threading::AsyncJoin;
+use commons::threading::{
+    AsyncJoin,
+    ThreadBuilder,
+};
 use std::net::Ipv4Addr;
 use std::str::FromStr;
 
@@ -20,12 +23,10 @@ pub struct Client<GameFactory: GameFactoryTrait> {
 
 impl<GameFactory: GameFactoryTrait> Client<GameFactory> {
     pub fn new(factory: Factory<GameFactory>) -> (Self, RenderReceiver<GameFactory>) {
-        let client_core_thread_builder = factory
-            .new_thread_builder()
-            .name("ClientCore")
-            .build_channel_for_event_handler::<GameFactory::Factory, ClientCore<GameFactory>>(
-            factory.clone(),
-        );
+        let client_core_thread_builder = ThreadBuilder::build_channel_for_event_handler::<
+            GameFactory::Factory,
+            ClientCore<GameFactory>,
+        >(factory.clone());
 
         let (render_receiver_sender, render_receiver) =
             RenderReceiver::<GameFactory>::new(factory.clone());
@@ -34,6 +35,7 @@ impl<GameFactory: GameFactoryTrait> Client<GameFactory> {
 
         factory
             .spawn_event_handler(
+                "ClientCore".to_string(),
                 client_core_thread_builder,
                 ClientCore::<GameFactory>::new(
                     factory.clone(),

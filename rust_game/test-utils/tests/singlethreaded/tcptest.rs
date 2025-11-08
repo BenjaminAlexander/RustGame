@@ -9,7 +9,10 @@ use commons::net::{
 use commons::single_threaded_simulator::SingleThreadedFactory;
 use commons::threading::channel::Sender;
 use commons::threading::eventhandling::EventOrStopThread;
-use commons::threading::AsyncJoin;
+use commons::threading::{
+    AsyncJoin,
+    ThreadBuilder,
+};
 use log::{
     error,
     info,
@@ -46,26 +49,23 @@ fn test_tcp() {
 
     let listen_socket = SocketAddr::new(server_factory.get_host_simulator().get_ip_addr(), PORT);
 
-    let connection_handler_sender = server_factory
-        .new_thread_builder()
-        .name("TcpConnectionListener")
-        .spawn_tcp_listener(
-            server_factory.clone(),
-            listen_socket.clone(),
-            connection_handler,
-            AsyncJoin::log_async_join,
-        )
-        .unwrap();
+    let connection_handler_sender = ThreadBuilder::spawn_tcp_listener(
+        server_factory.clone(),
+        "TcpConnectionListener".to_string(),
+        listen_socket.clone(),
+        connection_handler,
+        AsyncJoin::log_async_join,
+    )
+    .unwrap();
 
     let client_factory = server_factory.clone_for_new_host(IpAddr::V4(Ipv4Addr::new(127, 0, 0, 2)));
 
     let (tcp_stream, reader) = client_factory.connect_tcp(listen_socket).unwrap();
 
-    let client_thread_builder = client_factory
-        .new_thread_builder()
-        .build_channel_thread::<SingleThreadedFactory, EventOrStopThread<()>>(
-            client_factory.clone(),
-        );
+    let client_thread_builder = ThreadBuilder::build_channel_thread::<
+        SingleThreadedFactory,
+        EventOrStopThread<()>,
+    >(client_factory.clone());
 
     let client_side = Arc::new(Mutex::new(Some(TestConnection {
         tcp_stream,
@@ -79,6 +79,7 @@ fn test_tcp() {
 
     let client_read_sender = client_factory
         .spawn_tcp_reader(
+            "TcpReader".to_string(),
             client_thread_builder,
             reader,
             client_read_handler,
@@ -150,11 +151,7 @@ struct ConnectionHandler {
 }
 
 impl TcpConnectionHandlerTrait for ConnectionHandler {
-    fn on_connection(
-        &mut self,
-        tcp_stream: TcpStream,
-        tcp_receiver: TcpReader,
-    ) -> ControlFlow<()> {
+    fn on_connection(&mut self, tcp_stream: TcpStream, tcp_receiver: TcpReader) -> ControlFlow<()> {
         info!(
             "{:?} is handling a connection from {:?}",
             self.factory.get_host_simulator().get_ip_addr(),
@@ -165,16 +162,14 @@ impl TcpConnectionHandlerTrait for ConnectionHandler {
             test_connection: self.server_side.clone(),
         };
 
-        let reader_sender = self
-            .factory
-            .new_thread_builder()
-            .spawn_tcp_reader(
-                self.factory.clone(),
-                tcp_receiver,
-                tcp_read_handler,
-                AsyncJoin::log_async_join,
-            )
-            .unwrap();
+        let reader_sender = ThreadBuilder::spawn_tcp_reader(
+            self.factory.clone(),
+            "TcpReader".to_string(),
+            tcp_receiver,
+            tcp_read_handler,
+            AsyncJoin::log_async_join,
+        )
+        .unwrap();
 
         let server_side = TestConnection {
             tcp_stream,

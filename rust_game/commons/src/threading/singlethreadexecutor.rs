@@ -1,8 +1,5 @@
 use crate::{
-    factory::{
-        FactoryTrait,
-        RealFactory,
-    },
+    factory::RealFactory,
     threading::{
         channel::{
             ReceiveMetaData,
@@ -14,6 +11,7 @@ use crate::{
             EventHandlerTrait,
             EventOrStopThread,
         },
+        ThreadBuilder,
     },
 };
 use std::sync::{
@@ -37,15 +35,17 @@ impl SingleThreadExecutor {
 
         let factory = RealFactory::new();
 
-        let sender = factory
-            .new_thread_builder()
-            .name("SingleThreadExecutor")
-            .spawn_event_handler(factory, SingleThreadExecutorEventHandler(), move |_| {
+        let sender = ThreadBuilder::spawn_event_handler(
+            factory,
+            "SingleThreadExecutor".to_string(),
+            SingleThreadExecutorEventHandler(),
+            move |_| {
                 let (wait_for_join_mutex, condvar) = join_signal_clone.as_ref();
                 *wait_for_join_mutex.lock().unwrap() = false;
                 condvar.notify_all();
-            })
-            .unwrap();
+            },
+        )
+        .unwrap();
 
         return Self {
             join_signal,

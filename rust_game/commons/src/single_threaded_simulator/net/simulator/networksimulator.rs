@@ -88,7 +88,7 @@ impl NetworkSimulator {
         &self,
         factory: SingleThreadedFactory,
         socket_addr: SocketAddr,
-        thread_builder: ThreadBuilder,
+        thread_name: String,
         receiver: SingleThreadedReceiver<EventOrStopThread<()>>,
         connection_handler: TcpConnectionHandler,
         join_call_back: impl AsyncJoinCallBackTrait<TcpConnectionHandler>,
@@ -102,9 +102,13 @@ impl NetworkSimulator {
         let tcp_listener_event_handler =
             TcpListenerEventHandler::new(socket_addr, connection_handler);
 
-        let sender = thread_builder
-            .spawn_event_handler(factory, tcp_listener_event_handler, join_call_back)
-            .unwrap();
+        let sender = ThreadBuilder::spawn_event_handler(
+            factory,
+            thread_name,
+            tcp_listener_event_handler,
+            join_call_back,
+        )
+        .unwrap();
 
         let sender_clone = sender.clone();
         receiver.to_consumer(move |receive_or_disconnect| {
@@ -173,7 +177,7 @@ impl NetworkSimulator {
     pub fn spawn_udp_reader<T: UdpReadHandlerTrait>(
         &self,
         factory: SingleThreadedFactory,
-        thread_builder: ThreadBuilder,
+        thread_name: String,
         receiver: SingleThreadedReceiver<EventOrStopThread<()>>,
         udp_socket: UdpSocketSimulator,
         udp_read_handler: T,
@@ -190,9 +194,13 @@ impl NetworkSimulator {
         let udp_read_event_handler =
             UdpReadEventHandler::new(self.clone(), udp_socket.local_addr(), udp_read_handler);
 
-        let sender = thread_builder
-            .spawn_event_handler(factory, udp_read_event_handler, join_call_back)
-            .unwrap();
+        let sender = ThreadBuilder::spawn_event_handler(
+            factory,
+            thread_name,
+            udp_read_event_handler,
+            join_call_back,
+        )
+        .unwrap();
 
         let sender_clone = sender.clone();
         receiver.to_consumer(move |receive_or_disconnect| {

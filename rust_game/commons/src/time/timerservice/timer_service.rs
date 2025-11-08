@@ -15,7 +15,10 @@ use crate::threading::eventhandling::{
     EventHandlerTrait,
     EventOrStopThread,
 };
-use crate::threading::AsyncJoin;
+use crate::threading::{
+    AsyncJoin,
+    ThreadBuilder,
+};
 use crate::time::timerservice::schedule::Schedule;
 use crate::time::timerservice::timer::Timer;
 use crate::time::timerservice::timer_call_back::TimerCallBack;
@@ -64,16 +67,12 @@ impl<Factory: FactoryTrait, T: TimerCreationCallBack, U: TimerCallBack>
 
     /// Starts the [`TimerService`] thread and begins triggering timers
     pub fn start(self) -> Result<TimerService<T, U>, Error> {
-        let sender = self
-            .event_handler
-            .factory
-            .new_thread_builder()
-            .name("TimerServiceThread")
-            .spawn_event_handler(
-                self.event_handler.factory.clone(),
-                self.event_handler,
-                AsyncJoin::log_async_join,
-            )?;
+        let sender = ThreadBuilder::spawn_event_handler(
+            self.event_handler.factory.clone(),
+            "TimerServiceThread".to_string(),
+            self.event_handler,
+            AsyncJoin::log_async_join,
+        )?;
 
         return Ok(TimerService { sender });
     }

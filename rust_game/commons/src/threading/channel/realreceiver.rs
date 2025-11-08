@@ -9,7 +9,9 @@ use crate::net::{
     UdpReaderEventHandler,
 };
 use crate::threading::channel::{
-    ReceiveMetaData, ReceiverTrait, SendMetaData
+    ReceiveMetaData,
+    ReceiverTrait,
+    SendMetaData,
 };
 use crate::threading::eventhandling::{
     EventHandlerThread,
@@ -29,7 +31,10 @@ use std::net::{
     SocketAddr,
     TcpListener,
 };
-use std::sync::mpsc::{self, TryRecvError};
+use std::sync::mpsc::{
+    self,
+    TryRecvError,
+};
 
 pub type RecvError = mpsc::RecvError;
 
@@ -92,20 +97,22 @@ impl<T: Send> RealReceiver<T> {
 impl<T: Send> RealReceiver<EventOrStopThread<T>> {
     pub fn spawn_event_handler<U: EventHandlerTrait<Event = T>>(
         self,
-        thread_builder: ThreadBuilder,
+        thread_name: String,
         event_handler: U,
         join_call_back: impl AsyncJoinCallBackTrait<U::ThreadReturn>,
     ) -> std::io::Result<()> {
         let thread = EventHandlerThread::new(self, event_handler);
-        thread_builder.spawn_thread(thread, join_call_back)?;
+        ThreadBuilder::spawn_thread(thread_name, thread, join_call_back)?;
         return Ok(());
     }
 }
 
 impl RealReceiver<EventOrStopThread<()>> {
+    //TODO: can these span methods be on a trait and called with dynamic dispatch?
+
     pub fn spawn_tcp_listener<T: TcpConnectionHandlerTrait>(
         self,
-        thread_builder: ThreadBuilder,
+        thread_name: String,
         socket_addr: SocketAddr,
         mut tcp_connection_handler: T,
         join_call_back: impl AsyncJoinCallBackTrait<T>,
@@ -116,28 +123,28 @@ impl RealReceiver<EventOrStopThread<()>> {
 
         let event_handler = TcpListenerEventHandler::new(tcp_listener, tcp_connection_handler)?;
 
-        return self.spawn_event_handler(thread_builder, event_handler, join_call_back);
+        return self.spawn_event_handler(thread_name, event_handler, join_call_back);
     }
 
     pub fn spawn_real_tcp_reader<T: TcpReadHandlerTrait>(
         self,
-        thread_builder: ThreadBuilder,
+        thread_name: String,
         real_tcp_stream: RealTcpStream,
         tcp_read_handler: T,
         join_call_back: impl AsyncJoinCallBackTrait<T>,
     ) -> Result<(), Error> {
         let event_handler = TcpReaderEventHandler::new(real_tcp_stream, tcp_read_handler);
-        return self.spawn_event_handler(thread_builder, event_handler, join_call_back);
+        return self.spawn_event_handler(thread_name, event_handler, join_call_back);
     }
 
     pub fn spawn_real_udp_reader<T: UdpReadHandlerTrait>(
         self,
-        thread_builder: ThreadBuilder,
+        thread_name: String,
         udp_socket: RealUdpSocket,
         udp_read_handler: T,
         join_call_back: impl AsyncJoinCallBackTrait<T>,
     ) -> Result<(), Error> {
         let event_handler = UdpReaderEventHandler::new(udp_socket, udp_read_handler);
-        return self.spawn_event_handler(thread_builder, event_handler, join_call_back);
+        return self.spawn_event_handler(thread_name, event_handler, join_call_back);
     }
 }

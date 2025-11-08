@@ -1,20 +1,15 @@
-use crate::threading;
 use crate::threading::channel::{
     Channel,
     Sender,
 };
 
 pub struct ChannelThreadBuilder<T: Send + 'static> {
-    thread_builder: threading::ThreadBuilder,
     channel: Channel<T>,
 }
 
 impl<T: Send + 'static> ChannelThreadBuilder<T> {
-    pub fn new(channel: Channel<T>, thread_builder: threading::ThreadBuilder) -> Self {
-        return Self {
-            channel,
-            thread_builder,
-        };
+    pub fn new(channel: Channel<T>) -> Self {
+        return Self { channel };
     }
 
     pub fn get_channel(&self) -> &Channel<T> {
@@ -25,7 +20,7 @@ impl<T: Send + 'static> ChannelThreadBuilder<T> {
         return self.get_channel().get_sender();
     }
 
-    pub fn take(self) -> (threading::ThreadBuilder, Channel<T>) {
-        return (self.thread_builder, self.channel);
+    pub fn take(self) -> Channel<T> {
+        return self.channel;
     }
 }

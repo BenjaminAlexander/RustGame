@@ -13,7 +13,9 @@ use crate::interface::{
 };
 use commons::factory::FactoryTrait;
 use commons::threading::channel::{
-    Receiver, ReceiverTrait, Sender
+    Receiver,
+    ReceiverTrait,
+    Sender,
 };
 use commons::time::TimeDuration;
 use log::{

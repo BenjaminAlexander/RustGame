@@ -40,27 +40,29 @@ pub trait FactoryTrait: Clone + Send + 'static {
 
     fn spawn_event_handler<U: EventHandlerTrait>(
         &self,
+        thread_name: String,
         thread_builder: ChannelThreadBuilder<EventOrStopThread<U::Event>>,
         event_handler: U,
         join_call_back: impl AsyncJoinCallBackTrait<U::ThreadReturn>,
     ) -> std::io::Result<EventHandlerSender<U::Event>> {
-        let (thread_builder, channel) = thread_builder.take();
+        let channel = thread_builder.take();
         let (sender, receiver) = channel.take();
-        receiver.spawn_event_handler(thread_builder, event_handler, join_call_back)?;
+        receiver.spawn_event_handler(thread_name, event_handler, join_call_back)?;
         return Ok(sender);
     }
 
     fn spawn_tcp_listener<T: TcpConnectionHandlerTrait>(
         &self,
+        thread_name: String,
         thread_builder: ChannelThreadBuilder<EventOrStopThread<()>>,
         socket_addr: SocketAddr,
         tcp_connection_handler: T,
         join_call_back: impl AsyncJoinCallBackTrait<T>,
     ) -> Result<EventHandlerSender<()>, Error> {
-        let (thread_builder, channel) = thread_builder.take();
+        let channel = thread_builder.take();
         let (sender, receiver) = channel.take();
         receiver.spawn_tcp_listener(
-            thread_builder,
+            thread_name,
             socket_addr,
             tcp_connection_handler,
             join_call_back,
@@ -70,14 +72,15 @@ pub trait FactoryTrait: Clone + Send + 'static {
 
     fn spawn_tcp_reader<T: TcpReadHandlerTrait>(
         &self,
+        thread_name: String,
         thread_builder: ChannelThreadBuilder<EventOrStopThread<()>>,
         tcp_reader: TcpReader,
         tcp_read_handler: T,
         join_call_back: impl AsyncJoinCallBackTrait<T>,
     ) -> Result<EventHandlerSender<()>, Error> {
-        let (thread_builder, channel) = thread_builder.take();
+        let channel = thread_builder.take();
         let (sender, receiver) = channel.take();
-        tcp_reader.spawn_tcp_reader(thread_builder, receiver, tcp_read_handler, join_call_back)?;
+        tcp_reader.spawn_tcp_reader(thread_name, receiver, tcp_read_handler, join_call_back)?;
         return Ok(sender);
     }
 
@@ -87,14 +90,15 @@ pub trait FactoryTrait: Clone + Send + 'static {
 
     fn spawn_udp_reader<T: UdpReadHandlerTrait>(
         &self,
+        thread_name: String,
         thread_builder: ChannelThreadBuilder<EventOrStopThread<()>>,
         udp_socket: UdpSocket,
         udp_read_handler: T,
         join_call_back: impl AsyncJoinCallBackTrait<T>,
     ) -> Result<EventHandlerSender<()>, Error> {
-        let (thread_builder, channel) = thread_builder.take();
+        let channel = thread_builder.take();
         let (sender, receiver) = channel.take();
-        udp_socket.spawn_udp_reader(thread_builder, receiver, udp_read_handler, join_call_back)?;
+        udp_socket.spawn_udp_reader(thread_name, receiver, udp_read_handler, join_call_back)?;
         return Ok(sender);
     }
 }

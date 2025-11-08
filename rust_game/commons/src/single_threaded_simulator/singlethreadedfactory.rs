@@ -12,9 +12,7 @@ use crate::single_threaded_simulator::{
     SingleThreadedReceiver,
     TimeQueue,
 };
-use crate::threading::channel::{
-    Channel,
-};
+use crate::threading::channel::Channel;
 use crate::time::{
     SimulatedTimeSource,
     TimeSource,

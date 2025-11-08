@@ -14,7 +14,6 @@ use crate::{
         channel::Receiver,
         eventhandling::EventOrStopThread,
         AsyncJoinCallBackTrait,
-        ThreadBuilder,
     },
 };
 
@@ -71,21 +70,21 @@ impl UdpSocket {
 
     pub fn spawn_udp_reader<T: UdpReadHandlerTrait>(
         self,
-        thread_builder: ThreadBuilder,
+        thread_name: String,
         receiver: Receiver<EventOrStopThread<()>>,
         udp_read_handler: T,
         join_call_back: impl AsyncJoinCallBackTrait<T>,
     ) -> Result<(), Error> {
         match self.implementation {
             Implementation::Real(real_udp_socket) => real_udp_socket.spawn_real_udp_reader(
-                thread_builder,
+                thread_name,
                 receiver,
                 udp_read_handler,
                 join_call_back,
             ),
             Implementation::Simulated(udp_socket_simulator) => udp_socket_simulator
                 .spawn_simulated_udp_reader(
-                    thread_builder,
+                    thread_name,
                     receiver,
                     udp_read_handler,
                     join_call_back,

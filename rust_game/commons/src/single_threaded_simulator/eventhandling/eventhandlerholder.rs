@@ -20,7 +20,6 @@ use crate::threading::eventhandling::{
 use crate::threading::{
     AsyncJoin,
     AsyncJoinCallBackTrait,
-    ThreadBuilder,
 };
 use crate::time::TimeDuration;
 use log::trace;
@@ -39,7 +38,7 @@ struct EventHandlerHolderInternal<T: EventHandlerTrait, U: AsyncJoinCallBackTrai
     receiver_link: ReceiverLink<EventOrStopThread<T::Event>>,
     event_handler: T,
     join_call_back: U,
-    thread_builder: ThreadBuilder,
+    thread_name: String,
     pending_channel_event: Option<usize>,
 }
 
@@ -59,7 +58,7 @@ impl<T: EventHandlerTrait, U: AsyncJoinCallBackTrait<T::ThreadReturn>> EventHand
     //TODO: can this method be moved to its caller?
     pub fn new(
         factory: SingleThreadedFactory,
-        thread_builder: ThreadBuilder,
+        thread_name: String,
         receiver: SingleThreadedReceiver<EventOrStopThread<T::Event>>,
         event_handler: T,
         join_call_back: U,
@@ -100,7 +99,7 @@ impl<T: EventHandlerTrait, U: AsyncJoinCallBackTrait<T::ThreadReturn>> EventHand
             receiver_link,
             event_handler,
             join_call_back,
-            thread_builder,
+            thread_name,
             pending_channel_event: None,
         };
 
@@ -189,7 +188,7 @@ impl<T: EventHandlerTrait, U: AsyncJoinCallBackTrait<T::ThreadReturn>>
                 let result = self.event_handler.on_stop(receive_meta_data);
                 self.receiver_link.disconnect_receiver();
                 self.join_call_back
-                    .join(AsyncJoin::new(self.thread_builder, result));
+                    .join(AsyncJoin::new(self.thread_name, result));
                 return None;
             }
         }
@@ -200,7 +199,7 @@ impl<T: EventHandlerTrait, U: AsyncJoinCallBackTrait<T::ThreadReturn>>
         holder: &EventHandlerHolder<T, U>,
         event: ChannelEvent<T::Event>,
     ) -> Option<Self> {
-        trace!("Event Handler: {:?}", self.thread_builder.get_name());
+        trace!("Event Handler: {:?}", self.thread_name);
 
         match self.event_handler.on_channel_event(event) {
             EventHandleResult::WaitForNextEvent(event_handler) => {
@@ -224,7 +223,7 @@ impl<T: EventHandlerTrait, U: AsyncJoinCallBackTrait<T::ThreadReturn>>
                 trace!("Join");
                 self.receiver_link.disconnect_receiver();
                 self.join_call_back
-                    .join(AsyncJoin::new(self.thread_builder, result));
+                    .join(AsyncJoin::new(self.thread_name, result));
                 return None;
             }
         };

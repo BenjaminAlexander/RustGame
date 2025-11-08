@@ -7,10 +7,7 @@ use crate::net::{
 use crate::single_threaded_simulator::SingleThreadedReceiver;
 use crate::threading::channel::Receiver;
 use crate::threading::eventhandling::EventOrStopThread;
-use crate::threading::{
-    AsyncJoinCallBackTrait,
-    ThreadBuilder,
-};
+use crate::threading::AsyncJoinCallBackTrait;
 
 enum Implementation {
     Real(RealTcpStream),
@@ -39,21 +36,21 @@ impl TcpReader {
 
     pub fn spawn_tcp_reader<T: TcpReadHandlerTrait>(
         self,
-        thread_builder: ThreadBuilder,
+        thread_name: String,
         receiver: Receiver<EventOrStopThread<()>>,
         tcp_read_handler: T,
         join_call_back: impl AsyncJoinCallBackTrait<T>,
     ) -> Result<(), Error> {
         match self.implementation {
             Implementation::Real(real_tcp_stream) => real_tcp_stream.spawn_real_tcp_reader(
-                thread_builder,
+                thread_name,
                 receiver,
                 tcp_read_handler,
                 join_call_back,
             ),
             Implementation::Simulated(single_threaded_receiver) => single_threaded_receiver
                 .spawn_simulated_tcp_reader(
-                    thread_builder,
+                    thread_name,
                     receiver,
                     tcp_read_handler,
                     join_call_back,

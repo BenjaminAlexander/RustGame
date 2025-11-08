@@ -11,11 +11,7 @@ use std::{
 pub trait TcpConnectionHandlerTrait: Send + 'static {
     fn on_bind(&mut self, _socket_addr: SocketAddr) {}
 
-    fn on_connection(
-        &mut self,
-        tcp_stream: TcpStream,
-        tcp_receiver: TcpReader,
-    ) -> ControlFlow<()>;
+    fn on_connection(&mut self, tcp_stream: TcpStream, tcp_receiver: TcpReader) -> ControlFlow<()>;
 }
 
 pub struct TcpConnectionHandler {
@@ -48,11 +44,7 @@ impl TcpConnectionHandlerTrait for TcpConnectionHandler {
         return (self.on_bind)(socket_addr);
     }
 
-    fn on_connection(
-        &mut self,
-        tcp_stream: TcpStream,
-        tcp_receiver: TcpReader,
-    ) -> ControlFlow<()> {
+    fn on_connection(&mut self, tcp_stream: TcpStream, tcp_receiver: TcpReader) -> ControlFlow<()> {
         return (self.on_connection)(tcp_stream, tcp_receiver);
     }
 }

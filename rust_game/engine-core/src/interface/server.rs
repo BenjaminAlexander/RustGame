@@ -15,6 +15,7 @@ use commons::{
         channel::Sender,
         eventhandling::EventHandlerSender,
         AsyncJoin,
+        ThreadBuilder,
     },
 };
 use log::{
@@ -30,12 +31,10 @@ pub struct Server<GameFactory: GameFactoryTrait> {
 
 impl<GameFactory: GameFactoryTrait> Server<GameFactory> {
     pub fn new(factory: GameFactory::Factory) -> Result<Self, ()> {
-        let server_core_thread_builder = factory
-            .new_thread_builder()
-            .name("ServerCore")
-            .build_channel_for_event_handler::<GameFactory::Factory, ServerCore<GameFactory>>(
-            factory.clone(),
-        );
+        let server_core_thread_builder = ThreadBuilder::build_channel_for_event_handler::<
+            GameFactory::Factory,
+            ServerCore<GameFactory>,
+        >(factory.clone());
 
         let server_core = ServerCore::<GameFactory>::new(
             factory.clone(),
@@ -53,6 +52,7 @@ impl<GameFactory: GameFactoryTrait> Server<GameFactory> {
 
         let core_sender = factory
             .spawn_event_handler(
+                "ServerCore".to_string(),
                 server_core_thread_builder,
                 server_core,
                 AsyncJoin::log_async_join,

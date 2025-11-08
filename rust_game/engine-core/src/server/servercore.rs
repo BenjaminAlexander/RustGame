@@ -57,7 +57,10 @@ use commons::threading::eventhandling::{
     EventHandleResult,
     EventHandlerTrait,
 };
-use commons::threading::AsyncJoin;
+use commons::threading::{
+    AsyncJoin,
+    ThreadBuilder,
+};
 use log::{
     error,
     info,
@@ -182,16 +185,13 @@ impl<GameFactory: GameFactoryTrait> ServerCore<GameFactory> {
 
         let udp_input = UdpInput::<GameFactory>::new(self.sender.clone());
 
-        let udp_input_builder = self
-            .factory
-            .new_thread_builder()
-            .name("ServerUdpInput")
-            .spawn_udp_reader(
-                self.factory.clone(),
-                udp_socket.try_clone().unwrap(),
-                udp_input,
-                AsyncJoin::log_async_join,
-            );
+        let udp_input_builder = ThreadBuilder::spawn_udp_reader(
+            self.factory.clone(),
+            "ServerUdpInput".to_string(),
+            udp_socket.try_clone().unwrap(),
+            udp_input,
+            AsyncJoin::log_async_join,
+        );
 
         self.udp_socket = Some(udp_socket);
 
@@ -208,16 +208,13 @@ impl<GameFactory: GameFactoryTrait> ServerCore<GameFactory> {
             SocketAddrV4::new(Ipv4Addr::new(127, 0, 0, 1), GameFactory::Game::TCP_PORT);
         let socket_addr = SocketAddr::from(socket_addr_v4);
 
-        let tcp_listener_sender_result = self
-            .factory
-            .new_thread_builder()
-            .name("ServerTcpListener")
-            .spawn_tcp_listener(
-                self.factory.clone(),
-                socket_addr,
-                TcpConnectionHandler::<GameFactory>::new(self.sender.clone()),
-                AsyncJoin::log_async_join,
-            );
+        let tcp_listener_sender_result = ThreadBuilder::spawn_tcp_listener(
+            self.factory.clone(),
+            "ServerTcpListener".to_string(),
+            socket_addr,
+            TcpConnectionHandler::<GameFactory>::new(self.sender.clone()),
+            AsyncJoin::log_async_join,
+        );
 
         match tcp_listener_sender_result {
             Ok(tcp_listener_sender) => {
@@ -270,11 +267,10 @@ impl<GameFactory: GameFactoryTrait> ServerCore<GameFactory> {
                 render_receiver_sender.clone(),
             );
 
-            let manager_builder = self
-                .factory
-                .new_thread_builder()
-                .name("ServerManager")
-                .build_channel_for_event_handler::<GameFactory::Factory, Manager<ServerManagerObserver<GameFactory>>>(self.factory.clone());
+            let manager_builder = ThreadBuilder::build_channel_for_event_handler::<
+                GameFactory::Factory,
+                Manager<ServerManagerObserver<GameFactory>>,
+            >(self.factory.clone());
 
             let server_game_timer_observer =
                 ServerGameTimerObserver::new(self.factory.clone(), self.sender.clone());
@@ -346,6 +342,7 @@ impl<GameFactory: GameFactoryTrait> ServerCore<GameFactory> {
             self.manager_sender_option = Some(
                 self.factory
                     .spawn_event_handler(
+                        "ServerManager".to_string(),
                         manager_builder,
                         Manager::new(self.factory.clone(), server_manager_observer),
                         AsyncJoin::log_async_join,
@@ -376,48 +373,39 @@ impl<GameFactory: GameFactoryTrait> ServerCore<GameFactory> {
 
             let client_address = ClientAddress::new(player_index, tcp_stream.get_peer_addr().ip());
 
-            let tcp_input_join_handle = self
-                .factory
-                .new_thread_builder()
-                .name("ServerTcpInput")
-                .spawn_tcp_reader(
-                    self.factory.clone(),
-                    tcp_receiver,
-                    TcpInput::new(),
-                    AsyncJoin::log_async_join,
-                )
-                .unwrap();
+            let tcp_input_join_handle = ThreadBuilder::spawn_tcp_reader(
+                self.factory.clone(),
+                "ServerTcpInput".to_string(),
+                tcp_receiver,
+                TcpInput::new(),
+                AsyncJoin::log_async_join,
+            )
+            .unwrap();
 
             self.tcp_inputs.push(tcp_input_join_handle);
 
-            let udp_out_sender = self
-                .factory
-                .new_thread_builder()
-                .name("ServerUdpOutput")
-                .spawn_event_handler(
+            let udp_out_sender = ThreadBuilder::spawn_event_handler(
+                self.factory.clone(),
+                "ServerUdpOutput".to_string(),
+                UdpOutput::<GameFactory>::new(
                     self.factory.clone(),
-                    UdpOutput::<GameFactory>::new(
-                        self.factory.clone(),
-                        player_index,
-                        self.udp_socket.as_ref().unwrap(),
-                    )
-                    .unwrap(),
-                    AsyncJoin::log_async_join,
+                    player_index,
+                    self.udp_socket.as_ref().unwrap(),
                 )
-                .unwrap();
+                .unwrap(),
+                AsyncJoin::log_async_join,
+            )
+            .unwrap();
 
             self.udp_handler.on_client_address(client_address);
 
-            let tcp_output_sender = self
-                .factory
-                .new_thread_builder()
-                .name("ServerTcpOutput")
-                .spawn_event_handler(
-                    self.factory.clone(),
-                    TcpOutput::<GameFactory::Game>::new(player_index, tcp_stream),
-                    AsyncJoin::log_async_join,
-                )
-                .unwrap();
+            let tcp_output_sender = ThreadBuilder::spawn_event_handler(
+                self.factory.clone(),
+                "ServerTcpOutput".to_string(),
+                TcpOutput::<GameFactory::Game>::new(player_index, tcp_stream),
+                AsyncJoin::log_async_join,
+            )
+            .unwrap();
 
             self.tcp_outputs.push(tcp_output_sender);
             self.udp_outputs.push(udp_out_sender);

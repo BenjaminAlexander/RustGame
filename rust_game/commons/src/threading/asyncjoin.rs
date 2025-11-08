@@ -1,8 +1,7 @@
-use super::ThreadBuilder;
 use log::info;
 
 pub struct AsyncJoin<T> {
-    thread_builder: ThreadBuilder,
+    thread_name: String,
     result: T,
 }
 
@@ -11,15 +10,15 @@ impl<T> AsyncJoin<T> {
         info!("Thread Join from: {:?}", self.get_thread_name());
     }
 
-    pub fn new(thread_builder: ThreadBuilder, result: T) -> Self {
+    pub fn new(thread_name: String, result: T) -> Self {
         return Self {
-            thread_builder,
+            thread_name,
             result,
         };
     }
 
-    pub fn get_thread_name(&self) -> Option<&String> {
-        return self.thread_builder.get_name();
+    pub fn get_thread_name(&self) -> &String {
+        return &self.thread_name;
     }
 
     pub fn get_result(&self) -> &T {

@@ -4,6 +4,7 @@ use commons::{
         RealFactory,
     },
     logging::LoggingConfigBuilder,
+    threading::ThreadBuilder,
 };
 use log::{
     info,
@@ -53,16 +54,14 @@ fn test_real_factory_udp() {
 
     let udp_socket_clone = udp_socket_1.try_clone().unwrap();
 
-    let udp_reader_sender = real_factory
-        .new_thread_builder()
-        .name("UdpReader")
-        .spawn_udp_reader(
-            real_factory.clone(),
-            udp_socket_clone,
-            udp_read_handler,
-            async_expects.new_expect_async_join("UdpReader Join"),
-        )
-        .unwrap();
+    let udp_reader_sender = ThreadBuilder::spawn_udp_reader(
+        real_factory.clone(),
+        "UdpReader".to_string(),
+        udp_socket_clone,
+        udp_read_handler,
+        async_expects.new_expect_async_join("UdpReader Join"),
+    )
+    .unwrap();
 
     send_udp_socket.send_to(&[A_NUMBER], &local_addr1).unwrap();
 
@@ -101,16 +100,14 @@ fn test_udp_reader_break() {
         return ControlFlow::Break(());
     };
 
-    let _sender = real_factory
-        .new_thread_builder()
-        .name("UdpReader")
-        .spawn_udp_reader(
-            real_factory.clone(),
-            udp_socket_1,
-            udp_read_handler,
-            async_expects.new_expect_async_join("UdpReader Join"),
-        )
-        .unwrap();
+    let _sender = ThreadBuilder::spawn_udp_reader(
+        real_factory.clone(),
+        "UdpReader".to_string(),
+        udp_socket_1,
+        udp_read_handler,
+        async_expects.new_expect_async_join("UdpReader Join"),
+    )
+    .unwrap();
 
     send_udp_socket.send_to(&[A_NUMBER], &local_addr1).unwrap();
 
@@ -134,16 +131,14 @@ fn test_drop_udp_reader_sender() {
     };
 
     //Drop the sender
-    real_factory
-        .new_thread_builder()
-        .name("UdpReader")
-        .spawn_udp_reader(
-            real_factory.clone(),
-            udp_socket_1,
-            udp_read_handler,
-            async_expects.new_expect_async_join("UdpReader Join"),
-        )
-        .unwrap();
+    ThreadBuilder::spawn_udp_reader(
+        real_factory.clone(),
+        "UdpReader".to_string(),
+        udp_socket_1,
+        udp_read_handler,
+        async_expects.new_expect_async_join("UdpReader Join"),
+    )
+    .unwrap();
 
     async_expects.wait_for_all();
 }

@@ -2,7 +2,10 @@ use commons::net::{
     LOCAL_EPHEMERAL_SOCKET_ADDR_V4,
     NET_POLLING_PERIOD,
 };
-use commons::threading::SingleThreadExecutor;
+use commons::threading::{
+    SingleThreadExecutor,
+    ThreadBuilder,
+};
 use commons::{
     factory::{
         FactoryTrait,
@@ -71,12 +74,10 @@ fn test_non_blocking_tcp_reader() {
         });
     });
 
-    let tcp_listener_builder = real_factory
-        .new_thread_builder()
-        .name("TcpListener")
-        .build_channel_for_tcp_listener::<RealFactory, TcpConnectionHandler>(
-        real_factory.clone(),
-    );
+    let tcp_listener_builder = ThreadBuilder::build_channel_for_tcp_listener::<
+        RealFactory,
+        TcpConnectionHandler,
+    >(real_factory.clone());
 
     let listener_sender = tcp_listener_builder.get_sender().clone();
     let expect_one_tcp_connection = async_expects.new_async_expect("Expect one TCP connection", ());
@@ -97,16 +98,14 @@ fn test_non_blocking_tcp_reader() {
 
         let real_factory = RealFactory::new();
 
-        let reader_sender = real_factory
-            .new_thread_builder()
-            .name("TcpReader-ListenerSide")
-            .spawn_tcp_reader(
-                real_factory.clone(),
-                tcp_reader,
-                tcp_read_handler,
-                async_expects_clone.new_expect_async_join("Expect TcpReader-ListenerSide Join"),
-            )
-            .unwrap();
+        let reader_sender = ThreadBuilder::spawn_tcp_reader(
+            real_factory.clone(),
+            "TcpReader-ListenerSide".to_string(),
+            tcp_reader,
+            tcp_read_handler,
+            async_expects_clone.new_expect_async_join("Expect TcpReader-ListenerSide Join"),
+        )
+        .unwrap();
 
         reader_sender.send_event(()).unwrap();
 
@@ -117,6 +116,7 @@ fn test_non_blocking_tcp_reader() {
 
     real_factory
         .spawn_tcp_listener(
+            "TcpListener".to_string(),
             tcp_listener_builder,
             SocketAddr::from(LOCAL_EPHEMERAL_SOCKET_ADDR_V4),
             tcp_connection_handler,

@@ -29,11 +29,7 @@ impl<GameFactory: GameFactoryTrait> TcpConnectionHandler<GameFactory> {
 impl<GameFactory: GameFactoryTrait> TcpConnectionHandlerTrait
     for TcpConnectionHandler<GameFactory>
 {
-    fn on_connection(
-        &mut self,
-        tcp_stream: TcpStream,
-        tcp_receiver: TcpReader,
-    ) -> ControlFlow<()> {
+    fn on_connection(&mut self, tcp_stream: TcpStream, tcp_receiver: TcpReader) -> ControlFlow<()> {
         info!("New TCP connection from {:?}", tcp_stream.get_peer_addr());
 
         let send_result = self
