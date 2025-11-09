@@ -8,7 +8,7 @@ pub struct EventSender<T: Send> {
 }
 
 impl<T: Send> EventSender<T> {
-    pub(super) fn new(sender: Sender<EventOrStopThread<T>>) -> Self {
+    pub(crate) fn new(sender: Sender<EventOrStopThread<T>>) -> Self {
         return Self { sender };
     }
 

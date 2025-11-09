@@ -15,6 +15,7 @@ pub use self::constants::MAX_UDP_DATAGRAM_SIZE;
 pub use self::constants::NET_POLLING_PERIOD;
 pub use self::realudpsocket::RealUdpSocket;
 pub use self::tcp::RealTcpStream;
+pub use self::tcp::TcpListenerBuilder;
 pub use self::tcp::TcpReader;
 pub(crate) use self::tcp::TcpReaderEventHandler;
 pub use self::tcp::TcpStream;

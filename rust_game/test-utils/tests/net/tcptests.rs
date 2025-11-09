@@ -1,4 +1,5 @@
 use commons::net::{
+    TcpListenerBuilder,
     LOCAL_EPHEMERAL_SOCKET_ADDR_V4,
     NET_POLLING_PERIOD,
 };
@@ -7,10 +8,7 @@ use commons::threading::{
     ThreadBuilder,
 };
 use commons::{
-    factory::{
-        FactoryTrait,
-        RealFactory,
-    },
+    factory::RealFactory,
     net::{
         TcpConnectionHandler,
         TcpReadHandler,
@@ -74,10 +72,9 @@ fn test_non_blocking_tcp_reader() {
         });
     });
 
-    let tcp_listener_builder =
-        ThreadBuilder::build_channel_for_tcp_listener::<TcpConnectionHandler>(&real_factory);
+    let tcp_listener_builder = TcpListenerBuilder::new(&real_factory);
 
-    let listener_sender = tcp_listener_builder.get_sender().clone();
+    let listener_sender = tcp_listener_builder.get_stopper().clone();
     let expect_one_tcp_connection = async_expects.new_async_expect("Expect one TCP connection", ());
     let async_expects_clone = async_expects.clone();
     let expected_struct =
@@ -112,10 +109,9 @@ fn test_non_blocking_tcp_reader() {
         return ControlFlow::Continue(());
     });
 
-    real_factory
-        .spawn_tcp_listener(
+    tcp_listener_builder
+        .spawn_thread(
             "TcpListener".to_string(),
-            tcp_listener_builder,
             SocketAddr::from(LOCAL_EPHEMERAL_SOCKET_ADDR_V4),
             tcp_connection_handler,
             async_expects.new_expect_async_join("Expect listener join"),

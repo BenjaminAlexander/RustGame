@@ -1,5 +1,6 @@
 mod enums;
 mod event_handler_builder;
+mod event_handler_stopper;
 mod event_sender;
 mod eventhandlerthread;
 mod eventhandlertrait;
@@ -12,6 +13,7 @@ pub use self::enums::{
     EventOrStopThread,
 };
 pub use self::event_handler_builder::EventHandlerBuilder;
+pub use self::event_handler_stopper::EventHandlerStopper;
 pub use self::event_sender::EventSender;
 pub(crate) use self::eventhandlerthread::EventHandlerThread;
 pub use self::eventhandlertrait::EventHandlerTrait;

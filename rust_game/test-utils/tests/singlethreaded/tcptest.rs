@@ -2,6 +2,7 @@ use commons::factory::FactoryTrait;
 use commons::logging::LoggingConfigBuilder;
 use commons::net::{
     TcpConnectionHandlerTrait,
+    TcpListenerBuilder,
     TcpReadHandlerTrait,
     TcpReader,
     TcpStream,
@@ -49,7 +50,7 @@ fn test_tcp() {
 
     let listen_socket = SocketAddr::new(server_factory.get_host_simulator().get_ip_addr(), PORT);
 
-    let connection_handler_sender = ThreadBuilder::spawn_tcp_listener(
+    let connection_handler_sender = TcpListenerBuilder::new_thread(
         &server_factory,
         "TcpConnectionListener".to_string(),
         listen_socket.clone(),

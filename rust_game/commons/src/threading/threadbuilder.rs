@@ -48,24 +48,6 @@ impl ThreadBuilder {
         return Self::build_channel_thread(factory);
     }
 
-    pub fn spawn_tcp_listener<T: TcpConnectionHandlerTrait>(
-        factory: &impl FactoryTrait,
-        thread_name: String,
-        socket_addr: SocketAddr,
-        tcp_connection_handler: T,
-        join_call_back: impl AsyncJoinCallBackTrait<T>,
-    ) -> Result<EventHandlerSender<()>, Error> {
-        let thread_builder = Self::build_channel_thread::<EventOrStopThread<()>>(factory);
-
-        return factory.spawn_tcp_listener(
-            thread_name,
-            thread_builder,
-            socket_addr,
-            tcp_connection_handler,
-            join_call_back,
-        );
-    }
-
     pub fn spawn_tcp_reader<T: TcpReadHandlerTrait>(
         factory: &impl FactoryTrait,
         thread_name: String,

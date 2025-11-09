@@ -43,6 +43,7 @@ use crate::server::{
 };
 use commons::factory::FactoryTrait;
 use commons::net::{
+    TcpListenerBuilder,
     TcpReader,
     TcpStream,
     UdpSocket,
@@ -56,6 +57,7 @@ use commons::threading::eventhandling::{
     ChannelEvent,
     EventHandleResult,
     EventHandlerBuilder,
+    EventHandlerStopper,
     EventHandlerTrait,
     EventSender,
 };
@@ -92,7 +94,7 @@ pub struct ServerCore<GameFactory: GameFactoryTrait> {
     sender: EventSender<ServerCoreEvent<GameFactory>>,
     game_is_started: bool,
     server_config: ServerConfig,
-    tcp_listener_sender_option: Option<interface::EventSender<()>>,
+    tcp_listener_sender_option: Option<EventHandlerStopper>,
     game_timer: Option<GameTimer<GameFactory::Factory, ServerGameTimerObserver<GameFactory>>>,
     tcp_inputs: Vec<interface::EventSender<()>>,
     tcp_outputs: Vec<EventSender<TcpOutputEvent<GameFactory::Game>>>,
@@ -210,7 +212,7 @@ impl<GameFactory: GameFactoryTrait> ServerCore<GameFactory> {
             SocketAddrV4::new(Ipv4Addr::new(127, 0, 0, 1), GameFactory::Game::TCP_PORT);
         let socket_addr = SocketAddr::from(socket_addr_v4);
 
-        let tcp_listener_sender_result = ThreadBuilder::spawn_tcp_listener(
+        let tcp_listener_sender_result = TcpListenerBuilder::new_thread(
             &self.factory,
             "ServerTcpListener".to_string(),
             socket_addr,

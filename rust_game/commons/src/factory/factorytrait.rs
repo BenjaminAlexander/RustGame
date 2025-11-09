@@ -51,25 +51,6 @@ pub trait FactoryTrait: Clone + Send + 'static {
         return Ok(sender);
     }
 
-    fn spawn_tcp_listener<T: TcpConnectionHandlerTrait>(
-        &self,
-        thread_name: String,
-        thread_builder: ChannelThreadBuilder<EventOrStopThread<()>>,
-        socket_addr: SocketAddr,
-        tcp_connection_handler: T,
-        join_call_back: impl AsyncJoinCallBackTrait<T>,
-    ) -> Result<EventHandlerSender<()>, Error> {
-        let channel = thread_builder.take();
-        let (sender, receiver) = channel.take();
-        receiver.spawn_tcp_listener(
-            thread_name,
-            socket_addr,
-            tcp_connection_handler,
-            join_call_back,
-        )?;
-        return Ok(sender);
-    }
-
     fn spawn_tcp_reader<T: TcpReadHandlerTrait>(
         &self,
         thread_name: String,
