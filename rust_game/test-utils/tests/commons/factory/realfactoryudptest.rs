@@ -4,7 +4,7 @@ use commons::{
         RealFactory,
     },
     logging::LoggingConfigBuilder,
-    threading::ThreadBuilder,
+    net::UdpReadHandlerBuilder,
 };
 use log::{
     info,
@@ -54,7 +54,7 @@ fn test_real_factory_udp() {
 
     let udp_socket_clone = udp_socket_1.try_clone().unwrap();
 
-    let udp_reader_sender = ThreadBuilder::spawn_udp_reader(
+    let udp_reader_sender = UdpReadHandlerBuilder::new_thread(
         &real_factory,
         "UdpReader".to_string(),
         udp_socket_clone,
@@ -67,7 +67,6 @@ fn test_real_factory_udp() {
 
     expected_number.wait_for();
 
-    udp_reader_sender.send_event(()).unwrap();
     udp_reader_sender.send_stop_thread().unwrap();
 
     async_expects.wait_for_all();
@@ -100,7 +99,7 @@ fn test_udp_reader_break() {
         return ControlFlow::Break(());
     };
 
-    let _sender = ThreadBuilder::spawn_udp_reader(
+    let _sender = UdpReadHandlerBuilder::new_thread(
         &real_factory,
         "UdpReader".to_string(),
         udp_socket_1,
@@ -131,7 +130,7 @@ fn test_drop_udp_reader_sender() {
     };
 
     //Drop the sender
-    ThreadBuilder::spawn_udp_reader(
+    UdpReadHandlerBuilder::new_thread(
         &real_factory,
         "UdpReader".to_string(),
         udp_socket_1,

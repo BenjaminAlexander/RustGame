@@ -17,7 +17,6 @@ use crate::gametime::{
     TimeReceived,
 };
 use crate::interface::{
-    self,
     GameFactoryTrait,
     GameTrait,
     InitialInformation,
@@ -25,7 +24,10 @@ use crate::interface::{
 };
 use crate::messaging::InputMessage;
 use commons::factory::FactoryTrait;
-use commons::net::TcpReadHandlerBuilder;
+use commons::net::{
+    TcpReadHandlerBuilder,
+    UdpReadHandlerBuilder,
+};
 use commons::threading::channel::{
     ReceiveMetaData,
     Sender,
@@ -38,10 +40,7 @@ use commons::threading::eventhandling::{
     EventHandlerTrait,
     EventSender,
 };
-use commons::threading::{
-    AsyncJoin,
-    ThreadBuilder,
-};
+use commons::threading::AsyncJoin;
 use log::{
     trace,
     warn,
@@ -161,7 +160,7 @@ enum State<GameFactory: GameFactoryTrait> {
         input_event_handler: <GameFactory::Game as GameTrait>::ClientInputEventHandler,
         manager_sender: EventSender<ManagerEvent<GameFactory::Game>>,
         game_timer: GameTimer<GameFactory::Factory, ClientGameTimerObserver<GameFactory>>,
-        udp_input_sender: interface::EventSender<()>,
+        udp_input_sender: EventHandlerStopper,
         udp_output_sender: EventSender<UdpOutputEvent<GameFactory::Game>>,
         tcp_input_sender: EventHandlerStopper,
         tcp_output_sender: EventSender<()>,
@@ -227,7 +226,7 @@ impl<GameFactory: GameFactoryTrait> State<GameFactory> {
 
                 let udp_socket = factory.bind_udp_ephemeral_port().unwrap();
 
-                let udp_input_sender = ThreadBuilder::spawn_udp_reader(
+                let udp_input_sender = UdpReadHandlerBuilder::new_thread(
                     &factory,
                     "ClientUdpInput".to_string(),
                     udp_socket.try_clone().unwrap(),

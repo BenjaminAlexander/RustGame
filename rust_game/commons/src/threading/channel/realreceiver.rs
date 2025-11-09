@@ -19,8 +19,8 @@ use crate::threading::eventhandling::{
     EventOrStopThread,
 };
 use crate::threading::{
+    utils,
     AsyncJoinCallBackTrait,
-    ThreadBuilder,
 };
 use crate::time::{
     TimeDuration,
@@ -102,7 +102,7 @@ impl<T: Send> RealReceiver<EventOrStopThread<T>> {
         join_call_back: impl AsyncJoinCallBackTrait<U::ThreadReturn>,
     ) -> std::io::Result<()> {
         let thread = EventHandlerThread::new(self, event_handler);
-        ThreadBuilder::spawn_thread(thread_name, thread, join_call_back)?;
+        utils::spawn_thread(thread_name, thread, join_call_back)?;
         return Ok(());
     }
 }

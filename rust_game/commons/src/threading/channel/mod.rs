@@ -1,5 +1,4 @@
 mod channel;
-mod channelthreadbuilder;
 mod realreceiver;
 mod realsender;
 mod receivemetadata;
@@ -12,7 +11,6 @@ pub use self::channel::{
     Receiver,
     Sender,
 };
-pub use self::channelthreadbuilder::ChannelThreadBuilder;
 pub use self::realreceiver::{
     RealReceiver,
     RecvError,
