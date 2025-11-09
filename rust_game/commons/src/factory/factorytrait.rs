@@ -1,5 +1,4 @@
 use crate::net::{
-    TcpConnectionHandlerTrait,
     TcpReadHandlerTrait,
     TcpReader,
     TcpStream,
@@ -13,7 +12,6 @@ use crate::threading::channel::{
 };
 use crate::threading::eventhandling::{
     EventHandlerSender,
-    EventHandlerTrait,
     EventOrStopThread,
 };
 use crate::threading::{
@@ -36,19 +34,6 @@ pub trait FactoryTrait: Clone + Send + 'static {
     //TODO: remove this, or add it back as a way to propogate the factory
     fn new_thread_builder(&self) -> ThreadBuilder {
         return ThreadBuilder::new();
-    }
-
-    fn spawn_event_handler<U: EventHandlerTrait>(
-        &self,
-        thread_name: String,
-        thread_builder: ChannelThreadBuilder<EventOrStopThread<U::Event>>,
-        event_handler: U,
-        join_call_back: impl AsyncJoinCallBackTrait<U::ThreadReturn>,
-    ) -> std::io::Result<EventHandlerSender<U::Event>> {
-        let channel = thread_builder.take();
-        let (sender, receiver) = channel.take();
-        receiver.spawn_event_handler(thread_name, event_handler, join_call_back)?;
-        return Ok(sender);
     }
 
     fn spawn_tcp_reader<T: TcpReadHandlerTrait>(

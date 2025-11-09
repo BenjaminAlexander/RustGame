@@ -44,6 +44,7 @@ use crate::server::{
 use commons::factory::FactoryTrait;
 use commons::net::{
     TcpListenerBuilder,
+    TcpReadHandlerBuilder,
     TcpReader,
     TcpStream,
     UdpSocket,
@@ -96,7 +97,7 @@ pub struct ServerCore<GameFactory: GameFactoryTrait> {
     server_config: ServerConfig,
     tcp_listener_sender_option: Option<EventHandlerStopper>,
     game_timer: Option<GameTimer<GameFactory::Factory, ServerGameTimerObserver<GameFactory>>>,
-    tcp_inputs: Vec<interface::EventSender<()>>,
+    tcp_inputs: Vec<EventHandlerStopper>,
     tcp_outputs: Vec<EventSender<TcpOutputEvent<GameFactory::Game>>>,
     udp_socket: Option<UdpSocket>,
     udp_outputs: Vec<EventSender<UdpOutputEvent<GameFactory::Game>>>,
@@ -375,7 +376,7 @@ impl<GameFactory: GameFactoryTrait> ServerCore<GameFactory> {
 
             let client_address = ClientAddress::new(player_index, tcp_stream.get_peer_addr().ip());
 
-            let tcp_input_join_handle = ThreadBuilder::spawn_tcp_reader(
+            let tcp_input_join_handle = TcpReadHandlerBuilder::new_thread(
                 &self.factory,
                 "ServerTcpInput".to_string(),
                 tcp_receiver,

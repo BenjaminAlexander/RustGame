@@ -3,17 +3,14 @@ use commons::logging::LoggingConfigBuilder;
 use commons::net::{
     TcpConnectionHandlerTrait,
     TcpListenerBuilder,
+    TcpReadHandlerBuilder,
     TcpReadHandlerTrait,
     TcpReader,
     TcpStream,
 };
 use commons::single_threaded_simulator::SingleThreadedFactory;
-use commons::threading::channel::Sender;
-use commons::threading::eventhandling::EventOrStopThread;
-use commons::threading::{
-    AsyncJoin,
-    ThreadBuilder,
-};
+use commons::threading::eventhandling::EventHandlerStopper;
+use commons::threading::AsyncJoin;
 use log::{
     error,
     info,
@@ -63,12 +60,11 @@ fn test_tcp() {
 
     let (tcp_stream, reader) = client_factory.connect_tcp(listen_socket).unwrap();
 
-    let client_thread_builder =
-        ThreadBuilder::build_channel_thread::<EventOrStopThread<()>>(&client_factory);
+    let client_thread_builder = TcpReadHandlerBuilder::new(&client_factory);
 
     let client_side = Arc::new(Mutex::new(Some(TestConnection {
         tcp_stream,
-        reader_sender: client_thread_builder.get_sender().clone(),
+        reader_sender: client_thread_builder.get_stopper().clone(),
         last_value: None,
     })));
 
@@ -76,10 +72,9 @@ fn test_tcp() {
         test_connection: client_side.clone(),
     };
 
-    let client_read_sender = client_factory
-        .spawn_tcp_reader(
+    let client_read_sender = client_thread_builder
+        .spawn_thread(
             "TcpReader".to_string(),
-            client_thread_builder,
             reader,
             client_read_handler,
             AsyncJoin::log_async_join,
@@ -140,7 +135,7 @@ fn test_write(
 struct TestConnection {
     tcp_stream: TcpStream,
     #[allow(dead_code)]
-    reader_sender: Sender<EventOrStopThread<()>>,
+    reader_sender: EventHandlerStopper,
     last_value: Option<u32>,
 }
 
@@ -161,7 +156,7 @@ impl TcpConnectionHandlerTrait for ConnectionHandler {
             test_connection: self.server_side.clone(),
         };
 
-        let reader_sender = ThreadBuilder::spawn_tcp_reader(
+        let reader_sender = TcpReadHandlerBuilder::new_thread(
             &self.factory,
             "TcpReader".to_string(),
             tcp_receiver,

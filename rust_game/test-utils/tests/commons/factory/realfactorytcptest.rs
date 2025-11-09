@@ -1,12 +1,12 @@
 use commons::net::{
     TcpListenerBuilder,
+    TcpReadHandlerBuilder,
     LOCAL_EPHEMERAL_SOCKET_ADDR_V4,
     NET_POLLING_PERIOD,
 };
 use commons::threading::{
     AsyncJoinCallBackTrait,
     SingleThreadExecutor,
-    ThreadBuilder,
 };
 use commons::{
     factory::{
@@ -80,7 +80,7 @@ fn test_real_factory_tcp() {
 
         let real_factory = RealFactory::new();
 
-        let sender = ThreadBuilder::spawn_tcp_reader(
+        let sender = TcpReadHandlerBuilder::new_thread(
             &real_factory,
             "TcpReader".to_string(),
             tcp_reader,
@@ -230,7 +230,7 @@ fn test_stop_tcp_reader() {
 
         let real_factory = RealFactory::new();
 
-        let sender = ThreadBuilder::spawn_tcp_reader(
+        let sender = TcpReadHandlerBuilder::new_thread(
             &real_factory,
             "TcpReader-ConnectorSide".to_string(),
             tcp_reader,
@@ -270,7 +270,7 @@ fn test_stop_tcp_reader() {
 
         let real_factory = RealFactory::new();
 
-        let reader_sender = ThreadBuilder::spawn_tcp_reader(
+        let reader_sender = TcpReadHandlerBuilder::new_thread(
             &real_factory,
             "TcpReader-ListenerSide".to_string(),
             tcp_reader,
@@ -322,7 +322,7 @@ fn test_tcp_reader_channel_disconnect() {
         let real_factory = RealFactory::new();
 
         // Drop the sender so the reader gets a channel disconnect
-        ThreadBuilder::spawn_tcp_reader(
+        TcpReadHandlerBuilder::new_thread(
             &real_factory,
             "TcpReader-ConnectorSide".to_string(),
             tcp_reader,
@@ -350,7 +350,7 @@ fn test_tcp_reader_channel_disconnect() {
         let real_factory = RealFactory::new();
 
         // Drop the sender so the reader gets a channel disconnect
-        ThreadBuilder::spawn_tcp_reader(
+        TcpReadHandlerBuilder::new_thread(
             &real_factory,
             "TcpReader-ListenerSide".to_string(),
             tcp_reader,

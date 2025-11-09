@@ -1,12 +1,10 @@
 use commons::net::{
     TcpListenerBuilder,
+    TcpReadHandlerBuilder,
     LOCAL_EPHEMERAL_SOCKET_ADDR_V4,
     NET_POLLING_PERIOD,
 };
-use commons::threading::{
-    SingleThreadExecutor,
-    ThreadBuilder,
-};
+use commons::threading::SingleThreadExecutor;
 use commons::{
     factory::RealFactory,
     net::{
@@ -93,7 +91,7 @@ fn test_non_blocking_tcp_reader() {
 
         let real_factory = RealFactory::new();
 
-        let reader_sender = ThreadBuilder::spawn_tcp_reader(
+        let reader_sender = TcpReadHandlerBuilder::new_thread(
             &real_factory,
             "TcpReader-ListenerSide".to_string(),
             tcp_reader,
@@ -101,8 +99,6 @@ fn test_non_blocking_tcp_reader() {
             async_expects_clone.new_expect_async_join("Expect TcpReader-ListenerSide Join"),
         )
         .unwrap();
-
-        reader_sender.send_event(()).unwrap();
 
         tcp_reader_senders.push(reader_sender);
 

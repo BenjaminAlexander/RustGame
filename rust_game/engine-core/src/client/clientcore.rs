@@ -25,6 +25,7 @@ use crate::interface::{
 };
 use crate::messaging::InputMessage;
 use commons::factory::FactoryTrait;
+use commons::net::TcpReadHandlerBuilder;
 use commons::threading::channel::{
     ReceiveMetaData,
     Sender,
@@ -33,6 +34,7 @@ use commons::threading::eventhandling::{
     ChannelEvent,
     EventHandleResult,
     EventHandlerBuilder,
+    EventHandlerStopper,
     EventHandlerTrait,
     EventSender,
 };
@@ -96,7 +98,7 @@ impl<GameFactory: GameFactoryTrait> ClientCore<GameFactory> {
             render_receiver_sender.clone(),
         );
 
-        let tcp_input_sender = ThreadBuilder::spawn_tcp_reader(
+        let tcp_input_sender = TcpReadHandlerBuilder::new_thread(
             &factory,
             "ClientTcpInput".to_string(),
             tcp_receiver,
@@ -151,7 +153,7 @@ enum State<GameFactory: GameFactoryTrait> {
         sender: EventSender<ClientCoreEvent<GameFactory>>,
         server_ip: Ipv4Addr,
         manager_sender: EventSender<ManagerEvent<GameFactory::Game>>,
-        tcp_input_sender: interface::EventSender<()>,
+        tcp_input_sender: EventHandlerStopper,
         tcp_output_sender: EventSender<()>,
         render_receiver_sender: Sender<RenderReceiverMessage<GameFactory::Game>>,
     },
@@ -161,7 +163,7 @@ enum State<GameFactory: GameFactoryTrait> {
         game_timer: GameTimer<GameFactory::Factory, ClientGameTimerObserver<GameFactory>>,
         udp_input_sender: interface::EventSender<()>,
         udp_output_sender: EventSender<UdpOutputEvent<GameFactory::Game>>,
-        tcp_input_sender: interface::EventSender<()>,
+        tcp_input_sender: EventHandlerStopper,
         tcp_output_sender: EventSender<()>,
         render_receiver_sender: Sender<RenderReceiverMessage<GameFactory::Game>>,
         initial_information: InitialInformation<GameFactory::Game>,
