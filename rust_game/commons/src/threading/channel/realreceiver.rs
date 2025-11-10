@@ -99,7 +99,7 @@ impl<T: Send> RealReceiver<EventOrStopThread<T>> {
         self,
         thread_name: String,
         event_handler: U,
-        join_call_back: impl AsyncJoinCallBackTrait<U::ThreadReturn>,
+        join_call_back: impl AsyncJoinCallBackTrait<()>,
     ) -> std::io::Result<()> {
         let thread = EventHandlerThread::new(self, event_handler);
         utils::spawn_thread(thread_name, thread, join_call_back)?;
@@ -115,7 +115,7 @@ impl RealReceiver<EventOrStopThread<()>> {
         thread_name: String,
         socket_addr: SocketAddr,
         mut tcp_connection_handler: T,
-        join_call_back: impl AsyncJoinCallBackTrait<T>,
+        join_call_back: impl AsyncJoinCallBackTrait<()>,
     ) -> std::io::Result<()> {
         let tcp_listener = TcpListener::bind(socket_addr)?;
 
@@ -131,7 +131,7 @@ impl RealReceiver<EventOrStopThread<()>> {
         thread_name: String,
         real_tcp_stream: RealTcpStream,
         tcp_read_handler: T,
-        join_call_back: impl AsyncJoinCallBackTrait<T>,
+        join_call_back: impl AsyncJoinCallBackTrait<()>,
     ) -> Result<(), Error> {
         let event_handler = TcpReaderEventHandler::new(real_tcp_stream, tcp_read_handler);
         return self.spawn_event_handler(thread_name, event_handler, join_call_back);
@@ -142,7 +142,7 @@ impl RealReceiver<EventOrStopThread<()>> {
         thread_name: String,
         udp_socket: RealUdpSocket,
         udp_read_handler: T,
-        join_call_back: impl AsyncJoinCallBackTrait<T>,
+        join_call_back: impl AsyncJoinCallBackTrait<()>,
     ) -> Result<(), Error> {
         let event_handler = UdpReaderEventHandler::new(udp_socket, udp_read_handler);
         return self.spawn_event_handler(thread_name, event_handler, join_call_back);

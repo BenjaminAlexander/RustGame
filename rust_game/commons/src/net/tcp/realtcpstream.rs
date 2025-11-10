@@ -65,7 +65,7 @@ impl RealTcpStream {
         thread_name: String,
         receiver: Receiver<EventOrStopThread<()>>,
         tcp_read_handler: T,
-        join_call_back: impl AsyncJoinCallBackTrait<T>,
+        join_call_back: impl AsyncJoinCallBackTrait<()>,
     ) -> Result<(), Error> {
         return receiver.spawn_real_tcp_reader(thread_name, self, tcp_read_handler, join_call_back);
     }

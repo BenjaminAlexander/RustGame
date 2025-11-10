@@ -11,7 +11,7 @@ use crate::threading::{
 pub(crate) fn spawn_thread<T: Thread>(
     thread_name: String,
     thread: T,
-    join_call_back: impl AsyncJoinCallBackTrait<T::ReturnType>,
+    join_call_back: impl AsyncJoinCallBackTrait<()>,
 ) -> std::io::Result<()> {
     let builder = Builder::new().name(thread_name.clone());
 

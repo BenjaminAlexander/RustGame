@@ -88,7 +88,7 @@ impl NetworkSimulator {
         thread_name: String,
         receiver: SingleThreadedReceiver<EventOrStopThread<()>>,
         connection_handler: TcpConnectionHandler,
-        join_call_back: impl AsyncJoinCallBackTrait<TcpConnectionHandler>,
+        join_call_back: impl AsyncJoinCallBackTrait<()>,
     ) -> Result<(), Error> {
         let mut guard = self.internal.lock().unwrap();
 
@@ -179,7 +179,7 @@ impl NetworkSimulator {
         receiver: SingleThreadedReceiver<EventOrStopThread<()>>,
         udp_socket: UdpSocketSimulator,
         udp_read_handler: T,
-        join_call_back: impl AsyncJoinCallBackTrait<T>,
+        join_call_back: impl AsyncJoinCallBackTrait<()>,
     ) -> Result<(), Error> {
         let mut guard = self.internal.lock().unwrap();
 

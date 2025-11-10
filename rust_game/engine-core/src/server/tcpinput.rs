@@ -14,9 +14,9 @@ impl TcpInput {
 impl TcpReadHandlerTrait for TcpInput {
     type ReadType = ToServerMessageTCP;
 
-    fn on_read(&mut self, read: Self::ReadType) -> ControlFlow<()> {
+    fn on_read(self, read: Self::ReadType) -> ControlFlow<(), Self> {
         match read {};
 
-        return Continue(());
+        return Continue(self);
     }
 }

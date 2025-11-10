@@ -77,11 +77,12 @@ impl<T: TcpConnectionHandlerTrait> TcpListenerEventHandler<T> {
                     TcpStream::new(real_tcp_stream),
                     TcpReader::new(real_tcp_stream_clone),
                 ) {
-                    Continue(()) => {
+                    Continue(tcp_connection_handler) => {
+                        self.tcp_connection_handler = tcp_connection_handler;
                         return EventHandleResult::TryForNextEvent(self);
                     }
                     Break(()) => {
-                        return EventHandleResult::StopThread(self.tcp_connection_handler);
+                        return EventHandleResult::StopThread;
                     }
                 }
             }
@@ -98,7 +99,6 @@ impl<T: TcpConnectionHandlerTrait> TcpListenerEventHandler<T> {
 
 impl<T: TcpConnectionHandlerTrait> EventHandlerTrait for TcpListenerEventHandler<T> {
     type Event = ();
-    type ThreadReturn = T;
 
     fn on_channel_event(self, channel_event: ChannelEvent<Self::Event>) -> EventHandleResult<Self> {
         return match channel_event {
@@ -106,13 +106,14 @@ impl<T: TcpConnectionHandlerTrait> EventHandlerTrait for TcpListenerEventHandler
             ChannelEvent::Timeout => self.accept(),
             ChannelEvent::ChannelEmpty => self.accept(),
             ChannelEvent::ChannelDisconnected => {
-                EventHandleResult::StopThread(self.tcp_connection_handler)
+                self.tcp_connection_handler.on_channel_disconnected();
+                EventHandleResult::StopThread
             }
         };
     }
 
-    fn on_stop(self, _receive_meta_data: ReceiveMetaData) -> Self::ThreadReturn {
-        return self.tcp_connection_handler;
+    fn on_stop(self, receive_meta_data: ReceiveMetaData) {
+        self.tcp_connection_handler.on_stop(receive_meta_data);
     }
 }
 

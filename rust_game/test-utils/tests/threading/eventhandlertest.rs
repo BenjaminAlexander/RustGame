@@ -13,7 +13,10 @@ use commons::{
     time::TimeDuration,
 };
 use test_utils::{
-    assert::AsyncExpects,
+    assert::{
+        AsyncExpect,
+        AsyncExpects,
+    },
     utils::setup_test_logging,
 };
 
@@ -21,6 +24,7 @@ const NUMBER: i32 = 87;
 
 struct Count {
     count: i32,
+    final_expected_count: AsyncExpect<i32>,
 }
 
 #[derive(Debug)]
@@ -32,8 +36,6 @@ enum CountEvent {
 
 impl EventHandlerTrait for Count {
     type Event = CountEvent;
-
-    type ThreadReturn = i32;
 
     fn on_channel_event(
         mut self,
@@ -48,16 +50,22 @@ impl EventHandlerTrait for Count {
                     TimeDuration::from_millis_f64(100.0),
                 )
             }
-            ChannelEvent::Timeout => return EventHandleResult::StopThread(NUMBER),
-            ChannelEvent::ChannelDisconnected => return EventHandleResult::StopThread(self.count),
+            ChannelEvent::Timeout => {
+                self.final_expected_count.set_actual(NUMBER);
+                return EventHandleResult::StopThread;
+            }
+            ChannelEvent::ChannelDisconnected => {
+                self.final_expected_count.set_actual(self.count);
+                return EventHandleResult::StopThread;
+            }
             _ => { /*no-op*/ }
         }
 
         return EventHandleResult::WaitForNextEvent(self);
     }
 
-    fn on_stop(self, _receive_meta_data: ReceiveMetaData) -> i32 {
-        return self.count;
+    fn on_stop(self, _receive_meta_data: ReceiveMetaData) {
+        self.final_expected_count.set_actual(self.count);
     }
 }
 
@@ -65,12 +73,12 @@ impl EventHandlerTrait for Count {
 fn test_async_join() {
     setup_test_logging();
 
-    let event_handler = Count { count: 0 };
-
     let async_expects = AsyncExpects::new();
     let expect_five = async_expects.new_async_expect("Five", 5);
-    let join_call_back = move |async_join: AsyncJoin<i32>| {
-        expect_five.set_actual(*async_join.get_result());
+
+    let event_handler = Count {
+        count: 0,
+        final_expected_count: expect_five,
     };
 
     let real_factory = RealFactory::new();
@@ -79,7 +87,7 @@ fn test_async_join() {
         &real_factory,
         "EventHandler".to_string(),
         event_handler,
-        join_call_back,
+        AsyncJoin::log_async_join,
     )
     .unwrap();
 
@@ -94,12 +102,12 @@ fn test_async_join() {
 fn test_no_timeout() {
     setup_test_logging();
 
-    let event_handler = Count { count: 0 };
-
     let async_expects = AsyncExpects::new();
     let expect_five = async_expects.new_async_expect("Five", 5);
-    let join_call_back = move |async_join: AsyncJoin<i32>| {
-        expect_five.set_actual(*async_join.get_result());
+
+    let event_handler = Count {
+        count: 0,
+        final_expected_count: expect_five,
     };
 
     let real_factory = RealFactory::new();
@@ -108,7 +116,7 @@ fn test_no_timeout() {
         &real_factory,
         "EventHandler".to_string(),
         event_handler,
-        join_call_back,
+        AsyncJoin::log_async_join,
     )
     .unwrap();
 
@@ -124,12 +132,12 @@ fn test_no_timeout() {
 fn test_timeout() {
     setup_test_logging();
 
-    let event_handler = Count { count: 0 };
-
     let async_expects = AsyncExpects::new();
     let expect_five = async_expects.new_async_expect("A Number", NUMBER);
-    let join_call_back = move |async_join: AsyncJoin<i32>| {
-        expect_five.set_actual(*async_join.get_result());
+
+    let event_handler = Count {
+        count: 0,
+        final_expected_count: expect_five,
     };
 
     let real_factory = RealFactory::new();
@@ -138,7 +146,7 @@ fn test_timeout() {
         &real_factory,
         "EventHandler".to_string(),
         event_handler,
-        join_call_back,
+        AsyncJoin::log_async_join,
     )
     .unwrap();
 
@@ -153,12 +161,12 @@ fn test_timeout() {
 fn test_drop_sender_while_waiting_for_timeout() {
     setup_test_logging();
 
-    let event_handler = Count { count: 0 };
-
     let async_expects = AsyncExpects::new();
     let expect_five = async_expects.new_async_expect("Five", 5);
-    let join_call_back = move |async_join: AsyncJoin<i32>| {
-        expect_five.set_actual(*async_join.get_result());
+
+    let event_handler = Count {
+        count: 0,
+        final_expected_count: expect_five,
     };
 
     {
@@ -168,7 +176,7 @@ fn test_drop_sender_while_waiting_for_timeout() {
             &real_factory,
             "EventHandler".to_string(),
             event_handler,
-            join_call_back,
+            AsyncJoin::log_async_join,
         )
         .unwrap();
 

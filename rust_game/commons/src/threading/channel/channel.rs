@@ -163,7 +163,7 @@ impl<T: Send> Receiver<EventOrStopThread<T>> {
         self,
         thread_name: String,
         event_handler: U,
-        join_call_back: impl AsyncJoinCallBackTrait<U::ThreadReturn>,
+        join_call_back: impl AsyncJoinCallBackTrait<()>,
     ) -> std::io::Result<()> {
         match self.implementation {
             ReceiverImplementation::Real(real_receiver) => {
@@ -181,7 +181,7 @@ impl Receiver<EventOrStopThread<()>> {
         thread_name: String,
         socket_addr: SocketAddr,
         tcp_connection_handler: T,
-        join_call_back: impl AsyncJoinCallBackTrait<T>,
+        join_call_back: impl AsyncJoinCallBackTrait<()>,
     ) -> std::io::Result<()> {
         match self.implementation {
             ReceiverImplementation::Real(real_receiver) => real_receiver.spawn_tcp_listener(
@@ -205,7 +205,7 @@ impl Receiver<EventOrStopThread<()>> {
         thread_name: String,
         real_tcp_stream: RealTcpStream,
         tcp_read_handler: T,
-        join_call_back: impl AsyncJoinCallBackTrait<T>,
+        join_call_back: impl AsyncJoinCallBackTrait<()>,
     ) -> Result<(), Error> {
         match self.implementation {
             ReceiverImplementation::Real(real_receiver) => real_receiver.spawn_real_tcp_reader(thread_name, real_tcp_stream, tcp_read_handler, join_call_back),
@@ -218,7 +218,7 @@ impl Receiver<EventOrStopThread<()>> {
         thread_name: String,
         simulated_tcp_reader: SingleThreadedReceiver<Vec<u8>>,
         tcp_read_handler: T,
-        join_call_back: impl AsyncJoinCallBackTrait<T>,
+        join_call_back: impl AsyncJoinCallBackTrait<()>,
     ) -> Result<(), Error> {
         match self.implementation {
             ReceiverImplementation::Real(_) => panic!("Spawning a TCP reader thread with a simulated TCP reader and a real channel isn't implemented"),
@@ -231,7 +231,7 @@ impl Receiver<EventOrStopThread<()>> {
         thread_name: String,
         real_udp_socket: RealUdpSocket,
         udp_read_handler: T,
-        join_call_back: impl AsyncJoinCallBackTrait<T>,
+        join_call_back: impl AsyncJoinCallBackTrait<()>,
     ) -> Result<(), Error> {
         match self.implementation {
             ReceiverImplementation::Real(real_receiver) => real_receiver.spawn_real_udp_reader(thread_name, real_udp_socket, udp_read_handler, join_call_back),
@@ -245,7 +245,7 @@ impl Receiver<EventOrStopThread<()>> {
         thread_name: String,
         udp_socket_simulator: UdpSocketSimulator,
         udp_read_handler: T,
-        join_call_back: impl AsyncJoinCallBackTrait<T>,
+        join_call_back: impl AsyncJoinCallBackTrait<()>,
     ) -> Result<(), Error> {
         match self.implementation {
             ReceiverImplementation::Real(_) => panic!("Spawning a UDP reader thread with a simulated UDP socket and a real channel isn't implemented"),

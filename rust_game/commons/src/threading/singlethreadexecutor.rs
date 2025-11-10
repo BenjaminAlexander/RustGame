@@ -1,14 +1,11 @@
 use crate::{
     factory::RealFactory,
-    threading::{
-        channel::ReceiveMetaData,
-        eventhandling::{
-            ChannelEvent,
-            EventHandleResult,
-            EventHandlerBuilder,
-            EventHandlerTrait,
-            EventSender,
-        },
+    threading::eventhandling::{
+        ChannelEvent,
+        EventHandleResult,
+        EventHandlerBuilder,
+        EventHandlerTrait,
+        EventSender,
     },
 };
 use std::sync::{
@@ -35,7 +32,7 @@ impl SingleThreadExecutor {
         let sender = EventHandlerBuilder::new_thread(
             &factory,
             "SingleThreadExecutor".to_string(),
-            SingleThreadExecutorEventHandler(),
+            SingleThreadExecutorEventHandler,
             move |_| {
                 let (wait_for_join_mutex, condvar) = join_signal_clone.as_ref();
                 *wait_for_join_mutex.lock().unwrap() = false;
@@ -84,11 +81,10 @@ impl SingleThreadExecutor {
     }
 }
 
-struct SingleThreadExecutorEventHandler();
+struct SingleThreadExecutorEventHandler;
 
 impl EventHandlerTrait for SingleThreadExecutorEventHandler {
     type Event = Runnable;
-    type ThreadReturn = ();
 
     fn on_channel_event(self, channel_event: ChannelEvent<Self::Event>) -> EventHandleResult<Self> {
         match channel_event {
@@ -96,13 +92,9 @@ impl EventHandlerTrait for SingleThreadExecutorEventHandler {
                 runnable();
                 return EventHandleResult::WaitForNextEvent(self);
             }
-            ChannelEvent::ChannelDisconnected => EventHandleResult::StopThread(()),
+            ChannelEvent::ChannelDisconnected => EventHandleResult::StopThread,
             _ => EventHandleResult::WaitForNextEvent(self),
         }
-    }
-
-    fn on_stop(self, _: ReceiveMetaData) -> Self::ThreadReturn {
-        return ();
     }
 }
 

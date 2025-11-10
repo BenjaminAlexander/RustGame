@@ -1,5 +1,4 @@
 use crate::factory::FactoryTrait;
-use crate::threading::channel::ReceiveMetaData;
 use crate::threading::eventhandling::ChannelEvent::{
     ChannelDisconnected,
     ChannelEmpty,
@@ -301,7 +300,6 @@ impl<Factory: FactoryTrait, T: TimerCreationCallBack, U: TimerCallBack> EventHan
     for TimerServiceEventHandler<Factory, T, U>
 {
     type Event = TimerServiceEvent<T, U>;
-    type ThreadReturn = ();
 
     fn on_channel_event(self, channel_event: ChannelEvent<Self::Event>) -> EventHandleResult<Self> {
         match channel_event {
@@ -317,11 +315,7 @@ impl<Factory: FactoryTrait, T: TimerCreationCallBack, U: TimerCallBack> EventHan
             }
             Timeout => self.trigger_timers(),
             ChannelEmpty => self.trigger_timers(),
-            ChannelDisconnected => EventHandleResult::StopThread(()),
+            ChannelDisconnected => EventHandleResult::StopThread,
         }
-    }
-
-    fn on_stop(self, _: ReceiveMetaData) -> Self::ThreadReturn {
-        return ();
     }
 }

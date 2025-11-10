@@ -18,5 +18,5 @@ pub enum EventHandleResult<T: EventHandlerTrait> {
     WaitForNextEvent(T),
     WaitForNextEventOrTimeout(T, TimeDuration),
     TryForNextEvent(T),
-    StopThread(T::ThreadReturn),
+    StopThread,
 }

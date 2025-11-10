@@ -44,7 +44,7 @@ impl<GameFactory: GameFactoryTrait> TcpInput<GameFactory> {
 impl<GameFactory: GameFactoryTrait> TcpReadHandlerTrait for TcpInput<GameFactory> {
     type ReadType = ToClientMessageTCP<GameFactory::Game>;
 
-    fn on_read(&mut self, message: Self::ReadType) -> ControlFlow<()> {
+    fn on_read(mut self, message: Self::ReadType) -> ControlFlow<(), Self> {
         match message {
             ToClientMessageTCP::InitialInformation(initial_information_message) => {
                 info!(
@@ -87,6 +87,6 @@ impl<GameFactory: GameFactoryTrait> TcpReadHandlerTrait for TcpInput<GameFactory
             }
         }
 
-        return Continue(());
+        return Continue(self);
     }
 }

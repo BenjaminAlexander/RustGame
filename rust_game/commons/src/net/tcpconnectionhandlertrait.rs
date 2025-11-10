@@ -1,6 +1,9 @@
-use crate::net::{
-    TcpReader,
-    TcpStream,
+use crate::{
+    net::{
+        TcpReader,
+        TcpStream,
+    },
+    threading::channel::ReceiveMetaData,
 };
 use std::{
     net::SocketAddr,
@@ -8,10 +11,22 @@ use std::{
 };
 
 //TODO: get rid of this trait
-pub trait TcpConnectionHandlerTrait: Send + 'static {
-    fn on_bind(&mut self, _socket_addr: SocketAddr) {}
+pub trait TcpConnectionHandlerTrait: Send + Sized + 'static {
+    fn on_bind(&mut self, _socket_addr: SocketAddr) {
+        //no-op default
+    }
 
-    fn on_connection(&mut self, tcp_stream: TcpStream, tcp_receiver: TcpReader) -> ControlFlow<()>;
+    fn on_connection(self, tcp_stream: TcpStream, tcp_receiver: TcpReader)
+        -> ControlFlow<(), Self>;
+
+    fn on_stop(self, _receive_meta_data: ReceiveMetaData) {
+        //no-op default implementation
+    }
+
+    //TODO: this needs some documentation
+    fn on_channel_disconnected(self) {
+        //no-op default implementation
+    }
 }
 
 pub struct TcpConnectionHandler {
@@ -44,7 +59,14 @@ impl TcpConnectionHandlerTrait for TcpConnectionHandler {
         return (self.on_bind)(socket_addr);
     }
 
-    fn on_connection(&mut self, tcp_stream: TcpStream, tcp_receiver: TcpReader) -> ControlFlow<()> {
-        return (self.on_connection)(tcp_stream, tcp_receiver);
+    fn on_connection(
+        mut self,
+        tcp_stream: TcpStream,
+        tcp_receiver: TcpReader,
+    ) -> ControlFlow<(), Self> {
+        match (self.on_connection)(tcp_stream, tcp_receiver) {
+            ControlFlow::Continue(()) => ControlFlow::Continue(self),
+            ControlFlow::Break(()) => ControlFlow::Break(()),
+        }
     }
 }

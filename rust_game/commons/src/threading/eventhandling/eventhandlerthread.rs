@@ -51,7 +51,8 @@ impl<T: EventHandlerTrait> EventHandlerThread<T> {
                 Self::on_message(message_handler, receive_meta_data, event)
             }
             Ok((receive_meta_data, StopThread)) => {
-                EventHandleResult::StopThread(Self::on_stop(message_handler, receive_meta_data))
+                Self::on_stop(message_handler, receive_meta_data);
+                EventHandleResult::StopThread
             }
             Err(RecvTimeoutError::Timeout) => Self::on_timeout(message_handler),
             Err(RecvTimeoutError::Disconnected) => Self::on_channel_disconnected(message_handler),
@@ -67,7 +68,8 @@ impl<T: EventHandlerTrait> EventHandlerThread<T> {
                 Self::on_message(message_handler, receive_meta_data, event)
             }
             Ok((receive_meta_data, StopThread)) => {
-                EventHandleResult::StopThread(Self::on_stop(message_handler, receive_meta_data))
+                Self::on_stop(message_handler, receive_meta_data);
+                EventHandleResult::StopThread
             }
             Err(_) => Self::on_channel_disconnected(message_handler),
         };
@@ -82,7 +84,8 @@ impl<T: EventHandlerTrait> EventHandlerThread<T> {
                 Self::on_message(message_handler, receive_meta_data, event)
             }
             Ok((receive_meta_data, StopThread)) => {
-                EventHandleResult::StopThread(Self::on_stop(message_handler, receive_meta_data))
+                Self::on_stop(message_handler, receive_meta_data);
+                EventHandleResult::StopThread
             }
             Err(TryRecvError::Disconnected) => Self::on_channel_disconnected(message_handler),
             Err(TryRecvError::Empty) => Self::on_channel_empty(message_handler),
@@ -110,16 +113,14 @@ impl<T: EventHandlerTrait> EventHandlerThread<T> {
         return message_handler.on_channel_event(ChannelDisconnected);
     }
 
-    fn on_stop(message_handler: T, receive_meta_data: ReceiveMetaData) -> T::ThreadReturn {
+    fn on_stop(message_handler: T, receive_meta_data: ReceiveMetaData) {
         info!("The MessageHandlingThread has received a message commanding it to stop.");
         return message_handler.on_stop(receive_meta_data);
     }
 }
 
 impl<T: EventHandlerTrait> threading::Thread for EventHandlerThread<T> {
-    type ReturnType = T::ThreadReturn;
-
-    fn run(mut self) -> Self::ReturnType {
+    fn run(mut self) {
         let mut wait_or_try = EventHandleResult::TryForNextEvent(self.event_handler);
 
         loop {
@@ -137,8 +138,8 @@ impl<T: EventHandlerTrait> threading::Thread for EventHandlerThread<T> {
                 EventHandleResult::TryForNextEvent(message_handler) => {
                     Self::try_for_message(message_handler, &mut self.receiver)
                 }
-                EventHandleResult::StopThread(return_value) => {
-                    return return_value;
+                EventHandleResult::StopThread => {
+                    return;
                 }
             };
         }

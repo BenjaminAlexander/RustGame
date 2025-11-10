@@ -28,13 +28,12 @@ use std::sync::{
     Mutex,
 };
 
-pub struct EventHandlerHolder<T: EventHandlerTrait, U: AsyncJoinCallBackTrait<T::ThreadReturn>> {
+pub struct EventHandlerHolder<T: EventHandlerTrait, U: AsyncJoinCallBackTrait<()>> {
     internal: Arc<Mutex<Option<EventHandlerHolderInternal<T, U>>>>,
     factory: SingleThreadedFactory,
 }
 
-struct EventHandlerHolderInternal<T: EventHandlerTrait, U: AsyncJoinCallBackTrait<T::ThreadReturn>>
-{
+struct EventHandlerHolderInternal<T: EventHandlerTrait, U: AsyncJoinCallBackTrait<()>> {
     receiver_link: ReceiverLink<EventOrStopThread<T::Event>>,
     event_handler: T,
     join_call_back: U,
@@ -42,9 +41,7 @@ struct EventHandlerHolderInternal<T: EventHandlerTrait, U: AsyncJoinCallBackTrai
     pending_channel_event: Option<usize>,
 }
 
-impl<T: EventHandlerTrait, U: AsyncJoinCallBackTrait<T::ThreadReturn>> Clone
-    for EventHandlerHolder<T, U>
-{
+impl<T: EventHandlerTrait, U: AsyncJoinCallBackTrait<()>> Clone for EventHandlerHolder<T, U> {
     fn clone(&self) -> Self {
         return Self {
             internal: self.internal.clone(),
@@ -54,7 +51,7 @@ impl<T: EventHandlerTrait, U: AsyncJoinCallBackTrait<T::ThreadReturn>> Clone
     }
 }
 
-impl<T: EventHandlerTrait, U: AsyncJoinCallBackTrait<T::ThreadReturn>> EventHandlerHolder<T, U> {
+impl<T: EventHandlerTrait, U: AsyncJoinCallBackTrait<()>> EventHandlerHolder<T, U> {
     //TODO: can this method be moved to its caller?
     pub fn new(
         factory: SingleThreadedFactory,
@@ -126,9 +123,7 @@ impl<T: EventHandlerTrait, U: AsyncJoinCallBackTrait<T::ThreadReturn>> EventHand
     }
 }
 
-impl<T: EventHandlerTrait, U: AsyncJoinCallBackTrait<T::ThreadReturn>>
-    EventHandlerHolderInternal<T, U>
-{
+impl<T: EventHandlerTrait, U: AsyncJoinCallBackTrait<()>> EventHandlerHolderInternal<T, U> {
     fn cancel_pending_event(&mut self, holder: &EventHandlerHolder<T, U>) {
         match self.pending_channel_event.take() {
             None => {}
@@ -219,11 +214,11 @@ impl<T: EventHandlerTrait, U: AsyncJoinCallBackTrait<T::ThreadReturn>>
                 self.schedule_channel_empty(&holder);
                 return Some(self);
             }
-            EventHandleResult::StopThread(result) => {
+            EventHandleResult::StopThread => {
                 trace!("Join");
                 self.receiver_link.disconnect_receiver();
                 self.join_call_back
-                    .join(AsyncJoin::new(self.thread_name, result));
+                    .join(AsyncJoin::new(self.thread_name, ()));
                 return None;
             }
         };
