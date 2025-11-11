@@ -1,3 +1,5 @@
 pub trait Thread: Sized + Send + 'static {
-    fn run(self);
+    type ReturnType: Send + 'static;
+
+    fn run(self) -> Self::ReturnType;
 }

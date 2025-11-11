@@ -12,6 +12,7 @@ use commons::threading::eventhandling::{
     EventHandlerBuilder,
     EventSender,
 };
+use commons::threading::AsyncJoin;
 use std::net::Ipv4Addr;
 use std::str::FromStr;
 
@@ -38,6 +39,7 @@ impl<GameFactory: GameFactoryTrait> Client<GameFactory> {
                     core_sender.clone(),
                     render_receiver_sender,
                 ),
+                AsyncJoin::log_async_join,
             )
             .unwrap();
 

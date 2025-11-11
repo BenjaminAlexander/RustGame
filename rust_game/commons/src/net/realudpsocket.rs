@@ -4,6 +4,7 @@ use crate::net::{
 };
 use crate::threading::channel::Receiver;
 use crate::threading::eventhandling::EventOrStopThread;
+use crate::threading::AsyncJoinCallBackTrait;
 use std::io::Error;
 use std::net::{
     SocketAddr,
@@ -37,8 +38,9 @@ impl RealUdpSocket {
         thread_name: String,
         receiver: Receiver<EventOrStopThread<()>>,
         udp_read_handler: T,
+        join_call_back: impl AsyncJoinCallBackTrait<T>,
     ) -> Result<(), Error> {
-        return receiver.spawn_real_udp_reader(thread_name, self, udp_read_handler);
+        return receiver.spawn_real_udp_reader(thread_name, self, udp_read_handler, join_call_back);
     }
 }
 

@@ -17,6 +17,10 @@ use crate::threading::eventhandling::{
     EventHandlerTrait,
     EventOrStopThread,
 };
+use crate::threading::{
+    AsyncJoin,
+    AsyncJoinCallBackTrait,
+};
 use crate::time::TimeDuration;
 use log::trace;
 use std::sync::{
@@ -24,19 +28,23 @@ use std::sync::{
     Mutex,
 };
 
-pub struct EventHandlerHolder<T: EventHandlerTrait> {
-    internal: Arc<Mutex<Option<EventHandlerHolderInternal<T>>>>,
+pub struct EventHandlerHolder<T: EventHandlerTrait, U: AsyncJoinCallBackTrait<T::ThreadReturn>> {
+    internal: Arc<Mutex<Option<EventHandlerHolderInternal<T, U>>>>,
     factory: SingleThreadedFactory,
 }
 
-struct EventHandlerHolderInternal<T: EventHandlerTrait> {
+struct EventHandlerHolderInternal<T: EventHandlerTrait, U: AsyncJoinCallBackTrait<T::ThreadReturn>>
+{
     receiver_link: ReceiverLink<EventOrStopThread<T::Event>>,
     event_handler: T,
+    join_call_back: U,
     thread_name: String,
     pending_channel_event: Option<usize>,
 }
 
-impl<T: EventHandlerTrait> Clone for EventHandlerHolder<T> {
+impl<T: EventHandlerTrait, U: AsyncJoinCallBackTrait<T::ThreadReturn>> Clone
+    for EventHandlerHolder<T, U>
+{
     fn clone(&self) -> Self {
         return Self {
             internal: self.internal.clone(),
@@ -46,13 +54,14 @@ impl<T: EventHandlerTrait> Clone for EventHandlerHolder<T> {
     }
 }
 
-impl<T: EventHandlerTrait> EventHandlerHolder<T> {
+impl<T: EventHandlerTrait, U: AsyncJoinCallBackTrait<T::ThreadReturn>> EventHandlerHolder<T, U> {
     //TODO: can this method be moved to its caller?
     pub fn new(
         factory: SingleThreadedFactory,
         thread_name: String,
         receiver: SingleThreadedReceiver<EventOrStopThread<T::Event>>,
         event_handler: T,
+        join_call_back: U,
     ) -> Self {
         let holder = Self {
             internal: Arc::new(Mutex::new(None)),
@@ -89,6 +98,7 @@ impl<T: EventHandlerTrait> EventHandlerHolder<T> {
         let mut internal = EventHandlerHolderInternal {
             receiver_link,
             event_handler,
+            join_call_back,
             thread_name,
             pending_channel_event: None,
         };
@@ -102,7 +112,7 @@ impl<T: EventHandlerTrait> EventHandlerHolder<T> {
 
     fn do_if_present(
         &self,
-        func: impl FnOnce(EventHandlerHolderInternal<T>) -> Option<EventHandlerHolderInternal<T>>,
+        func: impl FnOnce(EventHandlerHolderInternal<T, U>) -> Option<EventHandlerHolderInternal<T, U>>,
     ) {
         let mut guard = self.internal.lock().unwrap();
         if let Some(internal) = guard.take() {
@@ -116,15 +126,17 @@ impl<T: EventHandlerTrait> EventHandlerHolder<T> {
     }
 }
 
-impl<T: EventHandlerTrait> EventHandlerHolderInternal<T> {
-    fn cancel_pending_event(&mut self, holder: &EventHandlerHolder<T>) {
+impl<T: EventHandlerTrait, U: AsyncJoinCallBackTrait<T::ThreadReturn>>
+    EventHandlerHolderInternal<T, U>
+{
+    fn cancel_pending_event(&mut self, holder: &EventHandlerHolder<T, U>) {
         match self.pending_channel_event.take() {
             None => {}
             Some(queue_event) => holder.factory.get_time_queue().remove_event(queue_event),
         }
     }
 
-    fn schedule_channel_empty(&mut self, holder: &EventHandlerHolder<T>) {
+    fn schedule_channel_empty(&mut self, holder: &EventHandlerHolder<T, U>) {
         trace!("Scheduling a ChannelEmpty");
         self.cancel_pending_event(holder);
 
@@ -141,7 +153,7 @@ impl<T: EventHandlerTrait> EventHandlerHolderInternal<T> {
         self.pending_channel_event = Some(event_id);
     }
 
-    fn schedule_timeout(&mut self, holder: &EventHandlerHolder<T>, time_duration: TimeDuration) {
+    fn schedule_timeout(&mut self, holder: &EventHandlerHolder<T, U>, time_duration: TimeDuration) {
         trace!("Scheduling a Timeout");
         self.cancel_pending_event(holder);
 
@@ -163,7 +175,7 @@ impl<T: EventHandlerTrait> EventHandlerHolderInternal<T> {
 
     fn on_receive(
         self,
-        holder: &EventHandlerHolder<T>,
+        holder: &EventHandlerHolder<T, U>,
         receive_meta_data: ReceiveMetaData,
         event_or_stop: EventOrStopThread<T::Event>,
     ) -> Option<Self> {
@@ -173,8 +185,10 @@ impl<T: EventHandlerTrait> EventHandlerHolderInternal<T> {
                 return self.on_channel_event(holder, ReceivedEvent(receive_meta_data, event));
             }
             EventOrStopThread::StopThread => {
-                self.event_handler.on_stop(receive_meta_data);
+                let result = self.event_handler.on_stop(receive_meta_data);
                 self.receiver_link.disconnect_receiver();
+                self.join_call_back
+                    .join(AsyncJoin::new(result));
                 return None;
             }
         }
@@ -182,7 +196,7 @@ impl<T: EventHandlerTrait> EventHandlerHolderInternal<T> {
 
     fn on_channel_event(
         mut self,
-        holder: &EventHandlerHolder<T>,
+        holder: &EventHandlerHolder<T, U>,
         event: ChannelEvent<T::Event>,
     ) -> Option<Self> {
         trace!("Event Handler: {:?}", self.thread_name);
@@ -205,9 +219,11 @@ impl<T: EventHandlerTrait> EventHandlerHolderInternal<T> {
                 self.schedule_channel_empty(&holder);
                 return Some(self);
             }
-            EventHandleResult::StopThread => {
+            EventHandleResult::StopThread(result) => {
                 trace!("Join");
                 self.receiver_link.disconnect_receiver();
+                self.join_call_back
+                    .join(AsyncJoin::new(result));
                 return None;
             }
         };

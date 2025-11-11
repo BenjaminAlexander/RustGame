@@ -42,11 +42,8 @@ impl<T: UdpReadHandlerTrait> UdpReaderEventHandler<T> {
         match result {
             Ok((len, peer_addr)) => {
                 return match self.udp_read_handler.on_read(peer_addr, &buf[..len]) {
-                    Continue(udp_read_handler) => {
-                        self.udp_read_handler = udp_read_handler;
-                        EventHandleResult::TryForNextEvent(self)
-                    }
-                    Break(()) => EventHandleResult::StopThread,
+                    Continue(()) => EventHandleResult::TryForNextEvent(self),
+                    Break(()) => EventHandleResult::StopThread(self.udp_read_handler),
                 };
             }
             Err(error)
@@ -64,20 +61,20 @@ impl<T: UdpReadHandlerTrait> UdpReaderEventHandler<T> {
 
 impl<T: UdpReadHandlerTrait> EventHandlerTrait for UdpReaderEventHandler<T> {
     type Event = ();
+    type ThreadReturn = T;
 
     fn on_channel_event(self, channel_event: ChannelEvent<Self::Event>) -> EventHandleResult<Self> {
         return match channel_event {
             ChannelEvent::ChannelEmpty => self.read(),
             ChannelEvent::ChannelDisconnected => {
-                self.udp_read_handler.on_channel_disconnected();
-                EventHandleResult::StopThread
+                EventHandleResult::StopThread(self.udp_read_handler)
             }
             _ => EventHandleResult::TryForNextEvent(self),
         };
     }
 
-    fn on_stop(self, receive_meta_data: ReceiveMetaData) {
-        self.udp_read_handler.on_stop(receive_meta_data);
+    fn on_stop(self, _receive_meta_data: ReceiveMetaData) -> Self::ThreadReturn {
+        return self.udp_read_handler;
     }
 }
 
@@ -94,7 +91,7 @@ mod tests {
 
     use crate::{
         logging::LoggingConfigBuilder,
-        net::{LOCAL_EPHEMERAL_SOCKET_ADDR_V4, UdpReadHandler},
+        net::LOCAL_EPHEMERAL_SOCKET_ADDR_V4,
     };
 
     use super::*;
@@ -112,7 +109,7 @@ mod tests {
             return ControlFlow::Continue(());
         };
 
-        let read_handler = UdpReaderEventHandler::new(udp_socket, UdpReadHandler::new(udp_read_handler));
+        let read_handler = UdpReaderEventHandler::new(udp_socket, udp_read_handler);
 
         let buf = [0];
 

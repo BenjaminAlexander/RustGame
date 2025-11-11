@@ -6,6 +6,7 @@ use crate::messaging::ToClientMessageTCP;
 use crate::server::tcpoutput::TcpOutputEvent::SendInitialInformation;
 use crate::server::ServerConfig;
 use commons::net::TcpStream;
+use commons::threading::channel::ReceiveMetaData;
 use commons::threading::eventhandling::{
     ChannelEvent,
     EventHandleResult,
@@ -58,6 +59,7 @@ impl<Game: GameTrait> TcpOutput<Game> {
 
 impl<Game: GameTrait> EventHandlerTrait for TcpOutput<Game> {
     type Event = TcpOutputEvent<Game>;
+    type ThreadReturn = ();
 
     fn on_channel_event(self, channel_event: ChannelEvent<Self::Event>) -> EventHandleResult<Self> {
         match channel_event {
@@ -67,7 +69,11 @@ impl<Game: GameTrait> EventHandlerTrait for TcpOutput<Game> {
             ) => self.send_initial_information(server_config, player_count, initial_state),
             ChannelEvent::Timeout => EventHandleResult::WaitForNextEvent(self),
             ChannelEvent::ChannelEmpty => EventHandleResult::WaitForNextEvent(self),
-            ChannelEvent::ChannelDisconnected => EventHandleResult::StopThread,
+            ChannelEvent::ChannelDisconnected => EventHandleResult::StopThread(()),
         }
+    }
+
+    fn on_stop(self, _receive_meta_data: ReceiveMetaData) -> Self::ThreadReturn {
+        ()
     }
 }

@@ -18,6 +18,7 @@ use crate::messaging::{
     StateMessage,
 };
 use commons::factory::FactoryTrait;
+use commons::threading::channel::ReceiveMetaData;
 use commons::threading::eventhandling::{
     ChannelEvent,
     EventHandleResult,
@@ -279,6 +280,7 @@ impl<ManagerObserver: ManagerObserverTrait> Manager<ManagerObserver> {
 
 impl<ManagerObserver: ManagerObserverTrait> EventHandlerTrait for Manager<ManagerObserver> {
     type Event = ManagerEvent<ManagerObserver::Game>;
+    type ThreadReturn = ();
 
     fn on_channel_event(self, channel_event: ChannelEvent<Self::Event>) -> EventHandleResult<Self> {
         match channel_event {
@@ -302,7 +304,11 @@ impl<ManagerObserver: ManagerObserverTrait> EventHandlerTrait for Manager<Manage
             }
             ChannelEvent::Timeout => self.on_none_pending(),
             ChannelEvent::ChannelEmpty => self.on_none_pending(),
-            ChannelEvent::ChannelDisconnected => EventHandleResult::StopThread,
+            ChannelEvent::ChannelDisconnected => EventHandleResult::StopThread(()),
         }
+    }
+
+    fn on_stop(self, _receive_meta_data: ReceiveMetaData) -> Self::ThreadReturn {
+        ()
     }
 }

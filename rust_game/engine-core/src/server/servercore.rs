@@ -50,7 +50,10 @@ use commons::net::{
     UdpSocket,
     MAX_UDP_DATAGRAM_SIZE,
 };
-use commons::threading::channel::Sender;
+use commons::threading::channel::{
+    ReceiveMetaData,
+    Sender,
+};
 use commons::threading::eventhandling::{
     ChannelEvent,
     EventHandleResult,
@@ -59,6 +62,7 @@ use commons::threading::eventhandling::{
     EventHandlerTrait,
     EventSender,
 };
+use commons::threading::AsyncJoin;
 use log::{
     error,
     info,
@@ -103,6 +107,7 @@ pub struct ServerCore<GameFactory: GameFactoryTrait> {
 
 impl<GameFactory: GameFactoryTrait> EventHandlerTrait for ServerCore<GameFactory> {
     type Event = ServerCoreEvent<GameFactory>;
+    type ThreadReturn = ();
 
     fn on_channel_event(self, channel_event: ChannelEvent<Self::Event>) -> EventHandleResult<Self> {
         match channel_event {
@@ -119,8 +124,12 @@ impl<GameFactory: GameFactoryTrait> EventHandlerTrait for ServerCore<GameFactory
             }
             ChannelEvent::Timeout => EventHandleResult::WaitForNextEvent(self),
             ChannelEvent::ChannelEmpty => EventHandleResult::WaitForNextEvent(self),
-            ChannelEvent::ChannelDisconnected => EventHandleResult::StopThread,
+            ChannelEvent::ChannelDisconnected => EventHandleResult::StopThread(()),
         }
+    }
+
+    fn on_stop(self, _receive_meta_data: ReceiveMetaData) -> Self::ThreadReturn {
+        ()
     }
 }
 
@@ -161,7 +170,7 @@ impl<GameFactory: GameFactoryTrait> ServerCore<GameFactory> {
             Ok(ip_addr_v4) => ip_addr_v4,
             Err(error) => {
                 error!("{:?}", error);
-                return EventHandleResult::StopThread;
+                return EventHandleResult::StopThread(());
             }
         };
 
@@ -172,7 +181,7 @@ impl<GameFactory: GameFactoryTrait> ServerCore<GameFactory> {
             Ok(udp_socket) => udp_socket,
             Err(error) => {
                 error!("{:?}", error);
-                return EventHandleResult::StopThread;
+                return EventHandleResult::StopThread(());
             }
         };
 
@@ -183,6 +192,7 @@ impl<GameFactory: GameFactoryTrait> ServerCore<GameFactory> {
             "ServerUdpInput".to_string(),
             udp_socket.try_clone().unwrap(),
             udp_input,
+            AsyncJoin::log_async_join,
         );
 
         self.udp_socket = Some(udp_socket);
@@ -191,7 +201,7 @@ impl<GameFactory: GameFactoryTrait> ServerCore<GameFactory> {
             Ok(udp_input_sender) => udp_input_sender,
             Err(error) => {
                 error!("{:?}", error);
-                return EventHandleResult::StopThread;
+                return EventHandleResult::StopThread(());
             }
         });
 
@@ -205,6 +215,7 @@ impl<GameFactory: GameFactoryTrait> ServerCore<GameFactory> {
             "ServerTcpListener".to_string(),
             socket_addr,
             TcpConnectionHandler::<GameFactory>::new(self.sender.clone()),
+            AsyncJoin::log_async_join,
         );
 
         match tcp_listener_sender_result {
@@ -214,7 +225,7 @@ impl<GameFactory: GameFactoryTrait> ServerCore<GameFactory> {
             }
             Err(error) => {
                 error!("Error starting Tcp Listener Thread: {:?}", error);
-                return EventHandleResult::StopThread;
+                return EventHandleResult::StopThread(());
             }
         }
     }
@@ -278,7 +289,7 @@ impl<GameFactory: GameFactoryTrait> ServerCore<GameFactory> {
 
             if send_result.is_err() {
                 warn!("Failed to send DropSteps to Game Manager");
-                return EventHandleResult::StopThread;
+                return EventHandleResult::StopThread(());
             }
 
             let server_initial_information = InitialInformation::<GameFactory::Game>::new(
@@ -297,7 +308,7 @@ impl<GameFactory: GameFactoryTrait> ServerCore<GameFactory> {
 
             if send_result.is_err() {
                 warn!("Failed to send InitialInformation to Game Manager");
-                return EventHandleResult::StopThread;
+                return EventHandleResult::StopThread(());
             }
 
             let send_result = render_receiver_sender.send(
@@ -306,7 +317,7 @@ impl<GameFactory: GameFactoryTrait> ServerCore<GameFactory> {
 
             if send_result.is_err() {
                 warn!("Failed to send InitialInformation to Render Receiver");
-                return EventHandleResult::StopThread;
+                return EventHandleResult::StopThread(());
             }
 
             for tcp_output in self.tcp_outputs.iter() {
@@ -318,13 +329,13 @@ impl<GameFactory: GameFactoryTrait> ServerCore<GameFactory> {
 
                 if send_result.is_err() {
                     warn!("Failed to send InitialInformation to TcpOutput");
-                    return EventHandleResult::StopThread;
+                    return EventHandleResult::StopThread(());
                 }
             }
 
             if game_timer.start_ticking().is_err() {
                 warn!("Failed to Start the GameTimer");
-                return EventHandleResult::StopThread;
+                return EventHandleResult::StopThread(());
             };
 
             self.game_timer = Some(game_timer);
@@ -334,6 +345,7 @@ impl<GameFactory: GameFactoryTrait> ServerCore<GameFactory> {
                     .spawn_thread(
                         "ServerManager".to_string(),
                         Manager::new(self.factory.clone(), server_manager_observer),
+                        AsyncJoin::log_async_join,
                     )
                     .unwrap(),
             );
@@ -366,6 +378,7 @@ impl<GameFactory: GameFactoryTrait> ServerCore<GameFactory> {
                 "ServerTcpInput".to_string(),
                 tcp_receiver,
                 TcpInput::new(),
+                AsyncJoin::log_async_join,
             )
             .unwrap();
 
@@ -380,6 +393,7 @@ impl<GameFactory: GameFactoryTrait> ServerCore<GameFactory> {
                     self.udp_socket.as_ref().unwrap(),
                 )
                 .unwrap(),
+                AsyncJoin::log_async_join,
             )
             .unwrap();
 
@@ -389,6 +403,7 @@ impl<GameFactory: GameFactoryTrait> ServerCore<GameFactory> {
                 &self.factory,
                 "ServerTcpOutput".to_string(),
                 TcpOutput::<GameFactory::Game>::new(player_index, tcp_stream),
+                AsyncJoin::log_async_join,
             )
             .unwrap();
 
@@ -415,13 +430,13 @@ impl<GameFactory: GameFactoryTrait> ServerCore<GameFactory> {
         //TODO: does this happen too often?  Should the core keep a list of known peers and check against that?
         if let Some(remote_peer) = remote_peer {
             if self.on_remote_udp_peer(remote_peer).is_err() {
-                return EventHandleResult::StopThread;
+                return EventHandleResult::StopThread(());
             }
         }
 
         if let Some(input_message) = input_message {
             if self.on_input_message(input_message).is_err() {
-                return EventHandleResult::StopThread;
+                return EventHandleResult::StopThread(());
             }
         }
 
@@ -456,7 +471,7 @@ impl<GameFactory: GameFactoryTrait> ServerCore<GameFactory> {
 
                 if send_result.is_err() {
                     warn!("Failed to send DropSteps to Game Manager");
-                    return EventHandleResult::StopThread;
+                    return EventHandleResult::StopThread(());
                 }
             }
 
@@ -466,7 +481,7 @@ impl<GameFactory: GameFactoryTrait> ServerCore<GameFactory> {
 
             if send_result.is_err() {
                 warn!("Failed to send RequestedStep to Game Manager");
-                return EventHandleResult::StopThread;
+                return EventHandleResult::StopThread(());
             }
         }
 
@@ -476,7 +491,7 @@ impl<GameFactory: GameFactoryTrait> ServerCore<GameFactory> {
 
             if send_result.is_err() {
                 warn!("Failed to send TimeMessage to UdpOutput");
-                return EventHandleResult::StopThread;
+                return EventHandleResult::StopThread(());
             }
         }
 
@@ -488,7 +503,7 @@ impl<GameFactory: GameFactoryTrait> ServerCore<GameFactory> {
 
         if send_result.is_err() {
             warn!("Failed to send TimeMessage to Render Receiver");
-            return EventHandleResult::StopThread;
+            return EventHandleResult::StopThread(());
         }
 
         return EventHandleResult::TryForNextEvent(self);

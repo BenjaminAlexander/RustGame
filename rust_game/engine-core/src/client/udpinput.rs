@@ -57,7 +57,7 @@ impl<GameFactory: GameFactoryTrait> UdpInput<GameFactory> {
 }
 
 impl<GameFactory: GameFactoryTrait> UdpReadHandlerTrait for UdpInput<GameFactory> {
-    fn on_read(mut self, peer_addr: SocketAddr, buff: &[u8]) -> ControlFlow<(), Self> {
+    fn on_read(&mut self, peer_addr: SocketAddr, buff: &[u8]) -> ControlFlow<()> {
         let fragment = MessageFragment::from_vec(buff.to_vec());
 
         if let Some(message_buf) = self
@@ -77,15 +77,15 @@ impl<GameFactory: GameFactoryTrait> UdpReadHandlerTrait for UdpInput<GameFactory
             }
         }
 
-        return ControlFlow::Continue(self);
+        return ControlFlow::Continue(());
     }
 }
 
 impl<GameFactory: GameFactoryTrait> UdpInput<GameFactory> {
     fn handle_received_message(
-        mut self,
+        &mut self,
         value: ToClientMessageUDP<GameFactory::Game>,
-    ) -> ControlFlow<(), Self> {
+    ) -> ControlFlow<()> {
         let time_received = self.factory.get_time_source().now();
 
         match value {
@@ -151,6 +151,6 @@ impl<GameFactory: GameFactoryTrait> UdpInput<GameFactory> {
             }
         };
 
-        return ControlFlow::Continue(self);
+        return ControlFlow::Continue(());
     }
 }

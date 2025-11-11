@@ -12,6 +12,7 @@ use commons::net::{
     UdpSocket,
     MAX_UDP_DATAGRAM_SIZE,
 };
+use commons::threading::channel::ReceiveMetaData;
 use commons::threading::eventhandling::{
     ChannelEvent,
     EventHandleResult,
@@ -114,6 +115,7 @@ impl<GameFactory: GameFactoryTrait> UdpOutput<GameFactory> {
 
 impl<GameFactory: GameFactoryTrait> EventHandlerTrait for UdpOutput<GameFactory> {
     type Event = UdpOutputEvent<GameFactory::Game>;
+    type ThreadReturn = ();
 
     fn on_channel_event(
         mut self,
@@ -138,8 +140,12 @@ impl<GameFactory: GameFactoryTrait> EventHandlerTrait for UdpOutput<GameFactory>
                 return EventHandleResult::WaitForNextEvent(self);
             }
             ChannelEvent::ChannelDisconnected => {
-                return EventHandleResult::StopThread;
+                return EventHandleResult::StopThread(());
             }
         }
+    }
+
+    fn on_stop(self, _: ReceiveMetaData) -> Self::ThreadReturn {
+        ()
     }
 }

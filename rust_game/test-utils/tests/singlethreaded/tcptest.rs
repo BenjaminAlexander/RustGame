@@ -10,6 +10,7 @@ use commons::net::{
 };
 use commons::single_threaded_simulator::SingleThreadedFactory;
 use commons::threading::eventhandling::EventHandlerStopper;
+use commons::threading::AsyncJoin;
 use log::{
     error,
     info,
@@ -51,6 +52,7 @@ fn test_tcp() {
         "TcpConnectionListener".to_string(),
         listen_socket.clone(),
         connection_handler,
+        AsyncJoin::log_async_join,
     )
     .unwrap();
 
@@ -75,6 +77,7 @@ fn test_tcp() {
             "TcpReader".to_string(),
             reader,
             client_read_handler,
+            AsyncJoin::log_async_join,
         )
         .unwrap();
 
@@ -142,11 +145,7 @@ struct ConnectionHandler {
 }
 
 impl TcpConnectionHandlerTrait for ConnectionHandler {
-    fn on_connection(
-        self,
-        tcp_stream: TcpStream,
-        tcp_receiver: TcpReader,
-    ) -> ControlFlow<(), Self> {
+    fn on_connection(&mut self, tcp_stream: TcpStream, tcp_receiver: TcpReader) -> ControlFlow<()> {
         info!(
             "{:?} is handling a connection from {:?}",
             self.factory.get_host_simulator().get_ip_addr(),
@@ -162,6 +161,7 @@ impl TcpConnectionHandlerTrait for ConnectionHandler {
             "TcpReader".to_string(),
             tcp_receiver,
             tcp_read_handler,
+            AsyncJoin::log_async_join,
         )
         .unwrap();
 
@@ -171,18 +171,16 @@ impl TcpConnectionHandlerTrait for ConnectionHandler {
             last_value: None,
         };
 
-        {
-            let mut guard = self.server_side.lock().unwrap();
+        let mut guard = self.server_side.lock().unwrap();
 
-            if guard.is_some() {
-                error!("Expected None");
-                panic!("Expected None");
-            }
-
-            *guard = Some(server_side);
+        if guard.is_some() {
+            error!("Expected None");
+            panic!("Expected None");
         }
 
-        return Continue(self);
+        *guard = Some(server_side);
+
+        return Continue(());
     }
 }
 
@@ -193,14 +191,13 @@ struct TcpReadHandler {
 impl TcpReadHandlerTrait for TcpReadHandler {
     type ReadType = u32;
 
-    fn on_read(self, read: Self::ReadType) -> ControlFlow<(), Self> {
+    fn on_read(&mut self, read: Self::ReadType) -> ControlFlow<()> {
         if let Some(ref mut server_side) = *self.test_connection.lock().unwrap() {
             server_side.last_value = Some(read);
+            return Continue(());
         } else {
             error!("Expected Some");
             panic!("Expected Some");
         }
-
-        return Continue(self);
     }
 }

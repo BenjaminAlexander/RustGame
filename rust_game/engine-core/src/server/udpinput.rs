@@ -19,7 +19,7 @@ impl<GameFactory: GameFactoryTrait> UdpInput<GameFactory> {
 }
 
 impl<Game: GameFactoryTrait> UdpReadHandlerTrait for UdpInput<Game> {
-    fn on_read(self, peer_addr: SocketAddr, buf: &[u8]) -> ControlFlow<(), Self> {
+    fn on_read(&mut self, peer_addr: SocketAddr, buf: &[u8]) -> ControlFlow<()> {
         let mut buf_to_send = [0; MAX_UDP_DATAGRAM_SIZE];
         buf_to_send[..buf.len()].copy_from_slice(buf);
 
@@ -30,7 +30,7 @@ impl<Game: GameFactoryTrait> UdpReadHandlerTrait for UdpInput<Game> {
         ));
 
         return match send_result {
-            Ok(_) => ControlFlow::Continue(self),
+            Ok(_) => ControlFlow::Continue(()),
             Err(_) => ControlFlow::Break(()),
         };
     }

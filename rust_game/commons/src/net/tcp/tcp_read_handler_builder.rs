@@ -13,6 +13,7 @@ use crate::{
             EventOrStopThread,
             EventSender,
         },
+        AsyncJoinCallBackTrait,
     },
 };
 
@@ -40,11 +41,13 @@ impl TcpReadHandlerBuilder {
         thread_name: String,
         tcp_reader: TcpReader,
         tcp_read_handler: T,
+        join_call_back: impl AsyncJoinCallBackTrait<T>,
     ) -> Result<EventHandlerStopper, Error> {
         tcp_reader.spawn_tcp_reader(
             thread_name,
             self.receiver,
             tcp_read_handler,
+            join_call_back,
         )?;
         return Ok(self.stopper);
     }
@@ -54,11 +57,13 @@ impl TcpReadHandlerBuilder {
         thread_name: String,
         tcp_reader: TcpReader,
         tcp_read_handler: T,
+        join_call_back: impl AsyncJoinCallBackTrait<T>,
     ) -> Result<EventHandlerStopper, Error> {
         return Self::new(factory).spawn_thread(
             thread_name,
             tcp_reader,
             tcp_read_handler,
+            join_call_back,
         );
     }
 }

@@ -28,7 +28,10 @@ use commons::net::{
     TcpReadHandlerBuilder,
     UdpReadHandlerBuilder,
 };
-use commons::threading::channel::Sender;
+use commons::threading::channel::{
+    ReceiveMetaData,
+    Sender,
+};
 use commons::threading::eventhandling::{
     ChannelEvent,
     EventHandleResult,
@@ -37,6 +40,7 @@ use commons::threading::eventhandling::{
     EventHandlerTrait,
     EventSender,
 };
+use commons::threading::AsyncJoin;
 use log::{
     trace,
     warn,
@@ -77,6 +81,7 @@ impl<GameFactory: GameFactoryTrait> ClientCore<GameFactory> {
             &factory,
             "ClientManager".to_string(),
             manager,
+            AsyncJoin::log_async_join,
         )
         .unwrap();
 
@@ -97,6 +102,7 @@ impl<GameFactory: GameFactoryTrait> ClientCore<GameFactory> {
             "ClientTcpInput".to_string(),
             tcp_receiver,
             tcp_input,
+            AsyncJoin::log_async_join,
         )
         .unwrap();
 
@@ -104,6 +110,7 @@ impl<GameFactory: GameFactoryTrait> ClientCore<GameFactory> {
             &factory,
             "ClientTcpOutput".to_string(),
             TcpOutput::new(tcp_sender),
+            AsyncJoin::log_async_join,
         )
         .unwrap();
 
@@ -123,14 +130,19 @@ impl<GameFactory: GameFactoryTrait> ClientCore<GameFactory> {
 
 impl<GameFactory: GameFactoryTrait> EventHandlerTrait for ClientCore<GameFactory> {
     type Event = ClientCoreEvent<GameFactory>;
+    type ThreadReturn = ();
 
     fn on_channel_event(self, channel_event: ChannelEvent<Self::Event>) -> EventHandleResult<Self> {
         return match channel_event {
             ChannelEvent::ReceivedEvent(_, core_event) => self.state.on_event(core_event),
             ChannelEvent::Timeout => EventHandleResult::WaitForNextEvent(self),
             ChannelEvent::ChannelEmpty => EventHandleResult::WaitForNextEvent(self),
-            ChannelEvent::ChannelDisconnected => EventHandleResult::StopThread,
+            ChannelEvent::ChannelDisconnected => EventHandleResult::StopThread(()),
         };
+    }
+
+    fn on_stop(self, _receive_meta_data: ReceiveMetaData) -> Self::ThreadReturn {
+        return ();
     }
 }
 
@@ -224,6 +236,7 @@ impl<GameFactory: GameFactoryTrait> State<GameFactory> {
                         manager_sender.clone(),
                     )
                     .unwrap(),
+                    AsyncJoin::log_async_join,
                 )
                 .unwrap();
 
@@ -236,6 +249,7 @@ impl<GameFactory: GameFactoryTrait> State<GameFactory> {
                         udp_socket.try_clone().unwrap(),
                         initial_information.clone(),
                     ),
+                    AsyncJoin::log_async_join,
                 )
                 .unwrap();
 
@@ -319,7 +333,7 @@ impl<GameFactory: GameFactoryTrait> State<GameFactory> {
 
                         if send_result.is_err() {
                             warn!("Failed to send InputMessage to Game Manager");
-                            return EventHandleResult::StopThread;
+                            return EventHandleResult::StopThread(());
                         }
 
                         let send_result = udp_output_sender
@@ -327,7 +341,7 @@ impl<GameFactory: GameFactoryTrait> State<GameFactory> {
 
                         if send_result.is_err() {
                             warn!("Failed to send InputMessage to Udp Output");
-                            return EventHandleResult::StopThread;
+                            return EventHandleResult::StopThread(());
                         }
 
                         let client_drop_time = time_message
@@ -343,7 +357,7 @@ impl<GameFactory: GameFactoryTrait> State<GameFactory> {
 
                         if send_result.is_err() {
                             warn!("Failed to send Drop Steps to Game Manager");
-                            return EventHandleResult::StopThread;
+                            return EventHandleResult::StopThread(());
                         }
 
                         //TODO: message or last message or next?
@@ -354,7 +368,7 @@ impl<GameFactory: GameFactoryTrait> State<GameFactory> {
 
                         if send_result.is_err() {
                             warn!("Failed to send Request Step to Game Manager");
-                            return EventHandleResult::StopThread;
+                            return EventHandleResult::StopThread(());
                         }
                     }
                 }
@@ -364,7 +378,7 @@ impl<GameFactory: GameFactoryTrait> State<GameFactory> {
 
                 if send_result.is_err() {
                     warn!("Failed to send TimeMessage Step to Render Receiver");
-                    return EventHandleResult::StopThread;
+                    return EventHandleResult::StopThread(());
                 }
 
                 *last_time_message = Some(time_message);

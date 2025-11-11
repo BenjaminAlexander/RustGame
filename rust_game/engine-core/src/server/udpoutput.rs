@@ -252,6 +252,7 @@ impl<GameFactory: GameFactoryTrait> UdpOutput<GameFactory> {
 
 impl<GameFactory: GameFactoryTrait> EventHandlerTrait for UdpOutput<GameFactory> {
     type Event = UdpOutputEvent<GameFactory::Game>;
+    type ThreadReturn = ();
 
     fn on_channel_event(self, channel_event: ChannelEvent<Self::Event>) -> EventHandleResult<Self> {
         let now = self.factory.get_time_source().now();
@@ -290,7 +291,11 @@ impl<GameFactory: GameFactoryTrait> EventHandlerTrait for UdpOutput<GameFactory>
             ) => self.on_server_input_message(receive_meta_data, server_input_message),
             ChannelEvent::Timeout => EventHandleResult::WaitForNextEvent(self),
             ChannelEvent::ChannelEmpty => EventHandleResult::WaitForNextEvent(self),
-            ChannelEvent::ChannelDisconnected => EventHandleResult::StopThread,
+            ChannelEvent::ChannelDisconnected => EventHandleResult::StopThread(()),
         }
+    }
+
+    fn on_stop(self, _receive_meta_data: ReceiveMetaData) -> Self::ThreadReturn {
+        ()
     }
 }

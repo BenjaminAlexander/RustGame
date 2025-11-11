@@ -32,32 +32,27 @@ impl<T: UdpReadHandlerTrait> UdpReadEventHandler<T> {
 
     fn read(mut self, source: SocketAddr, buf: Vec<u8>) -> EventHandleResult<Self> {
         return match self.read_handler.on_read(source, &buf) {
-            Continue(read_handler) => {
-                self.read_handler = read_handler;
-                EventHandleResult::TryForNextEvent(self)
-            }
-            Break(()) => EventHandleResult::StopThread,
+            Continue(()) => EventHandleResult::TryForNextEvent(self),
+            Break(()) => EventHandleResult::StopThread(self.read_handler),
         };
     }
 }
 
 impl<T: UdpReadHandlerTrait> EventHandlerTrait for UdpReadEventHandler<T> {
     type Event = (SocketAddr, Vec<u8>);
+    type ThreadReturn = T;
 
     fn on_channel_event(self, channel_event: ChannelEvent<Self::Event>) -> EventHandleResult<Self> {
         match channel_event {
             ChannelEvent::ReceivedEvent(_, (source, buf)) => self.read(source, buf),
             ChannelEvent::Timeout => EventHandleResult::TryForNextEvent(self),
             ChannelEvent::ChannelEmpty => EventHandleResult::WaitForNextEvent(self),
-            ChannelEvent::ChannelDisconnected => {
-                self.read_handler.on_channel_disconnected();
-                EventHandleResult::StopThread
-            }
+            ChannelEvent::ChannelDisconnected => EventHandleResult::StopThread(self.read_handler),
         }
     }
 
-    fn on_stop(self, receive_meta_data: ReceiveMetaData) {
+    fn on_stop(self, _receive_meta_data: ReceiveMetaData) -> Self::ThreadReturn {
         self.network_simulator.remove_udp_reader(&self.socket_addr);
-        self.read_handler.on_stop(receive_meta_data);
+        return self.read_handler;
     }
 }

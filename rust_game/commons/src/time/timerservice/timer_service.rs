@@ -1,4 +1,5 @@
 use crate::factory::FactoryTrait;
+use crate::threading::channel::ReceiveMetaData;
 use crate::threading::eventhandling::ChannelEvent::{
     ChannelDisconnected,
     ChannelEmpty,
@@ -12,6 +13,7 @@ use crate::threading::eventhandling::{
     EventHandlerTrait,
     EventSender,
 };
+use crate::threading::AsyncJoin;
 use crate::time::timerservice::schedule::Schedule;
 use crate::time::timerservice::timer::Timer;
 use crate::time::timerservice::timer_call_back::TimerCallBack;
@@ -64,6 +66,7 @@ impl<Factory: FactoryTrait, T: TimerCreationCallBack, U: TimerCallBack>
             &self.event_handler.factory.clone(),
             "TimerServiceThread".to_string(),
             self.event_handler,
+            AsyncJoin::log_async_join,
         )?;
 
         return Ok(TimerService { sender });
@@ -298,6 +301,7 @@ impl<Factory: FactoryTrait, T: TimerCreationCallBack, U: TimerCallBack> EventHan
     for TimerServiceEventHandler<Factory, T, U>
 {
     type Event = TimerServiceEvent<T, U>;
+    type ThreadReturn = ();
 
     fn on_channel_event(self, channel_event: ChannelEvent<Self::Event>) -> EventHandleResult<Self> {
         match channel_event {
@@ -313,7 +317,11 @@ impl<Factory: FactoryTrait, T: TimerCreationCallBack, U: TimerCallBack> EventHan
             }
             Timeout => self.trigger_timers(),
             ChannelEmpty => self.trigger_timers(),
-            ChannelDisconnected => EventHandleResult::StopThread,
+            ChannelDisconnected => EventHandleResult::StopThread(()),
         }
+    }
+
+    fn on_stop(self, _: ReceiveMetaData) -> Self::ThreadReturn {
+        return ();
     }
 }
