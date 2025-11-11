@@ -18,7 +18,6 @@ use crate::threading::eventhandling::{
     EventHandlerTrait,
     EventOrStopThread,
 };
-use crate::threading::utils;
 use crate::time::{
     TimeDuration,
     TimeSource,
@@ -92,15 +91,14 @@ impl<T: Send> RealReceiver<T> {
 }
 
 impl<T: Send> RealReceiver<EventOrStopThread<T>> {
+    //TODO: remove
     pub fn spawn_event_handler<U: EventHandlerTrait<Event = T>>(
         self,
         thread_name: String,
         event_handler: U,
         join_call_back: impl FnOnce(U::ThreadReturn) + Send + 'static,
     ) -> std::io::Result<()> {
-        let thread = EventHandlerThread::new(self, event_handler);
-        utils::spawn_thread(thread_name, thread, join_call_back)?;
-        return Ok(());
+        return EventHandlerThread::spawn_thread(thread_name, self, event_handler, join_call_back);
     }
 }
 

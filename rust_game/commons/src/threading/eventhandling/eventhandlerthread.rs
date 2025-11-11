@@ -1,6 +1,6 @@
 use std::sync::mpsc::TryRecvError;
+use std::thread::Builder;
 
-use crate::threading;
 use crate::threading::channel::{
     RealReceiver,
     ReceiveMetaData,
@@ -28,17 +28,42 @@ use log::info;
 //TODO: remove
 type EventReceiver<T> = RealReceiver<EventOrStopThread<T>>;
 
+//TODO: is this type coupled to RealReceiver
 pub struct EventHandlerThread<T: EventHandlerTrait> {
     receiver: EventReceiver<T::Event>,
     event_handler: T,
 }
 
 impl<T: EventHandlerTrait> EventHandlerThread<T> {
-    pub(crate) fn new(receiver: EventReceiver<T::Event>, event_handler: T) -> Self {
-        return Self {
+    pub(crate) fn spawn_thread(
+        thread_name: String,
+        receiver: EventReceiver<T::Event>,
+        event_handler: T,
+        call_back: impl FnOnce(T::ThreadReturn) + Send + 'static,
+    ) -> std::io::Result<()> {
+        let thread = Self {
             receiver,
             event_handler,
         };
+
+        let builder = Builder::new().name(thread_name.clone());
+
+        builder.spawn(move || {
+            info!("Thread Starting: {}", thread_name);
+
+            let return_value = thread.run();
+
+            info!(
+                "Thread function complete. Invoking callback: {}",
+                thread_name
+            );
+
+            (call_back)(return_value);
+
+            info!("Thread Ending: {}", thread_name);
+        })?;
+
+        return Ok(());
     }
 
     fn wait_for_message_or_timeout(
@@ -114,12 +139,8 @@ impl<T: EventHandlerTrait> EventHandlerThread<T> {
         info!("The MessageHandlingThread has received a message commanding it to stop.");
         return message_handler.on_stop(receive_meta_data);
     }
-}
 
-impl<T: EventHandlerTrait> threading::Thread for EventHandlerThread<T> {
-    type ReturnType = T::ThreadReturn;
-
-    fn run(mut self) -> Self::ReturnType {
+    pub(crate) fn run(mut self) -> T::ThreadReturn {
         let mut wait_or_try = EventHandleResult::TryForNextEvent(self.event_handler);
 
         loop {
