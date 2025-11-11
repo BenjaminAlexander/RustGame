@@ -4,7 +4,6 @@ use crate::net::{
 };
 use crate::threading::channel::Receiver;
 use crate::threading::eventhandling::EventOrStopThread;
-use crate::threading::AsyncJoinCallBackTrait;
 use rmp_serde::encode::Error as EncodeError;
 use serde::de::DeserializeOwned;
 use serde::Serialize;
@@ -65,7 +64,7 @@ impl RealTcpStream {
         thread_name: String,
         receiver: Receiver<EventOrStopThread<()>>,
         tcp_read_handler: T,
-        join_call_back: impl AsyncJoinCallBackTrait<T>,
+        join_call_back: impl FnOnce(T) + Send + 'static,
     ) -> Result<(), Error> {
         return receiver.spawn_real_tcp_reader(thread_name, self, tcp_read_handler, join_call_back);
     }

@@ -21,7 +21,6 @@ pub use self::renderreceiver::RenderReceiverMessage;
 pub use self::server::Server;
 pub use self::serverupdatearg::ServerUpdateArg;
 pub use self::types::ClientInputEvent;
-pub use self::types::EventSender;
 pub use self::types::Factory;
 pub use self::types::Game;
 pub use self::types::InterpolationResult;

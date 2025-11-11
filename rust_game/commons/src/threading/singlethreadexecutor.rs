@@ -32,8 +32,7 @@ impl SingleThreadExecutor {
 
         let factory = RealFactory::new();
 
-        let sender = EventHandlerBuilder::new_thread(
-            &factory,
+        let sender = EventHandlerBuilder::new(&factory).spawn_thread(
             "SingleThreadExecutor".to_string(),
             SingleThreadExecutorEventHandler(),
             move |_| {

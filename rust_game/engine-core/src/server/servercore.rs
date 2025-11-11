@@ -62,7 +62,6 @@ use commons::threading::eventhandling::{
     EventHandlerTrait,
     EventSender,
 };
-use commons::threading::AsyncJoin;
 use log::{
     error,
     info,
@@ -192,7 +191,6 @@ impl<GameFactory: GameFactoryTrait> ServerCore<GameFactory> {
             "ServerUdpInput".to_string(),
             udp_socket.try_clone().unwrap(),
             udp_input,
-            AsyncJoin::log_async_join,
         );
 
         self.udp_socket = Some(udp_socket);
@@ -215,7 +213,6 @@ impl<GameFactory: GameFactoryTrait> ServerCore<GameFactory> {
             "ServerTcpListener".to_string(),
             socket_addr,
             TcpConnectionHandler::<GameFactory>::new(self.sender.clone()),
-            AsyncJoin::log_async_join,
         );
 
         match tcp_listener_sender_result {
@@ -345,7 +342,7 @@ impl<GameFactory: GameFactoryTrait> ServerCore<GameFactory> {
                     .spawn_thread(
                         "ServerManager".to_string(),
                         Manager::new(self.factory.clone(), server_manager_observer),
-                        AsyncJoin::log_async_join,
+                        |_|{},
                     )
                     .unwrap(),
             );
@@ -378,7 +375,6 @@ impl<GameFactory: GameFactoryTrait> ServerCore<GameFactory> {
                 "ServerTcpInput".to_string(),
                 tcp_receiver,
                 TcpInput::new(),
-                AsyncJoin::log_async_join,
             )
             .unwrap();
 
@@ -393,7 +389,6 @@ impl<GameFactory: GameFactoryTrait> ServerCore<GameFactory> {
                     self.udp_socket.as_ref().unwrap(),
                 )
                 .unwrap(),
-                AsyncJoin::log_async_join,
             )
             .unwrap();
 
@@ -403,7 +398,6 @@ impl<GameFactory: GameFactoryTrait> ServerCore<GameFactory> {
                 &self.factory,
                 "ServerTcpOutput".to_string(),
                 TcpOutput::<GameFactory::Game>::new(player_index, tcp_stream),
-                AsyncJoin::log_async_join,
             )
             .unwrap();
 

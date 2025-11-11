@@ -29,7 +29,6 @@ use crate::threading::eventhandling::{
     EventHandlerTrait,
     EventOrStopThread,
 };
-use crate::threading::AsyncJoinCallBackTrait;
 use std::io::Error;
 use std::net::SocketAddr;
 use std::sync::mpsc::TryRecvError;
@@ -72,7 +71,7 @@ impl<T: Send> SingleThreadedReceiver<EventOrStopThread<T>> {
         self,
         thread_name: String,
         event_handler: U,
-        join_call_back: impl AsyncJoinCallBackTrait<U::ThreadReturn>,
+        join_call_back: impl FnOnce(U::ThreadReturn) + Send + 'static,
     ) -> std::io::Result<()> {
         EventHandlerHolder::new(
             self.factory.clone(),
@@ -92,7 +91,7 @@ impl SingleThreadedReceiver<EventOrStopThread<()>> {
         thread_name: String,
         socket_addr: SocketAddr,
         tcp_connection_handler: T,
-        join_call_back: impl AsyncJoinCallBackTrait<T>,
+        join_call_back: impl FnOnce(T) + Send + 'static,
     ) -> std::io::Result<()> {
         return self
             .factory
@@ -114,12 +113,11 @@ impl SingleThreadedReceiver<EventOrStopThread<()>> {
         thread_name: String,
         simulated_tcp_reader: SingleThreadedReceiver<Vec<u8>>,
         tcp_read_handler: T,
-        join_call_back: impl AsyncJoinCallBackTrait<T>,
+        join_call_back: impl FnOnce(T) + Send + 'static,
     ) -> Result<(), Error> {
         let tcp_reader_event_handler = TcpReaderEventHandler::new(tcp_read_handler);
 
-        let sender = EventHandlerBuilder::new_thread(
-            &self.factory,
+        let sender = EventHandlerBuilder::new(&self.factory).spawn_thread(
             thread_name,
             tcp_reader_event_handler,
             join_call_back,
@@ -166,7 +164,7 @@ impl SingleThreadedReceiver<EventOrStopThread<()>> {
         thread_name: String,
         udp_socket_simulator: UdpSocketSimulator,
         udp_read_handler: T,
-        join_call_back: impl AsyncJoinCallBackTrait<T>,
+        join_call_back: impl FnOnce(T) + Send + 'static,
     ) -> Result<(), Error> {
         return network_simulator.spawn_udp_reader(
             self.factory.clone(),
@@ -185,7 +183,7 @@ impl SingleThreadedReceiver<Vec<u8>> {
         thread_name: String,
         receiver: Receiver<EventOrStopThread<()>>,
         tcp_read_handler: T,
-        join_call_back: impl AsyncJoinCallBackTrait<T>,
+        join_call_back: impl FnOnce(T) + Send + 'static,
     ) -> Result<(), Error> {
         return receiver.spawn_simulated_tcp_reader(
             thread_name,

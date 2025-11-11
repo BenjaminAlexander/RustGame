@@ -91,8 +91,7 @@ fn test_non_blocking_tcp_reader() {
 
         let real_factory = RealFactory::new();
 
-        let reader_sender = TcpReadHandlerBuilder::new_thread(
-            &real_factory,
+        let reader_sender = TcpReadHandlerBuilder::new(&real_factory).spawn_thread(
             "TcpReader-ListenerSide".to_string(),
             tcp_reader,
             tcp_read_handler,

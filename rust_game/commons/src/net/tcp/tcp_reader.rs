@@ -7,7 +7,6 @@ use crate::net::{
 use crate::single_threaded_simulator::SingleThreadedReceiver;
 use crate::threading::channel::Receiver;
 use crate::threading::eventhandling::EventOrStopThread;
-use crate::threading::AsyncJoinCallBackTrait;
 
 enum Implementation {
     Real(RealTcpStream),
@@ -39,7 +38,7 @@ impl TcpReader {
         thread_name: String,
         receiver: Receiver<EventOrStopThread<()>>,
         tcp_read_handler: T,
-        join_call_back: impl AsyncJoinCallBackTrait<T>,
+        join_call_back: impl FnOnce(T) + Send + 'static,
     ) -> Result<(), Error> {
         match self.implementation {
             Implementation::Real(real_tcp_stream) => real_tcp_stream.spawn_real_tcp_reader(

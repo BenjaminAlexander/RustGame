@@ -17,10 +17,6 @@ use crate::threading::eventhandling::{
     EventHandlerTrait,
     EventOrStopThread,
 };
-use crate::threading::{
-    AsyncJoin,
-    AsyncJoinCallBackTrait,
-};
 use crate::time::TimeDuration;
 use log::trace;
 use std::sync::{
@@ -28,12 +24,12 @@ use std::sync::{
     Mutex,
 };
 
-pub struct EventHandlerHolder<T: EventHandlerTrait, U: AsyncJoinCallBackTrait<T::ThreadReturn>> {
+pub struct EventHandlerHolder<T: EventHandlerTrait, U: FnOnce(T::ThreadReturn) + Send + 'static> {
     internal: Arc<Mutex<Option<EventHandlerHolderInternal<T, U>>>>,
     factory: SingleThreadedFactory,
 }
 
-struct EventHandlerHolderInternal<T: EventHandlerTrait, U: AsyncJoinCallBackTrait<T::ThreadReturn>>
+struct EventHandlerHolderInternal<T: EventHandlerTrait, U: FnOnce(T::ThreadReturn) + Send + 'static>
 {
     receiver_link: ReceiverLink<EventOrStopThread<T::Event>>,
     event_handler: T,
@@ -42,7 +38,7 @@ struct EventHandlerHolderInternal<T: EventHandlerTrait, U: AsyncJoinCallBackTrai
     pending_channel_event: Option<usize>,
 }
 
-impl<T: EventHandlerTrait, U: AsyncJoinCallBackTrait<T::ThreadReturn>> Clone
+impl<T: EventHandlerTrait, U: FnOnce(T::ThreadReturn) + Send + 'static> Clone
     for EventHandlerHolder<T, U>
 {
     fn clone(&self) -> Self {
@@ -54,7 +50,7 @@ impl<T: EventHandlerTrait, U: AsyncJoinCallBackTrait<T::ThreadReturn>> Clone
     }
 }
 
-impl<T: EventHandlerTrait, U: AsyncJoinCallBackTrait<T::ThreadReturn>> EventHandlerHolder<T, U> {
+impl<T: EventHandlerTrait, U: FnOnce(T::ThreadReturn) + Send + 'static> EventHandlerHolder<T, U> {
     //TODO: can this method be moved to its caller?
     pub fn new(
         factory: SingleThreadedFactory,
@@ -126,7 +122,7 @@ impl<T: EventHandlerTrait, U: AsyncJoinCallBackTrait<T::ThreadReturn>> EventHand
     }
 }
 
-impl<T: EventHandlerTrait, U: AsyncJoinCallBackTrait<T::ThreadReturn>>
+impl<T: EventHandlerTrait, U: FnOnce(T::ThreadReturn) + Send + 'static>
     EventHandlerHolderInternal<T, U>
 {
     fn cancel_pending_event(&mut self, holder: &EventHandlerHolder<T, U>) {
@@ -187,8 +183,7 @@ impl<T: EventHandlerTrait, U: AsyncJoinCallBackTrait<T::ThreadReturn>>
             EventOrStopThread::StopThread => {
                 let result = self.event_handler.on_stop(receive_meta_data);
                 self.receiver_link.disconnect_receiver();
-                self.join_call_back
-                    .join(AsyncJoin::new(result));
+                (self.join_call_back)(result);
                 return None;
             }
         }
@@ -222,8 +217,7 @@ impl<T: EventHandlerTrait, U: AsyncJoinCallBackTrait<T::ThreadReturn>>
             EventHandleResult::StopThread(result) => {
                 trace!("Join");
                 self.receiver_link.disconnect_receiver();
-                self.join_call_back
-                    .join(AsyncJoin::new(result));
+                (self.join_call_back)(result);
                 return None;
             }
         };

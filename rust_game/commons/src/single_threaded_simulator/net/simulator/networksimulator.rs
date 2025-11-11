@@ -24,7 +24,6 @@ use crate::threading::eventhandling::{
     EventOrStopThread,
     EventSender,
 };
-use crate::threading::AsyncJoinCallBackTrait;
 use log::{
     info,
     warn,
@@ -88,7 +87,7 @@ impl NetworkSimulator {
         thread_name: String,
         receiver: SingleThreadedReceiver<EventOrStopThread<()>>,
         connection_handler: TcpConnectionHandler,
-        join_call_back: impl AsyncJoinCallBackTrait<TcpConnectionHandler>,
+        join_call_back: impl FnOnce(TcpConnectionHandler) + Send + 'static,
     ) -> Result<(), Error> {
         let mut guard = self.internal.lock().unwrap();
 
@@ -100,8 +99,7 @@ impl NetworkSimulator {
             TcpListenerEventHandler::new(socket_addr, connection_handler);
 
         //TODO: can this call a method that more directly/obviously doesn't spawn a thread
-        let sender = EventHandlerBuilder::new_thread(
-            &factory,
+        let sender = EventHandlerBuilder::new(&factory).spawn_thread(
             thread_name,
             tcp_listener_event_handler,
             join_call_back,
@@ -179,7 +177,7 @@ impl NetworkSimulator {
         receiver: SingleThreadedReceiver<EventOrStopThread<()>>,
         udp_socket: UdpSocketSimulator,
         udp_read_handler: T,
-        join_call_back: impl AsyncJoinCallBackTrait<T>,
+        join_call_back: impl FnOnce(T) + Send + 'static,
     ) -> Result<(), Error> {
         let mut guard = self.internal.lock().unwrap();
 
@@ -192,8 +190,7 @@ impl NetworkSimulator {
         let udp_read_event_handler =
             UdpReadEventHandler::new(self.clone(), udp_socket.local_addr(), udp_read_handler);
 
-        let sender = EventHandlerBuilder::new_thread(
-            &factory,
+        let sender = EventHandlerBuilder::new(&factory).spawn_thread(
             thread_name,
             udp_read_event_handler,
             join_call_back,

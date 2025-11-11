@@ -2,16 +2,12 @@ use std::thread::Builder;
 
 use log::info;
 
-use crate::threading::{
-    AsyncJoin,
-    AsyncJoinCallBackTrait,
-    Thread,
-};
+use crate::threading::Thread;
 
 pub(crate) fn spawn_thread<T: Thread>(
     thread_name: String,
     thread: T,
-    join_call_back: impl AsyncJoinCallBackTrait<T::ReturnType>,
+    call_back: impl FnOnce(T::ReturnType) + Send + 'static,
 ) -> std::io::Result<()> {
     let builder = Builder::new().name(thread_name.clone());
 
@@ -19,11 +15,10 @@ pub(crate) fn spawn_thread<T: Thread>(
         info!("Thread Starting: {}", thread_name);
 
         let return_value = thread.run();
-        let async_join = AsyncJoin::new(return_value);
 
         info!("Thread function complete. Invoking callback: {}", thread_name);
 
-        join_call_back.join(async_join);
+        (call_back)(return_value);
 
         info!("Thread Ending: {}", thread_name);
     })?;

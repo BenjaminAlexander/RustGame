@@ -3,8 +3,6 @@ use std::io::Error;
 use crate::{
     factory::FactoryTrait,
     net::{
-        TcpReadHandlerTrait,
-        TcpReader,
         UdpReadHandlerTrait,
         UdpSocket,
     },
@@ -15,7 +13,6 @@ use crate::{
             EventOrStopThread,
             EventSender,
         },
-        AsyncJoinCallBackTrait,
     },
 };
 
@@ -43,7 +40,7 @@ impl UdpReadHandlerBuilder {
         thread_name: String,
         udp_socket: UdpSocket,
         udp_read_handler: T,
-        join_call_back: impl AsyncJoinCallBackTrait<T>,
+        join_call_back: impl FnOnce(T) + Send + 'static,
     ) -> Result<EventHandlerStopper, Error> {
         udp_socket.spawn_udp_reader(
             thread_name,
@@ -59,13 +56,12 @@ impl UdpReadHandlerBuilder {
         thread_name: String,
         udp_socket: UdpSocket,
         udp_read_handler: T,
-        join_call_back: impl AsyncJoinCallBackTrait<T>,
     ) -> Result<EventHandlerStopper, Error> {
         return Self::new(factory).spawn_thread(
             thread_name,
             udp_socket,
             udp_read_handler,
-            join_call_back,
+            |_|{},
         );
     }
 }

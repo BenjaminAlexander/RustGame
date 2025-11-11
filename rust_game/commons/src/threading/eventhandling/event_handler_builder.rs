@@ -9,7 +9,6 @@ use crate::{
             EventHandlerTrait,
             EventOrStopThread,
         },
-        AsyncJoinCallBackTrait,
     },
 };
 
@@ -36,7 +35,7 @@ impl<T: EventHandlerTrait> EventHandlerBuilder<T> {
         self,
         thread_name: String,
         event_handler: T,
-        join_call_back: impl AsyncJoinCallBackTrait<T::ThreadReturn>,
+        join_call_back: impl FnOnce(T::ThreadReturn) + Send + 'static,
     ) -> Result<EventSender<T::Event>, Error> {
         self.receiver
             .spawn_event_handler(thread_name, event_handler, join_call_back)?;
@@ -47,8 +46,7 @@ impl<T: EventHandlerTrait> EventHandlerBuilder<T> {
         factory: &impl FactoryTrait,
         thread_name: String,
         event_handler: T,
-        join_call_back: impl AsyncJoinCallBackTrait<T::ThreadReturn>,
     ) -> Result<EventSender<T::Event>, Error> {
-        return Self::new(factory).spawn_thread(thread_name, event_handler, join_call_back);
+        return Self::new(factory).spawn_thread(thread_name, event_handler, |_|{});
     }
 }

@@ -8,7 +8,6 @@ use commons::{
             EventHandlerBuilder,
             EventHandlerTrait,
         },
-        AsyncJoin,
     },
     time::TimeDuration,
 };
@@ -69,14 +68,13 @@ fn test_async_join() {
 
     let async_expects = AsyncExpects::new();
     let expect_five = async_expects.new_async_expect("Five", 5);
-    let join_call_back = move |async_join: AsyncJoin<i32>| {
-        expect_five.set_actual(*async_join.get_result());
+    let join_call_back = move |result: i32| {
+        expect_five.set_actual(result);
     };
 
     let real_factory = RealFactory::new();
 
-    let sender = EventHandlerBuilder::new_thread(
-        &real_factory,
+    let sender = EventHandlerBuilder::new(&real_factory).spawn_thread(
         "EventHandler".to_string(),
         event_handler,
         join_call_back,
@@ -98,14 +96,13 @@ fn test_no_timeout() {
 
     let async_expects = AsyncExpects::new();
     let expect_five = async_expects.new_async_expect("Five", 5);
-    let join_call_back = move |async_join: AsyncJoin<i32>| {
-        expect_five.set_actual(*async_join.get_result());
+    let join_call_back = move |result: i32| {
+        expect_five.set_actual(result);
     };
 
     let real_factory = RealFactory::new();
 
-    let sender = EventHandlerBuilder::new_thread(
-        &real_factory,
+    let sender = EventHandlerBuilder::new(&real_factory).spawn_thread(
         "EventHandler".to_string(),
         event_handler,
         join_call_back,
@@ -128,14 +125,13 @@ fn test_timeout() {
 
     let async_expects = AsyncExpects::new();
     let expect_five = async_expects.new_async_expect("A Number", NUMBER);
-    let join_call_back = move |async_join: AsyncJoin<i32>| {
-        expect_five.set_actual(*async_join.get_result());
+    let join_call_back = move |result: i32| {
+        expect_five.set_actual(result);
     };
 
     let real_factory = RealFactory::new();
 
-    let sender = EventHandlerBuilder::new_thread(
-        &real_factory,
+    let sender = EventHandlerBuilder::new(&real_factory).spawn_thread(
         "EventHandler".to_string(),
         event_handler,
         join_call_back,
@@ -157,15 +153,14 @@ fn test_drop_sender_while_waiting_for_timeout() {
 
     let async_expects = AsyncExpects::new();
     let expect_five = async_expects.new_async_expect("Five", 5);
-    let join_call_back = move |async_join: AsyncJoin<i32>| {
-        expect_five.set_actual(*async_join.get_result());
+    let join_call_back = move |result: i32| {
+        expect_five.set_actual(result);
     };
 
     {
         let real_factory = RealFactory::new();
 
-        let sender = EventHandlerBuilder::new_thread(
-            &real_factory,
+        let sender = EventHandlerBuilder::new(&real_factory).spawn_thread(
             "EventHandler".to_string(),
             event_handler,
             join_call_back,

@@ -54,8 +54,7 @@ fn test_real_factory_udp() {
 
     let udp_socket_clone = udp_socket_1.try_clone().unwrap();
 
-    let udp_reader_sender = UdpReadHandlerBuilder::new_thread(
-        &real_factory,
+    let udp_reader_sender = UdpReadHandlerBuilder::new(&real_factory).spawn_thread(
         "UdpReader".to_string(),
         udp_socket_clone,
         udp_read_handler,
@@ -99,8 +98,7 @@ fn test_udp_reader_break() {
         return ControlFlow::Break(());
     };
 
-    let _sender = UdpReadHandlerBuilder::new_thread(
-        &real_factory,
+    let _sender = UdpReadHandlerBuilder::new(&real_factory).spawn_thread(
         "UdpReader".to_string(),
         udp_socket_1,
         udp_read_handler,
@@ -130,8 +128,7 @@ fn test_drop_udp_reader_sender() {
     };
 
     //Drop the sender
-    UdpReadHandlerBuilder::new_thread(
-        &real_factory,
+    UdpReadHandlerBuilder::new(&real_factory).spawn_thread(
         "UdpReader".to_string(),
         udp_socket_1,
         udp_read_handler,
