@@ -15,7 +15,7 @@ pub use self::enums::{
 pub use self::event_handler_builder::EventHandlerBuilder;
 pub use self::event_handler_stopper::EventHandlerStopper;
 pub use self::event_sender::EventSender;
-pub(crate) use self::eventhandlerthread::EventHandlerThread;
+pub(crate) use self::eventhandlerthread::spawn_event_handler;
 pub use self::eventhandlertrait::EventHandlerTrait;
 pub use self::eventsendertrait::EventSenderTrait;
 pub use self::types::EventHandlerSender;

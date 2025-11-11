@@ -14,8 +14,7 @@ use crate::threading::channel::{
     SendMetaData,
 };
 use crate::threading::eventhandling::{
-    EventHandlerThread,
-    EventHandlerTrait,
+    spawn_event_handler,
     EventOrStopThread,
 };
 use crate::time::{
@@ -90,18 +89,6 @@ impl<T: Send> RealReceiver<T> {
     }
 }
 
-impl<T: Send> RealReceiver<EventOrStopThread<T>> {
-    //TODO: remove
-    pub fn spawn_event_handler<U: EventHandlerTrait<Event = T>>(
-        self,
-        thread_name: String,
-        event_handler: U,
-        join_call_back: impl FnOnce(U::ThreadReturn) + Send + 'static,
-    ) -> std::io::Result<()> {
-        return EventHandlerThread::spawn_thread(thread_name, self, event_handler, join_call_back);
-    }
-}
-
 impl RealReceiver<EventOrStopThread<()>> {
     //TODO: can these span methods be on a trait and called with dynamic dispatch?
 
@@ -118,7 +105,7 @@ impl RealReceiver<EventOrStopThread<()>> {
 
         let event_handler = TcpListenerEventHandler::new(tcp_listener, tcp_connection_handler)?;
 
-        return self.spawn_event_handler(thread_name, event_handler, join_call_back);
+        return spawn_event_handler(thread_name, self, event_handler, join_call_back);
     }
 
     pub fn spawn_real_tcp_reader<T: TcpReadHandlerTrait>(
@@ -129,7 +116,7 @@ impl RealReceiver<EventOrStopThread<()>> {
         join_call_back: impl FnOnce(T) + Send + 'static,
     ) -> Result<(), Error> {
         let event_handler = TcpReaderEventHandler::new(real_tcp_stream, tcp_read_handler);
-        return self.spawn_event_handler(thread_name, event_handler, join_call_back);
+        return spawn_event_handler(thread_name, self, event_handler, join_call_back);
     }
 
     pub fn spawn_real_udp_reader<T: UdpReadHandlerTrait>(
@@ -140,6 +127,6 @@ impl RealReceiver<EventOrStopThread<()>> {
         join_call_back: impl FnOnce(T) + Send + 'static,
     ) -> Result<(), Error> {
         let event_handler = UdpReaderEventHandler::new(udp_socket, udp_read_handler);
-        return self.spawn_event_handler(thread_name, event_handler, join_call_back);
+        return spawn_event_handler(thread_name, self, event_handler, join_call_back);
     }
 }

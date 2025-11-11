@@ -29,6 +29,7 @@ use crate::{
             SenderTrait,
         },
         eventhandling::{
+            spawn_event_handler,
             EventHandlerTrait,
             EventOrStopThread,
         },
@@ -166,7 +167,7 @@ impl<T: Send> Receiver<EventOrStopThread<T>> {
     ) -> std::io::Result<()> {
         match self.implementation {
             ReceiverImplementation::Real(real_receiver) => {
-                real_receiver.spawn_event_handler(thread_name, event_handler, join_call_back)
+                spawn_event_handler(thread_name, real_receiver, event_handler, join_call_back)
             }
             ReceiverImplementation::Simulated(single_threaded_receiver) => single_threaded_receiver
                 .spawn_event_handler(thread_name, event_handler, join_call_back),
