@@ -35,7 +35,7 @@ impl TcpReadHandlerBuilder {
         return &self.stopper;
     }
 
-    pub fn spawn_thread<T: TcpReadHandlerTrait>(
+    pub fn spawn_thread_with_call_back<T: TcpReadHandlerTrait>(
         self,
         thread_name: String,
         tcp_reader: TcpReader,
@@ -51,17 +51,22 @@ impl TcpReadHandlerBuilder {
         return Ok(self.stopper);
     }
 
+    pub fn spawn_thread<T: TcpReadHandlerTrait>(
+        self,
+        thread_name: String,
+        tcp_reader: TcpReader,
+        tcp_read_handler: T,
+    ) -> Result<EventHandlerStopper, Error> {
+        tcp_reader.spawn_tcp_reader(thread_name, self.receiver, tcp_read_handler, |_| {})?;
+        return Ok(self.stopper);
+    }
+
     pub fn new_thread<T: TcpReadHandlerTrait>(
         factory: &impl FactoryTrait,
         thread_name: String,
         tcp_reader: TcpReader,
         tcp_read_handler: T,
     ) -> Result<EventHandlerStopper, Error> {
-        return Self::new(factory).spawn_thread(
-            thread_name,
-            tcp_reader,
-            tcp_read_handler,
-            |_|{},
-        );
+        return Self::new(factory).spawn_thread(thread_name, tcp_reader, tcp_read_handler);
     }
 }

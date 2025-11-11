@@ -71,12 +71,7 @@ fn test_tcp() {
     };
 
     let client_read_sender = client_thread_builder
-        .spawn_thread(
-            "TcpReader".to_string(),
-            reader,
-            client_read_handler,
-            |_|{},
-        )
+        .spawn_thread_with_call_back("TcpReader".to_string(), reader, client_read_handler, |_| {})
         .unwrap();
 
     server_factory.get_time_queue().run_events();

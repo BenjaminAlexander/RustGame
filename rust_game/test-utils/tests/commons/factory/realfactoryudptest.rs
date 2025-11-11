@@ -54,13 +54,14 @@ fn test_real_factory_udp() {
 
     let udp_socket_clone = udp_socket_1.try_clone().unwrap();
 
-    let udp_reader_sender = UdpReadHandlerBuilder::new(&real_factory).spawn_thread(
-        "UdpReader".to_string(),
-        udp_socket_clone,
-        udp_read_handler,
-        async_expects.new_expect_async_join("UdpReader Join"),
-    )
-    .unwrap();
+    let udp_reader_sender = UdpReadHandlerBuilder::new(&real_factory)
+        .spawn_thread_with_call_back(
+            "UdpReader".to_string(),
+            udp_socket_clone,
+            udp_read_handler,
+            async_expects.new_expect_async_join("UdpReader Join"),
+        )
+        .unwrap();
 
     send_udp_socket.send_to(&[A_NUMBER], &local_addr1).unwrap();
 
@@ -98,13 +99,14 @@ fn test_udp_reader_break() {
         return ControlFlow::Break(());
     };
 
-    let _sender = UdpReadHandlerBuilder::new(&real_factory).spawn_thread(
-        "UdpReader".to_string(),
-        udp_socket_1,
-        udp_read_handler,
-        async_expects.new_expect_async_join("UdpReader Join"),
-    )
-    .unwrap();
+    let _sender = UdpReadHandlerBuilder::new(&real_factory)
+        .spawn_thread_with_call_back(
+            "UdpReader".to_string(),
+            udp_socket_1,
+            udp_read_handler,
+            async_expects.new_expect_async_join("UdpReader Join"),
+        )
+        .unwrap();
 
     send_udp_socket.send_to(&[A_NUMBER], &local_addr1).unwrap();
 
@@ -128,13 +130,14 @@ fn test_drop_udp_reader_sender() {
     };
 
     //Drop the sender
-    UdpReadHandlerBuilder::new(&real_factory).spawn_thread(
-        "UdpReader".to_string(),
-        udp_socket_1,
-        udp_read_handler,
-        async_expects.new_expect_async_join("UdpReader Join"),
-    )
-    .unwrap();
+    UdpReadHandlerBuilder::new(&real_factory)
+        .spawn_thread_with_call_back(
+            "UdpReader".to_string(),
+            udp_socket_1,
+            udp_read_handler,
+            async_expects.new_expect_async_join("UdpReader Join"),
+        )
+        .unwrap();
 
     async_expects.wait_for_all();
 }

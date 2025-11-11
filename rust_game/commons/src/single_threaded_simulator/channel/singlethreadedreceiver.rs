@@ -117,12 +117,9 @@ impl SingleThreadedReceiver<EventOrStopThread<()>> {
     ) -> Result<(), Error> {
         let tcp_reader_event_handler = TcpReaderEventHandler::new(tcp_read_handler);
 
-        let sender = EventHandlerBuilder::new(&self.factory).spawn_thread(
-            thread_name,
-            tcp_reader_event_handler,
-            join_call_back,
-        )
-        .unwrap();
+        let sender = EventHandlerBuilder::new(&self.factory)
+            .spawn_thread_with_callback(thread_name, tcp_reader_event_handler, join_call_back)
+            .unwrap();
 
         let sender_clone = sender.clone();
         simulated_tcp_reader.to_consumer(move |receive_or_disconnect| {

@@ -32,16 +32,17 @@ impl SingleThreadExecutor {
 
         let factory = RealFactory::new();
 
-        let sender = EventHandlerBuilder::new(&factory).spawn_thread(
-            "SingleThreadExecutor".to_string(),
-            SingleThreadExecutorEventHandler(),
-            move |_| {
-                let (wait_for_join_mutex, condvar) = join_signal_clone.as_ref();
-                *wait_for_join_mutex.lock().unwrap() = false;
-                condvar.notify_all();
-            },
-        )
-        .unwrap();
+        let sender = EventHandlerBuilder::new(&factory)
+            .spawn_thread_with_callback(
+                "SingleThreadExecutor".to_string(),
+                SingleThreadExecutorEventHandler(),
+                move |_| {
+                    let (wait_for_join_mutex, condvar) = join_signal_clone.as_ref();
+                    *wait_for_join_mutex.lock().unwrap() = false;
+                    condvar.notify_all();
+                },
+            )
+            .unwrap();
 
         return Self {
             join_signal,

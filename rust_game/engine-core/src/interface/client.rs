@@ -38,7 +38,6 @@ impl<GameFactory: GameFactoryTrait> Client<GameFactory> {
                     core_sender.clone(),
                     render_receiver_sender,
                 ),
-                |_|{},
             )
             .unwrap();
 

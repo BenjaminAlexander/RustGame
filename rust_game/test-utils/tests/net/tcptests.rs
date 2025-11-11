@@ -91,13 +91,14 @@ fn test_non_blocking_tcp_reader() {
 
         let real_factory = RealFactory::new();
 
-        let reader_sender = TcpReadHandlerBuilder::new(&real_factory).spawn_thread(
-            "TcpReader-ListenerSide".to_string(),
-            tcp_reader,
-            tcp_read_handler,
-            async_expects_clone.new_expect_async_join("Expect TcpReader-ListenerSide Join"),
-        )
-        .unwrap();
+        let reader_sender = TcpReadHandlerBuilder::new(&real_factory)
+            .spawn_thread_with_call_back(
+                "TcpReader-ListenerSide".to_string(),
+                tcp_reader,
+                tcp_read_handler,
+                async_expects_clone.new_expect_async_join("Expect TcpReader-ListenerSide Join"),
+            )
+            .unwrap();
 
         tcp_reader_senders.push(reader_sender);
 
@@ -105,7 +106,7 @@ fn test_non_blocking_tcp_reader() {
     });
 
     tcp_listener_builder
-        .spawn_thread(
+        .spawn_thread_with_call_back(
             "TcpListener".to_string(),
             SocketAddr::from(LOCAL_EPHEMERAL_SOCKET_ADDR_V4),
             tcp_connection_handler,

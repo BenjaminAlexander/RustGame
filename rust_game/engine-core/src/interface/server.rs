@@ -15,7 +15,6 @@ use commons::threading::{
         EventHandlerBuilder,
         EventSender,
     },
-    AsyncJoin,
 };
 use log::{
     error,
@@ -48,11 +47,7 @@ impl<GameFactory: GameFactoryTrait> Server<GameFactory> {
         }
 
         let core_sender = server_core_thread_builder
-            .spawn_thread(
-                "ServerCore".to_string(),
-                server_core,
-                |_|{},
-            )
+            .spawn_thread("ServerCore".to_string(), server_core)
             .unwrap();
 
         let (render_receiver_sender, render_receiver) =

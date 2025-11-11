@@ -76,12 +76,9 @@ impl<GameFactory: GameFactoryTrait> ClientCore<GameFactory> {
 
         let manager = Manager::new(factory.clone(), client_manager_observer);
 
-        let manager_sender = EventHandlerBuilder::new_thread(
-            &factory,
-            "ClientManager".to_string(),
-            manager,
-        )
-        .unwrap();
+        let manager_sender =
+            EventHandlerBuilder::new_thread(&factory, "ClientManager".to_string(), manager)
+                .unwrap();
 
         let socket_addr_v4 = SocketAddrV4::new(server_ip.clone(), GameFactory::Game::TCP_PORT);
         let socket_addr = SocketAddr::from(socket_addr_v4);

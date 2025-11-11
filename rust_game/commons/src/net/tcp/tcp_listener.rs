@@ -35,7 +35,7 @@ impl TcpListenerBuilder {
         return &self.stopper;
     }
 
-    pub fn spawn_thread<T: TcpConnectionHandlerTrait>(
+    pub fn spawn_thread_with_call_back<T: TcpConnectionHandlerTrait>(
         self,
         thread_name: String,
         socket_addr: SocketAddr,
@@ -51,17 +51,27 @@ impl TcpListenerBuilder {
         return Ok(self.stopper);
     }
 
+    pub fn spawn_thread<T: TcpConnectionHandlerTrait>(
+        self,
+        thread_name: String,
+        socket_addr: SocketAddr,
+        tcp_connection_handler: T,
+    ) -> Result<EventHandlerStopper, Error> {
+        self.receiver.spawn_tcp_listener(
+            thread_name,
+            socket_addr,
+            tcp_connection_handler,
+            |_| {},
+        )?;
+        return Ok(self.stopper);
+    }
+
     pub fn new_thread<T: TcpConnectionHandlerTrait>(
         factory: &impl FactoryTrait,
         thread_name: String,
         socket_addr: SocketAddr,
         tcp_connection_handler: T,
     ) -> Result<EventHandlerStopper, Error> {
-        return Self::new(factory).spawn_thread(
-            thread_name,
-            socket_addr,
-            tcp_connection_handler,
-            |_|{},
-        );
+        return Self::new(factory).spawn_thread(thread_name, socket_addr, tcp_connection_handler);
     }
 }

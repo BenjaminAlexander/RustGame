@@ -74,12 +74,9 @@ fn test_async_join() {
 
     let real_factory = RealFactory::new();
 
-    let sender = EventHandlerBuilder::new(&real_factory).spawn_thread(
-        "EventHandler".to_string(),
-        event_handler,
-        join_call_back,
-    )
-    .unwrap();
+    let sender = EventHandlerBuilder::new(&real_factory)
+        .spawn_thread_with_callback("EventHandler".to_string(), event_handler, join_call_back)
+        .unwrap();
 
     sender.send_event(CountEvent::Add(7)).unwrap();
     sender.send_event(CountEvent::Subtract(2)).unwrap();
@@ -102,12 +99,9 @@ fn test_no_timeout() {
 
     let real_factory = RealFactory::new();
 
-    let sender = EventHandlerBuilder::new(&real_factory).spawn_thread(
-        "EventHandler".to_string(),
-        event_handler,
-        join_call_back,
-    )
-    .unwrap();
+    let sender = EventHandlerBuilder::new(&real_factory)
+        .spawn_thread_with_callback("EventHandler".to_string(), event_handler, join_call_back)
+        .unwrap();
 
     sender.send_event(CountEvent::Add(7)).unwrap();
     sender.send_event(CountEvent::WaitForTimeout).unwrap();
@@ -131,12 +125,9 @@ fn test_timeout() {
 
     let real_factory = RealFactory::new();
 
-    let sender = EventHandlerBuilder::new(&real_factory).spawn_thread(
-        "EventHandler".to_string(),
-        event_handler,
-        join_call_back,
-    )
-    .unwrap();
+    let sender = EventHandlerBuilder::new(&real_factory)
+        .spawn_thread_with_callback("EventHandler".to_string(), event_handler, join_call_back)
+        .unwrap();
 
     sender.send_event(CountEvent::Add(7)).unwrap();
     sender.send_event(CountEvent::Subtract(2)).unwrap();
@@ -160,12 +151,9 @@ fn test_drop_sender_while_waiting_for_timeout() {
     {
         let real_factory = RealFactory::new();
 
-        let sender = EventHandlerBuilder::new(&real_factory).spawn_thread(
-            "EventHandler".to_string(),
-            event_handler,
-            join_call_back,
-        )
-        .unwrap();
+        let sender = EventHandlerBuilder::new(&real_factory)
+            .spawn_thread_with_callback("EventHandler".to_string(), event_handler, join_call_back)
+            .unwrap();
 
         sender.send_event(CountEvent::Add(7)).unwrap();
         sender.send_event(CountEvent::Subtract(2)).unwrap();

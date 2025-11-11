@@ -342,7 +342,6 @@ impl<GameFactory: GameFactoryTrait> ServerCore<GameFactory> {
                     .spawn_thread(
                         "ServerManager".to_string(),
                         Manager::new(self.factory.clone(), server_manager_observer),
-                        |_|{},
                     )
                     .unwrap(),
             );

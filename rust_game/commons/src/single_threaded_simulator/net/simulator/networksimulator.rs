@@ -99,12 +99,9 @@ impl NetworkSimulator {
             TcpListenerEventHandler::new(socket_addr, connection_handler);
 
         //TODO: can this call a method that more directly/obviously doesn't spawn a thread
-        let sender = EventHandlerBuilder::new(&factory).spawn_thread(
-            thread_name,
-            tcp_listener_event_handler,
-            join_call_back,
-        )
-        .unwrap();
+        let sender = EventHandlerBuilder::new(&factory)
+            .spawn_thread_with_callback(thread_name, tcp_listener_event_handler, join_call_back)
+            .unwrap();
 
         let sender_clone = sender.clone();
         receiver.to_consumer(move |receive_or_disconnect| {
@@ -190,12 +187,9 @@ impl NetworkSimulator {
         let udp_read_event_handler =
             UdpReadEventHandler::new(self.clone(), udp_socket.local_addr(), udp_read_handler);
 
-        let sender = EventHandlerBuilder::new(&factory).spawn_thread(
-            thread_name,
-            udp_read_event_handler,
-            join_call_back,
-        )
-        .unwrap();
+        let sender = EventHandlerBuilder::new(&factory)
+            .spawn_thread_with_callback(thread_name, udp_read_event_handler, join_call_back)
+            .unwrap();
 
         let sender_clone = sender.clone();
         receiver.to_consumer(move |receive_or_disconnect| {

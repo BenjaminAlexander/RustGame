@@ -35,7 +35,7 @@ impl UdpReadHandlerBuilder {
         return &self.stopper;
     }
 
-    pub fn spawn_thread<T: UdpReadHandlerTrait>(
+    pub fn spawn_thread_with_call_back<T: UdpReadHandlerTrait>(
         self,
         thread_name: String,
         udp_socket: UdpSocket,
@@ -51,17 +51,22 @@ impl UdpReadHandlerBuilder {
         return Ok(self.stopper);
     }
 
+    pub fn spawn_thread<T: UdpReadHandlerTrait>(
+        self,
+        thread_name: String,
+        udp_socket: UdpSocket,
+        udp_read_handler: T,
+    ) -> Result<EventHandlerStopper, Error> {
+        udp_socket.spawn_udp_reader(thread_name, self.receiver, udp_read_handler, |_| {})?;
+        return Ok(self.stopper);
+    }
+
     pub fn new_thread<T: UdpReadHandlerTrait>(
         factory: &impl FactoryTrait,
         thread_name: String,
         udp_socket: UdpSocket,
         udp_read_handler: T,
     ) -> Result<EventHandlerStopper, Error> {
-        return Self::new(factory).spawn_thread(
-            thread_name,
-            udp_socket,
-            udp_read_handler,
-            |_|{},
-        );
+        return Self::new(factory).spawn_thread(thread_name, udp_socket, udp_read_handler);
     }
 }

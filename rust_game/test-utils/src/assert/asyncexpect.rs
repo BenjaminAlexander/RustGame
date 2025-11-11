@@ -84,10 +84,9 @@ impl AsyncExpects {
         &self,
         description: &str,
     ) -> impl FnOnce(T) + Send + 'static {
-
         let expect = self.new_async_expect(description, ());
 
-        return move |_|{
+        return move |_| {
             info!("Thread joined as expected.");
             expect.set_actual(());
         };

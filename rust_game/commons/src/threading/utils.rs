@@ -16,7 +16,10 @@ pub(crate) fn spawn_thread<T: Thread>(
 
         let return_value = thread.run();
 
-        info!("Thread function complete. Invoking callback: {}", thread_name);
+        info!(
+            "Thread function complete. Invoking callback: {}",
+            thread_name
+        );
 
         (call_back)(return_value);
 

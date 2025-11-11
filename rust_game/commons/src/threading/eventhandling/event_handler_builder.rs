@@ -31,7 +31,7 @@ impl<T: EventHandlerTrait> EventHandlerBuilder<T> {
         return &self.sender;
     }
 
-    pub fn spawn_thread(
+    pub fn spawn_thread_with_callback(
         self,
         thread_name: String,
         event_handler: T,
@@ -42,11 +42,19 @@ impl<T: EventHandlerTrait> EventHandlerBuilder<T> {
         return Ok(self.sender);
     }
 
+    pub fn spawn_thread(
+        self,
+        thread_name: String,
+        event_handler: T,
+    ) -> Result<EventSender<T::Event>, Error> {
+        return self.spawn_thread_with_callback(thread_name, event_handler, |_| {});
+    }
+
     pub fn new_thread(
         factory: &impl FactoryTrait,
         thread_name: String,
         event_handler: T,
     ) -> Result<EventSender<T::Event>, Error> {
-        return Self::new(factory).spawn_thread(thread_name, event_handler, |_|{});
+        return Self::new(factory).spawn_thread(thread_name, event_handler);
     }
 }
