@@ -10,7 +10,6 @@ use commons::net::{
 };
 use commons::single_threaded_simulator::SingleThreadedFactory;
 use commons::threading::eventhandling::EventHandlerStopper;
-use commons::threading::AsyncJoin;
 use log::{
     error,
     info,
@@ -52,7 +51,6 @@ fn test_tcp() {
         "TcpConnectionListener".to_string(),
         listen_socket.clone(),
         connection_handler,
-        AsyncJoin::log_async_join,
     )
     .unwrap();
 
@@ -77,7 +75,6 @@ fn test_tcp() {
             "TcpReader".to_string(),
             reader,
             client_read_handler,
-            AsyncJoin::log_async_join,
         )
         .unwrap();
 
@@ -165,7 +162,6 @@ impl TcpConnectionHandlerTrait for ConnectionHandler {
             "TcpReader".to_string(),
             tcp_receiver,
             tcp_read_handler,
-            AsyncJoin::log_async_join,
         )
         .unwrap();
 

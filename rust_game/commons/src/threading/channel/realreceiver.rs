@@ -18,10 +18,7 @@ use crate::threading::eventhandling::{
     EventHandlerTrait,
     EventOrStopThread,
 };
-use crate::threading::{
-    utils,
-    AsyncJoinCallBackTrait,
-};
+use crate::threading::utils;
 use crate::time::{
     TimeDuration,
     TimeSource,
@@ -98,11 +95,10 @@ impl<T: Send> RealReceiver<EventOrStopThread<T>> {
     pub fn spawn_event_handler<U: EventHandlerTrait<Event = T>>(
         self,
         thread_name: String,
-        event_handler: U,
-        join_call_back: impl AsyncJoinCallBackTrait<()>,
+        event_handler: U
     ) -> std::io::Result<()> {
         let thread = EventHandlerThread::new(self, event_handler);
-        utils::spawn_thread(thread_name, thread, join_call_back)?;
+        utils::spawn_thread(thread_name, thread)?;
         return Ok(());
     }
 }
@@ -114,8 +110,7 @@ impl RealReceiver<EventOrStopThread<()>> {
         self,
         thread_name: String,
         socket_addr: SocketAddr,
-        mut tcp_connection_handler: T,
-        join_call_back: impl AsyncJoinCallBackTrait<()>,
+        mut tcp_connection_handler: T
     ) -> std::io::Result<()> {
         let tcp_listener = TcpListener::bind(socket_addr)?;
 
@@ -123,28 +118,26 @@ impl RealReceiver<EventOrStopThread<()>> {
 
         let event_handler = TcpListenerEventHandler::new(tcp_listener, tcp_connection_handler)?;
 
-        return self.spawn_event_handler(thread_name, event_handler, join_call_back);
+        return self.spawn_event_handler(thread_name, event_handler);
     }
 
     pub fn spawn_real_tcp_reader<T: TcpReadHandlerTrait>(
         self,
         thread_name: String,
         real_tcp_stream: RealTcpStream,
-        tcp_read_handler: T,
-        join_call_back: impl AsyncJoinCallBackTrait<()>,
+        tcp_read_handler: T
     ) -> Result<(), Error> {
         let event_handler = TcpReaderEventHandler::new(real_tcp_stream, tcp_read_handler);
-        return self.spawn_event_handler(thread_name, event_handler, join_call_back);
+        return self.spawn_event_handler(thread_name, event_handler);
     }
 
     pub fn spawn_real_udp_reader<T: UdpReadHandlerTrait>(
         self,
         thread_name: String,
         udp_socket: RealUdpSocket,
-        udp_read_handler: T,
-        join_call_back: impl AsyncJoinCallBackTrait<()>,
+        udp_read_handler: T
     ) -> Result<(), Error> {
         let event_handler = UdpReaderEventHandler::new(udp_socket, udp_read_handler);
-        return self.spawn_event_handler(thread_name, event_handler, join_call_back);
+        return self.spawn_event_handler(thread_name, event_handler);
     }
 }

@@ -29,4 +29,5 @@ pub use self::udp::UdpReadHandlerBuilder;
 pub use self::udp::UdpSocket;
 pub(crate) use self::udpreadereventhandler::UdpReaderEventHandler;
 pub use self::udpreadhandlertrait::UdpReadHandlerTrait;
+pub use self::udpreadhandlertrait::UdpReadHandler;
 pub use self::udpsockettrait::UdpSocketTrait;

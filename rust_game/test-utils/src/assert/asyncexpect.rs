@@ -1,10 +1,5 @@
-use commons::threading::AsyncJoinCallBackTrait;
-use log::{
-    error,
-    info,
-};
+use log::error;
 use std::fmt::Debug;
-use std::marker::PhantomData;
 use std::ops::Deref;
 use std::ptr::addr_eq;
 use std::sync::{
@@ -79,16 +74,6 @@ impl AsyncExpects {
         return AsyncExpect {
             async_expects: self.clone(),
             async_expect_object,
-        };
-    }
-
-    pub fn new_expect_async_join<T: Send + 'static>(
-        &self,
-        description: &str,
-    ) -> ExpectAsyncJoin<T> {
-        return ExpectAsyncJoin {
-            async_expect: self.new_async_expect(description, ()),
-            phantom: PhantomData,
         };
     }
 
@@ -221,20 +206,5 @@ impl<T: Debug + Eq + Send + 'static> AsyncExpect<T> {
         }
 
         state.panic_if_failed();
-    }
-}
-
-pub struct ExpectAsyncJoin<T: Send + 'static> {
-    async_expect: AsyncExpect<()>,
-    phantom: PhantomData<T>,
-}
-
-impl<T: Send> AsyncJoinCallBackTrait<T> for ExpectAsyncJoin<T> {
-    fn join(self, async_join: commons::threading::AsyncJoin<T>) {
-        info!(
-            "Thread Name: {:?} joined as expected.",
-            async_join.get_thread_name()
-        );
-        self.async_expect.set_actual(());
     }
 }

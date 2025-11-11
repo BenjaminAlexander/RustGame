@@ -4,7 +4,7 @@ use commons::{
         RealFactory,
     },
     logging::LoggingConfigBuilder,
-    net::UdpReadHandlerBuilder,
+    net::{UdpReadHandler, UdpReadHandlerBuilder},
 };
 use log::{
     info,
@@ -45,12 +45,15 @@ fn test_real_factory_udp() {
     info!("Bound to local addr: {:?}", local_addr1);
 
     let expected_number_clone = expected_number.clone();
-    let udp_read_handler = move |peer_addr: SocketAddr, buf: &[u8]| {
+    let mut udp_read_handler = UdpReadHandler::new(move |peer_addr: SocketAddr, buf: &[u8]| {
         expected_number_clone.set_actual(buf[0]);
         expected_socket.set_actual(peer_addr);
 
         return ControlFlow::Continue(());
-    };
+    });
+
+    let expect_stop = async_expects.new_async_expect("Expect UdpReader stop", ());
+    udp_read_handler.set_on_stop(move ||expect_stop.set_actual(()));
 
     let udp_socket_clone = udp_socket_1.try_clone().unwrap();
 
@@ -59,7 +62,6 @@ fn test_real_factory_udp() {
         "UdpReader".to_string(),
         udp_socket_clone,
         udp_read_handler,
-        async_expects.new_expect_async_join("UdpReader Join"),
     )
     .unwrap();
 
@@ -93,18 +95,17 @@ fn test_udp_reader_break() {
 
     info!("Bound to local addr: {:?}", local_addr1);
 
-    let udp_read_handler = move |_, buf: &[u8]| {
+    let udp_read_handler = UdpReadHandler::new(move |_, buf: &[u8]| {
         expected_number.set_actual(buf[0]);
 
         return ControlFlow::Break(());
-    };
+    });
 
     let _sender = UdpReadHandlerBuilder::new_thread(
         &real_factory,
         "UdpReader".to_string(),
         udp_socket_1,
         udp_read_handler,
-        async_expects.new_expect_async_join("UdpReader Join"),
     )
     .unwrap();
 
@@ -125,9 +126,12 @@ fn test_drop_udp_reader_sender() {
 
     let udp_socket_1 = real_factory.bind_udp_ephemeral_port().unwrap();
 
-    let udp_read_handler = move |_, _: &[u8]| {
+    let mut udp_read_handler = UdpReadHandler::new(move |_, _: &[u8]| {
         panic!();
-    };
+    });
+
+    let expect_channel_disconnect = async_expects.new_async_expect("Expect UdpReader channel disconnect", ());
+    udp_read_handler.set_on_channel_disconnected(move ||expect_channel_disconnect.set_actual(()));
 
     //Drop the sender
     UdpReadHandlerBuilder::new_thread(
@@ -135,7 +139,6 @@ fn test_drop_udp_reader_sender() {
         "UdpReader".to_string(),
         udp_socket_1,
         udp_read_handler,
-        async_expects.new_expect_async_join("UdpReader Join"),
     )
     .unwrap();
 

@@ -94,7 +94,7 @@ mod tests {
 
     use crate::{
         logging::LoggingConfigBuilder,
-        net::LOCAL_EPHEMERAL_SOCKET_ADDR_V4,
+        net::{LOCAL_EPHEMERAL_SOCKET_ADDR_V4, UdpReadHandler},
     };
 
     use super::*;
@@ -112,7 +112,7 @@ mod tests {
             return ControlFlow::Continue(());
         };
 
-        let read_handler = UdpReaderEventHandler::new(udp_socket, udp_read_handler);
+        let read_handler = UdpReaderEventHandler::new(udp_socket, UdpReadHandler::new(udp_read_handler));
 
         let buf = [0];
 

@@ -15,7 +15,6 @@ use commons::threading::{
         EventHandlerBuilder,
         EventSender,
     },
-    AsyncJoin,
 };
 use log::{
     error,
@@ -51,7 +50,6 @@ impl<GameFactory: GameFactoryTrait> Server<GameFactory> {
             .spawn_thread(
                 "ServerCore".to_string(),
                 server_core,
-                AsyncJoin::log_async_join,
             )
             .unwrap();
 

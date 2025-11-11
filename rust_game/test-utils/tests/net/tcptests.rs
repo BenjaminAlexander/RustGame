@@ -83,10 +83,15 @@ fn test_non_blocking_tcp_reader() {
 
         let listener_sender = listener_sender.clone();
         let expected_struct = expected_struct.clone();
-        let tcp_read_handler = TcpReadHandler::new(move |actual_struct: StructToSend| {
+        let expect_read_error = async_expects_clone.new_async_expect("Expect TcpReader-ListenerSide Read Error", ());
+        let mut tcp_read_handler = TcpReadHandler::new(move |actual_struct: StructToSend| {
             expected_struct.set_actual(actual_struct);
             listener_sender.send_stop_thread().unwrap();
             return ControlFlow::Break(());
+        });
+        
+        tcp_read_handler.set_on_read_error(move ||{
+            expect_read_error.set_actual(());
         });
 
         let real_factory = RealFactory::new();
@@ -96,7 +101,6 @@ fn test_non_blocking_tcp_reader() {
             "TcpReader-ListenerSide".to_string(),
             tcp_reader,
             tcp_read_handler,
-            async_expects_clone.new_expect_async_join("Expect TcpReader-ListenerSide Join"),
         )
         .unwrap();
 
@@ -105,12 +109,16 @@ fn test_non_blocking_tcp_reader() {
         return ControlFlow::Continue(());
     });
 
+    let expect_stop = async_expects.new_async_expect("Expect listener stop", ());
+    tcp_connection_handler.set_on_stop(move ||{
+        expect_stop.set_actual(());
+    });
+
     tcp_listener_builder
         .spawn_thread(
             "TcpListener".to_string(),
             SocketAddr::from(LOCAL_EPHEMERAL_SOCKET_ADDR_V4),
             tcp_connection_handler,
-            async_expects.new_expect_async_join("Expect listener join"),
         )
         .unwrap();
 

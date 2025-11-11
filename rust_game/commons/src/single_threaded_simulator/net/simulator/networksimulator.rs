@@ -24,7 +24,6 @@ use crate::threading::eventhandling::{
     EventOrStopThread,
     EventSender,
 };
-use crate::threading::AsyncJoinCallBackTrait;
 use log::{
     info,
     warn,
@@ -88,7 +87,6 @@ impl NetworkSimulator {
         thread_name: String,
         receiver: SingleThreadedReceiver<EventOrStopThread<()>>,
         connection_handler: TcpConnectionHandler,
-        join_call_back: impl AsyncJoinCallBackTrait<()>,
     ) -> Result<(), Error> {
         let mut guard = self.internal.lock().unwrap();
 
@@ -104,7 +102,6 @@ impl NetworkSimulator {
             &factory,
             thread_name,
             tcp_listener_event_handler,
-            join_call_back,
         )
         .unwrap();
 
@@ -179,7 +176,6 @@ impl NetworkSimulator {
         receiver: SingleThreadedReceiver<EventOrStopThread<()>>,
         udp_socket: UdpSocketSimulator,
         udp_read_handler: T,
-        join_call_back: impl AsyncJoinCallBackTrait<()>,
     ) -> Result<(), Error> {
         let mut guard = self.internal.lock().unwrap();
 
@@ -196,7 +192,6 @@ impl NetworkSimulator {
             &factory,
             thread_name,
             udp_read_event_handler,
-            join_call_back,
         )
         .unwrap();
 

@@ -1,12 +1,12 @@
 use crate::{
     factory::RealFactory,
-    threading::eventhandling::{
+    threading::{channel::ReceiveMetaData, eventhandling::{
         ChannelEvent,
         EventHandleResult,
         EventHandlerBuilder,
         EventHandlerTrait,
         EventSender,
-    },
+    }},
 };
 use std::sync::{
     Arc,
@@ -25,18 +25,14 @@ pub struct SingleThreadExecutor {
 impl SingleThreadExecutor {
     pub fn new() -> Self {
         let join_signal = Arc::new((Mutex::new(true), Condvar::new()));
-        let join_signal_clone = join_signal.clone();
 
         let factory = RealFactory::new();
 
         let sender = EventHandlerBuilder::new_thread(
             &factory,
             "SingleThreadExecutor".to_string(),
-            SingleThreadExecutorEventHandler,
-            move |_| {
-                let (wait_for_join_mutex, condvar) = join_signal_clone.as_ref();
-                *wait_for_join_mutex.lock().unwrap() = false;
-                condvar.notify_all();
+            SingleThreadExecutorEventHandler{
+                join_signal: join_signal.clone()
             },
         )
         .unwrap();
@@ -81,7 +77,17 @@ impl SingleThreadExecutor {
     }
 }
 
-struct SingleThreadExecutorEventHandler;
+struct SingleThreadExecutorEventHandler {
+    join_signal: Arc<(Mutex<bool>, Condvar)>,
+}
+
+impl SingleThreadExecutorEventHandler {
+    fn signal_thread_end(self) {
+        let (wait_for_join_mutex, condvar) = self.join_signal.as_ref();
+        *wait_for_join_mutex.lock().unwrap() = false;
+        condvar.notify_all();
+    }
+}
 
 impl EventHandlerTrait for SingleThreadExecutorEventHandler {
     type Event = Runnable;
@@ -92,9 +98,16 @@ impl EventHandlerTrait for SingleThreadExecutorEventHandler {
                 runnable();
                 return EventHandleResult::WaitForNextEvent(self);
             }
-            ChannelEvent::ChannelDisconnected => EventHandleResult::StopThread,
+            ChannelEvent::ChannelDisconnected => {
+                self.signal_thread_end();
+                EventHandleResult::StopThread
+            }
             _ => EventHandleResult::WaitForNextEvent(self),
         }
+    }
+
+    fn on_stop(self, _receive_meta_data: ReceiveMetaData) {
+        self.signal_thread_end();
     }
 }
 

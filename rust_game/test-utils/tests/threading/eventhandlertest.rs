@@ -8,7 +8,6 @@ use commons::{
             EventHandlerBuilder,
             EventHandlerTrait,
         },
-        AsyncJoin,
     },
     time::TimeDuration,
 };
@@ -87,7 +86,6 @@ fn test_async_join() {
         &real_factory,
         "EventHandler".to_string(),
         event_handler,
-        AsyncJoin::log_async_join,
     )
     .unwrap();
 
@@ -116,7 +114,6 @@ fn test_no_timeout() {
         &real_factory,
         "EventHandler".to_string(),
         event_handler,
-        AsyncJoin::log_async_join,
     )
     .unwrap();
 
@@ -146,7 +143,6 @@ fn test_timeout() {
         &real_factory,
         "EventHandler".to_string(),
         event_handler,
-        AsyncJoin::log_async_join,
     )
     .unwrap();
 
@@ -176,7 +172,6 @@ fn test_drop_sender_while_waiting_for_timeout() {
             &real_factory,
             "EventHandler".to_string(),
             event_handler,
-            AsyncJoin::log_async_join,
         )
         .unwrap();
 

@@ -12,7 +12,6 @@ use crate::threading::eventhandling::{
     EventHandlerTrait,
     EventSender,
 };
-use crate::threading::AsyncJoin;
 use crate::time::timerservice::schedule::Schedule;
 use crate::time::timerservice::timer::Timer;
 use crate::time::timerservice::timer_call_back::TimerCallBack;
@@ -65,7 +64,6 @@ impl<Factory: FactoryTrait, T: TimerCreationCallBack, U: TimerCallBack>
             &self.event_handler.factory.clone(),
             "TimerServiceThread".to_string(),
             self.event_handler,
-            AsyncJoin::log_async_join,
         )?;
 
         return Ok(TimerService { sender });

@@ -37,7 +37,6 @@ use commons::threading::eventhandling::{
     EventHandlerTrait,
     EventSender,
 };
-use commons::threading::AsyncJoin;
 use log::{
     trace,
     warn,
@@ -78,7 +77,6 @@ impl<GameFactory: GameFactoryTrait> ClientCore<GameFactory> {
             &factory,
             "ClientManager".to_string(),
             manager,
-            AsyncJoin::log_async_join,
         )
         .unwrap();
 
@@ -99,7 +97,6 @@ impl<GameFactory: GameFactoryTrait> ClientCore<GameFactory> {
             "ClientTcpInput".to_string(),
             tcp_receiver,
             tcp_input,
-            AsyncJoin::log_async_join,
         )
         .unwrap();
 
@@ -107,7 +104,6 @@ impl<GameFactory: GameFactoryTrait> ClientCore<GameFactory> {
             &factory,
             "ClientTcpOutput".to_string(),
             TcpOutput::new(tcp_sender),
-            AsyncJoin::log_async_join,
         )
         .unwrap();
 
@@ -228,7 +224,6 @@ impl<GameFactory: GameFactoryTrait> State<GameFactory> {
                         manager_sender.clone(),
                     )
                     .unwrap(),
-                    AsyncJoin::log_async_join,
                 )
                 .unwrap();
 
@@ -241,7 +236,6 @@ impl<GameFactory: GameFactoryTrait> State<GameFactory> {
                         udp_socket.try_clone().unwrap(),
                         initial_information.clone(),
                     ),
-                    AsyncJoin::log_async_join,
                 )
                 .unwrap();
 

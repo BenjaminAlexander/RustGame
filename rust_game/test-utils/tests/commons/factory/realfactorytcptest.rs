@@ -1,13 +1,7 @@
 use commons::net::{
-    TcpListenerBuilder,
-    TcpReadHandlerBuilder,
-    LOCAL_EPHEMERAL_SOCKET_ADDR_V4,
-    NET_POLLING_PERIOD,
+    LOCAL_EPHEMERAL_SOCKET_ADDR_V4, NET_POLLING_PERIOD, TcpListenerBuilder, TcpReadHandlerBuilder
 };
-use commons::threading::{
-    AsyncJoinCallBackTrait,
-    SingleThreadExecutor,
-};
+use commons::threading::SingleThreadExecutor;
 use commons::{
     factory::{
         FactoryTrait,
@@ -67,7 +61,7 @@ fn test_real_factory_tcp() {
 
         let tcp_listener_stopper_clone = tcp_listener_stopper.clone();
         let expected_number_clone = expected_number.clone();
-        let tcp_read_handler = TcpReadHandler::new(move |number: i32| {
+        let mut tcp_read_handler = TcpReadHandler::new(move |number: i32| {
             info!("Read a number {:?}", number);
 
             expected_number_clone.set_actual(number);
@@ -78,6 +72,11 @@ fn test_real_factory_tcp() {
             return ControlFlow::Continue(());
         });
 
+        let expect_tcp_read_error = async_expects_clone.new_async_expect("Expect TcpReader Join", ());
+        tcp_read_handler.set_on_read_error(move ||{
+            expect_tcp_read_error.set_actual(());
+        });
+
         let real_factory = RealFactory::new();
 
         let sender = TcpReadHandlerBuilder::new_thread(
@@ -85,7 +84,6 @@ fn test_real_factory_tcp() {
             "TcpReader".to_string(),
             tcp_reader,
             tcp_read_handler,
-            async_expects_clone.new_expect_async_join("Expect TcpReader Join"),
         )
         .unwrap();
 
@@ -94,12 +92,16 @@ fn test_real_factory_tcp() {
         return ControlFlow::Continue(());
     });
 
+    let expect_tcp_listener_stop = async_expects.new_async_expect("Expect listener stop", ());
+    tcp_connection_handler.set_on_stop(move ||{
+        expect_tcp_listener_stop.set_actual(());
+    });
+
     tcp_listener_builder
         .spawn_thread(
             "TcpListener".to_string(),
             SocketAddr::from(LOCAL_EPHEMERAL_SOCKET_ADDR_V4),
             tcp_connection_handler,
-            async_expects.new_expect_async_join("Expect listener join"),
         )
         .unwrap();
 
@@ -113,13 +115,19 @@ fn test_tcp_listener_channel_disconnect() {
     let async_expects = AsyncExpects::new();
     let real_factory = RealFactory::new();
 
+    let mut tcp_connection_handler = TcpConnectionHandler::new();
+
+    let expect_tcp_listener_channel_disconnect = async_expects.new_async_expect("Expect listener channel disconnect", ());
+    tcp_connection_handler.set_on_channel_disconnected(move ||{
+        expect_tcp_listener_channel_disconnect.set_actual(());
+    });
+
     //Drop the sender to cause a channel disconnect
     TcpListenerBuilder::new_thread(
         &real_factory,
         "TcpListener".to_string(),
         SocketAddr::from(LOCAL_EPHEMERAL_SOCKET_ADDR_V4),
-        TcpConnectionHandler::new(),
-        async_expects.new_expect_async_join("Expect listener join"),
+        tcp_connection_handler,
     )
     .unwrap();
 
@@ -159,7 +167,6 @@ fn test_tcp_listener_polling_timeout() {
         "TcpListener".to_string(),
         SocketAddr::from(LOCAL_EPHEMERAL_SOCKET_ADDR_V4),
         tcp_connection_handler,
-        async_expects.new_expect_async_join("Expect listener join"),
     )
     .unwrap();
 
@@ -195,12 +202,16 @@ fn test_tcp_listener_send_event() {
         return ControlFlow::Continue(());
     });
 
+    let expect_tcp_listener_stop = async_expects.new_async_expect("Expect listener stop", ());
+    tcp_connection_handler.set_on_stop(move ||{
+        expect_tcp_listener_stop.set_actual(());
+    });
+
     let _sender = thread_builder
         .spawn_thread(
             "TcpListener".to_string(),
             SocketAddr::from(LOCAL_EPHEMERAL_SOCKET_ADDR_V4),
             tcp_connection_handler,
-            async_expects.new_expect_async_join("Expect listener join"),
         )
         .unwrap();
 
@@ -224,9 +235,12 @@ fn test_stop_tcp_reader() {
 
         let (_, tcp_reader) = RealFactory::new().connect_tcp(socket_addr).unwrap();
 
-        let tcp_read_handler = TcpReadHandler::new(move |_: i32| {
+        let mut tcp_read_handler = TcpReadHandler::new(move |_: i32| {
             return ControlFlow::Continue(());
         });
+
+        let expecte_read_error = async_expects_clone.new_async_expect("TcpReader-ConnectorSide", ());
+        tcp_read_handler.set_on_read_error(move || expecte_read_error.set_actual(()));
 
         let real_factory = RealFactory::new();
 
@@ -235,7 +249,6 @@ fn test_stop_tcp_reader() {
             "TcpReader-ConnectorSide".to_string(),
             tcp_reader,
             tcp_read_handler,
-            async_expects_clone.new_expect_async_join("TcpReader-ConnectorSide"),
         )
         .unwrap();
 
@@ -256,17 +269,18 @@ fn test_stop_tcp_reader() {
             listener_remote_socket_addr
         );
 
-        let tcp_read_handler = TcpReadHandler::new(move |_: i32| {
+        let mut tcp_read_handler = TcpReadHandler::new(move |_: i32| {
             return ControlFlow::Continue(());
         });
 
         let expect_join =
-            async_expects_clone.new_expect_async_join("Expect TcpReader-ListenerSide Join");
+            async_expects_clone.new_async_expect("Expect TcpReader-ListenerSide Stop", ());
         let listener_sender = listener_sender.clone();
-        let join_callback = move |async_join| {
-            expect_join.join(async_join);
+
+        tcp_read_handler.set_on_stop(move ||{
+            expect_join.set_actual(());
             listener_sender.send_stop_thread().unwrap();
-        };
+        });
 
         let real_factory = RealFactory::new();
 
@@ -275,7 +289,6 @@ fn test_stop_tcp_reader() {
             "TcpReader-ListenerSide".to_string(),
             tcp_reader,
             tcp_read_handler,
-            join_callback,
         )
         .unwrap();
 
@@ -287,12 +300,16 @@ fn test_stop_tcp_reader() {
         return ControlFlow::Continue(());
     });
 
+    let expect_tcp_listener_stop = async_expects.new_async_expect("Expect listener stop", ());
+    tcp_connection_handler.set_on_stop(move ||{
+        expect_tcp_listener_stop.set_actual(());
+    });
+
     tcp_listener_builder
         .spawn_thread(
             "TcpListener".to_string(),
             SocketAddr::from(LOCAL_EPHEMERAL_SOCKET_ADDR_V4),
             tcp_connection_handler,
-            async_expects.new_expect_async_join("Expect listener join"),
         )
         .unwrap();
 
@@ -315,9 +332,12 @@ fn test_tcp_reader_channel_disconnect() {
 
         let (_, tcp_reader) = RealFactory::new().connect_tcp(socket_addr).unwrap();
 
-        let tcp_read_handler = TcpReadHandler::new(move |_: i32| {
+        let mut tcp_read_handler = TcpReadHandler::new(move |_: i32| {
             return ControlFlow::Continue(());
         });
+
+        let expect_channel_disconnect = async_expects_clone.new_async_expect("TcpReader-ConnectorSide channel disconnect", ());
+        tcp_read_handler.set_on_channel_disconnected(move ||expect_channel_disconnect.set_actual(()));
 
         let real_factory = RealFactory::new();
 
@@ -327,7 +347,6 @@ fn test_tcp_reader_channel_disconnect() {
             "TcpReader-ConnectorSide".to_string(),
             tcp_reader,
             tcp_read_handler,
-            async_expects_clone.new_expect_async_join("TcpReader-ConnectorSide"),
         )
         .unwrap();
     });
@@ -343,9 +362,12 @@ fn test_tcp_reader_channel_disconnect() {
             listener_remote_socket_addr
         );
 
-        let tcp_read_handler = TcpReadHandler::new(move |_: i32| {
+        let mut tcp_read_handler = TcpReadHandler::new(move |_: i32| {
             return ControlFlow::Continue(());
         });
+
+        let expect_channel_disconnect = async_expects_clone.new_async_expect("TcpReader-ListenerSide channel disconnect", ());
+        tcp_read_handler.set_on_channel_disconnected(move ||expect_channel_disconnect.set_actual(()));
 
         let real_factory = RealFactory::new();
 
@@ -355,7 +377,6 @@ fn test_tcp_reader_channel_disconnect() {
             "TcpReader-ListenerSide".to_string(),
             tcp_reader,
             tcp_read_handler,
-            async_expects_clone.new_expect_async_join("Expect TcpReader-ListenerSide Join"),
         )
         .unwrap();
 
@@ -367,7 +388,6 @@ fn test_tcp_reader_channel_disconnect() {
         "TcpListener".to_string(),
         SocketAddr::from(LOCAL_EPHEMERAL_SOCKET_ADDR_V4),
         tcp_connection_handler,
-        async_expects.new_expect_async_join("Expect listener join"),
     )
     .unwrap();
 
