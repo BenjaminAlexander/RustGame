@@ -1,7 +1,7 @@
 use std::io::Error;
 
 use crate::{
-    real_time::{FactoryTrait, Receiver},
+    real_time::{FactoryTrait, Receiver, real, receiver::ReceiverImplementation},
     threading::eventhandling::{
             EventHandlerTrait, EventOrStopThread, EventSender
         },
@@ -32,8 +32,13 @@ impl<T: EventHandlerTrait> EventHandlerBuilder<T> {
         event_handler: T,
         join_call_back: impl FnOnce(T::ThreadReturn) + Send + 'static,
     ) -> Result<EventSender<T::Event>, Error> {
-        self.receiver
-            .spawn_event_handler(thread_name, event_handler, join_call_back)?;
+        match self.receiver.take_implementation() {
+            ReceiverImplementation::Real(real_receiver) => {
+                real::spawn_event_handler(thread_name, real_receiver, event_handler, join_call_back)
+            }
+            ReceiverImplementation::Simulated(single_threaded_receiver) => single_threaded_receiver
+                .spawn_event_handler(thread_name, event_handler, join_call_back),
+        }?;
         return Ok(self.sender);
     }
 

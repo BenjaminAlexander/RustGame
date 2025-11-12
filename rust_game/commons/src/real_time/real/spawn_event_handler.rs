@@ -1,12 +1,10 @@
 use std::ops::ControlFlow;
-use std::sync::mpsc::TryRecvError;
+use std::sync::mpsc::{self, TryRecvError};
 use std::thread::Builder;
 
+use crate::real_time::real::RealReceiver;
 use crate::threading::channel::{
-    RealReceiver,
-    ReceiveMetaData,
-    ReceiverTrait,
-    RecvTimeoutError,
+    ReceiveMetaData, ReceiverTrait,
 };
 use crate::threading::eventhandling::ChannelEvent::{
     self,
@@ -64,8 +62,8 @@ fn wait_for_message_or_timeout<T: Send>(
             ControlFlow::Continue(ReceivedEvent(receive_meta_data, event))
         }
         Ok((receive_meta_data, StopThread)) => ControlFlow::Break(receive_meta_data),
-        Err(RecvTimeoutError::Timeout) => ControlFlow::Continue(Timeout),
-        Err(RecvTimeoutError::Disconnected) => ControlFlow::Continue(ChannelDisconnected),
+        Err(mpsc::RecvTimeoutError::Timeout) => ControlFlow::Continue(Timeout),
+        Err(mpsc::RecvTimeoutError::Disconnected) => ControlFlow::Continue(ChannelDisconnected),
     };
 }
 

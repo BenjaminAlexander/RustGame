@@ -11,23 +11,20 @@ use crate::{
         TcpConnectionHandlerTrait,
         TcpReadHandlerTrait,
         UdpReadHandlerTrait,
-    },
-    single_threaded_simulator::{
+    }, real_time::real::{RealReceiver}, single_threaded_simulator::{
         SingleThreadedReceiver, net::{
             NetworkSimulator,
             UdpSocketSimulator,
         }
-    },
-    threading::{
+    }, threading::{
         channel::{
-            RealReceiver,
             ReceiveMetaData,
             ReceiverTrait,
         },
         eventhandling::{
-            EventHandlerTrait, EventOrStopThread, spawn_event_handler
+            EventOrStopThread,
         },
-    },
+    }
 };
 
 pub(super) enum ReceiverImplementation<T: Send> {
@@ -62,24 +59,9 @@ impl<T: Send> ReceiverTrait<T> for Receiver<T> {
     }
 }
 
-impl<T: Send> Receiver<EventOrStopThread<T>> {
-    pub fn spawn_event_handler<U: EventHandlerTrait<Event = T>>(
-        self,
-        thread_name: String,
-        event_handler: U,
-        join_call_back: impl FnOnce(U::ThreadReturn) + Send + 'static,
-    ) -> std::io::Result<()> {
-        match self.implementation {
-            ReceiverImplementation::Real(real_receiver) => {
-                spawn_event_handler(thread_name, real_receiver, event_handler, join_call_back)
-            }
-            ReceiverImplementation::Simulated(single_threaded_receiver) => single_threaded_receiver
-                .spawn_event_handler(thread_name, event_handler, join_call_back),
-        }
-    }
-}
-
+//TODO: squash these methods
 impl Receiver<EventOrStopThread<()>> {
+    
     pub fn spawn_tcp_listener<T: TcpConnectionHandlerTrait>(
         self,
         thread_name: String,

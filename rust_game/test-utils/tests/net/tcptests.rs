@@ -1,3 +1,4 @@
+use commons::logging::setup_test_logging;
 use commons::net::{
     TcpListenerBuilder,
     TcpReadHandlerBuilder,
@@ -24,7 +25,6 @@ use std::{
     ops::ControlFlow,
 };
 use test_utils::assert::AsyncExpects;
-use test_utils::utils::setup_test_logging;
 
 #[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq, Eq)]
 struct StructToSend {

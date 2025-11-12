@@ -1,18 +1,15 @@
 use commons::{
-    real_time::{EventHandlerBuilder, RealFactory},
-    threading::{
+    logging::setup_test_logging, real_time::{EventHandlerBuilder, RealFactory}, threading::{
         channel::ReceiveMetaData,
         eventhandling::{
             ChannelEvent,
             EventHandleResult,
             EventHandlerTrait,
         },
-    },
-    time::TimeDuration,
+    }, time::TimeDuration
 };
 use test_utils::{
     assert::AsyncExpects,
-    utils::setup_test_logging,
 };
 
 const NUMBER: i32 = 87;

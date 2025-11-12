@@ -3,11 +3,12 @@ use std::{
     panic,
 };
 
-use commons::logging::LoggingConfigBuilder;
 use log::{
     error,
     LevelFilter,
 };
+
+use crate::logging::LoggingConfigBuilder;
 
 pub fn setup_test_logging() {
     //TODO: set up this logging in non-test code

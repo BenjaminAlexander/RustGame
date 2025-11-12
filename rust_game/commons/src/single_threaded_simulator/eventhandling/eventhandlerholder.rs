@@ -52,6 +52,7 @@ impl<T: EventHandlerTrait, U: FnOnce(T::ThreadReturn) + Send + 'static> Clone
 
 impl<T: EventHandlerTrait, U: FnOnce(T::ThreadReturn) + Send + 'static> EventHandlerHolder<T, U> {
     //TODO: can this method be moved to its caller?
+    //TODO: move this to mirror real::spawn_event_handler
     pub fn new(
         factory: SingleThreadedFactory,
         thread_name: String,
