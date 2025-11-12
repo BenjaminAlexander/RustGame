@@ -1,3 +1,4 @@
+use std::ops::ControlFlow;
 use std::sync::mpsc::TryRecvError;
 use std::thread::Builder;
 
@@ -8,6 +9,7 @@ use crate::threading::channel::{
     RecvTimeoutError,
 };
 use crate::threading::eventhandling::ChannelEvent::{
+    self,
     ChannelDisconnected,
     ChannelEmpty,
     ReceivedEvent,
@@ -53,103 +55,66 @@ pub fn spawn_event_handler<T: EventHandlerTrait>(
     return Ok(());
 }
 
-fn wait_for_message_or_timeout<T: EventHandlerTrait>(
-    message_handler: T,
-    receiver: &mut EventReceiver<T::Event>,
+fn wait_for_message_or_timeout<T: Send>(
+    receiver: &mut EventReceiver<T>,
     time_duration: TimeDuration,
-) -> EventHandleResult<T> {
+) -> ControlFlow<ReceiveMetaData, ChannelEvent<T>> {
     return match receiver.recv_timeout_meta_data(time_duration) {
         Ok((receive_meta_data, Event(event))) => {
-            on_message(message_handler, receive_meta_data, event)
+            ControlFlow::Continue(ReceivedEvent(receive_meta_data, event))
         }
-        Ok((receive_meta_data, StopThread)) => {
-            EventHandleResult::StopThread(on_stop(message_handler, receive_meta_data))
-        }
-        Err(RecvTimeoutError::Timeout) => on_timeout(message_handler),
-        Err(RecvTimeoutError::Disconnected) => on_channel_disconnected(message_handler),
+        Ok((receive_meta_data, StopThread)) => ControlFlow::Break(receive_meta_data),
+        Err(RecvTimeoutError::Timeout) => ControlFlow::Continue(Timeout),
+        Err(RecvTimeoutError::Disconnected) => ControlFlow::Continue(ChannelDisconnected),
     };
 }
 
-fn wait_for_message<T: EventHandlerTrait>(
-    message_handler: T,
-    receiver: &mut EventReceiver<T::Event>,
-) -> EventHandleResult<T> {
+fn wait_for_message<T: Send>(
+    receiver: &mut EventReceiver<T>,
+) -> ControlFlow<ReceiveMetaData, ChannelEvent<T>> {
     return match receiver.recv_meta_data() {
         Ok((receive_meta_data, Event(event))) => {
-            on_message(message_handler, receive_meta_data, event)
+            ControlFlow::Continue(ReceivedEvent(receive_meta_data, event))
         }
-        Ok((receive_meta_data, StopThread)) => {
-            EventHandleResult::StopThread(on_stop(message_handler, receive_meta_data))
-        }
-        Err(_) => on_channel_disconnected(message_handler),
+        Ok((receive_meta_data, StopThread)) => ControlFlow::Break(receive_meta_data),
+        Err(_) => ControlFlow::Continue(ChannelDisconnected),
     };
 }
 
-fn try_for_message<T: EventHandlerTrait>(
-    message_handler: T,
-    receiver: &mut EventReceiver<T::Event>,
-) -> EventHandleResult<T> {
+fn try_for_message<T: Send>(
+    receiver: &mut EventReceiver<T>,
+) -> ControlFlow<ReceiveMetaData, ChannelEvent<T>> {
     return match receiver.try_recv_meta_data() {
         Ok((receive_meta_data, Event(event))) => {
-            on_message(message_handler, receive_meta_data, event)
+            ControlFlow::Continue(ReceivedEvent(receive_meta_data, event))
         }
-        Ok((receive_meta_data, StopThread)) => {
-            EventHandleResult::StopThread(on_stop(message_handler, receive_meta_data))
-        }
-        Err(TryRecvError::Disconnected) => on_channel_disconnected(message_handler),
-        Err(TryRecvError::Empty) => on_channel_empty(message_handler),
+        Ok((receive_meta_data, StopThread)) => ControlFlow::Break(receive_meta_data),
+        Err(TryRecvError::Disconnected) => ControlFlow::Continue(ChannelDisconnected),
+        Err(TryRecvError::Empty) => ControlFlow::Continue(ChannelEmpty),
     };
-}
-
-fn on_message<T: EventHandlerTrait>(
-    message_handler: T,
-    receive_meta_data: ReceiveMetaData,
-    event: T::Event,
-) -> EventHandleResult<T> {
-    return message_handler.on_channel_event(ReceivedEvent(receive_meta_data, event));
-}
-
-fn on_channel_empty<T: EventHandlerTrait>(message_handler: T) -> EventHandleResult<T> {
-    return message_handler.on_channel_event(ChannelEmpty);
-}
-
-fn on_timeout<T: EventHandlerTrait>(message_handler: T) -> EventHandleResult<T> {
-    return message_handler.on_channel_event(Timeout);
-}
-
-fn on_channel_disconnected<T: EventHandlerTrait>(message_handler: T) -> EventHandleResult<T> {
-    info!("The receiver channel has been disconnected.");
-    return message_handler.on_channel_event(ChannelDisconnected);
-}
-
-fn on_stop<T: EventHandlerTrait>(
-    message_handler: T,
-    receive_meta_data: ReceiveMetaData,
-) -> T::ThreadReturn {
-    info!("The MessageHandlingThread has received a message commanding it to stop.");
-    return message_handler.on_stop(receive_meta_data);
 }
 
 fn run_event_handling_loop<T: EventHandlerTrait>(
     mut receiver: EventReceiver<T::Event>,
-    event_handler: T,
+    mut message_handler: T,
 ) -> T::ThreadReturn {
-    let mut wait_or_try = EventHandleResult::TryForNextEvent(event_handler);
+    let mut wait_or_try = EventHandleResult::TryForNextEvent;
 
     loop {
-        wait_or_try = match wait_or_try {
-            EventHandleResult::WaitForNextEvent(message_handler) => {
-                wait_for_message(message_handler, &mut receiver)
+        let control_flow = match wait_or_try {
+            EventHandleResult::WaitForNextEvent => wait_for_message(&mut receiver),
+            EventHandleResult::WaitForNextEventOrTimeout(time_duration) => {
+                wait_for_message_or_timeout(&mut receiver, time_duration)
             }
-            EventHandleResult::WaitForNextEventOrTimeout(message_handler, time_duration) => {
-                wait_for_message_or_timeout(message_handler, &mut receiver, time_duration)
-            }
-            EventHandleResult::TryForNextEvent(message_handler) => {
-                try_for_message(message_handler, &mut receiver)
-            }
-            EventHandleResult::StopThread(return_value) => {
-                return return_value;
-            }
+            EventHandleResult::TryForNextEvent => try_for_message(&mut receiver),
+            EventHandleResult::StopThread(return_value) => return return_value,
         };
+
+        wait_or_try = match control_flow {
+            ControlFlow::Continue(channel_event) => message_handler.on_channel_event(channel_event),
+            ControlFlow::Break(receive_meta_data) => {
+                return message_handler.on_stop(receive_meta_data)
+            }
+        }
     }
 }

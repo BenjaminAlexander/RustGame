@@ -40,7 +40,7 @@ impl UdpReadHandlerBuilder {
         thread_name: String,
         udp_socket: UdpSocket,
         udp_read_handler: T,
-        join_call_back: impl FnOnce(T) + Send + 'static,
+        join_call_back: impl FnOnce(()) + Send + 'static,
     ) -> Result<EventHandlerStopper, Error> {
         udp_socket.spawn_udp_reader(
             thread_name,

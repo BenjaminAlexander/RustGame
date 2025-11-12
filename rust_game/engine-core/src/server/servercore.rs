@@ -108,7 +108,10 @@ impl<GameFactory: GameFactoryTrait> EventHandlerTrait for ServerCore<GameFactory
     type Event = ServerCoreEvent<GameFactory>;
     type ThreadReturn = ();
 
-    fn on_channel_event(self, channel_event: ChannelEvent<Self::Event>) -> EventHandleResult<Self> {
+    fn on_channel_event(
+        &mut self,
+        channel_event: ChannelEvent<Self::Event>,
+    ) -> EventHandleResult<Self> {
         match channel_event {
             ChannelEvent::ReceivedEvent(_, StartListenerEvent) => self.start_listener(),
             ChannelEvent::ReceivedEvent(_, StartGameEvent(render_receiver_sender)) => {
@@ -121,8 +124,8 @@ impl<GameFactory: GameFactoryTrait> EventHandlerTrait for ServerCore<GameFactory
             ChannelEvent::ReceivedEvent(_, UdpPacket(source, len, buf)) => {
                 self.on_udp_packet(source, len, buf)
             }
-            ChannelEvent::Timeout => EventHandleResult::WaitForNextEvent(self),
-            ChannelEvent::ChannelEmpty => EventHandleResult::WaitForNextEvent(self),
+            ChannelEvent::Timeout => EventHandleResult::WaitForNextEvent,
+            ChannelEvent::ChannelEmpty => EventHandleResult::WaitForNextEvent,
             ChannelEvent::ChannelDisconnected => EventHandleResult::StopThread(()),
         }
     }
@@ -161,7 +164,7 @@ impl<GameFactory: GameFactoryTrait> ServerCore<GameFactory> {
         }
     }
 
-    fn start_listener(mut self) -> EventHandleResult<Self> {
+    fn start_listener(&mut self) -> EventHandleResult<Self> {
         //TODO: on error, make sure other threads are closed
         //TODO: could these other threads be started somewhere else?
 
@@ -218,7 +221,7 @@ impl<GameFactory: GameFactoryTrait> ServerCore<GameFactory> {
         match tcp_listener_sender_result {
             Ok(tcp_listener_sender) => {
                 self.tcp_listener_sender_option = Some(tcp_listener_sender);
-                return EventHandleResult::TryForNextEvent(self);
+                return EventHandleResult::TryForNextEvent;
             }
             Err(error) => {
                 error!("Error starting Tcp Listener Thread: {:?}", error);
@@ -242,7 +245,7 @@ impl<GameFactory: GameFactoryTrait> ServerCore<GameFactory> {
     }
 
     fn start_game(
-        mut self,
+        &mut self,
         render_receiver_sender: Sender<RenderReceiverMessage<GameFactory::Game>>,
     ) -> EventHandleResult<Self> {
         //TODO: remove this line
@@ -348,7 +351,7 @@ impl<GameFactory: GameFactoryTrait> ServerCore<GameFactory> {
             self.render_receiver_sender = Some(render_receiver_sender);
         }
 
-        return EventHandleResult::TryForNextEvent(self);
+        return EventHandleResult::TryForNextEvent;
     }
 
     /*
@@ -358,7 +361,7 @@ impl<GameFactory: GameFactoryTrait> ServerCore<GameFactory> {
         <- UdpHello
      */
     fn on_tcp_connection(
-        mut self,
+        &mut self,
         tcp_stream: TcpStream,
         tcp_receiver: TcpReader,
     ) -> EventHandleResult<Self> {
@@ -409,11 +412,11 @@ impl<GameFactory: GameFactoryTrait> ServerCore<GameFactory> {
             );
         }
 
-        return EventHandleResult::TryForNextEvent(self);
+        return EventHandleResult::TryForNextEvent;
     }
 
     fn on_udp_packet(
-        mut self,
+        &mut self,
         source: SocketAddr,
         len: usize,
         buf: [u8; MAX_UDP_DATAGRAM_SIZE],
@@ -433,10 +436,10 @@ impl<GameFactory: GameFactoryTrait> ServerCore<GameFactory> {
             }
         }
 
-        return EventHandleResult::TryForNextEvent(self);
+        return EventHandleResult::TryForNextEvent;
     }
 
-    fn on_game_timer_tick(mut self) -> EventHandleResult<Self> {
+    fn on_game_timer_tick(&mut self) -> EventHandleResult<Self> {
         let time_message = self.game_timer.as_ref().unwrap().create_timer_message();
 
         /*
@@ -499,7 +502,7 @@ impl<GameFactory: GameFactoryTrait> ServerCore<GameFactory> {
             return EventHandleResult::StopThread(());
         }
 
-        return EventHandleResult::TryForNextEvent(self);
+        return EventHandleResult::TryForNextEvent;
     }
 
     pub(super) fn on_input_message(

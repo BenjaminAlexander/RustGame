@@ -35,24 +35,23 @@ impl EventHandlerTrait for Count {
     type ThreadReturn = i32;
 
     fn on_channel_event(
-        mut self,
+        &mut self,
         channel_event: ChannelEvent<CountEvent>,
     ) -> EventHandleResult<Self> {
         match channel_event {
             ChannelEvent::ReceivedEvent(_, CountEvent::Add(x)) => self.count += x,
             ChannelEvent::ReceivedEvent(_, CountEvent::Subtract(x)) => self.count -= x,
             ChannelEvent::ReceivedEvent(_, CountEvent::WaitForTimeout) => {
-                return EventHandleResult::WaitForNextEventOrTimeout(
-                    self,
-                    TimeDuration::from_millis_f64(100.0),
-                )
+                return EventHandleResult::WaitForNextEventOrTimeout(TimeDuration::from_millis_f64(
+                    100.0,
+                ))
             }
             ChannelEvent::Timeout => return EventHandleResult::StopThread(NUMBER),
             ChannelEvent::ChannelDisconnected => return EventHandleResult::StopThread(self.count),
             _ => { /*no-op*/ }
         }
 
-        return EventHandleResult::WaitForNextEvent(self);
+        return EventHandleResult::WaitForNextEvent;
     }
 
     fn on_stop(self, _receive_meta_data: ReceiveMetaData) -> i32 {

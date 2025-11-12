@@ -40,7 +40,7 @@ impl TcpReadHandlerBuilder {
         thread_name: String,
         tcp_reader: TcpReader,
         tcp_read_handler: T,
-        join_call_back: impl FnOnce(T) + Send + 'static,
+        join_call_back: impl FnOnce(()) + Send + 'static,
     ) -> Result<EventHandlerStopper, Error> {
         tcp_reader.spawn_tcp_reader(
             thread_name,

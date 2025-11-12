@@ -93,18 +93,18 @@ impl<GameFactory: GameFactoryTrait> UdpOutput<GameFactory> {
         })
     }
 
-    fn on_remote_peer(mut self, remote_peer: RemoteUdpPeer) -> EventHandleResult<Self> {
+    fn on_remote_peer(&mut self, remote_peer: RemoteUdpPeer) -> EventHandleResult<Self> {
         //TODO: could this be checked before calling udpoutput?
         if self.player_index == remote_peer.get_player_index() {
             info!("Setting remote peer: {:?}", remote_peer);
             self.remote_peer = Some(remote_peer);
         }
 
-        return EventHandleResult::TryForNextEvent(self);
+        return EventHandleResult::TryForNextEvent;
     }
 
     fn on_completed_step(
-        mut self,
+        &mut self,
         receive_meta_data: ReceiveMetaData,
         state_message: StateMessage<GameFactory::Game>,
     ) -> EventHandleResult<Self> {
@@ -123,11 +123,11 @@ impl<GameFactory: GameFactoryTrait> UdpOutput<GameFactory> {
             self.log_time_in_queue(*time_in_queue);
         }
 
-        return EventHandleResult::TryForNextEvent(self);
+        return EventHandleResult::TryForNextEvent;
     }
 
     pub fn on_time_message(
-        mut self,
+        &mut self,
         receive_meta_data: ReceiveMetaData,
         time_message: TimeMessage,
     ) -> EventHandleResult<Self> {
@@ -159,11 +159,11 @@ impl<GameFactory: GameFactoryTrait> UdpOutput<GameFactory> {
             self.log_time_in_queue(*time_in_queue);
         }
 
-        return EventHandleResult::TryForNextEvent(self);
+        return EventHandleResult::TryForNextEvent;
     }
 
     fn on_input_message(
-        mut self,
+        &mut self,
         receive_meta_data: ReceiveMetaData,
         input_message: InputMessage<GameFactory::Game>,
     ) -> EventHandleResult<Self> {
@@ -184,11 +184,11 @@ impl<GameFactory: GameFactoryTrait> UdpOutput<GameFactory> {
             //info!("InputMessage dropped. Last state: {:?}", tcp_output.last_state_sequence);
         }
 
-        return EventHandleResult::TryForNextEvent(self);
+        return EventHandleResult::TryForNextEvent;
     }
 
     pub fn on_server_input_message(
-        mut self,
+        &mut self,
         receive_meta_data: ReceiveMetaData,
         server_input_message: ServerInputMessage<GameFactory::Game>,
     ) -> EventHandleResult<Self> {
@@ -209,7 +209,7 @@ impl<GameFactory: GameFactoryTrait> UdpOutput<GameFactory> {
             //info!("ServerInputMessage dropped. Last state: {:?}", tcp_output.last_state_sequence);
         }
 
-        return EventHandleResult::TryForNextEvent(self);
+        return EventHandleResult::TryForNextEvent;
     }
 
     //TODO: generalize this for all channels
@@ -254,7 +254,10 @@ impl<GameFactory: GameFactoryTrait> EventHandlerTrait for UdpOutput<GameFactory>
     type Event = UdpOutputEvent<GameFactory::Game>;
     type ThreadReturn = ();
 
-    fn on_channel_event(self, channel_event: ChannelEvent<Self::Event>) -> EventHandleResult<Self> {
+    fn on_channel_event(
+        &mut self,
+        channel_event: ChannelEvent<Self::Event>,
+    ) -> EventHandleResult<Self> {
         let now = self.factory.get_time_source().now();
 
         // let duration_since_last_input = now.duration_since(self.time_of_last_input_send);
@@ -289,8 +292,8 @@ impl<GameFactory: GameFactoryTrait> EventHandlerTrait for UdpOutput<GameFactory>
                 receive_meta_data,
                 SendServerInputMessage(server_input_message),
             ) => self.on_server_input_message(receive_meta_data, server_input_message),
-            ChannelEvent::Timeout => EventHandleResult::WaitForNextEvent(self),
-            ChannelEvent::ChannelEmpty => EventHandleResult::WaitForNextEvent(self),
+            ChannelEvent::Timeout => EventHandleResult::WaitForNextEvent,
+            ChannelEvent::ChannelEmpty => EventHandleResult::WaitForNextEvent,
             ChannelEvent::ChannelDisconnected => EventHandleResult::StopThread(()),
         }
     }

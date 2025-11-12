@@ -117,7 +117,7 @@ impl<ManagerObserver: ManagerObserverTrait> Manager<ManagerObserver> {
         }
     }
 
-    fn drop_steps_before(mut self, step: usize) -> EventHandleResult<Self> {
+    fn drop_steps_before(&mut self, step: usize) -> EventHandleResult<Self> {
         trace!("Setting drop_steps_before: {:?}", step);
         self.drop_steps_before = step;
         if self.requested_step < self.drop_steps_before {
@@ -128,13 +128,13 @@ impl<ManagerObserver: ManagerObserverTrait> Manager<ManagerObserver> {
             return self.set_requested_step(step);
         }
 
-        return EventHandleResult::TryForNextEvent(self);
+        return EventHandleResult::TryForNextEvent;
     }
 
-    fn set_requested_step(mut self, step: usize) -> EventHandleResult<Self> {
+    fn set_requested_step(&mut self, step: usize) -> EventHandleResult<Self> {
         trace!("Setting requested_step: {:?}", step);
         self.requested_step = step;
-        return EventHandleResult::TryForNextEvent(self);
+        return EventHandleResult::TryForNextEvent;
     }
 
     fn send_messages(&mut self, step_index: usize) {
@@ -157,7 +157,7 @@ impl<ManagerObserver: ManagerObserverTrait> Manager<ManagerObserver> {
         }
     }
 
-    fn on_none_pending(mut self) -> EventHandleResult<Self> {
+    fn on_none_pending(&mut self) -> EventHandleResult<Self> {
         let now = self.factory.get_time_source().now();
         let duration_since_last_state = now.duration_since(&self.time_of_last_state_receive);
         if duration_since_last_state > TimeDuration::ONE_SECOND {
@@ -167,11 +167,11 @@ impl<ManagerObserver: ManagerObserverTrait> Manager<ManagerObserver> {
 
         if self.steps.is_empty() {
             trace!("Steps is empty");
-            return EventHandleResult::WaitForNextEvent(self);
+            return EventHandleResult::WaitForNextEvent;
         }
 
         if self.initial_information.is_none() {
-            return EventHandleResult::WaitForNextEvent(self);
+            return EventHandleResult::WaitForNextEvent;
         }
 
         let mut current: usize = 0;
@@ -225,11 +225,11 @@ impl<ManagerObserver: ManagerObserverTrait> Manager<ManagerObserver> {
 
         self.send_messages(current);
 
-        return EventHandleResult::WaitForNextEvent(self);
+        return EventHandleResult::WaitForNextEvent;
     }
 
     fn on_initial_information(
-        mut self,
+        &mut self,
         initial_information: InitialInformation<ManagerObserver::Game>,
     ) -> EventHandleResult<Self> {
         //TODO: move Arc outside lambda
@@ -241,40 +241,40 @@ impl<ManagerObserver: ManagerObserverTrait> Manager<ManagerObserver> {
             .get_state()
             .clone();
         self.handle_state_message(StateMessage::new(0, state));
-        return EventHandleResult::TryForNextEvent(self);
+        return EventHandleResult::TryForNextEvent;
     }
 
     fn on_input_message(
-        mut self,
+        &mut self,
         input_message: InputMessage<ManagerObserver::Game>,
     ) -> EventHandleResult<Self> {
         if let Some(step) = self.get_state(input_message.get_step()) {
             step.set_input(input_message);
             self.time_of_last_input_receive = self.factory.get_time_source().now();
         }
-        return EventHandleResult::TryForNextEvent(self);
+        return EventHandleResult::TryForNextEvent;
     }
 
     fn on_server_input_message(
-        mut self,
+        &mut self,
         server_input_message: ServerInputMessage<ManagerObserver::Game>,
     ) -> EventHandleResult<Self> {
         //info!("Server Input received: {:?}", server_input_message.get_step());
         if let Some(step) = self.get_state(server_input_message.get_step()) {
             step.set_server_input(server_input_message.get_server_input());
         }
-        return EventHandleResult::TryForNextEvent(self);
+        return EventHandleResult::TryForNextEvent;
     }
 
     fn on_state_message(
-        mut self,
+        &mut self,
         state_message: StateMessage<ManagerObserver::Game>,
     ) -> EventHandleResult<Self> {
         self.handle_state_message(state_message);
 
         self.time_of_last_state_receive = self.factory.get_time_source().now();
 
-        return EventHandleResult::TryForNextEvent(self);
+        return EventHandleResult::TryForNextEvent;
     }
 }
 
@@ -282,7 +282,10 @@ impl<ManagerObserver: ManagerObserverTrait> EventHandlerTrait for Manager<Manage
     type Event = ManagerEvent<ManagerObserver::Game>;
     type ThreadReturn = ();
 
-    fn on_channel_event(self, channel_event: ChannelEvent<Self::Event>) -> EventHandleResult<Self> {
+    fn on_channel_event(
+        &mut self,
+        channel_event: ChannelEvent<Self::Event>,
+    ) -> EventHandleResult<Self> {
         match channel_event {
             ChannelEvent::ReceivedEvent(_, DropStepsBeforeEvent(step)) => {
                 self.drop_steps_before(step)

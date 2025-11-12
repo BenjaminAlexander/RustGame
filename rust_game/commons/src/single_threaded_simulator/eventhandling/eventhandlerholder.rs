@@ -197,20 +197,17 @@ impl<T: EventHandlerTrait, U: FnOnce(T::ThreadReturn) + Send + 'static>
         trace!("Event Handler: {:?}", self.thread_name);
 
         match self.event_handler.on_channel_event(event) {
-            EventHandleResult::WaitForNextEvent(event_handler) => {
+            EventHandleResult::WaitForNextEvent => {
                 trace!("WaitForNextEvent");
-                self.event_handler = event_handler;
                 return Some(self);
             }
-            EventHandleResult::WaitForNextEventOrTimeout(event_handler, timeout_duration) => {
+            EventHandleResult::WaitForNextEventOrTimeout(timeout_duration) => {
                 trace!("WaitForNextEventOrTimeout: {:?}", timeout_duration);
-                self.event_handler = event_handler;
                 self.schedule_timeout(&holder, timeout_duration);
                 return Some(self);
             }
-            EventHandleResult::TryForNextEvent(event_handler) => {
+            EventHandleResult::TryForNextEvent => {
                 trace!("TryForNextEvent");
-                self.event_handler = event_handler;
                 self.schedule_channel_empty(&holder);
                 return Some(self);
             }

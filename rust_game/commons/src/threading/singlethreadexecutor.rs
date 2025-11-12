@@ -90,14 +90,17 @@ impl EventHandlerTrait for SingleThreadExecutorEventHandler {
     type Event = Runnable;
     type ThreadReturn = ();
 
-    fn on_channel_event(self, channel_event: ChannelEvent<Self::Event>) -> EventHandleResult<Self> {
+    fn on_channel_event(
+        &mut self,
+        channel_event: ChannelEvent<Self::Event>,
+    ) -> EventHandleResult<Self> {
         match channel_event {
             ChannelEvent::ReceivedEvent(_, runnable) => {
                 runnable();
-                return EventHandleResult::WaitForNextEvent(self);
+                return EventHandleResult::WaitForNextEvent;
             }
             ChannelEvent::ChannelDisconnected => EventHandleResult::StopThread(()),
-            _ => EventHandleResult::WaitForNextEvent(self),
+            _ => EventHandleResult::WaitForNextEvent,
         }
     }
 

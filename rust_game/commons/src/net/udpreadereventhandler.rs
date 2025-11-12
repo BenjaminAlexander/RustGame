@@ -28,32 +28,32 @@ impl<T: UdpReadHandlerTrait> UdpReaderEventHandler<T> {
         };
     }
 
-    fn read(mut self) -> EventHandleResult<Self> {
+    fn read(&mut self) -> EventHandleResult<Self> {
         let mut buf = [0; MAX_UDP_DATAGRAM_SIZE];
         let result = self.udp_socket.recv_from(&mut buf);
         return self.handle_read_result(result, &buf);
     }
 
     fn handle_read_result(
-        mut self,
+        &mut self,
         result: Result<(usize, std::net::SocketAddr), std::io::Error>,
         buf: &[u8],
     ) -> EventHandleResult<Self> {
         match result {
             Ok((len, peer_addr)) => {
                 return match self.udp_read_handler.on_read(peer_addr, &buf[..len]) {
-                    Continue(()) => EventHandleResult::TryForNextEvent(self),
-                    Break(()) => EventHandleResult::StopThread(self.udp_read_handler),
+                    Continue(()) => EventHandleResult::TryForNextEvent,
+                    Break(()) => EventHandleResult::StopThread(()),
                 };
             }
             Err(error)
                 if error.kind() == ErrorKind::TimedOut || error.kind() == ErrorKind::WouldBlock =>
             {
-                return EventHandleResult::TryForNextEvent(self);
+                return EventHandleResult::TryForNextEvent;
             }
             Err(error) => {
                 warn!("Error on UDP read: {:?}", error);
-                return EventHandleResult::TryForNextEvent(self);
+                return EventHandleResult::TryForNextEvent;
             }
         }
     }
@@ -61,20 +61,21 @@ impl<T: UdpReadHandlerTrait> UdpReaderEventHandler<T> {
 
 impl<T: UdpReadHandlerTrait> EventHandlerTrait for UdpReaderEventHandler<T> {
     type Event = ();
-    type ThreadReturn = T;
+    type ThreadReturn = ();
 
-    fn on_channel_event(self, channel_event: ChannelEvent<Self::Event>) -> EventHandleResult<Self> {
+    fn on_channel_event(
+        &mut self,
+        channel_event: ChannelEvent<Self::Event>,
+    ) -> EventHandleResult<Self> {
         return match channel_event {
             ChannelEvent::ChannelEmpty => self.read(),
-            ChannelEvent::ChannelDisconnected => {
-                EventHandleResult::StopThread(self.udp_read_handler)
-            }
-            _ => EventHandleResult::TryForNextEvent(self),
+            ChannelEvent::ChannelDisconnected => EventHandleResult::StopThread(()),
+            _ => EventHandleResult::TryForNextEvent,
         };
     }
 
     fn on_stop(self, _receive_meta_data: ReceiveMetaData) -> Self::ThreadReturn {
-        return self.udp_read_handler;
+        return ();
     }
 }
 
@@ -109,7 +110,7 @@ mod tests {
             return ControlFlow::Continue(());
         };
 
-        let read_handler = UdpReaderEventHandler::new(udp_socket, udp_read_handler);
+        let mut read_handler = UdpReaderEventHandler::new(udp_socket, udp_read_handler);
 
         let buf = [0];
 
@@ -124,7 +125,7 @@ mod tests {
 
         assert!(matches!(
             handle_result_result,
-            EventHandleResult::TryForNextEvent(_)
+            EventHandleResult::TryForNextEvent
         ));
     }
 }

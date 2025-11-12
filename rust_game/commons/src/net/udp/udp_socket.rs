@@ -72,7 +72,7 @@ impl UdpSocket {
         thread_name: String,
         receiver: Receiver<EventOrStopThread<()>>,
         udp_read_handler: T,
-        join_call_back: impl FnOnce(T) + Send + 'static,
+        join_call_back: impl FnOnce(()) + Send + 'static,
     ) -> Result<(), Error> {
         match self.implementation {
             Implementation::Real(real_udp_socket) => real_udp_socket.spawn_real_udp_reader(

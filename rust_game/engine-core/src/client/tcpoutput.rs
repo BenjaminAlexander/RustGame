@@ -27,11 +27,14 @@ impl EventHandlerTrait for TcpOutput {
     type Event = ();
     type ThreadReturn = ();
 
-    fn on_channel_event(self, channel_event: ChannelEvent<Self::Event>) -> EventHandleResult<Self> {
+    fn on_channel_event(
+        &mut self,
+        channel_event: ChannelEvent<Self::Event>,
+    ) -> EventHandleResult<Self> {
         match channel_event {
-            ReceivedEvent(_, ()) => EventHandleResult::TryForNextEvent(self),
-            Timeout => EventHandleResult::WaitForNextEvent(self),
-            ChannelEmpty => EventHandleResult::WaitForNextEvent(self),
+            ReceivedEvent(_, ()) => EventHandleResult::TryForNextEvent,
+            Timeout => EventHandleResult::WaitForNextEvent,
+            ChannelEmpty => EventHandleResult::WaitForNextEvent,
             ChannelDisconnected => EventHandleResult::StopThread(()),
         }
     }

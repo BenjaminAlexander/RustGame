@@ -21,11 +21,14 @@ impl EventHandlerTrait for NoOpEventHandler {
     type Event = ();
     type ThreadReturn = ();
 
-    fn on_channel_event(self, channel_event: ChannelEvent<Self::Event>) -> EventHandleResult<Self> {
+    fn on_channel_event(
+        &mut self,
+        channel_event: ChannelEvent<Self::Event>,
+    ) -> EventHandleResult<Self> {
         return match channel_event {
-            ChannelEvent::ReceivedEvent(_, ()) => EventHandleResult::TryForNextEvent(self),
-            ChannelEvent::Timeout => EventHandleResult::TryForNextEvent(self),
-            ChannelEvent::ChannelEmpty => EventHandleResult::WaitForNextEvent(self),
+            ChannelEvent::ReceivedEvent(_, ()) => EventHandleResult::TryForNextEvent,
+            ChannelEvent::Timeout => EventHandleResult::TryForNextEvent,
+            ChannelEvent::ChannelEmpty => EventHandleResult::WaitForNextEvent,
             ChannelEvent::ChannelDisconnected => EventHandleResult::StopThread(()),
         };
     }

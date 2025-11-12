@@ -97,7 +97,7 @@ impl RealReceiver<EventOrStopThread<()>> {
         thread_name: String,
         socket_addr: SocketAddr,
         mut tcp_connection_handler: T,
-        join_call_back: impl FnOnce(T) + Send + 'static,
+        join_call_back: impl FnOnce(()) + Send + 'static,
     ) -> std::io::Result<()> {
         let tcp_listener = TcpListener::bind(socket_addr)?;
 
@@ -113,7 +113,7 @@ impl RealReceiver<EventOrStopThread<()>> {
         thread_name: String,
         real_tcp_stream: RealTcpStream,
         tcp_read_handler: T,
-        join_call_back: impl FnOnce(T) + Send + 'static,
+        join_call_back: impl FnOnce(()) + Send + 'static,
     ) -> Result<(), Error> {
         let event_handler = TcpReaderEventHandler::new(real_tcp_stream, tcp_read_handler);
         return spawn_event_handler(thread_name, self, event_handler, join_call_back);
@@ -124,7 +124,7 @@ impl RealReceiver<EventOrStopThread<()>> {
         thread_name: String,
         udp_socket: RealUdpSocket,
         udp_read_handler: T,
-        join_call_back: impl FnOnce(T) + Send + 'static,
+        join_call_back: impl FnOnce(()) + Send + 'static,
     ) -> Result<(), Error> {
         let event_handler = UdpReaderEventHandler::new(udp_socket, udp_read_handler);
         return spawn_event_handler(thread_name, self, event_handler, join_call_back);

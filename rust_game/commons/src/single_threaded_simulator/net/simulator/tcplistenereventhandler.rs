@@ -38,7 +38,7 @@ impl<TcpConnectionHandler: TcpConnectionHandlerTrait>
     }
 
     fn on_connection(
-        mut self,
+        &mut self,
         writer: ChannelTcpWriter,
         reader: SingleThreadedReceiver<Vec<u8>>,
     ) -> EventHandleResult<Self> {
@@ -46,8 +46,8 @@ impl<TcpConnectionHandler: TcpConnectionHandlerTrait>
             TcpStream::new_simulated(writer),
             TcpReader::new_simulated(reader),
         ) {
-            Continue(()) => EventHandleResult::TryForNextEvent(self),
-            Break(()) => EventHandleResult::StopThread(self.connection_handler),
+            Continue(()) => EventHandleResult::TryForNextEvent,
+            Break(()) => EventHandleResult::StopThread(()),
         };
     }
 }
@@ -56,10 +56,10 @@ impl<TcpConnectionHandler: TcpConnectionHandlerTrait> EventHandlerTrait
     for TcpListenerEventHandler<TcpConnectionHandler>
 {
     type Event = TcpListenerEvent;
-    type ThreadReturn = TcpConnectionHandler;
+    type ThreadReturn = ();
 
     fn on_channel_event(
-        mut self,
+        &mut self,
         channel_event: ChannelEvent<Self::Event>,
     ) -> EventHandleResult<Self> {
         return match channel_event {
@@ -68,17 +68,15 @@ impl<TcpConnectionHandler: TcpConnectionHandlerTrait> EventHandlerTrait
             }
             ChannelEvent::ReceivedEvent(_, TcpListenerEvent::ListenerReady) => {
                 self.connection_handler.on_bind(self.socket_addr);
-                EventHandleResult::TryForNextEvent(self)
+                EventHandleResult::TryForNextEvent
             }
-            ChannelEvent::Timeout => EventHandleResult::TryForNextEvent(self),
-            ChannelEvent::ChannelEmpty => EventHandleResult::WaitForNextEvent(self),
-            ChannelEvent::ChannelDisconnected => {
-                EventHandleResult::StopThread(self.connection_handler)
-            }
+            ChannelEvent::Timeout => EventHandleResult::TryForNextEvent,
+            ChannelEvent::ChannelEmpty => EventHandleResult::WaitForNextEvent,
+            ChannelEvent::ChannelDisconnected => EventHandleResult::StopThread(()),
         };
     }
 
     fn on_stop(self, _receive_meta_data: ReceiveMetaData) -> Self::ThreadReturn {
-        return self.connection_handler;
+        return ();
     }
 }

@@ -118,7 +118,7 @@ impl<GameFactory: GameFactoryTrait> EventHandlerTrait for UdpOutput<GameFactory>
     type ThreadReturn = ();
 
     fn on_channel_event(
-        mut self,
+        &mut self,
         channel_event: ChannelEvent<Self::Event>,
     ) -> EventHandleResult<Self> {
         match channel_event {
@@ -129,15 +129,15 @@ impl<GameFactory: GameFactoryTrait> EventHandlerTrait for UdpOutput<GameFactory>
                     }
                 };
 
-                return EventHandleResult::TryForNextEvent(self);
+                return EventHandleResult::TryForNextEvent;
             }
             ChannelEvent::Timeout => {
                 self.send_all_messages();
-                return EventHandleResult::WaitForNextEvent(self);
+                return EventHandleResult::WaitForNextEvent;
             }
             ChannelEvent::ChannelEmpty => {
                 self.send_all_messages();
-                return EventHandleResult::WaitForNextEvent(self);
+                return EventHandleResult::WaitForNextEvent;
             }
             ChannelEvent::ChannelDisconnected => {
                 return EventHandleResult::StopThread(());

@@ -37,7 +37,7 @@ impl RealUdpSocket {
         thread_name: String,
         receiver: Receiver<EventOrStopThread<()>>,
         udp_read_handler: T,
-        join_call_back: impl FnOnce(T) + Send + 'static,
+        join_call_back: impl FnOnce(()) + Send + 'static,
     ) -> Result<(), Error> {
         return receiver.spawn_real_udp_reader(thread_name, self, udp_read_handler, join_call_back);
     }

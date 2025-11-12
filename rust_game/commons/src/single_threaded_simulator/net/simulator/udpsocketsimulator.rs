@@ -50,7 +50,7 @@ impl UdpSocketSimulator {
         thread_name: String,
         receiver: Receiver<EventOrStopThread<()>>,
         udp_read_handler: T,
-        join_call_back: impl FnOnce(T) + Send + 'static,
+        join_call_back: impl FnOnce(()) + Send + 'static,
     ) -> Result<(), Error> {
         return receiver.spawn_simulated_udp_reader(
             self.network_simulator.clone(),

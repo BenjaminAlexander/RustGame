@@ -40,7 +40,7 @@ impl TcpListenerBuilder {
         thread_name: String,
         socket_addr: SocketAddr,
         tcp_connection_handler: T,
-        join_call_back: impl FnOnce(T) + Send + 'static,
+        join_call_back: impl FnOnce(()) + Send + 'static,
     ) -> Result<EventHandlerStopper, Error> {
         self.receiver.spawn_tcp_listener(
             thread_name,

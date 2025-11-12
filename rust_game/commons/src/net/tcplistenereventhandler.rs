@@ -40,13 +40,13 @@ impl<T: TcpConnectionHandlerTrait> TcpListenerEventHandler<T> {
         });
     }
 
-    fn accept(self) -> EventHandleResult<Self> {
+    fn accept(&mut self) -> EventHandleResult<Self> {
         let accept_result = self.tcp_listener.accept();
         return self.handle_accept_result(accept_result);
     }
 
     fn handle_accept_result(
-        self,
+        &mut self,
         accept_result: Result<(std::net::TcpStream, SocketAddr), Error>,
     ) -> EventHandleResult<Self> {
         match accept_result {
@@ -57,17 +57,17 @@ impl<T: TcpConnectionHandlerTrait> TcpListenerEventHandler<T> {
                     .handle_tcp_stream_clone_result(real_tcp_stream, tcp_stream_clone_result);
             }
             Err(ref error) if error.kind() == io::ErrorKind::WouldBlock => {
-                return EventHandleResult::WaitForNextEventOrTimeout(self, NET_POLLING_PERIOD);
+                return EventHandleResult::WaitForNextEventOrTimeout(NET_POLLING_PERIOD);
             }
             Err(error) => {
                 error!("Error while trying to accept a TCP connection: {:?}", error);
-                return EventHandleResult::TryForNextEvent(self);
+                return EventHandleResult::TryForNextEvent;
             }
         }
     }
 
     fn handle_tcp_stream_clone_result(
-        mut self,
+        &mut self,
         real_tcp_stream: RealTcpStream,
         clone_result: Result<RealTcpStream, Error>,
     ) -> EventHandleResult<Self> {
@@ -78,10 +78,10 @@ impl<T: TcpConnectionHandlerTrait> TcpListenerEventHandler<T> {
                     TcpReader::new(real_tcp_stream_clone),
                 ) {
                     Continue(()) => {
-                        return EventHandleResult::TryForNextEvent(self);
+                        return EventHandleResult::TryForNextEvent;
                     }
                     Break(()) => {
-                        return EventHandleResult::StopThread(self.tcp_connection_handler);
+                        return EventHandleResult::StopThread(());
                     }
                 }
             }
@@ -90,7 +90,7 @@ impl<T: TcpConnectionHandlerTrait> TcpListenerEventHandler<T> {
                     "Failed to clone RealTcpStream for : {:?}",
                     real_tcp_stream.get_peer_addr()
                 );
-                return EventHandleResult::TryForNextEvent(self);
+                return EventHandleResult::TryForNextEvent;
             }
         }
     }
@@ -98,21 +98,22 @@ impl<T: TcpConnectionHandlerTrait> TcpListenerEventHandler<T> {
 
 impl<T: TcpConnectionHandlerTrait> EventHandlerTrait for TcpListenerEventHandler<T> {
     type Event = ();
-    type ThreadReturn = T;
+    type ThreadReturn = ();
 
-    fn on_channel_event(self, channel_event: ChannelEvent<Self::Event>) -> EventHandleResult<Self> {
+    fn on_channel_event(
+        &mut self,
+        channel_event: ChannelEvent<Self::Event>,
+    ) -> EventHandleResult<Self> {
         return match channel_event {
-            ChannelEvent::ReceivedEvent(_, ()) => EventHandleResult::TryForNextEvent(self),
+            ChannelEvent::ReceivedEvent(_, ()) => EventHandleResult::TryForNextEvent,
             ChannelEvent::Timeout => self.accept(),
             ChannelEvent::ChannelEmpty => self.accept(),
-            ChannelEvent::ChannelDisconnected => {
-                EventHandleResult::StopThread(self.tcp_connection_handler)
-            }
+            ChannelEvent::ChannelDisconnected => EventHandleResult::StopThread(()),
         };
     }
 
     fn on_stop(self, _receive_meta_data: ReceiveMetaData) -> Self::ThreadReturn {
-        return self.tcp_connection_handler;
+        return ();
     }
 }
 
@@ -148,7 +149,7 @@ mod tests {
 
         let real_tcp_stream = RealTcpStream::new(tcp_stream, listener_addr);
 
-        let event_handler =
+        let mut event_handler =
             TcpListenerEventHandler::new(tcp_listener, tcp_connection_handler).unwrap();
 
         let event_handler_result = event_handler.handle_tcp_stream_clone_result(
@@ -158,7 +159,7 @@ mod tests {
 
         assert!(matches!(
             event_handler_result,
-            EventHandleResult::TryForNextEvent(_)
+            EventHandleResult::TryForNextEvent
         ));
     }
 
@@ -172,7 +173,7 @@ mod tests {
 
         let tcp_listener = TcpListener::bind(LOCAL_EPHEMERAL_SOCKET_ADDR_V4).unwrap();
 
-        let event_handler =
+        let mut event_handler =
             TcpListenerEventHandler::new(tcp_listener, tcp_connection_handler).unwrap();
 
         let event_handler_result =
@@ -180,7 +181,7 @@ mod tests {
 
         assert!(matches!(
             event_handler_result,
-            EventHandleResult::TryForNextEvent(_)
+            EventHandleResult::TryForNextEvent
         ));
     }
 }

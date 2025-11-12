@@ -184,7 +184,7 @@ impl<Factory: FactoryTrait, T: TimerCreationCallBack, U: TimerCallBack>
         return None;
     }
 
-    fn trigger_timers(mut self) -> EventHandleResult<Self> {
+    fn trigger_timers(&mut self) -> EventHandleResult<Self> {
         loop {
             let now = self.factory.get_time_source().now();
 
@@ -207,13 +207,13 @@ impl<Factory: FactoryTrait, T: TimerCreationCallBack, U: TimerCallBack>
         }
     }
 
-    fn wait_for_next_trigger(mut self, now: TimeValue) -> EventHandleResult<Self> {
+    fn wait_for_next_trigger(&mut self, now: TimeValue) -> EventHandleResult<Self> {
         if let Some(timer) = self.timers.get(0) {
             if let Some(trigger_time) = timer.get_trigger_time() {
                 let duration_to_wait = trigger_time.duration_since(&now);
 
                 if duration_to_wait.is_positive() {
-                    return EventHandleResult::WaitForNextEventOrTimeout(self, duration_to_wait);
+                    return EventHandleResult::WaitForNextEventOrTimeout(duration_to_wait);
                 } else {
                     warn!("Timers that should be triggered were left in the queue!  TimerID: {:?} Duration Until Trigger: {:?}", timer.get_id(), duration_to_wait);
                     return self.trigger_timers();
@@ -225,7 +225,7 @@ impl<Factory: FactoryTrait, T: TimerCreationCallBack, U: TimerCallBack>
                 return self.trigger_timers();
             }
         } else {
-            return EventHandleResult::WaitForNextEvent(self);
+            return EventHandleResult::WaitForNextEvent;
         }
     }
 
@@ -270,28 +270,28 @@ impl<Factory: FactoryTrait, T: TimerCreationCallBack, U: TimerCallBack>
     }
 
     fn create_timer_event_event(
-        mut self,
+        &mut self,
         creation_call_back: T,
         tick_call_back: U,
         schedule: Schedule,
     ) -> EventHandleResult<Self> {
         let timer_id = self.create_timer(tick_call_back, schedule);
         creation_call_back.timer_created(&timer_id);
-        return EventHandleResult::TryForNextEvent(self);
+        return EventHandleResult::TryForNextEvent;
     }
 
     fn reschedule_timer_event(
-        mut self,
+        &mut self,
         timer_id: &TimerId,
         schedule: Schedule,
     ) -> EventHandleResult<Self> {
         self.reschedule_timer(timer_id, schedule);
-        return EventHandleResult::TryForNextEvent(self);
+        return EventHandleResult::TryForNextEvent;
     }
 
-    fn cancel_timer_event(mut self, timer_id: TimerId) -> EventHandleResult<Self> {
+    fn cancel_timer_event(&mut self, timer_id: TimerId) -> EventHandleResult<Self> {
         self.cancel_timer(timer_id);
-        return EventHandleResult::TryForNextEvent(self);
+        return EventHandleResult::TryForNextEvent;
     }
 }
 
@@ -301,7 +301,10 @@ impl<Factory: FactoryTrait, T: TimerCreationCallBack, U: TimerCallBack> EventHan
     type Event = TimerServiceEvent<T, U>;
     type ThreadReturn = ();
 
-    fn on_channel_event(self, channel_event: ChannelEvent<Self::Event>) -> EventHandleResult<Self> {
+    fn on_channel_event(
+        &mut self,
+        channel_event: ChannelEvent<Self::Event>,
+    ) -> EventHandleResult<Self> {
         match channel_event {
             ReceivedEvent(
                 _,

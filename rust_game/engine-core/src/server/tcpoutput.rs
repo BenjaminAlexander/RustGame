@@ -35,7 +35,7 @@ impl<Game: GameTrait> TcpOutput<Game> {
     }
 
     fn send_initial_information(
-        mut self,
+        &mut self,
         server_config: ServerConfig,
         player_count: usize,
         initial_state: Game::State,
@@ -53,7 +53,7 @@ impl<Game: GameTrait> TcpOutput<Game> {
 
         debug!("Sent InitialInformation");
 
-        return EventHandleResult::TryForNextEvent(self);
+        return EventHandleResult::TryForNextEvent;
     }
 }
 
@@ -61,14 +61,17 @@ impl<Game: GameTrait> EventHandlerTrait for TcpOutput<Game> {
     type Event = TcpOutputEvent<Game>;
     type ThreadReturn = ();
 
-    fn on_channel_event(self, channel_event: ChannelEvent<Self::Event>) -> EventHandleResult<Self> {
+    fn on_channel_event(
+        &mut self,
+        channel_event: ChannelEvent<Self::Event>,
+    ) -> EventHandleResult<Self> {
         match channel_event {
             ChannelEvent::ReceivedEvent(
                 _,
                 SendInitialInformation(server_config, player_count, initial_state),
             ) => self.send_initial_information(server_config, player_count, initial_state),
-            ChannelEvent::Timeout => EventHandleResult::WaitForNextEvent(self),
-            ChannelEvent::ChannelEmpty => EventHandleResult::WaitForNextEvent(self),
+            ChannelEvent::Timeout => EventHandleResult::WaitForNextEvent,
+            ChannelEvent::ChannelEmpty => EventHandleResult::WaitForNextEvent,
             ChannelEvent::ChannelDisconnected => EventHandleResult::StopThread(()),
         }
     }
