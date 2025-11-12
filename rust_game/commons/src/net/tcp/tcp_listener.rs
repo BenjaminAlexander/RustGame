@@ -23,7 +23,7 @@ pub struct TcpListenerBuilder {
 
 impl TcpListenerBuilder {
     pub fn new(factory: &impl FactoryTrait) -> Self {
-        let (sender, receiver) = factory.new_channel().take();
+        let (sender, receiver) = factory.new_channel();
 
         return Self {
             stopper: EventHandlerStopper::new(EventSender::new(sender)),
@@ -57,13 +57,12 @@ impl TcpListenerBuilder {
         socket_addr: SocketAddr,
         tcp_connection_handler: T,
     ) -> Result<EventHandlerStopper, Error> {
-        self.receiver.spawn_tcp_listener(
+        return self.spawn_thread_with_call_back(
             thread_name,
             socket_addr,
             tcp_connection_handler,
             |_| {},
-        )?;
-        return Ok(self.stopper);
+        );
     }
 
     pub fn new_thread<T: TcpConnectionHandlerTrait>(

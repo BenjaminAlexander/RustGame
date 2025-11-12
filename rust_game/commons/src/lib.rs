@@ -2,6 +2,7 @@ pub mod factory;
 pub mod geometry;
 pub mod logging;
 pub mod net;
+pub mod real_time;
 pub mod single_threaded_simulator;
 pub mod stats;
 pub mod threading;

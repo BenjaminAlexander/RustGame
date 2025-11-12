@@ -23,7 +23,7 @@ pub struct UdpReadHandlerBuilder {
 
 impl UdpReadHandlerBuilder {
     pub fn new(factory: &impl FactoryTrait) -> Self {
-        let (sender, receiver) = factory.new_channel().take();
+        let (sender, receiver) = factory.new_channel();
 
         return Self {
             stopper: EventHandlerStopper::new(EventSender::new(sender)),

@@ -49,7 +49,7 @@ impl<GameFactory: GameFactoryTrait> RenderReceiver<GameFactory> {
     pub fn new(
         factory: Factory<GameFactory>,
     ) -> (Sender<RenderReceiverMessage<Game<GameFactory>>>, Self) {
-        let (sender, receiver) = factory.new_channel().take();
+        let (sender, receiver) = factory.new_channel();
 
         let data = Data::<GameFactory> {
             factory: factory.clone(),

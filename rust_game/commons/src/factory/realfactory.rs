@@ -7,10 +7,7 @@ use crate::net::{
     UdpSocket,
 };
 use crate::threading::channel::{
-    Channel,
-    RealReceiver,
-    RealSender,
-    SendMetaData,
+    RealReceiver, RealSender, Receiver, ReceiverImplementation, SendMetaData, Sender, SenderImplementation
 };
 use crate::time::TimeSource;
 use std::io::Error;
@@ -35,11 +32,13 @@ impl FactoryTrait for RealFactory {
         return &self.time_source;
     }
 
-    fn new_channel<T: Send>(&self) -> Channel<T> {
+    fn new_channel<T: Send>(&self) -> (Sender<T>, Receiver<T>) {
         let (sender, receiver) = mpsc::channel::<(SendMetaData, T)>();
-        let sender = RealSender::new(self.time_source.clone(), sender);
-        let receiver = RealReceiver::new(self.time_source.clone(), receiver);
-        return Channel::new(sender, receiver);
+        let real_sender = RealSender::new(self.time_source.clone(), sender);
+        let real_receiver = RealReceiver::new(self.time_source.clone(), receiver);
+        let sender = Sender::new(SenderImplementation::Real(real_sender));
+        let receiver = Receiver::new(ReceiverImplementation::Real(real_receiver));
+        return (sender, receiver);
     }
 
     fn connect_tcp(&self, socket_addr: SocketAddr) -> Result<(TcpStream, TcpReader), Error> {

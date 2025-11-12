@@ -19,7 +19,7 @@ pub struct EventHandlerBuilder<T: EventHandlerTrait> {
 
 impl<T: EventHandlerTrait> EventHandlerBuilder<T> {
     pub fn new(factory: &impl FactoryTrait) -> Self {
-        let (sender, receiver) = factory.new_channel().take();
+        let (sender, receiver) = factory.new_channel();
 
         return Self {
             sender: EventSender::new(sender),

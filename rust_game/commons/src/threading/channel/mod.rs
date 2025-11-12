@@ -6,8 +6,13 @@ mod receivertrait;
 mod sendertrait;
 mod sendmetadata;
 
+
+pub(crate) use self::channel::{
+    new_simulated_channel,
+    SenderImplementation,
+    ReceiverImplementation
+};
 pub use self::channel::{
-    Channel,
     Receiver,
     Sender,
 };

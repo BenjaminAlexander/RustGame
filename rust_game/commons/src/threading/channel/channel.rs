@@ -13,12 +13,10 @@ use crate::{
         UdpReadHandlerTrait,
     },
     single_threaded_simulator::{
-        net::{
+        SingleThreadedFactory, SingleThreadedReceiver, SingleThreadedSender, net::{
             NetworkSimulator,
             UdpSocketSimulator,
-        },
-        SingleThreadedReceiver,
-        SingleThreadedSender,
+        }
     },
     threading::{
         channel::{
@@ -29,45 +27,21 @@ use crate::{
             SenderTrait,
         },
         eventhandling::{
-            spawn_event_handler,
-            EventHandlerTrait,
-            EventOrStopThread,
+            EventHandlerTrait, EventOrStopThread, spawn_event_handler
         },
     },
 };
 
-pub struct Channel<T: Send + 'static> {
-    sender: Sender<T>,
-    receiver: Receiver<T>,
+//TODO: don't expose new functions
+pub(crate) fn new_simulated_channel<T: Send>(factory: &SingleThreadedFactory) -> (Sender<T>, Receiver<T>) {
+    let (simulated_sender, simulated_receiver) = SingleThreadedReceiver::new(factory.clone());
+    let sender = Sender::new(SenderImplementation::Simulated(simulated_sender));
+    let receiver = Receiver::new(ReceiverImplementation::Simulated(simulated_receiver));
+    return (sender, receiver);
 }
 
-impl<T: Send + 'static> Channel<T> {
-    //TODO: don't expose new functions
-    pub fn new(real_sender: RealSender<T>, real_receiver: RealReceiver<T>) -> Self {
-        let sender = Sender::new(SenderImplementation::Real(real_sender));
-        let receiver = Receiver::new(ReceiverImplementation::Real(real_receiver));
-        return Self { sender, receiver };
-    }
-
-    pub fn new_simulated(
-        simulated_sender: SingleThreadedSender<T>,
-        simulated_receiver: SingleThreadedReceiver<T>,
-    ) -> Self {
-        let sender = Sender::new(SenderImplementation::Simulated(simulated_sender));
-        let receiver = Receiver::new(ReceiverImplementation::Simulated(simulated_receiver));
-        return Self { sender, receiver };
-    }
-
-    pub fn get_sender(&self) -> &Sender<T> {
-        return &self.sender;
-    }
-
-    pub fn take(self) -> (Sender<T>, Receiver<T>) {
-        return (self.sender, self.receiver);
-    }
-}
-
-enum SenderImplementation<T: Send> {
+//TODO: hide
+pub enum SenderImplementation<T: Send> {
     Real(RealSender<T>),
 
     //TODO: conditionally compile
@@ -92,7 +66,8 @@ pub struct Sender<T: Send> {
 }
 
 impl<T: Send> Sender<T> {
-    fn new(implementation: SenderImplementation<T>) -> Self {
+    //TODO: hide
+    pub fn new(implementation: SenderImplementation<T>) -> Self {
         return Self { implementation };
     }
 
@@ -130,7 +105,8 @@ impl<T: Send> Sender<EventOrStopThread<T>> {
     }
 }
 
-enum ReceiverImplementation<T: Send> {
+//TODO: hide
+pub enum ReceiverImplementation<T: Send> {
     Real(RealReceiver<T>),
 
     //TODO: conditionally compile
@@ -142,7 +118,8 @@ pub struct Receiver<T: Send> {
 }
 
 impl<T: Send> Receiver<T> {
-    fn new(implementation: ReceiverImplementation<T>) -> Self {
+    //TODO: hide
+    pub fn new(implementation: ReceiverImplementation<T>) -> Self {
         return Self { implementation };
     }
 }
@@ -182,7 +159,7 @@ impl Receiver<EventOrStopThread<()>> {
         socket_addr: SocketAddr,
         tcp_connection_handler: T,
         join_call_back: impl FnOnce(()) + Send + 'static,
-    ) -> std::io::Result<()> {
+    ) -> Result<(), Error> {
         match self.implementation {
             ReceiverImplementation::Real(real_receiver) => real_receiver.spawn_tcp_listener(
                 thread_name,

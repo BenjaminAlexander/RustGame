@@ -104,11 +104,9 @@ fn test_send_after_close() {
     setup_test_logging();
 
     let factory = RealFactory::new();
-    let channel = factory.new_channel::<i32>();
+    let (sender, _)  = factory.new_channel::<i32>();
     let value = 1234;
-
-    let (sender, _) = channel.take();
-
+    
     let error_value = sender.send(value).unwrap_err();
 
     assert_eq!(value, error_value);

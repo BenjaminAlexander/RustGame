@@ -12,7 +12,7 @@ use crate::single_threaded_simulator::{
     SingleThreadedReceiver,
     TimeQueue,
 };
-use crate::threading::channel::Channel;
+use crate::threading::channel::{Receiver, Sender, new_simulated_channel};
 use crate::time::{
     SimulatedTimeSource,
     TimeSource,
@@ -74,9 +74,8 @@ impl FactoryTrait for SingleThreadedFactory {
         return &self.time_source;
     }
 
-    fn new_channel<T: Send>(&self) -> Channel<T> {
-        let (sender, receiver) = SingleThreadedReceiver::new(self.clone());
-        return Channel::new_simulated(sender, receiver);
+    fn new_channel<T: Send>(&self) -> (Sender<T>, Receiver<T>) {
+        return new_simulated_channel(self);
     }
 
     fn connect_tcp(&self, socket_addr: SocketAddr) -> Result<(TcpStream, TcpReader), Error> {

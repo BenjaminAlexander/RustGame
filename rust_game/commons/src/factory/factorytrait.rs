@@ -4,15 +4,15 @@ use crate::net::{
     UdpSocket,
     LOCAL_EPHEMERAL_SOCKET_ADDR_V4,
 };
-use crate::threading::channel::Channel;
+use crate::threading::channel::{Receiver, Sender};
 use crate::time::TimeSource;
 use std::io::Error;
 use std::net::SocketAddr;
 
 pub trait FactoryTrait: Clone + Send + 'static {
     fn get_time_source(&self) -> &TimeSource;
-
-    fn new_channel<T: Send>(&self) -> Channel<T>;
+    
+    fn new_channel<T: Send>(&self) -> (Sender<T>, Receiver<T>);
 
     fn connect_tcp(&self, socket_addr: SocketAddr) -> Result<(TcpStream, TcpReader), Error>;
 

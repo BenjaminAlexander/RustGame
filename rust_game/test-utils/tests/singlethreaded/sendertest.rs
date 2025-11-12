@@ -53,7 +53,7 @@ fn test_sender() {
 fn test_drop_sender() {
     let factory = SingleThreadedFactory::new();
 
-    let (sender, mut receiver) = factory.new_channel::<u32>().take();
+    let (sender, mut receiver) = factory.new_channel::<u32>();
 
     assert_eq!(TryRecvError::Empty, receiver.try_recv().unwrap_err());
 
