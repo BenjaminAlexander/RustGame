@@ -1,19 +1,14 @@
 use std::io::Error;
 
 use crate::{
-    real_time::FactoryTrait,
     net::{
         UdpReadHandlerTrait,
         UdpSocket,
-    },
-    threading::{
-        channel::Receiver,
-        eventhandling::{
+    }, real_time::{FactoryTrait, Receiver}, threading::eventhandling::{
             EventHandlerStopper,
             EventOrStopThread,
             EventSender,
-        },
-    },
+        }
 };
 
 pub struct UdpReadHandlerBuilder {

@@ -1,11 +1,10 @@
 use commons::{
-    real_time::RealFactory,
+    real_time::{EventHandlerBuilder, RealFactory},
     threading::{
         channel::ReceiveMetaData,
         eventhandling::{
             ChannelEvent,
             EventHandleResult,
-            EventHandlerBuilder,
             EventHandlerTrait,
         },
     },

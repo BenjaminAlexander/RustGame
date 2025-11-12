@@ -90,7 +90,7 @@ impl<T: Send> RealReceiver<T> {
 }
 
 impl RealReceiver<EventOrStopThread<()>> {
-    //TODO: can these span methods be on a trait and called with dynamic dispatch?
+    //TODO: can these spawn methods be on a trait and called with dynamic dispatch?
 
     pub fn spawn_tcp_listener<T: TcpConnectionHandlerTrait>(
         self,

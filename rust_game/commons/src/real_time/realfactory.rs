@@ -1,5 +1,6 @@
+use crate::real_time::receiver::ReceiverImplementation;
 use crate::real_time::sender::SenderImplementation;
-use crate::real_time::{FactoryTrait, Sender};
+use crate::real_time::{FactoryTrait, Receiver, Sender};
 use crate::net::{
     RealTcpStream,
     RealUdpSocket,
@@ -8,7 +9,7 @@ use crate::net::{
     UdpSocket,
 };
 use crate::threading::channel::{
-    RealReceiver, RealSender, Receiver, ReceiverImplementation, SendMetaData,
+    RealReceiver, RealSender, SendMetaData,
 };
 use crate::time::TimeSource;
 use std::io::Error;

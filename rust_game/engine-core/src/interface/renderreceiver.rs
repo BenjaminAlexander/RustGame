@@ -11,9 +11,8 @@ use crate::interface::{
     InterpolationArg,
     InterpolationResult,
 };
-use commons::real_time::{FactoryTrait, Sender};
+use commons::real_time::{FactoryTrait, Receiver, Sender};
 use commons::threading::channel::{
-    Receiver,
     ReceiverTrait,
 };
 use commons::time::TimeDuration;

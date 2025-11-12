@@ -1,4 +1,4 @@
-use crate::real_time::FactoryTrait;
+use crate::real_time::{EventHandlerBuilder, FactoryTrait, Receiver};
 use crate::net::{
     TcpConnectionHandlerTrait,
     TcpReadHandlerTrait,
@@ -21,11 +21,9 @@ use crate::single_threaded_simulator::{
 };
 use crate::threading::channel::{
     ReceiveMetaData,
-    Receiver,
     ReceiverTrait,
 };
 use crate::threading::eventhandling::{
-    EventHandlerBuilder,
     EventHandlerTrait,
     EventOrStopThread,
 };

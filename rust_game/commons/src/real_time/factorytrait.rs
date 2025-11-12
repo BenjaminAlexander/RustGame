@@ -4,8 +4,7 @@ use crate::net::{
     UdpSocket,
     LOCAL_EPHEMERAL_SOCKET_ADDR_V4,
 };
-use crate::real_time::Sender;
-use crate::threading::channel::{Receiver};
+use crate::real_time::{Receiver, Sender};
 use crate::time::TimeSource;
 use std::io::Error;
 use std::net::SocketAddr;

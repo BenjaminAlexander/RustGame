@@ -40,7 +40,7 @@ use crate::server::{
     ServerConfig,
     TcpConnectionHandler,
 };
-use commons::real_time::{FactoryTrait, Sender};
+use commons::real_time::{EventHandlerBuilder, FactoryTrait, Sender};
 use commons::net::{
     TcpListenerBuilder,
     TcpReadHandlerBuilder,
@@ -56,7 +56,6 @@ use commons::threading::channel::{
 use commons::threading::eventhandling::{
     ChannelEvent,
     EventHandleResult,
-    EventHandlerBuilder,
     EventHandlerStopper,
     EventHandlerTrait,
     EventSender,

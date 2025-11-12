@@ -23,7 +23,7 @@ use crate::interface::{
     RenderReceiverMessage,
 };
 use crate::messaging::InputMessage;
-use commons::real_time::{FactoryTrait, Sender};
+use commons::real_time::{EventHandlerBuilder, FactoryTrait, Sender};
 use commons::net::{
     TcpReadHandlerBuilder,
     UdpReadHandlerBuilder,
@@ -34,7 +34,6 @@ use commons::threading::channel::{
 use commons::threading::eventhandling::{
     ChannelEvent,
     EventHandleResult,
-    EventHandlerBuilder,
     EventHandlerStopper,
     EventHandlerTrait,
     EventSender,

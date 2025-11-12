@@ -8,12 +8,7 @@ use crate::{
         RealUdpSocket,
         UdpReadHandlerTrait,
         UdpSocketTrait,
-    },
-    single_threaded_simulator::net::UdpSocketSimulator,
-    threading::{
-        channel::Receiver,
-        eventhandling::EventOrStopThread,
-    },
+    }, real_time::Receiver, single_threaded_simulator::net::UdpSocketSimulator, threading::eventhandling::EventOrStopThread
 };
 
 enum Implementation {

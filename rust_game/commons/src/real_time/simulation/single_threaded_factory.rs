@@ -1,5 +1,6 @@
+use crate::real_time::receiver::ReceiverImplementation;
 use crate::real_time::sender::SenderImplementation;
-use crate::real_time::{FactoryTrait, Sender};
+use crate::real_time::{FactoryTrait, Receiver, Sender};
 use crate::net::{
     TcpReader,
     TcpStream,
@@ -12,7 +13,6 @@ use crate::single_threaded_simulator::net::{
 use crate::single_threaded_simulator::{
     SingleThreadedReceiver, TimeQueue
 };
-use crate::threading::channel::{Receiver, ReceiverImplementation};
 use crate::time::{
     SimulatedTimeSource,
     TimeSource,

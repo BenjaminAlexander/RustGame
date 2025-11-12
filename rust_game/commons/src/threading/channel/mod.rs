@@ -7,12 +7,6 @@ mod sendertrait;
 mod sendmetadata;
 
 
-pub(crate) use self::channel::{
-    ReceiverImplementation
-};
-pub use self::channel::{
-    Receiver,
-};
 pub use self::realreceiver::{
     RealReceiver,
     RecvError,
