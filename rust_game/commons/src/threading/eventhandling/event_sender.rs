@@ -1,7 +1,4 @@
-use crate::threading::{
-    channel::Sender,
-    eventhandling::EventOrStopThread,
-};
+use crate::{real_time::Sender, threading::eventhandling::EventOrStopThread};
 
 pub struct EventSender<T: Send> {
     sender: Sender<EventOrStopThread<T>>,

@@ -1,10 +1,7 @@
 use commons::{
-    factory::{
-        FactoryTrait,
-        RealFactory,
-    },
+    real_time::RealFactory,
     logging::LoggingConfigBuilder,
-    net::UdpReadHandlerBuilder,
+    net::UdpReadHandlerBuilder, real_time::FactoryTrait,
 };
 use log::{
     info,

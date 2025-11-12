@@ -1,7 +1,7 @@
 use std::io::Error;
 
 use crate::{
-    factory::FactoryTrait,
+    real_time::FactoryTrait,
     net::{
         UdpReadHandlerTrait,
         UdpSocket,

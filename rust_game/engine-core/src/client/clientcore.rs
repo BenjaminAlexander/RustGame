@@ -23,14 +23,13 @@ use crate::interface::{
     RenderReceiverMessage,
 };
 use crate::messaging::InputMessage;
-use commons::factory::FactoryTrait;
+use commons::real_time::{FactoryTrait, Sender};
 use commons::net::{
     TcpReadHandlerBuilder,
     UdpReadHandlerBuilder,
 };
 use commons::threading::channel::{
     ReceiveMetaData,
-    Sender,
 };
 use commons::threading::eventhandling::{
     ChannelEvent,
@@ -87,7 +86,6 @@ impl<GameFactory: GameFactoryTrait> ClientCore<GameFactory> {
         render_receiver_sender: Sender<RenderReceiverMessage<GameFactory::Game>>,
     ) -> Self {
         let client_manager_observer = ClientManagerObserver::<GameFactory>::new(
-            factory.clone(),
             render_receiver_sender.clone(),
         );
 
@@ -164,7 +162,7 @@ impl<GameFactory: GameFactoryTrait> ClientCore<GameFactory> {
         }
 
         let client_game_time_observer =
-            ClientGameTimerObserver::new(self.factory.clone(), self.sender.clone());
+            ClientGameTimerObserver::new(self.sender.clone());
 
         let game_timer = GameTimer::new(
             self.factory.clone(),
@@ -330,7 +328,8 @@ impl<GameFactory: GameFactoryTrait> ClientCore<GameFactory> {
         if let Some(ref mut running_state) = self.running_state {
             running_state
                 .game_timer
-                .on_remote_timer_message(time_message);
+                .on_remote_timer_message(time_message)
+                .unwrap();
         } else {
             warn!("Received a remote timer message while waiting for the hello from the server")
         }

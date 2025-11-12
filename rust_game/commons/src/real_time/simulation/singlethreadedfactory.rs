@@ -1,4 +1,5 @@
-use crate::factory::FactoryTrait;
+use crate::real_time::sender::SenderImplementation;
+use crate::real_time::{FactoryTrait, Sender};
 use crate::net::{
     TcpReader,
     TcpStream,
@@ -9,10 +10,9 @@ use crate::single_threaded_simulator::net::{
     NetworkSimulator,
 };
 use crate::single_threaded_simulator::{
-    SingleThreadedReceiver,
-    TimeQueue,
+    SingleThreadedReceiver, TimeQueue
 };
-use crate::threading::channel::{Receiver, Sender, new_simulated_channel};
+use crate::threading::channel::{Receiver, ReceiverImplementation};
 use crate::time::{
     SimulatedTimeSource,
     TimeSource,
@@ -75,7 +75,10 @@ impl FactoryTrait for SingleThreadedFactory {
     }
 
     fn new_channel<T: Send>(&self) -> (Sender<T>, Receiver<T>) {
-        return new_simulated_channel(self);
+        let (simulated_sender, simulated_receiver) = SingleThreadedReceiver::new(self.clone());
+        let sender = Sender::new(SenderImplementation::Simulated(simulated_sender));
+        let receiver = Receiver::new(ReceiverImplementation::Simulated(simulated_receiver));
+        return (sender, receiver);
     }
 
     fn connect_tcp(&self, socket_addr: SocketAddr) -> Result<(TcpStream, TcpReader), Error> {

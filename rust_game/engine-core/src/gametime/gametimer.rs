@@ -3,7 +3,7 @@ use crate::gametime::{
     TimeMessage,
     TimeReceived,
 };
-use commons::factory::FactoryTrait;
+use commons::real_time::FactoryTrait;
 use commons::stats::RollingAverage;
 use commons::time::timerservice::{
     IdleTimerService,

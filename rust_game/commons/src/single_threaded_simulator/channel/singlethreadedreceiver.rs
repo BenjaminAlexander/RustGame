@@ -1,9 +1,10 @@
-use crate::factory::FactoryTrait;
+use crate::real_time::FactoryTrait;
 use crate::net::{
     TcpConnectionHandlerTrait,
     TcpReadHandlerTrait,
     UdpReadHandlerTrait,
 };
+use crate::real_time::simulation::SingleThreadedFactory;
 use crate::single_threaded_simulator::channel::receiverlink::{
     ReceiveOrDisconnected,
     ReceiverLink,
@@ -16,7 +17,6 @@ use crate::single_threaded_simulator::net::{
     UdpSocketSimulator,
 };
 use crate::single_threaded_simulator::{
-    SingleThreadedFactory,
     SingleThreadedSender,
 };
 use crate::threading::channel::{

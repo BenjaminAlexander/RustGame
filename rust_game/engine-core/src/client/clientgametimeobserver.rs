@@ -5,17 +5,14 @@ use commons::threading::eventhandling::EventSender;
 use commons::time::timerservice::TimerCallBack;
 
 pub struct ClientGameTimerObserver<GameFactory: GameFactoryTrait> {
-    factory: GameFactory::Factory,
     core_sender: EventSender<ClientCoreEvent<GameFactory>>,
 }
 
 impl<GameFactory: GameFactoryTrait> ClientGameTimerObserver<GameFactory> {
     pub fn new(
-        factory: GameFactory::Factory,
         core_sender: EventSender<ClientCoreEvent<GameFactory>>,
     ) -> Self {
         return Self {
-            factory,
             core_sender,
         };
     }

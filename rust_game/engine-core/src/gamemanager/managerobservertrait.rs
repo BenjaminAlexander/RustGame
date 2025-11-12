@@ -4,7 +4,7 @@ use crate::messaging::{
     ServerInputMessage,
     StateMessage,
 };
-use commons::factory::FactoryTrait;
+use commons::real_time::FactoryTrait;
 
 pub trait ManagerObserverTrait: 'static + Send {
     type Factory: FactoryTrait;

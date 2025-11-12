@@ -2,9 +2,9 @@ use crate::net::{
     TcpReader,
     TcpStream,
 };
+use crate::real_time::simulation::SingleThreadedFactory;
 use crate::single_threaded_simulator::net::simulator::udpsocketsimulator::UdpSocketSimulator;
 use crate::single_threaded_simulator::net::NetworkSimulator;
-use crate::single_threaded_simulator::SingleThreadedFactory;
 use std::collections::HashSet;
 use std::io::{
     Error,

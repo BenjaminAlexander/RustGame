@@ -1,5 +1,5 @@
 use crate::messaging::MessageFragment;
-use commons::factory::FactoryTrait;
+use commons::real_time::FactoryTrait;
 use commons::time::TimeValue;
 use std::collections::HashMap;
 

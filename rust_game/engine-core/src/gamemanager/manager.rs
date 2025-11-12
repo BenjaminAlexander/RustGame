@@ -17,7 +17,7 @@ use crate::messaging::{
     ServerInputMessage,
     StateMessage,
 };
-use commons::factory::FactoryTrait;
+use commons::real_time::FactoryTrait;
 use commons::threading::channel::ReceiveMetaData;
 use commons::threading::eventhandling::{
     ChannelEvent,

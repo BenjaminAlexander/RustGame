@@ -4,11 +4,13 @@ use crate::net::{
     UdpSocket,
     LOCAL_EPHEMERAL_SOCKET_ADDR_V4,
 };
-use crate::threading::channel::{Receiver, Sender};
+use crate::real_time::Sender;
+use crate::threading::channel::{Receiver};
 use crate::time::TimeSource;
 use std::io::Error;
 use std::net::SocketAddr;
 
+//TODO: rename trait and file
 pub trait FactoryTrait: Clone + Send + 'static {
     fn get_time_source(&self) -> &TimeSource;
     

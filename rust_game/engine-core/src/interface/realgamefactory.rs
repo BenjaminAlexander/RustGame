@@ -2,7 +2,7 @@ use crate::interface::{
     GameFactoryTrait,
     GameTrait,
 };
-use commons::factory::RealFactory;
+use commons::real_time::RealFactory;
 use std::marker::PhantomData;
 
 #[derive(Clone, Copy)]

@@ -18,7 +18,7 @@ use crate::server::udpoutput::UdpOutputEvent::{
     SendServerInputMessage,
     SendTimeMessage,
 };
-use commons::factory::FactoryTrait;
+use commons::real_time::FactoryTrait;
 use commons::net::{
     UdpSocket,
     MAX_UDP_DATAGRAM_SIZE,

@@ -1,4 +1,5 @@
-use crate::factory::FactoryTrait;
+use crate::real_time::sender::SenderImplementation;
+use crate::real_time::{FactoryTrait, Sender};
 use crate::net::{
     RealTcpStream,
     RealUdpSocket,
@@ -7,13 +8,14 @@ use crate::net::{
     UdpSocket,
 };
 use crate::threading::channel::{
-    RealReceiver, RealSender, Receiver, ReceiverImplementation, SendMetaData, Sender, SenderImplementation
+    RealReceiver, RealSender, Receiver, ReceiverImplementation, SendMetaData,
 };
 use crate::time::TimeSource;
 use std::io::Error;
 use std::net::SocketAddr;
 use std::sync::mpsc;
 
+//TODO: rename trait and file
 #[derive(Clone)]
 pub struct RealFactory {
     time_source: TimeSource,

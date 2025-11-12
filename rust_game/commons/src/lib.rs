@@ -1,4 +1,3 @@
-pub mod factory;
 pub mod geometry;
 pub mod logging;
 pub mod net;

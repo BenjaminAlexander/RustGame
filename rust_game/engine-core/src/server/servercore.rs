@@ -40,7 +40,7 @@ use crate::server::{
     ServerConfig,
     TcpConnectionHandler,
 };
-use commons::factory::FactoryTrait;
+use commons::real_time::{FactoryTrait, Sender};
 use commons::net::{
     TcpListenerBuilder,
     TcpReadHandlerBuilder,
@@ -52,7 +52,6 @@ use commons::net::{
 };
 use commons::threading::channel::{
     ReceiveMetaData,
-    Sender,
 };
 use commons::threading::eventhandling::{
     ChannelEvent,

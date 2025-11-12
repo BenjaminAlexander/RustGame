@@ -8,13 +8,10 @@ mod sendmetadata;
 
 
 pub(crate) use self::channel::{
-    new_simulated_channel,
-    SenderImplementation,
     ReceiverImplementation
 };
 pub use self::channel::{
     Receiver,
-    Sender,
 };
 pub use self::realreceiver::{
     RealReceiver,

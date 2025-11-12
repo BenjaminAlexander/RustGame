@@ -1,5 +1,5 @@
 use crate::{
-    factory::RealFactory,
+    real_time::RealFactory,
     threading::{
         channel::ReceiveMetaData,
         eventhandling::{

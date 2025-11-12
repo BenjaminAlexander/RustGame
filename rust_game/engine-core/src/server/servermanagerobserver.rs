@@ -11,7 +11,7 @@ use crate::messaging::{
     StateMessage,
 };
 use crate::server::udpoutput::UdpOutputEvent;
-use commons::threading::channel::Sender;
+use commons::real_time::Sender;
 use commons::threading::eventhandling::EventSender;
 
 pub struct ServerManagerObserver<GameFactory: GameFactoryTrait> {

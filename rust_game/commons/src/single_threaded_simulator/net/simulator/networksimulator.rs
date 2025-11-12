@@ -4,6 +4,7 @@ use crate::net::{
     TcpStream,
     UdpReadHandlerTrait,
 };
+use crate::real_time::simulation::SingleThreadedFactory;
 use crate::single_threaded_simulator::net::simulator::hostsimulator::HostSimulator;
 use crate::single_threaded_simulator::net::simulator::tcplistenereventhandler::{
     TcpListenerEvent,
@@ -16,7 +17,6 @@ use crate::single_threaded_simulator::net::{
 };
 use crate::single_threaded_simulator::{
     ReceiveOrDisconnected,
-    SingleThreadedFactory,
     SingleThreadedReceiver,
 };
 use crate::threading::eventhandling::{

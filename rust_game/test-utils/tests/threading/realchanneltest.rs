@@ -1,18 +1,13 @@
 use std::sync::mpsc;
 
 use commons::{
-    factory::{
-        FactoryTrait,
-        RealFactory,
-    },
-    threading::channel::{
+    real_time::RealFactory, real_time::FactoryTrait, threading::channel::{
         RealReceiver,
         RealSender,
         RecvTimeoutError,
         SendMetaData,
         SenderTrait,
-    },
-    time::TimeDuration,
+    }, time::TimeDuration
 };
 use test_utils::utils::setup_test_logging;
 
@@ -106,7 +101,7 @@ fn test_send_after_close() {
     let factory = RealFactory::new();
     let (sender, _)  = factory.new_channel::<i32>();
     let value = 1234;
-    
+
     let error_value = sender.send(value).unwrap_err();
 
     assert_eq!(value, error_value);

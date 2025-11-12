@@ -1,5 +1,4 @@
-use commons::single_threaded_simulator::SingleThreadedFactory;
-use commons::time::TimeDuration;
+use commons::{real_time::simulation::SingleThreadedFactory, time::TimeDuration};
 use test_utils::utils::Counter;
 
 #[test]

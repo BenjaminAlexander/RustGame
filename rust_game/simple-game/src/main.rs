@@ -5,7 +5,7 @@ use crate::simpleinputeventhandler::SimpleInputEventHandler;
 use crate::simpleserverinput::SimpleServerInput;
 use crate::simplestate::*;
 use crate::simplewindow::SimpleWindow;
-use commons::factory::RealFactory;
+use commons::real_time::RealFactory;
 use commons::logging::LoggingConfigBuilder;
 use commons::time::TimeDuration;
 use engine_core::{

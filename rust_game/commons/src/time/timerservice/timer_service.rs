@@ -1,4 +1,4 @@
-use crate::factory::FactoryTrait;
+use crate::real_time::FactoryTrait;
 use crate::threading::channel::ReceiveMetaData;
 use crate::threading::eventhandling::ChannelEvent::{
     ChannelDisconnected,
@@ -139,6 +139,7 @@ enum TimerServiceEvent<T: TimerCreationCallBack, U: TimerCallBack> {
 
 /// An EventHandlerTrait implementation for [`TimerService`]
 struct TimerServiceEventHandler<Factory: FactoryTrait, T: TimerCreationCallBack, U: TimerCallBack> {
+    //TODO: replace with Time source
     factory: Factory,
     next_timer_id: usize,
     timers: VecDeque<Timer<U>>,

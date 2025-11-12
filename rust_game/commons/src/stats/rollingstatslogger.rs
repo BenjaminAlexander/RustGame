@@ -1,4 +1,4 @@
-use crate::factory::FactoryTrait;
+use crate::real_time::FactoryTrait;
 use crate::stats::RollingStats;
 use crate::time::{
     TimeDuration,

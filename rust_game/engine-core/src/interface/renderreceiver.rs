@@ -11,11 +11,10 @@ use crate::interface::{
     InterpolationArg,
     InterpolationResult,
 };
-use commons::factory::FactoryTrait;
+use commons::real_time::{FactoryTrait, Sender};
 use commons::threading::channel::{
     Receiver,
     ReceiverTrait,
-    Sender,
 };
 use commons::time::TimeDuration;
 use log::{

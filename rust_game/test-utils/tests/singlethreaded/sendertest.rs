@@ -1,7 +1,7 @@
-use commons::factory::FactoryTrait;
+use commons::real_time::FactoryTrait;
+use commons::real_time::simulation::SingleThreadedFactory;
 use commons::single_threaded_simulator::{
     ReceiveOrDisconnected,
-    SingleThreadedFactory,
     SingleThreadedReceiver,
 };
 use commons::threading::channel::{

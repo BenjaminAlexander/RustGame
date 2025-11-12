@@ -6,7 +6,7 @@ use commons::net::{
 };
 use commons::threading::SingleThreadExecutor;
 use commons::{
-    factory::RealFactory,
+    real_time::RealFactory,
     net::{
         TcpConnectionHandler,
         TcpReadHandler,

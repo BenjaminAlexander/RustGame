@@ -1,3 +1,4 @@
+use commons::real_time::RealFactory;
 use commons::net::{
     TcpListenerBuilder,
     TcpReadHandlerBuilder,
@@ -6,10 +7,7 @@ use commons::net::{
 };
 use commons::threading::SingleThreadExecutor;
 use commons::{
-    factory::{
-        FactoryTrait,
-        RealFactory,
-    },
+    real_time::FactoryTrait,
     net::{
         TcpConnectionHandler,
         TcpReadHandler,

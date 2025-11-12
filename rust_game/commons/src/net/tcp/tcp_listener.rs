@@ -4,7 +4,7 @@ use std::{
 };
 
 use crate::{
-    factory::FactoryTrait,
+    real_time::FactoryTrait,
     net::TcpConnectionHandlerTrait,
     threading::{
         channel::Receiver,

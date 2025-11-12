@@ -5,7 +5,6 @@ mod event_sender;
 mod eventhandlerthread;
 mod eventhandlertrait;
 mod eventsendertrait;
-mod types;
 
 pub use self::enums::{
     ChannelEvent,
@@ -18,4 +17,3 @@ pub use self::event_sender::EventSender;
 pub(crate) use self::eventhandlerthread::spawn_event_handler;
 pub use self::eventhandlertrait::EventHandlerTrait;
 pub use self::eventsendertrait::EventSenderTrait;
-pub use self::types::EventHandlerSender;

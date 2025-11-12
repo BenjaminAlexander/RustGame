@@ -1,4 +1,4 @@
-use commons::threading::channel::Sender;
+use commons::real_time::Sender;
 
 use crate::gamemanager::{
     ManagerObserverTrait,
@@ -14,17 +14,14 @@ use crate::messaging::{
 };
 
 pub struct ClientManagerObserver<GameFactory: GameFactoryTrait> {
-    factory: GameFactory::Factory,
     render_receiver_sender: Sender<RenderReceiverMessage<GameFactory::Game>>,
 }
 
 impl<GameFactory: GameFactoryTrait> ClientManagerObserver<GameFactory> {
     pub fn new(
-        factory: GameFactory::Factory,
         render_receiver_sender: Sender<RenderReceiverMessage<GameFactory::Game>>,
     ) -> Self {
         return Self {
-            factory,
             render_receiver_sender,
         };
     }

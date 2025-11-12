@@ -1,7 +1,7 @@
+use crate::real_time::simulation::SingleThreadedFactory;
 use crate::single_threaded_simulator::{
     ReceiveOrDisconnected,
     ReceiverLink,
-    SingleThreadedFactory,
     SingleThreadedReceiver,
 };
 use crate::threading::channel::ReceiveMetaData;
