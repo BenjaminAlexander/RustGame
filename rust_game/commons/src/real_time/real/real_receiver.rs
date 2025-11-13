@@ -49,11 +49,6 @@ impl<T: Send> RealReceiver<T> {
         return Ok((self.make_receive_meta_data(send_meta_data), value));
     }
 
-    pub fn recv(&mut self) -> Result<T, mpsc::RecvError> {
-        let (_, value) = self.recv_meta_data()?;
-        return Ok(value);
-    }
-
     pub fn recv_timeout_meta_data(
         &mut self,
         duration: TimeDuration,
@@ -64,11 +59,6 @@ impl<T: Send> RealReceiver<T> {
         } else {
             return Err(mpsc::RecvTimeoutError::Timeout);
         }
-    }
-
-    pub fn recv_timeout(&mut self, duration: TimeDuration) -> Result<T, mpsc::RecvTimeoutError> {
-        let (_, value) = self.recv_timeout_meta_data(duration)?;
-        return Ok(value);
     }
 
     fn make_receive_meta_data(&mut self, send_meta_data: SendMetaData) -> ReceiveMetaData {
@@ -125,7 +115,7 @@ mod tests {
     
     use std::sync::mpsc::{self, RecvTimeoutError};
 
-    use crate::{logging::setup_test_logging, real_time::{FactoryTrait, RealFactory, SendMetaData, real::RealReceiver}, threading::channel::RealSender, time::TimeDuration};
+    use crate::{logging::setup_test_logging, real_time::{FactoryTrait, RealFactory, SendMetaData, real::{RealReceiver, RealSender}}, time::TimeDuration};
 
     #[test]
     fn test_channel() {
@@ -141,7 +131,7 @@ mod tests {
 
         sender.send(value1).unwrap();
 
-        let recieved_value1 = receiver.recv().unwrap();
+        let (_, recieved_value1) = receiver.recv_meta_data().unwrap();
         assert_eq!(value1, recieved_value1);
 
         sender.send(value2).unwrap();
@@ -171,8 +161,8 @@ mod tests {
 
         drop(sender);
 
-        let recieved_value = receiver
-            .recv_timeout(TimeDuration::from_millis_f64(1.0))
+        let (_, recieved_value) = receiver
+            .recv_timeout_meta_data(TimeDuration::from_millis_f64(1.0))
             .unwrap();
 
         assert_eq!(value, recieved_value);
@@ -188,7 +178,7 @@ mod tests {
         let mut receiver = RealReceiver::new(factory.get_time_source().clone(), receiver);
 
         let recieved_value = receiver
-            .recv_timeout(TimeDuration::from_millis_f64(1.0))
+            .recv_timeout_meta_data(TimeDuration::from_millis_f64(1.0))
             .unwrap_err();
 
         assert_eq!(RecvTimeoutError::Timeout, recieved_value);
@@ -204,7 +194,7 @@ mod tests {
         let mut receiver = RealReceiver::new(factory.get_time_source().clone(), receiver);
 
         let error = receiver
-            .recv_timeout(TimeDuration::from_millis_f64(-1.0))
+            .recv_timeout_meta_data(TimeDuration::from_millis_f64(-1.0))
             .unwrap_err();
 
         assert_eq!(RecvTimeoutError::Timeout, error);
