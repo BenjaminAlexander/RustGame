@@ -24,7 +24,60 @@ use std::sync::{
     Mutex,
 };
 
-pub struct EventHandlerHolder<T: EventHandlerTrait, U: FnOnce(T::ThreadReturn) + Send + 'static> {
+pub fn spawn_event_handler<T: EventHandlerTrait, U: FnOnce(T::ThreadReturn) + Send + 'static>(
+    thread_name: String,
+    receiver: SingleThreadedReceiver<EventOrStopThread<T::Event>>,
+    event_handler: T,
+    join_call_back: U,
+) {
+    let holder = EventHandlerHolder {
+        internal: Arc::new(Mutex::new(None)),
+        factory: receiver.get_factory().clone(),
+    };
+
+    let holder_clone = holder.clone();
+    let factory = receiver.get_factory().clone();
+    let receiver_link = receiver.to_consumer(move |receive_or_disconnect| {
+        let holder_clone_clone = holder_clone.clone();
+
+        factory
+            .get_time_queue()
+            .add_event_now(move || match receive_or_disconnect {
+                ReceiveOrDisconnected::Receive(receive_meta_data, event_or_stop) => {
+                    holder_clone_clone.do_if_present(|internal| {
+                        return internal.on_receive(
+                            &holder_clone_clone,
+                            receive_meta_data,
+                            event_or_stop,
+                        );
+                    });
+                }
+                ReceiveOrDisconnected::Disconnected => {
+                    holder_clone_clone.do_if_present(|internal| {
+                        return internal
+                            .on_channel_event(&holder_clone_clone, ChannelDisconnected);
+                    });
+                }
+            });
+
+        return Ok(());
+    });
+
+    let mut internal = EventHandlerHolderInternal {
+        receiver_link,
+        event_handler,
+        join_call_back,
+        thread_name,
+        pending_channel_event: None,
+    };
+
+    internal.schedule_channel_empty(&holder);
+
+    *holder.internal.lock().unwrap() = Some(internal);
+}
+
+
+struct EventHandlerHolder<T: EventHandlerTrait, U: FnOnce(T::ThreadReturn) + Send + 'static> {
     internal: Arc<Mutex<Option<EventHandlerHolderInternal<T, U>>>>,
     factory: SingleThreadedFactory,
 }
@@ -51,61 +104,6 @@ impl<T: EventHandlerTrait, U: FnOnce(T::ThreadReturn) + Send + 'static> Clone
 }
 
 impl<T: EventHandlerTrait, U: FnOnce(T::ThreadReturn) + Send + 'static> EventHandlerHolder<T, U> {
-    //TODO: can this method be moved to its caller?
-    //TODO: move this to mirror real::spawn_event_handler
-    pub fn new(
-        factory: SingleThreadedFactory,
-        thread_name: String,
-        receiver: SingleThreadedReceiver<EventOrStopThread<T::Event>>,
-        event_handler: T,
-        join_call_back: U,
-    ) -> Self {
-        let holder = Self {
-            internal: Arc::new(Mutex::new(None)),
-            factory: factory.clone(),
-        };
-
-        let holder_clone = holder.clone();
-        let receiver_link = receiver.to_consumer(move |receive_or_disconnect| {
-            let holder_clone_clone = holder_clone.clone();
-
-            factory
-                .get_time_queue()
-                .add_event_now(move || match receive_or_disconnect {
-                    ReceiveOrDisconnected::Receive(receive_meta_data, event_or_stop) => {
-                        holder_clone_clone.do_if_present(|internal| {
-                            return internal.on_receive(
-                                &holder_clone_clone,
-                                receive_meta_data,
-                                event_or_stop,
-                            );
-                        });
-                    }
-                    ReceiveOrDisconnected::Disconnected => {
-                        holder_clone_clone.do_if_present(|internal| {
-                            return internal
-                                .on_channel_event(&holder_clone_clone, ChannelDisconnected);
-                        });
-                    }
-                });
-
-            return Ok(());
-        });
-
-        let mut internal = EventHandlerHolderInternal {
-            receiver_link,
-            event_handler,
-            join_call_back,
-            thread_name,
-            pending_channel_event: None,
-        };
-
-        internal.schedule_channel_empty(&holder);
-
-        *holder.internal.lock().unwrap() = Some(internal);
-
-        return holder;
-    }
 
     fn do_if_present(
         &self,

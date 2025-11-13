@@ -10,7 +10,6 @@ use crate::single_threaded_simulator::channel::receiverlink::{
     ReceiverLink,
 };
 use crate::single_threaded_simulator::channel::senderlink::SenderLink;
-use crate::single_threaded_simulator::eventhandling::EventHandlerHolder;
 use crate::single_threaded_simulator::net::{
     NetworkSimulator,
     TcpReaderEventHandler,
@@ -24,7 +23,6 @@ use crate::threading::channel::{
     ReceiverTrait,
 };
 use crate::threading::eventhandling::{
-    EventHandlerTrait,
     EventOrStopThread,
 };
 use std::io::Error;
@@ -55,31 +53,16 @@ impl<T: Send> SingleThreadedReceiver<T> {
         return (sender, receiver);
     }
 
+    pub fn get_factory(&self) -> &SingleThreadedFactory {
+        return &self.factory;
+    }
+
     pub fn to_consumer(
         self,
         consumer: impl Fn(ReceiveOrDisconnected<T>) -> Result<(), T> + Send + 'static,
     ) -> ReceiverLink<T> {
         self.link.to_consumer(consumer);
         return self.link;
-    }
-}
-
-impl<T: Send> SingleThreadedReceiver<EventOrStopThread<T>> {
-    pub fn spawn_event_handler<U: EventHandlerTrait<Event = T>>(
-        self,
-        thread_name: String,
-        event_handler: U,
-        join_call_back: impl FnOnce(U::ThreadReturn) + Send + 'static,
-    ) -> std::io::Result<()> {
-        EventHandlerHolder::new(
-            self.factory.clone(),
-            thread_name,
-            self,
-            event_handler,
-            join_call_back,
-        );
-
-        return Ok(());
     }
 }
 

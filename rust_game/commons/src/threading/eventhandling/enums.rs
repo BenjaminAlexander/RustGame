@@ -9,6 +9,7 @@ pub enum ChannelEvent<T> {
     ChannelDisconnected,
 }
 
+//TODO: hide EventOrStopThread enum
 pub enum EventOrStopThread<T> {
     Event(T),
     StopThread,
