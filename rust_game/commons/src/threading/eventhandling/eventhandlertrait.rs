@@ -1,8 +1,7 @@
-use crate::threading::channel::ReceiveMetaData;
-use crate::threading::eventhandling::{
+use crate::{real_time::ReceiveMetaData, threading::eventhandling::{
     ChannelEvent,
     EventHandleResult,
-};
+}};
 
 pub trait EventHandlerTrait: Send + Sized + 'static {
     type Event: Send + 'static;

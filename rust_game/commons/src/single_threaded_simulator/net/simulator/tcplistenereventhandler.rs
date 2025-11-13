@@ -3,9 +3,9 @@ use crate::net::{
     TcpReader,
     TcpStream,
 };
+use crate::real_time::ReceiveMetaData;
 use crate::single_threaded_simulator::net::ChannelTcpWriter;
 use crate::single_threaded_simulator::SingleThreadedReceiver;
-use crate::threading::channel::ReceiveMetaData;
 use crate::threading::eventhandling::{
     ChannelEvent,
     EventHandleResult,

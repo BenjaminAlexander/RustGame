@@ -8,11 +8,7 @@ use crate::net::{
     UdpReadHandlerTrait,
     UdpReaderEventHandler,
 };
-use crate::real_time::real;
-use crate::threading::channel::{
-    ReceiveMetaData,
-    SendMetaData,
-};
+use crate::real_time::{ReceiveMetaData, SendMetaData, real};
 use crate::threading::eventhandling::{
     EventOrStopThread,
 };
@@ -129,7 +125,7 @@ mod tests {
     
     use std::sync::mpsc::{self, RecvTimeoutError};
 
-    use crate::{logging::setup_test_logging, real_time::{FactoryTrait, RealFactory, real::RealReceiver}, threading::channel::{RealSender, SendMetaData}, time::TimeDuration};
+    use crate::{logging::setup_test_logging, real_time::{FactoryTrait, RealFactory, SendMetaData, real::RealReceiver}, threading::channel::RealSender, time::TimeDuration};
 
     #[test]
     fn test_channel() {

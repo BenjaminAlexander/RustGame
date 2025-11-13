@@ -1,10 +1,10 @@
+use crate::real_time::ReceiveMetaData;
 use crate::real_time::simulation::SingleThreadedFactory;
 use crate::single_threaded_simulator::{
     ReceiveOrDisconnected,
     ReceiverLink,
     SingleThreadedReceiver,
 };
-use crate::threading::channel::ReceiveMetaData;
 use crate::threading::eventhandling::ChannelEvent::{
     ChannelDisconnected,
     ChannelEmpty,

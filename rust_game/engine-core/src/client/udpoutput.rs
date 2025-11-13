@@ -12,7 +12,7 @@ use commons::net::{
     UdpSocket,
     MAX_UDP_DATAGRAM_SIZE,
 };
-use commons::threading::channel::ReceiveMetaData;
+use commons::real_time::ReceiveMetaData;
 use commons::threading::eventhandling::{
     ChannelEvent,
     EventHandleResult,

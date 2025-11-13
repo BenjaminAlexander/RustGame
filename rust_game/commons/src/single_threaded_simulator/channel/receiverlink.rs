@@ -1,7 +1,4 @@
-use crate::threading::channel::{
-    ReceiveMetaData,
-    SendMetaData,
-};
+use crate::real_time::{ReceiveMetaData, SendMetaData};
 use crate::time::TimeSource;
 use log::{
     error,

@@ -1,13 +1,10 @@
 use crate::{
-    real_time::{EventHandlerBuilder, RealFactory},
-    threading::{
-        channel::ReceiveMetaData,
-        eventhandling::{
-            ChannelEvent,
-            EventHandleResult,
-            EventHandlerTrait,
-            EventSender,
-        },
+    real_time::{EventHandlerBuilder, RealFactory, ReceiveMetaData},
+    threading::eventhandling::{
+        ChannelEvent,
+        EventHandleResult,
+        EventHandlerTrait,
+        EventSender,
     },
 };
 use std::sync::{

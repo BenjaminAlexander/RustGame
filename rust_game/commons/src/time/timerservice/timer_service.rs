@@ -1,5 +1,4 @@
-use crate::real_time::{EventHandlerBuilder, FactoryTrait};
-use crate::threading::channel::ReceiveMetaData;
+use crate::real_time::{EventHandlerBuilder, FactoryTrait, ReceiveMetaData};
 use crate::threading::eventhandling::ChannelEvent::{
     ChannelDisconnected,
     ChannelEmpty,

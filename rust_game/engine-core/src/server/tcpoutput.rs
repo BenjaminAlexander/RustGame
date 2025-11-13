@@ -6,7 +6,7 @@ use crate::messaging::ToClientMessageTCP;
 use crate::server::tcpoutput::TcpOutputEvent::SendInitialInformation;
 use crate::server::ServerConfig;
 use commons::net::TcpStream;
-use commons::threading::channel::ReceiveMetaData;
+use commons::real_time::ReceiveMetaData;
 use commons::threading::eventhandling::{
     ChannelEvent,
     EventHandleResult,

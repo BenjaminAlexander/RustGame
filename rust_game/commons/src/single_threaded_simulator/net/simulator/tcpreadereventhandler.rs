@@ -1,5 +1,5 @@
 use crate::net::TcpReadHandlerTrait;
-use crate::threading::channel::ReceiveMetaData;
+use crate::real_time::ReceiveMetaData;
 use crate::threading::eventhandling::{
     ChannelEvent,
     EventHandleResult,

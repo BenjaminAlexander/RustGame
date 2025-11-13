@@ -2,8 +2,8 @@ use std::ops::ControlFlow;
 use std::sync::mpsc::{self, TryRecvError};
 use std::thread::Builder;
 
+use crate::real_time::ReceiveMetaData;
 use crate::real_time::real::RealReceiver;
-use crate::threading::channel::ReceiveMetaData;
 use crate::threading::eventhandling::ChannelEvent::{
     self,
     ChannelDisconnected,

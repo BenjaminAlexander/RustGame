@@ -11,19 +11,12 @@ use crate::{
         TcpConnectionHandlerTrait,
         TcpReadHandlerTrait,
         UdpReadHandlerTrait,
-    }, real_time::real::{RealReceiver}, single_threaded_simulator::{
+    }, real_time::{ReceiveMetaData, real::RealReceiver}, single_threaded_simulator::{
         SingleThreadedReceiver, net::{
             NetworkSimulator,
             UdpSocketSimulator,
         }
-    }, threading::{
-        channel::{
-            ReceiveMetaData,
-        },
-        eventhandling::{
-            EventOrStopThread,
-        },
-    }
+    }, threading::eventhandling::EventOrStopThread
 };
 
 pub(super) enum ReceiverImplementation<T: Send> {
@@ -58,7 +51,6 @@ impl<T: Send> Receiver<T> {
         }
     }
 
-    //TODO: is this used?
     pub fn try_recv(&mut self) -> Result<T, TryRecvError> {
         let (_, value) = self.try_recv_meta_data()?;
         return Ok(value);

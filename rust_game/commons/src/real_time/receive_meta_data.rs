@@ -1,9 +1,8 @@
-use crate::threading::channel::SendMetaData;
-use crate::time::{
+use crate::{real_time::SendMetaData, time::{
     TimeDuration,
     TimeSource,
     TimeValue,
-};
+}};
 
 #[derive(Debug)]
 pub struct ReceiveMetaData {

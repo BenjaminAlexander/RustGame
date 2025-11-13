@@ -1,12 +1,9 @@
 use commons::{
-    logging::setup_test_logging, real_time::{EventHandlerBuilder, RealFactory}, threading::{
-        channel::ReceiveMetaData,
-        eventhandling::{
+    logging::setup_test_logging, real_time::{EventHandlerBuilder, RealFactory, ReceiveMetaData}, threading::eventhandling::{
             ChannelEvent,
             EventHandleResult,
             EventHandlerTrait,
-        },
-    }, time::TimeDuration
+        }, time::TimeDuration
 };
 use test_utils::{
     assert::AsyncExpects,

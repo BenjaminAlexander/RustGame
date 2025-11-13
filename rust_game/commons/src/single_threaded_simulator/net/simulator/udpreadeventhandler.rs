@@ -1,6 +1,6 @@
 use crate::net::UdpReadHandlerTrait;
+use crate::real_time::ReceiveMetaData;
 use crate::single_threaded_simulator::net::NetworkSimulator;
-use crate::threading::channel::ReceiveMetaData;
 use crate::threading::eventhandling::{
     ChannelEvent,
     EventHandleResult,

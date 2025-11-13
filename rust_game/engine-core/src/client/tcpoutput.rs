@@ -1,5 +1,5 @@
 use commons::net::TcpStream;
-use commons::threading::channel::ReceiveMetaData;
+use commons::real_time::ReceiveMetaData;
 use commons::threading::eventhandling::ChannelEvent::{
     ChannelDisconnected,
     ChannelEmpty,

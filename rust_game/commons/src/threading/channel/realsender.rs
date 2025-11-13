@@ -1,7 +1,4 @@
-use crate::threading::channel::{
-    SendMetaData,
-};
-use crate::time::TimeSource;
+use crate::{real_time::SendMetaData, time::TimeSource};
 use std::sync::mpsc::{
     self,
     SendError,

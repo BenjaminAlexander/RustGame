@@ -23,13 +23,10 @@ use crate::interface::{
     RenderReceiverMessage,
 };
 use crate::messaging::InputMessage;
-use commons::real_time::{EventHandlerBuilder, FactoryTrait, Sender};
+use commons::real_time::{EventHandlerBuilder, FactoryTrait, ReceiveMetaData, Sender};
 use commons::net::{
     TcpReadHandlerBuilder,
     UdpReadHandlerBuilder,
-};
-use commons::threading::channel::{
-    ReceiveMetaData,
 };
 use commons::threading::eventhandling::{
     ChannelEvent,

@@ -1,4 +1,4 @@
-use crate::threading::channel::ReceiveMetaData;
+use crate::real_time::ReceiveMetaData;
 use crate::threading::eventhandling::eventhandlertrait::EventHandlerTrait;
 use crate::time::TimeDuration;
 
