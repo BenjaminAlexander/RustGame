@@ -11,7 +11,6 @@ use crate::net::{
 use crate::real_time::real;
 use crate::threading::channel::{
     ReceiveMetaData,
-    ReceiverTrait,
     SendMetaData,
 };
 use crate::threading::eventhandling::{
@@ -36,19 +35,17 @@ pub struct RealReceiver<T: Send> {
     receiver: mpsc::Receiver<(SendMetaData, T)>, //duration_in_queue_logger: RollingStatsLogger<TimeDuration>
 }
 
-impl<T: Send> ReceiverTrait<T> for RealReceiver<T> {
-    fn try_recv_meta_data(&mut self) -> Result<(ReceiveMetaData, T), TryRecvError> {
-        let (send_meta_data, value) = self.receiver.try_recv()?;
-        return Ok((self.make_receive_meta_data(send_meta_data), value));
-    }
-}
-
 impl<T: Send> RealReceiver<T> {
     pub fn new(time_source: TimeSource, receiver: mpsc::Receiver<(SendMetaData, T)>) -> Self {
         return Self {
             time_source,
             receiver, //duration_in_queue_logger: RollingStatsLogger::new(100, 3.5, TimeDuration::from_seconds(30.0))
         };
+    }
+
+    pub fn try_recv_meta_data(&mut self) -> Result<(ReceiveMetaData, T), TryRecvError> {
+        let (send_meta_data, value) = self.receiver.try_recv()?;
+        return Ok((self.make_receive_meta_data(send_meta_data), value));
     }
 
     pub fn recv_meta_data(&mut self) -> Result<(ReceiveMetaData, T), mpsc::RecvError> {

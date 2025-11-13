@@ -15,19 +15,16 @@ use commons::real_time::Sender;
 use commons::threading::eventhandling::EventSender;
 
 pub struct ServerManagerObserver<GameFactory: GameFactoryTrait> {
-    factory: GameFactory::Factory,
     udp_outputs: Vec<EventSender<UdpOutputEvent<GameFactory::Game>>>,
     render_receiver_sender: Sender<RenderReceiverMessage<GameFactory::Game>>,
 }
 
 impl<GameFactory: GameFactoryTrait> ServerManagerObserver<GameFactory> {
     pub fn new(
-        factory: GameFactory::Factory,
         udp_outputs: Vec<EventSender<UdpOutputEvent<GameFactory::Game>>>,
         render_receiver_sender: Sender<RenderReceiverMessage<GameFactory::Game>>,
     ) -> Self {
         return Self {
-            factory,
             udp_outputs,
             render_receiver_sender,
         };

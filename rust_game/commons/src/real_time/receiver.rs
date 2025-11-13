@@ -19,7 +19,6 @@ use crate::{
     }, threading::{
         channel::{
             ReceiveMetaData,
-            ReceiverTrait,
         },
         eventhandling::{
             EventOrStopThread,
@@ -48,14 +47,21 @@ impl<T: Send> Receiver<T> {
     }
 }
 
-impl<T: Send> ReceiverTrait<T> for Receiver<T> {
-    fn try_recv_meta_data(&mut self) -> Result<(ReceiveMetaData, T), TryRecvError> {
+impl<T: Send> Receiver<T> {
+
+    pub fn try_recv_meta_data(&mut self) -> Result<(ReceiveMetaData, T), TryRecvError> {
         match &mut self.implementation {
             ReceiverImplementation::Real(real_receiver) => real_receiver.try_recv_meta_data(),
             ReceiverImplementation::Simulated(simulated_receiver) => {
                 simulated_receiver.try_recv_meta_data()
             }
         }
+    }
+
+    //TODO: is this used?
+    pub fn try_recv(&mut self) -> Result<T, TryRecvError> {
+        let (_, value) = self.try_recv_meta_data()?;
+        return Ok(value);
     }
 }
 

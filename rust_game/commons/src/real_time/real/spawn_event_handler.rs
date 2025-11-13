@@ -3,9 +3,7 @@ use std::sync::mpsc::{self, TryRecvError};
 use std::thread::Builder;
 
 use crate::real_time::real::RealReceiver;
-use crate::threading::channel::{
-    ReceiveMetaData, ReceiverTrait,
-};
+use crate::threading::channel::ReceiveMetaData;
 use crate::threading::eventhandling::ChannelEvent::{
     self,
     ChannelDisconnected,

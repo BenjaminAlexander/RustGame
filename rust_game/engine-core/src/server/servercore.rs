@@ -262,7 +262,6 @@ impl<GameFactory: GameFactoryTrait> ServerCore<GameFactory> {
             }
 
             let server_manager_observer = ServerManagerObserver::<GameFactory>::new(
-                self.factory.clone(),
                 udp_output_senders.clone(),
                 render_receiver_sender.clone(),
             );

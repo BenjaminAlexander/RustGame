@@ -20,7 +20,6 @@ use crate::single_threaded_simulator::{
 };
 use crate::threading::channel::{
     ReceiveMetaData,
-    ReceiverTrait,
 };
 use crate::threading::eventhandling::{
     EventOrStopThread,
@@ -32,12 +31,6 @@ use std::sync::mpsc::TryRecvError;
 pub struct SingleThreadedReceiver<T: Send> {
     factory: SingleThreadedFactory,
     link: ReceiverLink<T>,
-}
-
-impl<T: Send> ReceiverTrait<T> for SingleThreadedReceiver<T> {
-    fn try_recv_meta_data(&mut self) -> Result<(ReceiveMetaData, T), TryRecvError> {
-        return self.link.try_recv_meta_data();
-    }
 }
 
 impl<T: Send> SingleThreadedReceiver<T> {
@@ -55,6 +48,15 @@ impl<T: Send> SingleThreadedReceiver<T> {
 
     pub fn get_factory(&self) -> &SingleThreadedFactory {
         return &self.factory;
+    }
+
+    pub fn try_recv_meta_data(&mut self) -> Result<(ReceiveMetaData, T), TryRecvError> {
+        return self.link.try_recv_meta_data();
+    }
+
+    pub fn try_recv(&mut self) -> Result<T, TryRecvError> {
+        let (_, value) = self.try_recv_meta_data()?;
+        return Ok(value);
     }
 
     pub fn to_consumer(
