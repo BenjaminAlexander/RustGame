@@ -132,7 +132,7 @@ mod tests {
     
     use std::sync::mpsc::{self, RecvTimeoutError};
 
-    use crate::{logging::setup_test_logging, real_time::{FactoryTrait, RealFactory, real::RealReceiver}, threading::channel::{RealSender, SendMetaData, SenderTrait}, time::TimeDuration};
+    use crate::{logging::setup_test_logging, real_time::{FactoryTrait, RealFactory, real::RealReceiver}, threading::channel::{RealSender, SendMetaData}, time::TimeDuration};
 
     #[test]
     fn test_channel() {

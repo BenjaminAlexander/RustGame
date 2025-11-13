@@ -1,4 +1,4 @@
-use crate::{single_threaded_simulator::SingleThreadedSender, threading::{channel::{RealSender, SenderTrait}}};
+use crate::{single_threaded_simulator::SingleThreadedSender, threading::{channel::RealSender}};
 
 pub(super) enum SenderImplementation<T: Send> {
     Real(RealSender<T>),

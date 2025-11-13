@@ -1,6 +1,5 @@
 use crate::threading::channel::{
     SendMetaData,
-    SenderTrait,
 };
 use crate::time::TimeSource;
 use std::sync::mpsc::{
@@ -20,10 +19,8 @@ impl<T: Send> RealSender<T> {
             sender,
         };
     }
-}
 
-impl<T: Send> SenderTrait<T> for RealSender<T> {
-    fn send(&self, value: T) -> Result<(), T> {
+    pub fn send(&self, value: T) -> Result<(), T> {
         let send_meta_data = SendMetaData::new(&self.time_source);
 
         return match self.sender.send((send_meta_data, value)) {

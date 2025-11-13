@@ -4,10 +4,7 @@ use commons::single_threaded_simulator::{
     ReceiveOrDisconnected,
     SingleThreadedReceiver,
 };
-use commons::threading::channel::{
-    ReceiverTrait,
-    SenderTrait,
-};
+use commons::threading::channel::ReceiverTrait;
 use std::sync::mpsc::TryRecvError;
 use std::sync::{
     Arc,

@@ -1,5 +1,4 @@
 use crate::single_threaded_simulator::channel::senderlink::SenderLink;
-use crate::threading::channel::SenderTrait;
 use std::sync::{
     Arc,
     Mutex,
@@ -15,6 +14,10 @@ impl<T: Send> SingleThreadedSender<T> {
             link: Arc::new(Mutex::new(link)),
         };
     }
+
+    pub fn send(&self, value: T) -> Result<(), T> {
+        return self.link.lock().unwrap().send(value);
+    }
 }
 
 impl<T: Send> Clone for SingleThreadedSender<T> {
@@ -22,11 +25,5 @@ impl<T: Send> Clone for SingleThreadedSender<T> {
         return Self {
             link: self.link.clone(),
         };
-    }
-}
-
-impl<T: Send> SenderTrait<T> for SingleThreadedSender<T> {
-    fn send(&self, value: T) -> Result<(), T> {
-        return self.link.lock().unwrap().send(value);
     }
 }

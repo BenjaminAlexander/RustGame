@@ -1,5 +1,4 @@
 use crate::single_threaded_simulator::SingleThreadedSender;
-use crate::threading::channel::SenderTrait;
 use rmp_serde::encode::Error as EncodeError;
 use serde::de::DeserializeOwned;
 use serde::Serialize;
