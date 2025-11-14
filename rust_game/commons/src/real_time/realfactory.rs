@@ -1,3 +1,4 @@
+use crate::real_time::net::tcp::TcpReader;
 use crate::real_time::real::{RealReceiver, RealSender};
 use crate::real_time::receiver::ReceiverImplementation;
 use crate::real_time::sender::SenderImplementation;
@@ -5,7 +6,6 @@ use crate::real_time::{FactoryTrait, Receiver, SendMetaData, Sender, TimeSource}
 use crate::net::{
     RealTcpStream,
     RealUdpSocket,
-    TcpReader,
     TcpStream,
     UdpSocket,
 };

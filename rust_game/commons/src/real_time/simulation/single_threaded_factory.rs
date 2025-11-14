@@ -1,18 +1,14 @@
+use crate::real_time::net::tcp::TcpReader;
 use crate::real_time::receiver::ReceiverImplementation;
 use crate::real_time::sender::SenderImplementation;
 use crate::real_time::simulation::SimulatedTimeSource;
+use crate::real_time::simulation::net::{HostSimulator, NetworkSimulator};
+use crate::real_time::simulation::single_threaded_receiver::SingleThreadedReceiver;
+use crate::real_time::simulation::time_queue::TimeQueue;
 use crate::real_time::{FactoryTrait, Receiver, Sender, TimeSource};
 use crate::net::{
-    TcpReader,
     TcpStream,
     UdpSocket,
-};
-use crate::single_threaded_simulator::net::{
-    HostSimulator,
-    NetworkSimulator,
-};
-use crate::single_threaded_simulator::{
-    SingleThreadedReceiver, TimeQueue
 };
 use std::io::Error;
 use std::net::{

@@ -13,6 +13,7 @@ mod sender;
 mod single_thread_executor;
 mod time_source;
 
+pub mod net;
 pub mod simulation;
 
 pub use self::event_handler_builder::EventHandlerBuilder;

@@ -1,10 +1,7 @@
+use crate::real_time::simulation::receiver_link::{ReceiveOrDisconnected, ReceiverLink};
+use crate::real_time::simulation::single_threaded_receiver::SingleThreadedReceiver;
 use crate::real_time::{EventHandleResult, HandleEvent, EventOrStopThread, ReceiveMetaData};
 use crate::real_time::simulation::SingleThreadedFactory;
-use crate::single_threaded_simulator::{
-    ReceiveOrDisconnected,
-    ReceiverLink,
-    SingleThreadedReceiver,
-};
 use crate::time::TimeDuration;
 use log::trace;
 use std::sync::{

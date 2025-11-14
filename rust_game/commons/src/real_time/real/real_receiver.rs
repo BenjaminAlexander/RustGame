@@ -1,13 +1,7 @@
-use crate::net::{
-    RealTcpStream,
-    RealUdpSocket,
-    TcpConnectionHandlerTrait,
-    TcpListenerEventHandler,
-    TcpReadHandlerTrait,
-    TcpReaderEventHandler,
-    UdpReadHandlerTrait,
-    UdpReaderEventHandler,
-};
+use crate::real_time::net::tcp::{TcpConnectionHandlerTrait, TcpReadHandlerTrait};
+use crate::real_time::net::udp::UdpReadHandlerTrait;
+use crate::real_time::real::net::tcp::{RealTcpStream, TcpListenerEventHandler, TcpReaderEventHandler};
+use crate::real_time::real::net::udp::{RealUdpSocket, UdpReaderEventHandler};
 use crate::real_time::{EventOrStopThread, ReceiveMetaData, SendMetaData, TimeSource, real};
 use crate::time::{
     TimeDuration,
