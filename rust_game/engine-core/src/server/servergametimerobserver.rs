@@ -1,6 +1,6 @@
 use crate::interface::GameFactoryTrait;
 use crate::server::servercore::ServerCoreEvent;
-use commons::threading::eventhandling::EventSender;
+use commons::real_time::EventSender;
 use commons::time::timerservice::TimerCallBack;
 
 pub struct ServerGameTimerObserver<GameFactory: GameFactoryTrait> {

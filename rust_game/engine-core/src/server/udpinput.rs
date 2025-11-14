@@ -4,7 +4,7 @@ use commons::net::{
     UdpReadHandlerTrait,
     MAX_UDP_DATAGRAM_SIZE,
 };
-use commons::threading::eventhandling::EventSender;
+use commons::real_time::EventSender;
 use std::net::SocketAddr;
 use std::ops::ControlFlow;
 

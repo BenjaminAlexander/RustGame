@@ -8,10 +8,7 @@ use crate::interface::{
     GameFactoryTrait,
     RenderReceiver,
 };
-use commons::real_time::EventHandlerBuilder;
-use commons::threading::eventhandling::{
-    EventSender,
-};
+use commons::real_time::{EventHandlerBuilder, EventSender};
 use std::net::Ipv4Addr;
 use std::str::FromStr;
 

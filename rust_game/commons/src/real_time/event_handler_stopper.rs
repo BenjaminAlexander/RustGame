@@ -1,4 +1,4 @@
-use crate::threading::eventhandling::EventSender;
+use crate::real_time::EventSender;
 
 pub struct EventHandlerStopper {
     sender: EventSender<()>,

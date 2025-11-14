@@ -1,4 +1,4 @@
-use commons::real_time::FactoryTrait;
+use commons::real_time::{EventHandlerStopper, FactoryTrait};
 use commons::logging::LoggingConfigBuilder;
 use commons::net::{
     TcpConnectionHandlerTrait,
@@ -9,7 +9,6 @@ use commons::net::{
     TcpStream,
 };
 use commons::real_time::simulation::SingleThreadedFactory;
-use commons::threading::eventhandling::EventHandlerStopper;
 use log::{
     error,
     info,

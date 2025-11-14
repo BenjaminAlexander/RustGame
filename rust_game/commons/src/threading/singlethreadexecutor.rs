@@ -1,9 +1,8 @@
 use crate::{
-    real_time::{EventHandlerBuilder, RealFactory, ReceiveMetaData},
+    real_time::{EventHandlerBuilder, EventSender, RealFactory, ReceiveMetaData},
     threading::eventhandling::{
         EventHandleResult,
         EventHandlerTrait,
-        EventSender,
     },
 };
 use std::sync::{

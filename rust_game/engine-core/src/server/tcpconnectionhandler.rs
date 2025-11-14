@@ -6,7 +6,7 @@ use commons::net::{
     TcpReader,
     TcpStream,
 };
-use commons::threading::eventhandling::EventSender;
+use commons::real_time::EventSender;
 use log::{
     info,
     warn,

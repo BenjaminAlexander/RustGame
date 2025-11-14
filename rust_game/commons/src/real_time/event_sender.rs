@@ -5,6 +5,7 @@ pub struct EventSender<T: Send> {
 }
 
 impl<T: Send> EventSender<T> {
+    //TODO: find all pub(crate) in real_time and make them private in real_time
     pub(crate) fn new(sender: Sender<EventOrStopThread<T>>) -> Self {
         return Self { sender };
     }

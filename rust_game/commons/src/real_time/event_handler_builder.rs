@@ -1,9 +1,9 @@
 use std::io::Error;
 
 use crate::{
-    real_time::{FactoryTrait, Receiver, real, receiver::ReceiverImplementation, simulation},
+    real_time::{EventSender, FactoryTrait, Receiver, real, receiver::ReceiverImplementation, simulation},
     threading::eventhandling::{
-            EventHandlerTrait, EventOrStopThread, EventSender
+            EventHandlerTrait, EventOrStopThread,
         },
 };
 

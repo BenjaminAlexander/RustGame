@@ -4,11 +4,7 @@ use std::{
 };
 
 use crate::{
-    net::TcpConnectionHandlerTrait, real_time::{FactoryTrait, Receiver}, threading::eventhandling::{
-            EventHandlerStopper,
-            EventOrStopThread,
-            EventSender,
-        }
+    net::TcpConnectionHandlerTrait, real_time::{EventHandlerStopper, EventSender, FactoryTrait, Receiver}, threading::eventhandling::EventOrStopThread
 };
 
 pub struct TcpListenerBuilder {
