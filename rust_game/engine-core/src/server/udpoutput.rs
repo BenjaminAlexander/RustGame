@@ -18,11 +18,9 @@ use crate::server::udpoutput::UdpOutputEvent::{
     SendServerInputMessage,
     SendTimeMessage,
 };
+use commons::real_time::net::MAX_UDP_DATAGRAM_SIZE;
+use commons::real_time::net::udp::UdpSocket;
 use commons::real_time::{EventHandleResult, HandleEvent, FactoryTrait, ReceiveMetaData};
-use commons::net::{
-    UdpSocket,
-    MAX_UDP_DATAGRAM_SIZE,
-};
 use commons::stats::RollingAverage;
 use commons::time::{
     TimeDuration,

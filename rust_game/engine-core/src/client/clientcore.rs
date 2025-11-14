@@ -23,11 +23,9 @@ use crate::interface::{
     RenderReceiverMessage,
 };
 use crate::messaging::InputMessage;
+use commons::real_time::net::tcp::TcpReadHandlerBuilder;
+use commons::real_time::net::udp::UdpReadHandlerBuilder;
 use commons::real_time::{EventHandleResult, EventHandlerBuilder, EventHandlerStopper, HandleEvent, EventSender, FactoryTrait, ReceiveMetaData, Sender};
-use commons::net::{
-    TcpReadHandlerBuilder,
-    UdpReadHandlerBuilder,
-};
 use log::{
     trace,
     warn,

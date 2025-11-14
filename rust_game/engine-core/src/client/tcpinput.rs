@@ -6,7 +6,7 @@ use crate::interface::{
     RenderReceiverMessage,
 };
 use crate::messaging::ToClientMessageTCP;
-use commons::net::TcpReadHandlerTrait;
+use commons::real_time::net::tcp::TcpReadHandlerTrait;
 use commons::real_time::{EventSender, Sender};
 use log::{
     info,

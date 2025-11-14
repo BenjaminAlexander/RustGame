@@ -7,7 +7,7 @@ use crate::messaging::{
 };
 use crate::server::clientaddress::ClientAddress;
 use crate::server::remoteudppeer::RemoteUdpPeer;
-use commons::net::MAX_UDP_DATAGRAM_SIZE;
+use commons::real_time::net::MAX_UDP_DATAGRAM_SIZE;
 use log::{
     info,
     warn,

@@ -7,8 +7,8 @@ use crate::messaging::{
     MessageFragment,
     ToClientMessageUDP,
 };
+use commons::real_time::net::udp::UdpReadHandlerTrait;
 use commons::real_time::{EventSender, FactoryTrait};
-use commons::net::UdpReadHandlerTrait;
 use commons::time::{
     TimeDuration,
     TimeValue,

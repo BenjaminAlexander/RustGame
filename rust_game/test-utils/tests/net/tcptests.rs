@@ -1,17 +1,9 @@
 use commons::logging::setup_test_logging;
-use commons::net::{
-    TcpListenerBuilder,
-    TcpReadHandlerBuilder,
-    LOCAL_EPHEMERAL_SOCKET_ADDR_V4,
-    NET_POLLING_PERIOD,
-};
 use commons::real_time::SingleThreadExecutor;
+use commons::real_time::net::{LOCAL_EPHEMERAL_SOCKET_ADDR_V4, NET_POLLING_PERIOD};
+use commons::real_time::net::tcp::{TcpConnectionHandler, TcpListenerBuilder, TcpReadHandler, TcpReadHandlerBuilder};
 use commons::{
     real_time::RealFactory,
-    net::{
-        TcpConnectionHandler,
-        TcpReadHandler,
-    },
 };
 use log::info;
 use serde::{

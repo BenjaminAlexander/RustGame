@@ -8,10 +8,8 @@ use crate::messaging::{
     InputMessage,
     ToServerMessageUDP,
 };
-use commons::net::{
-    UdpSocket,
-    MAX_UDP_DATAGRAM_SIZE,
-};
+use commons::real_time::net::MAX_UDP_DATAGRAM_SIZE;
+use commons::real_time::net::udp::UdpSocket;
 use commons::real_time::{EventHandleResult, HandleEvent, ReceiveMetaData};
 use log::{
     error,
