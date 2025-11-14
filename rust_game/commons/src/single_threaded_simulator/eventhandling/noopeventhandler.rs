@@ -27,11 +27,6 @@ impl EventHandlerTrait for NoOpEventHandler {
         EventHandleResult::TryForNextEvent
     }
 
-    //TODO: could this be the default wait?
-    fn on_timeout(&mut self) -> EventHandleResult<Self> {
-        EventHandleResult::TryForNextEvent
-    }
-    
     fn on_channel_disconnect(&mut self) -> EventHandleResult<Self> {
         EventHandleResult::StopThread(())
     }
