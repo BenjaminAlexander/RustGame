@@ -1,6 +1,9 @@
-use crate::real_time::net::NET_POLLING_PERIOD;
 use crate::real_time::net::tcp::TcpReadHandlerTrait;
-use crate::real_time::{EventOrStopThread, Receiver};
+use crate::real_time::net::NET_POLLING_PERIOD;
+use crate::real_time::{
+    EventOrStopThread,
+    Receiver,
+};
 use rmp_serde::encode::Error as EncodeError;
 use serde::de::DeserializeOwned;
 use serde::Serialize;

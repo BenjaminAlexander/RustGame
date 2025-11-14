@@ -18,9 +18,14 @@ use crate::server::udpoutput::UdpOutputEvent::{
     SendServerInputMessage,
     SendTimeMessage,
 };
-use commons::real_time::net::MAX_UDP_DATAGRAM_SIZE;
 use commons::real_time::net::udp::UdpSocket;
-use commons::real_time::{EventHandleResult, HandleEvent, FactoryTrait, ReceiveMetaData};
+use commons::real_time::net::MAX_UDP_DATAGRAM_SIZE;
+use commons::real_time::{
+    EventHandleResult,
+    FactoryTrait,
+    HandleEvent,
+    ReceiveMetaData,
+};
 use commons::stats::RollingAverage;
 use commons::time::{
     TimeDuration,
@@ -249,9 +254,12 @@ impl<GameFactory: GameFactoryTrait> HandleEvent for UdpOutput<GameFactory> {
     fn on_stop(self, _: ReceiveMetaData) -> Self::ThreadReturn {
         ()
     }
-    
-    fn on_event(&mut self, receive_meta_data: ReceiveMetaData, event: Self::Event) -> EventHandleResult<Self> {
 
+    fn on_event(
+        &mut self,
+        receive_meta_data: ReceiveMetaData,
+        event: Self::Event,
+    ) -> EventHandleResult<Self> {
         let now = self.factory.get_time_source().now();
 
         // let duration_since_last_input = now.duration_since(self.time_of_last_input_send);
@@ -272,12 +280,18 @@ impl<GameFactory: GameFactoryTrait> HandleEvent for UdpOutput<GameFactory> {
         match event {
             RemotePeer(remote_udp_peer) => self.on_remote_peer(remote_udp_peer),
             SendTimeMessage(time_message) => self.on_time_message(receive_meta_data, time_message),
-            SendInputMessage(input_message) => self.on_input_message(receive_meta_data, input_message),
-            SendServerInputMessage(server_input_message) => self.on_server_input_message(receive_meta_data, server_input_message),
-            SendCompletedStep(state_message) =>  self.on_completed_step(receive_meta_data, state_message),
+            SendInputMessage(input_message) => {
+                self.on_input_message(receive_meta_data, input_message)
+            }
+            SendServerInputMessage(server_input_message) => {
+                self.on_server_input_message(receive_meta_data, server_input_message)
+            }
+            SendCompletedStep(state_message) => {
+                self.on_completed_step(receive_meta_data, state_message)
+            }
         }
     }
-    
+
     fn on_channel_disconnect(&mut self) -> EventHandleResult<Self> {
         EventHandleResult::StopThread(())
     }

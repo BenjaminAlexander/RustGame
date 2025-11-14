@@ -1,6 +1,6 @@
-use commons::real_time::FactoryTrait;
 use commons::logging::LoggingConfigBuilder;
 use commons::real_time::simulation::SingleThreadedFactory;
+use commons::real_time::FactoryTrait;
 use commons::time::timerservice::{
     IdleTimerService,
     Schedule,

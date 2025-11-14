@@ -1,7 +1,15 @@
+use crate::real_time::net::tcp::{
+    TcpConnectionHandlerTrait,
+    TcpReader,
+    TcpStream,
+};
 use crate::real_time::net::NET_POLLING_PERIOD;
-use crate::real_time::net::tcp::{TcpConnectionHandlerTrait, TcpReader, TcpStream};
 use crate::real_time::real::net::tcp::RealTcpStream;
-use crate::real_time::{EventHandleResult, HandleEvent, ReceiveMetaData};
+use crate::real_time::{
+    EventHandleResult,
+    HandleEvent,
+    ReceiveMetaData,
+};
 use log::error;
 use std::io::{
     self,
@@ -96,7 +104,7 @@ impl<T: TcpConnectionHandlerTrait> HandleEvent for TcpListenerEventHandler<T> {
     }
 
     fn on_timeout(&mut self) -> EventHandleResult<Self> {
-        return self.accept();    
+        return self.accept();
     }
 
     fn on_channel_empty(&mut self) -> EventHandleResult<Self> {
@@ -120,7 +128,13 @@ mod tests {
     use log::LevelFilter;
 
     use super::*;
-    use crate::{logging::LoggingConfigBuilder, real_time::net::{LOCAL_EPHEMERAL_SOCKET_ADDR_V4, tcp::TcpConnectionHandler}};
+    use crate::{
+        logging::LoggingConfigBuilder,
+        real_time::net::{
+            tcp::TcpConnectionHandler,
+            LOCAL_EPHEMERAL_SOCKET_ADDR_V4,
+        },
+    };
 
     #[test]
     fn test_handle_tcp_stream_clone_result() {

@@ -1,4 +1,11 @@
-use crate::real_time::{EventHandleResult, EventHandlerBuilder, HandleEvent, EventSender, RealFactory, ReceiveMetaData};
+use crate::real_time::{
+    EventHandleResult,
+    EventHandlerBuilder,
+    EventSender,
+    HandleEvent,
+    RealFactory,
+    ReceiveMetaData,
+};
 use std::sync::{
     Arc,
     Condvar,
@@ -82,7 +89,7 @@ impl HandleEvent for SingleThreadExecutorEventHandler {
         event();
         return EventHandleResult::WaitForNextEvent;
     }
-    
+
     fn on_channel_disconnect(&mut self) -> EventHandleResult<Self> {
         return EventHandleResult::StopThread(());
     }

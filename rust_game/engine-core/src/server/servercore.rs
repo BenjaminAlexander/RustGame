@@ -40,10 +40,27 @@ use crate::server::{
     ServerConfig,
     TcpConnectionHandler,
 };
+use commons::real_time::net::tcp::{
+    TcpListenerBuilder,
+    TcpReadHandlerBuilder,
+    TcpReader,
+    TcpStream,
+};
+use commons::real_time::net::udp::{
+    UdpReadHandlerBuilder,
+    UdpSocket,
+};
 use commons::real_time::net::MAX_UDP_DATAGRAM_SIZE;
-use commons::real_time::net::tcp::{TcpListenerBuilder, TcpReadHandlerBuilder, TcpReader, TcpStream};
-use commons::real_time::net::udp::{UdpReadHandlerBuilder, UdpSocket};
-use commons::real_time::{EventHandleResult, EventHandlerBuilder, EventHandlerStopper, HandleEvent, EventSender, FactoryTrait, ReceiveMetaData, Sender};
+use commons::real_time::{
+    EventHandleResult,
+    EventHandlerBuilder,
+    EventHandlerStopper,
+    EventSender,
+    FactoryTrait,
+    HandleEvent,
+    ReceiveMetaData,
+    Sender,
+};
 use log::{
     error,
     info,
@@ -93,17 +110,19 @@ impl<GameFactory: GameFactoryTrait> HandleEvent for ServerCore<GameFactory> {
     fn on_stop(self, _: ReceiveMetaData) -> Self::ThreadReturn {
         ()
     }
-    
+
     fn on_event(&mut self, _: ReceiveMetaData, event: Self::Event) -> EventHandleResult<Self> {
         match event {
             StartListenerEvent => self.start_listener(),
             StartGameEvent(render_receiver_sender) => self.start_game(render_receiver_sender),
-            TcpConnectionEvent(tcp_stream, tcp_reader) => self.on_tcp_connection(tcp_stream, tcp_reader),
+            TcpConnectionEvent(tcp_stream, tcp_reader) => {
+                self.on_tcp_connection(tcp_stream, tcp_reader)
+            }
             GameTimerTick => self.on_game_timer_tick(),
             UdpPacket(source, len, buf) => self.on_udp_packet(source, len, buf),
         }
     }
-    
+
     fn on_channel_disconnect(&mut self) -> EventHandleResult<Self> {
         EventHandleResult::StopThread(())
     }

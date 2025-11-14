@@ -1,7 +1,15 @@
-use crate::real_time::net::tcp::{TcpConnectionHandlerTrait, TcpReader, TcpStream};
-use crate::real_time::simulation::SingleThreadedReceiver;
+use crate::real_time::net::tcp::{
+    TcpConnectionHandlerTrait,
+    TcpReader,
+    TcpStream,
+};
 use crate::real_time::simulation::net::tcp::ChannelTcpWriter;
-use crate::real_time::{EventHandleResult, HandleEvent, ReceiveMetaData};
+use crate::real_time::simulation::SingleThreadedReceiver;
+use crate::real_time::{
+    EventHandleResult,
+    HandleEvent,
+    ReceiveMetaData,
+};
 use std::net::SocketAddr;
 use std::ops::ControlFlow::{
     Break,
@@ -47,18 +55,18 @@ impl<TcpConnectionHandler: TcpConnectionHandlerTrait> HandleEvent
     for TcpListenerEventHandler<TcpConnectionHandler>
 {
     type Event = TcpListenerEvent;
-    type ThreadReturn = ();   
+    type ThreadReturn = ();
 
     fn on_stop(self, _receive_meta_data: ReceiveMetaData) -> Self::ThreadReturn {
         return ();
     }
-    
+
     fn on_event(&mut self, _: ReceiveMetaData, event: Self::Event) -> EventHandleResult<Self> {
         match event {
             TcpListenerEvent::ListenerReady => {
                 self.connection_handler.on_bind(self.socket_addr);
                 EventHandleResult::TryForNextEvent
-            },
+            }
             TcpListenerEvent::Connection(writer, reader) => self.on_connection(writer, reader),
         }
     }

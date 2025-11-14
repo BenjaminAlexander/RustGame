@@ -9,7 +9,11 @@ use crate::{
         ServerCoreEvent,
     },
 };
-use commons::real_time::{EventHandlerBuilder, EventSender, Sender};
+use commons::real_time::{
+    EventHandlerBuilder,
+    EventSender,
+    Sender,
+};
 use log::{
     error,
     warn,

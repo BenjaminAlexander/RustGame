@@ -17,7 +17,12 @@ use crate::messaging::{
     ServerInputMessage,
     StateMessage,
 };
-use commons::real_time::{EventHandleResult, HandleEvent, FactoryTrait, ReceiveMetaData};
+use commons::real_time::{
+    EventHandleResult,
+    FactoryTrait,
+    HandleEvent,
+    ReceiveMetaData,
+};
 use commons::time::{
     TimeDuration,
     TimeValue,
@@ -279,14 +284,18 @@ impl<ManagerObserver: ManagerObserverTrait> HandleEvent for Manager<ManagerObser
     fn on_stop(self, _: ReceiveMetaData) -> Self::ThreadReturn {
         ()
     }
-    
+
     fn on_event(&mut self, _: ReceiveMetaData, event: Self::Event) -> EventHandleResult<Self> {
         match event {
             DropStepsBeforeEvent(step) => self.drop_steps_before(step),
             SetRequestedStepEvent(step) => self.set_requested_step(step),
-            InitialInformationEvent(initial_information) => self.on_initial_information(initial_information),
+            InitialInformationEvent(initial_information) => {
+                self.on_initial_information(initial_information)
+            }
             InputEvent(input_message) => self.on_input_message(input_message),
-            ServerInputEvent(server_input_message) => self.on_server_input_message(server_input_message),
+            ServerInputEvent(server_input_message) => {
+                self.on_server_input_message(server_input_message)
+            }
             StateEvent(state_message) => self.on_state_message(state_message),
         }
     }
@@ -298,7 +307,7 @@ impl<ManagerObserver: ManagerObserverTrait> HandleEvent for Manager<ManagerObser
     fn on_channel_empty(&mut self) -> EventHandleResult<Self> {
         self.on_none_pending()
     }
-    
+
     fn on_channel_disconnect(&mut self) -> EventHandleResult<Self> {
         EventHandleResult::StopThread(())
     }

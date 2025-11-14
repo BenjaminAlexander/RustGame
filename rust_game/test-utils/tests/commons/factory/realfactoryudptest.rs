@@ -1,5 +1,10 @@
 use commons::{
-    logging::LoggingConfigBuilder, real_time::{FactoryTrait, RealFactory, net::udp::UdpReadHandlerBuilder}
+    logging::LoggingConfigBuilder,
+    real_time::{
+        net::udp::UdpReadHandlerBuilder,
+        FactoryTrait,
+        RealFactory,
+    },
 };
 use log::{
     info,

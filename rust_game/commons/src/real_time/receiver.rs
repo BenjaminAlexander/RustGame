@@ -4,7 +4,31 @@ use std::{
     sync::mpsc::TryRecvError,
 };
 
-use crate::real_time::{EventOrStopThread, ReceiveMetaData, net::{tcp::{TcpConnectionHandlerTrait, TcpReadHandlerTrait}, udp::UdpReadHandlerTrait}, real::{RealReceiver, net::{tcp::RealTcpStream, udp::RealUdpSocket}}, simulation::{SingleThreadedReceiver, net::{NetworkSimulator, udp::UdpSocketSimulator}}};
+use crate::real_time::{
+    net::{
+        tcp::{
+            TcpConnectionHandlerTrait,
+            TcpReadHandlerTrait,
+        },
+        udp::UdpReadHandlerTrait,
+    },
+    real::{
+        net::{
+            tcp::RealTcpStream,
+            udp::RealUdpSocket,
+        },
+        RealReceiver,
+    },
+    simulation::{
+        net::{
+            udp::UdpSocketSimulator,
+            NetworkSimulator,
+        },
+        SingleThreadedReceiver,
+    },
+    EventOrStopThread,
+    ReceiveMetaData,
+};
 
 pub(super) enum ReceiverImplementation<T: Send> {
     Real(RealReceiver<T>),
@@ -28,7 +52,6 @@ impl<T: Send> Receiver<T> {
 }
 
 impl<T: Send> Receiver<T> {
-
     pub fn try_recv_meta_data(&mut self) -> Result<(ReceiveMetaData, T), TryRecvError> {
         match &mut self.implementation {
             ReceiverImplementation::Real(real_receiver) => real_receiver.try_recv_meta_data(),
@@ -46,7 +69,6 @@ impl<T: Send> Receiver<T> {
 
 //TODO: squash these methods
 impl Receiver<EventOrStopThread<()>> {
-    
     pub fn spawn_tcp_listener<T: TcpConnectionHandlerTrait>(
         self,
         thread_name: String,

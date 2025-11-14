@@ -6,7 +6,11 @@ use crate::messaging::ToClientMessageTCP;
 use crate::server::tcpoutput::TcpOutputEvent::SendInitialInformation;
 use crate::server::ServerConfig;
 use commons::real_time::net::tcp::TcpStream;
-use commons::real_time::{EventHandleResult, HandleEvent, ReceiveMetaData};
+use commons::real_time::{
+    EventHandleResult,
+    HandleEvent,
+    ReceiveMetaData,
+};
 use log::debug;
 use std::marker::PhantomData;
 
@@ -59,13 +63,15 @@ impl<Game: GameTrait> HandleEvent for TcpOutput<Game> {
     fn on_stop(self, _: ReceiveMetaData) -> Self::ThreadReturn {
         ()
     }
-    
+
     fn on_event(&mut self, _: ReceiveMetaData, event: Self::Event) -> EventHandleResult<Self> {
         match event {
-            SendInitialInformation(server_config, player_count, initial_state) => self.send_initial_information(server_config, player_count, initial_state),
+            SendInitialInformation(server_config, player_count, initial_state) => {
+                self.send_initial_information(server_config, player_count, initial_state)
+            }
         }
     }
-    
+
     fn on_channel_disconnect(&mut self) -> EventHandleResult<Self> {
         EventHandleResult::StopThread(())
     }

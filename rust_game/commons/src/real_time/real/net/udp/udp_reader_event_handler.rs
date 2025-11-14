@@ -1,7 +1,11 @@
-use crate::real_time::net::MAX_UDP_DATAGRAM_SIZE;
 use crate::real_time::net::udp::UdpReadHandlerTrait;
+use crate::real_time::net::MAX_UDP_DATAGRAM_SIZE;
 use crate::real_time::real::net::udp::RealUdpSocket;
-use crate::real_time::{EventHandleResult, HandleEvent, ReceiveMetaData};
+use crate::real_time::{
+    EventHandleResult,
+    HandleEvent,
+    ReceiveMetaData,
+};
 use log::warn;
 use std::io::ErrorKind;
 use std::ops::ControlFlow::{
@@ -89,7 +93,10 @@ mod tests {
 
     use log::LevelFilter;
 
-    use crate::{logging::LoggingConfigBuilder, real_time::net::LOCAL_EPHEMERAL_SOCKET_ADDR_V4};
+    use crate::{
+        logging::LoggingConfigBuilder,
+        real_time::net::LOCAL_EPHEMERAL_SOCKET_ADDR_V4,
+    };
 
     use super::*;
 

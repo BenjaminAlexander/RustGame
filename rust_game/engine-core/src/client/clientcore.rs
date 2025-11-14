@@ -25,7 +25,16 @@ use crate::interface::{
 use crate::messaging::InputMessage;
 use commons::real_time::net::tcp::TcpReadHandlerBuilder;
 use commons::real_time::net::udp::UdpReadHandlerBuilder;
-use commons::real_time::{EventHandleResult, EventHandlerBuilder, EventHandlerStopper, HandleEvent, EventSender, FactoryTrait, ReceiveMetaData, Sender};
+use commons::real_time::{
+    EventHandleResult,
+    EventHandlerBuilder,
+    EventHandlerStopper,
+    EventSender,
+    FactoryTrait,
+    HandleEvent,
+    ReceiveMetaData,
+    Sender,
+};
 use log::{
     trace,
     warn,
@@ -72,9 +81,8 @@ impl<GameFactory: GameFactoryTrait> ClientCore<GameFactory> {
         sender: EventSender<ClientCoreEvent<GameFactory>>,
         render_receiver_sender: Sender<RenderReceiverMessage<GameFactory::Game>>,
     ) -> Self {
-        let client_manager_observer = ClientManagerObserver::<GameFactory>::new(
-            render_receiver_sender.clone(),
-        );
+        let client_manager_observer =
+            ClientManagerObserver::<GameFactory>::new(render_receiver_sender.clone());
 
         let manager = Manager::new(factory.clone(), client_manager_observer);
 
@@ -130,8 +138,7 @@ impl<GameFactory: GameFactoryTrait> ClientCore<GameFactory> {
             return EventHandleResult::TryForNextEvent;
         }
 
-        let client_game_time_observer =
-            ClientGameTimerObserver::new(self.sender.clone());
+        let client_game_time_observer = ClientGameTimerObserver::new(self.sender.clone());
 
         let game_timer = GameTimer::new(
             self.factory.clone(),
@@ -314,7 +321,7 @@ impl<GameFactory: GameFactoryTrait> HandleEvent for ClientCore<GameFactory> {
     fn on_stop(self, _: ReceiveMetaData) -> Self::ThreadReturn {
         return ();
     }
-    
+
     fn on_event(&mut self, _: ReceiveMetaData, event: Self::Event) -> EventHandleResult<Self> {
         return match event {
             ClientCoreEvent::OnInitialInformation(initial_information) => {
@@ -329,7 +336,7 @@ impl<GameFactory: GameFactoryTrait> HandleEvent for ClientCore<GameFactory> {
             }
         };
     }
-    
+
     fn on_channel_disconnect(&mut self) -> EventHandleResult<Self> {
         EventHandleResult::StopThread(())
     }

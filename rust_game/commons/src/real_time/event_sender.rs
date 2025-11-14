@@ -1,4 +1,7 @@
-use crate::real_time::{EventOrStopThread, Sender};
+use crate::real_time::{
+    EventOrStopThread,
+    Sender,
+};
 
 pub struct EventSender<T: Send> {
     sender: Sender<EventOrStopThread<T>>,

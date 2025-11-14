@@ -1,6 +1,12 @@
+use crate::real_time::net::udp::{
+    UdpReadHandlerTrait,
+    UdpSocketTrait,
+};
 use crate::real_time::net::NET_POLLING_PERIOD;
-use crate::real_time::net::udp::{UdpReadHandlerTrait, UdpSocketTrait};
-use crate::real_time::{EventOrStopThread, Receiver};
+use crate::real_time::{
+    EventOrStopThread,
+    Receiver,
+};
 use std::io::Error;
 use std::net::{
     SocketAddr,

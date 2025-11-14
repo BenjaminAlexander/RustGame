@@ -1,14 +1,21 @@
-use crate::real_time::net::LOCAL_EPHEMERAL_SOCKET_ADDR_V4;
-use crate::real_time::net::tcp::{TcpReader, TcpStream};
+use crate::real_time::net::tcp::{
+    TcpReader,
+    TcpStream,
+};
 use crate::real_time::net::udp::UdpSocket;
-use crate::real_time::{Receiver, Sender, TimeSource};
+use crate::real_time::net::LOCAL_EPHEMERAL_SOCKET_ADDR_V4;
+use crate::real_time::{
+    Receiver,
+    Sender,
+    TimeSource,
+};
 use std::io::Error;
 use std::net::SocketAddr;
 
 //TODO: rename trait and file
 pub trait FactoryTrait: Clone + Send + 'static {
     fn get_time_source(&self) -> &TimeSource;
-    
+
     fn new_channel<T: Send>(&self) -> (Sender<T>, Receiver<T>);
 
     fn connect_tcp(&self, socket_addr: SocketAddr) -> Result<(TcpStream, TcpReader), Error>;

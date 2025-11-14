@@ -1,9 +1,15 @@
 use commons::{
-    logging::setup_test_logging, real_time::{EventHandleResult, EventHandlerBuilder, HandleEvent, RealFactory, ReceiveMetaData}, time::TimeDuration
+    logging::setup_test_logging,
+    real_time::{
+        EventHandleResult,
+        EventHandlerBuilder,
+        HandleEvent,
+        RealFactory,
+        ReceiveMetaData,
+    },
+    time::TimeDuration,
 };
-use test_utils::{
-    assert::AsyncExpects,
-};
+use test_utils::assert::AsyncExpects;
 
 const NUMBER: i32 = 87;
 
@@ -25,25 +31,27 @@ impl HandleEvent for Count {
     fn on_stop(self, _: ReceiveMetaData) -> i32 {
         return self.count;
     }
-    
+
     fn on_event(&mut self, _: ReceiveMetaData, event: Self::Event) -> EventHandleResult<Self> {
         match event {
             CountEvent::Add(x) => {
                 self.count += x;
                 EventHandleResult::WaitForNextEvent
-            },
+            }
             CountEvent::Subtract(x) => {
                 self.count -= x;
                 EventHandleResult::WaitForNextEvent
             }
-            CountEvent::WaitForTimeout => EventHandleResult::WaitForNextEventOrTimeout(TimeDuration::from_millis_f64(100.0)),
+            CountEvent::WaitForTimeout => {
+                EventHandleResult::WaitForNextEventOrTimeout(TimeDuration::from_millis_f64(100.0))
+            }
         }
     }
 
     fn on_timeout(&mut self) -> EventHandleResult<Self> {
         EventHandleResult::StopThread(NUMBER)
     }
-    
+
     fn on_channel_disconnect(&mut self) -> EventHandleResult<Self> {
         EventHandleResult::StopThread(self.count)
     }

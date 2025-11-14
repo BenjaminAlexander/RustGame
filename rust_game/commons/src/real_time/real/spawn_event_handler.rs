@@ -1,9 +1,17 @@
 use std::ops::ControlFlow;
-use std::sync::mpsc::{self, TryRecvError};
+use std::sync::mpsc::{
+    self,
+    TryRecvError,
+};
 use std::thread::Builder;
 
-use crate::real_time::{EventHandleResult, HandleEvent, EventOrStopThread, ReceiveMetaData};
 use crate::real_time::real::RealReceiver;
+use crate::real_time::{
+    EventHandleResult,
+    EventOrStopThread,
+    HandleEvent,
+    ReceiveMetaData,
+};
 use crate::time::TimeDuration;
 use log::info;
 
@@ -43,11 +51,15 @@ fn run_event_handling_loop<T: HandleEvent>(
 
     loop {
         let control_flow = match wait_or_try {
-            EventHandleResult::WaitForNextEvent => wait_for_message(&mut receiver, &mut message_handler),
+            EventHandleResult::WaitForNextEvent => {
+                wait_for_message(&mut receiver, &mut message_handler)
+            }
             EventHandleResult::WaitForNextEventOrTimeout(time_duration) => {
                 wait_for_message_or_timeout(&mut receiver, time_duration, &mut message_handler)
             }
-            EventHandleResult::TryForNextEvent => try_for_message(&mut receiver, &mut message_handler),
+            EventHandleResult::TryForNextEvent => {
+                try_for_message(&mut receiver, &mut message_handler)
+            }
             EventHandleResult::StopThread(return_value) => return return_value,
         };
 
@@ -66,10 +78,16 @@ fn wait_for_message_or_timeout<T: HandleEvent>(
     message_handler: &mut T,
 ) -> ControlFlow<ReceiveMetaData, EventHandleResult<T>> {
     return match receiver.recv_timeout_meta_data(time_duration) {
-        Ok((receive_meta_data, EventOrStopThread::Event(event))) => ControlFlow::Continue(message_handler.on_event(receive_meta_data, event)),
-        Ok((receive_meta_data, EventOrStopThread::StopThread)) => ControlFlow::Break(receive_meta_data),
+        Ok((receive_meta_data, EventOrStopThread::Event(event))) => {
+            ControlFlow::Continue(message_handler.on_event(receive_meta_data, event))
+        }
+        Ok((receive_meta_data, EventOrStopThread::StopThread)) => {
+            ControlFlow::Break(receive_meta_data)
+        }
         Err(mpsc::RecvTimeoutError::Timeout) => ControlFlow::Continue(message_handler.on_timeout()),
-        Err(mpsc::RecvTimeoutError::Disconnected) => ControlFlow::Continue(message_handler.on_channel_disconnect()),
+        Err(mpsc::RecvTimeoutError::Disconnected) => {
+            ControlFlow::Continue(message_handler.on_channel_disconnect())
+        }
     };
 }
 
@@ -81,7 +99,9 @@ fn wait_for_message<T: HandleEvent>(
         Ok((receive_meta_data, EventOrStopThread::Event(event))) => {
             ControlFlow::Continue(message_handler.on_event(receive_meta_data, event))
         }
-        Ok((receive_meta_data, EventOrStopThread::StopThread)) => ControlFlow::Break(receive_meta_data),
+        Ok((receive_meta_data, EventOrStopThread::StopThread)) => {
+            ControlFlow::Break(receive_meta_data)
+        }
         Err(_) => ControlFlow::Continue(message_handler.on_channel_disconnect()),
     };
 }
@@ -94,8 +114,12 @@ fn try_for_message<T: HandleEvent>(
         Ok((receive_meta_data, EventOrStopThread::Event(event))) => {
             ControlFlow::Continue(message_handler.on_event(receive_meta_data, event))
         }
-        Ok((receive_meta_data, EventOrStopThread::StopThread)) => ControlFlow::Break(receive_meta_data),
-        Err(TryRecvError::Disconnected) => ControlFlow::Continue(message_handler.on_channel_disconnect()),
+        Ok((receive_meta_data, EventOrStopThread::StopThread)) => {
+            ControlFlow::Break(receive_meta_data)
+        }
+        Err(TryRecvError::Disconnected) => {
+            ControlFlow::Continue(message_handler.on_channel_disconnect())
+        }
         Err(TryRecvError::Empty) => ControlFlow::Continue(message_handler.on_channel_empty()),
     };
 }

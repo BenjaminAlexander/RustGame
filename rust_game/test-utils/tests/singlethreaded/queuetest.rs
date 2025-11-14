@@ -1,4 +1,7 @@
-use commons::{real_time::simulation::SingleThreadedFactory, time::TimeDuration};
+use commons::{
+    real_time::simulation::SingleThreadedFactory,
+    time::TimeDuration,
+};
 use test_utils::utils::Counter;
 
 #[test]

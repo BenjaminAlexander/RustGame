@@ -1,4 +1,9 @@
-use commons::real_time::{EventHandleResult, HandleEvent, ReceiveMetaData, net::tcp::TcpStream};
+use commons::real_time::{
+    net::tcp::TcpStream,
+    EventHandleResult,
+    HandleEvent,
+    ReceiveMetaData,
+};
 
 //TODO: Send response to time messages to calculate ping
 pub struct TcpOutput {
@@ -18,11 +23,11 @@ impl HandleEvent for TcpOutput {
     fn on_stop(self, _: ReceiveMetaData) -> Self::ThreadReturn {
         ()
     }
-    
+
     fn on_event(&mut self, _: ReceiveMetaData, _: Self::Event) -> EventHandleResult<Self> {
         EventHandleResult::TryForNextEvent
     }
-    
+
     fn on_channel_disconnect(&mut self) -> EventHandleResult<Self> {
         EventHandleResult::StopThread(())
     }

@@ -3,7 +3,10 @@ use std::io::Error;
 use crate::real_time::net::tcp::tcp_read_handler_trait::TcpReadHandlerTrait;
 use crate::real_time::real::net::tcp::RealTcpStream;
 use crate::real_time::simulation::SingleThreadedReceiver;
-use crate::real_time::{EventOrStopThread, Receiver};
+use crate::real_time::{
+    EventOrStopThread,
+    Receiver,
+};
 
 enum Implementation {
     Real(RealTcpStream),

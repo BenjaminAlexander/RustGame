@@ -1,11 +1,25 @@
-use crate::real_time::net::tcp::{TcpConnectionHandlerTrait, TcpReadHandlerTrait};
-use crate::real_time::net::udp::UdpReadHandlerTrait;
-use crate::real_time::real::net::tcp::{RealTcpStream, TcpListenerEventHandler, TcpReaderEventHandler};
-use crate::real_time::real::net::udp::{RealUdpSocket, UdpReaderEventHandler};
-use crate::real_time::{EventOrStopThread, ReceiveMetaData, SendMetaData, TimeSource, real};
-use crate::time::{
-    TimeDuration,
+use crate::real_time::net::tcp::{
+    TcpConnectionHandlerTrait,
+    TcpReadHandlerTrait,
 };
+use crate::real_time::net::udp::UdpReadHandlerTrait;
+use crate::real_time::real::net::tcp::{
+    RealTcpStream,
+    TcpListenerEventHandler,
+    TcpReaderEventHandler,
+};
+use crate::real_time::real::net::udp::{
+    RealUdpSocket,
+    UdpReaderEventHandler,
+};
+use crate::real_time::{
+    real,
+    EventOrStopThread,
+    ReceiveMetaData,
+    SendMetaData,
+    TimeSource,
+};
+use crate::time::TimeDuration;
 use std::io::Error;
 use std::net::{
     SocketAddr,
@@ -102,10 +116,25 @@ impl RealReceiver<EventOrStopThread<()>> {
 
 #[cfg(test)]
 mod tests {
-    
-    use std::sync::mpsc::{self, RecvTimeoutError};
 
-    use crate::{logging::setup_test_logging, real_time::{FactoryTrait, RealFactory, SendMetaData, real::{RealReceiver, RealSender}}, time::TimeDuration};
+    use std::sync::mpsc::{
+        self,
+        RecvTimeoutError,
+    };
+
+    use crate::{
+        logging::setup_test_logging,
+        real_time::{
+            real::{
+                RealReceiver,
+                RealSender,
+            },
+            FactoryTrait,
+            RealFactory,
+            SendMetaData,
+        },
+        time::TimeDuration,
+    };
 
     #[test]
     fn test_channel() {
@@ -195,12 +224,11 @@ mod tests {
         setup_test_logging();
 
         let factory = RealFactory::new();
-        let (sender, _)  = factory.new_channel::<i32>();
+        let (sender, _) = factory.new_channel::<i32>();
         let value = 1234;
 
         let error_value = sender.send(value).unwrap_err();
 
         assert_eq!(value, error_value);
     }
-
 }

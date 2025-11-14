@@ -1,5 +1,9 @@
 use crate::real_time::net::tcp::TcpReadHandlerTrait;
-use crate::real_time::{EventHandleResult, HandleEvent, ReceiveMetaData};
+use crate::real_time::{
+    EventHandleResult,
+    HandleEvent,
+    ReceiveMetaData,
+};
 use std::io::Cursor;
 use std::ops::ControlFlow::{
     Break,
@@ -33,11 +37,11 @@ impl<T: TcpReadHandlerTrait> HandleEvent for TcpReaderEventHandler<T> {
     fn on_stop(self, _: ReceiveMetaData) -> Self::ThreadReturn {
         return ();
     }
-    
+
     fn on_event(&mut self, _: ReceiveMetaData, buf: Self::Event) -> EventHandleResult<Self> {
         self.read(buf)
     }
-    
+
     fn on_channel_disconnect(&mut self) -> EventHandleResult<Self> {
         EventHandleResult::StopThread(())
     }

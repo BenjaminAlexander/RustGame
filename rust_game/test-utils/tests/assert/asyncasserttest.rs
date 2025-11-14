@@ -1,5 +1,6 @@
 use commons::{
-    logging::LoggingConfigBuilder, real_time::SingleThreadExecutor,
+    logging::LoggingConfigBuilder,
+    real_time::SingleThreadExecutor,
 };
 use log::LevelFilter;
 use std::panic::catch_unwind;

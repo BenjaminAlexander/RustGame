@@ -18,9 +18,7 @@ pub struct ClientManagerObserver<GameFactory: GameFactoryTrait> {
 }
 
 impl<GameFactory: GameFactoryTrait> ClientManagerObserver<GameFactory> {
-    pub fn new(
-        render_receiver_sender: Sender<RenderReceiverMessage<GameFactory::Game>>,
-    ) -> Self {
+    pub fn new(render_receiver_sender: Sender<RenderReceiverMessage<GameFactory::Game>>) -> Self {
         return Self {
             render_receiver_sender,
         };

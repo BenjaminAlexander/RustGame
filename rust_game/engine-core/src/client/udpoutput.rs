@@ -8,9 +8,13 @@ use crate::messaging::{
     InputMessage,
     ToServerMessageUDP,
 };
-use commons::real_time::net::MAX_UDP_DATAGRAM_SIZE;
 use commons::real_time::net::udp::UdpSocket;
-use commons::real_time::{EventHandleResult, HandleEvent, ReceiveMetaData};
+use commons::real_time::net::MAX_UDP_DATAGRAM_SIZE;
+use commons::real_time::{
+    EventHandleResult,
+    HandleEvent,
+    ReceiveMetaData,
+};
 use log::{
     error,
     info,
@@ -113,7 +117,7 @@ impl<GameFactory: GameFactoryTrait> HandleEvent for UdpOutput<GameFactory> {
     fn on_stop(self, _: ReceiveMetaData) -> Self::ThreadReturn {
         ()
     }
-    
+
     fn on_event(&mut self, _: ReceiveMetaData, event: Self::Event) -> EventHandleResult<Self> {
         match event {
             UdpOutputEvent::InputMessageEvent(input_message) => {
@@ -123,7 +127,7 @@ impl<GameFactory: GameFactoryTrait> HandleEvent for UdpOutput<GameFactory> {
 
         return EventHandleResult::TryForNextEvent;
     }
-    
+
     fn on_channel_empty(&mut self) -> EventHandleResult<Self> {
         self.send_all_messages();
         return EventHandleResult::WaitForNextEvent;

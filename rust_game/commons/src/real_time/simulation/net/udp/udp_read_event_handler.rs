@@ -1,6 +1,10 @@
 use crate::real_time::net::udp::UdpReadHandlerTrait;
 use crate::real_time::simulation::net::network_simulator::NetworkSimulator;
-use crate::real_time::{EventHandleResult, HandleEvent, ReceiveMetaData};
+use crate::real_time::{
+    EventHandleResult,
+    HandleEvent,
+    ReceiveMetaData,
+};
 use std::net::SocketAddr;
 use std::ops::ControlFlow::{
     Break,
@@ -41,7 +45,7 @@ impl<T: UdpReadHandlerTrait> HandleEvent for UdpReadEventHandler<T> {
         self.network_simulator.remove_udp_reader(&self.socket_addr);
         return ();
     }
-    
+
     fn on_event(&mut self, _: ReceiveMetaData, event: Self::Event) -> EventHandleResult<Self> {
         let (source, buf) = event;
         self.read(source, buf)

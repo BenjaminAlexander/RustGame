@@ -1,6 +1,15 @@
 use std::io::Error;
 
-use crate::real_time::{HandleEvent, EventOrStopThread, EventSender, FactoryTrait, Receiver, real, receiver::ReceiverImplementation, simulation};
+use crate::real_time::{
+    real,
+    receiver::ReceiverImplementation,
+    simulation,
+    EventOrStopThread,
+    EventSender,
+    FactoryTrait,
+    HandleEvent,
+    Receiver,
+};
 
 pub struct EventHandlerBuilder<T: HandleEvent> {
     sender: EventSender<T::Event>,
@@ -29,10 +38,20 @@ impl<T: HandleEvent> EventHandlerBuilder<T> {
     ) -> Result<EventSender<T::Event>, Error> {
         match self.receiver.take_implementation() {
             ReceiverImplementation::Real(real_receiver) => {
-                real::spawn_event_handler(thread_name, real_receiver, event_handler, join_call_back)?;
+                real::spawn_event_handler(
+                    thread_name,
+                    real_receiver,
+                    event_handler,
+                    join_call_back,
+                )?;
             }
             ReceiverImplementation::Simulated(single_threaded_receiver) => {
-                simulation::spawn_event_handler(thread_name, single_threaded_receiver, event_handler, join_call_back);
+                simulation::spawn_event_handler(
+                    thread_name,
+                    single_threaded_receiver,
+                    event_handler,
+                    join_call_back,
+                );
             }
         };
         return Ok(self.sender);

@@ -1,4 +1,11 @@
-use crate::real_time::{EventHandleResult, EventHandlerBuilder, HandleEvent, EventSender, FactoryTrait, ReceiveMetaData};
+use crate::real_time::{
+    EventHandleResult,
+    EventHandlerBuilder,
+    EventSender,
+    FactoryTrait,
+    HandleEvent,
+    ReceiveMetaData,
+};
 use crate::time::timerservice::schedule::Schedule;
 use crate::time::timerservice::timer::Timer;
 use crate::time::timerservice::timer_call_back::TimerCallBack;
@@ -291,11 +298,15 @@ impl<Factory: FactoryTrait, T: TimerCreationCallBack, U: TimerCallBack> HandleEv
     fn on_stop(self, _: ReceiveMetaData) -> Self::ThreadReturn {
         return ();
     }
-    
+
     fn on_event(&mut self, _: ReceiveMetaData, event: Self::Event) -> EventHandleResult<Self> {
         match event {
-            TimerServiceEvent::CreateTimer(creation_call_back, tick_call_back, schedule) => self.create_timer_event_event(creation_call_back, tick_call_back, schedule),
-            TimerServiceEvent::RescheduleTimer(timer_id, schedule) => self.reschedule_timer_event(&timer_id, schedule),
+            TimerServiceEvent::CreateTimer(creation_call_back, tick_call_back, schedule) => {
+                self.create_timer_event_event(creation_call_back, tick_call_back, schedule)
+            }
+            TimerServiceEvent::RescheduleTimer(timer_id, schedule) => {
+                self.reschedule_timer_event(&timer_id, schedule)
+            }
             TimerServiceEvent::RemoveTimer(timer_id) => self.cancel_timer_event(timer_id),
         }
     }
@@ -307,7 +318,7 @@ impl<Factory: FactoryTrait, T: TimerCreationCallBack, U: TimerCallBack> HandleEv
     fn on_channel_empty(&mut self) -> EventHandleResult<Self> {
         self.trigger_timers()
     }
-    
+
     fn on_channel_disconnect(&mut self) -> EventHandleResult<Self> {
         EventHandleResult::StopThread(())
     }

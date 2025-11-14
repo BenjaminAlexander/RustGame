@@ -3,7 +3,10 @@ use std::{
     ops::ControlFlow,
 };
 
-use crate::real_time::net::tcp::{TcpReader, tcp_stream::TcpStream};
+use crate::real_time::net::tcp::{
+    tcp_stream::TcpStream,
+    TcpReader,
+};
 
 //TODO: get rid of this trait
 pub trait TcpConnectionHandlerTrait: Send + 'static {

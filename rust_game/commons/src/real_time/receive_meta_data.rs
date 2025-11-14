@@ -1,7 +1,13 @@
-use crate::{real_time::{SendMetaData, TimeSource}, time::{
-    TimeDuration,
-    TimeValue,
-}};
+use crate::{
+    real_time::{
+        SendMetaData,
+        TimeSource,
+    },
+    time::{
+        TimeDuration,
+        TimeValue,
+    },
+};
 
 #[derive(Debug)]
 pub struct ReceiveMetaData {

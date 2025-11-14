@@ -1,6 +1,5 @@
 use crate::real_time::simulation::receiver_link::ReceiverLink;
 
-
 pub struct SenderLink<T> {
     receiver_link: ReceiverLink<T>,
 }

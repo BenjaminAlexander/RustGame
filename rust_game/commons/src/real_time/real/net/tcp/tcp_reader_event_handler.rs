@@ -1,4 +1,16 @@
-use crate::real_time::{EventHandleResult, HandleEvent, ReceiveMetaData, net::tcp::TcpReadHandlerTrait, real::net::tcp::{RealTcpStream, resetable_reader::{DeserializeResult, ResetableReader}}};
+use crate::real_time::{
+    net::tcp::TcpReadHandlerTrait,
+    real::net::tcp::{
+        resetable_reader::{
+            DeserializeResult,
+            ResetableReader,
+        },
+        RealTcpStream,
+    },
+    EventHandleResult,
+    HandleEvent,
+    ReceiveMetaData,
+};
 use std::ops::ControlFlow;
 
 pub struct TcpReaderEventHandler<T: TcpReadHandlerTrait> {
@@ -39,7 +51,7 @@ impl<T: TcpReadHandlerTrait> HandleEvent for TcpReaderEventHandler<T> {
     fn on_channel_empty(&mut self) -> EventHandleResult<Self> {
         return self.read();
     }
-    
+
     fn on_channel_disconnect(&mut self) -> EventHandleResult<Self> {
         return EventHandleResult::StopThread(());
     }

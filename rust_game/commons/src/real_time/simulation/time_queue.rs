@@ -1,5 +1,5 @@
-use crate::real_time::simulation::SimulatedTimeSource;
 use crate::real_time::simulation::event::Event;
+use crate::real_time::simulation::SimulatedTimeSource;
 use crate::time::{
     TimeDuration,
     TimeValue,

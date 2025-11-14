@@ -1,4 +1,7 @@
-use crate::{real_time::ReceiveMetaData, time::TimeDuration};
+use crate::{
+    real_time::ReceiveMetaData,
+    time::TimeDuration,
+};
 
 pub enum EventHandleResult<T: HandleEvent> {
     WaitForNextEvent,
@@ -11,7 +14,11 @@ pub trait HandleEvent: Send + Sized + 'static {
     type Event: Send + 'static;
     type ThreadReturn: Send + 'static;
 
-    fn on_event(&mut self, receive_meta_data: ReceiveMetaData, event: Self::Event) -> EventHandleResult<Self>;
+    fn on_event(
+        &mut self,
+        receive_meta_data: ReceiveMetaData,
+        event: Self::Event,
+    ) -> EventHandleResult<Self>;
 
     fn on_timeout(&mut self) -> EventHandleResult<Self> {
         return EventHandleResult::WaitForNextEvent;

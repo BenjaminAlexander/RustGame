@@ -9,12 +9,8 @@ pub struct ClientGameTimerObserver<GameFactory: GameFactoryTrait> {
 }
 
 impl<GameFactory: GameFactoryTrait> ClientGameTimerObserver<GameFactory> {
-    pub fn new(
-        core_sender: EventSender<ClientCoreEvent<GameFactory>>,
-    ) -> Self {
-        return Self {
-            core_sender,
-        };
+    pub fn new(core_sender: EventSender<ClientCoreEvent<GameFactory>>) -> Self {
+        return Self { core_sender };
     }
 }
 

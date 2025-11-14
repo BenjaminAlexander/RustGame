@@ -1,4 +1,8 @@
-use crate::real_time::{ReceiveMetaData, SendMetaData, TimeSource};
+use crate::real_time::{
+    ReceiveMetaData,
+    SendMetaData,
+    TimeSource,
+};
 use log::{
     error,
     warn,
@@ -140,11 +144,21 @@ impl<T> Clone for ReceiverLink<T> {
 
 #[cfg(test)]
 mod tests {
-    use std::sync::{Arc, Mutex, mpsc::TryRecvError};
+    use std::sync::{
+        mpsc::TryRecvError,
+        Arc,
+        Mutex,
+    };
 
-    use crate::real_time::{FactoryTrait, simulation::{SingleThreadedFactory, SingleThreadedReceiver, receiver_link::ReceiveOrDisconnected}};
+    use crate::real_time::{
+        simulation::{
+            receiver_link::ReceiveOrDisconnected,
+            SingleThreadedFactory,
+            SingleThreadedReceiver,
+        },
+        FactoryTrait,
+    };
 
-    
     #[test]
     fn test_sender() {
         let factory = SingleThreadedFactory::new();

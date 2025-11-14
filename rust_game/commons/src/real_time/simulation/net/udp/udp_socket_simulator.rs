@@ -1,7 +1,13 @@
-use crate::real_time::net::udp::{UdpReadHandlerTrait, UdpSocketTrait};
+use crate::real_time::net::udp::{
+    UdpReadHandlerTrait,
+    UdpSocketTrait,
+};
 use crate::real_time::simulation::net::host_simulator::HostSimulator;
 use crate::real_time::simulation::net::network_simulator::NetworkSimulator;
-use crate::real_time::{EventOrStopThread, Receiver};
+use crate::real_time::{
+    EventOrStopThread,
+    Receiver,
+};
 use std::io::Error;
 use std::net::SocketAddr;
 use std::sync::{
