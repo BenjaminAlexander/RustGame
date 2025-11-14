@@ -29,7 +29,6 @@ use commons::net::{
     UdpReadHandlerBuilder,
 };
 use commons::threading::eventhandling::{
-    ChannelEvent,
     EventHandleResult,
     EventHandlerStopper,
     EventHandlerTrait,
@@ -127,24 +126,6 @@ impl<GameFactory: GameFactoryTrait> ClientCore<GameFactory> {
             tcp_output_sender,
             render_receiver_sender,
             running_state: None,
-        };
-    }
-
-    fn on_event(
-        &mut self,
-        event: ClientCoreEvent<GameFactory>,
-    ) -> EventHandleResult<ClientCore<GameFactory>> {
-        return match event {
-            ClientCoreEvent::OnInitialInformation(initial_information) => {
-                self.on_initial_information(initial_information)
-            }
-            ClientCoreEvent::OnInputEvent(client_input_event) => {
-                self.on_input_event(client_input_event)
-            }
-            ClientCoreEvent::GameTimerTick => self.on_game_timer_tick(),
-            ClientCoreEvent::RemoteTimeMessageEvent(time_message) => {
-                self.on_remote_timer_message(time_message)
-            }
         };
     }
 
@@ -338,19 +319,26 @@ impl<GameFactory: GameFactoryTrait> EventHandlerTrait for ClientCore<GameFactory
     type Event = ClientCoreEvent<GameFactory>;
     type ThreadReturn = ();
 
-    fn on_channel_event(
-        &mut self,
-        channel_event: ChannelEvent<Self::Event>,
-    ) -> EventHandleResult<Self> {
-        return match channel_event {
-            ChannelEvent::ReceivedEvent(_, core_event) => self.on_event(core_event),
-            ChannelEvent::Timeout => EventHandleResult::WaitForNextEvent,
-            ChannelEvent::ChannelEmpty => EventHandleResult::WaitForNextEvent,
-            ChannelEvent::ChannelDisconnected => EventHandleResult::StopThread(()),
+    fn on_stop(self, _: ReceiveMetaData) -> Self::ThreadReturn {
+        return ();
+    }
+    
+    fn on_event(&mut self, _: ReceiveMetaData, event: Self::Event) -> EventHandleResult<Self> {
+        return match event {
+            ClientCoreEvent::OnInitialInformation(initial_information) => {
+                self.on_initial_information(initial_information)
+            }
+            ClientCoreEvent::OnInputEvent(client_input_event) => {
+                self.on_input_event(client_input_event)
+            }
+            ClientCoreEvent::GameTimerTick => self.on_game_timer_tick(),
+            ClientCoreEvent::RemoteTimeMessageEvent(time_message) => {
+                self.on_remote_timer_message(time_message)
+            }
         };
     }
-
-    fn on_stop(self, _receive_meta_data: ReceiveMetaData) -> Self::ThreadReturn {
-        return ();
+    
+    fn on_channel_disconnect(&mut self) -> EventHandleResult<Self> {
+        EventHandleResult::StopThread(())
     }
 }

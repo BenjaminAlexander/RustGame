@@ -1,5 +1,4 @@
 use crate::{real_time::ReceiveMetaData, threading::eventhandling::{
-    ChannelEvent,
     EventHandleResult,
     EventHandlerTrait,
 }};
@@ -20,19 +19,20 @@ impl EventHandlerTrait for NoOpEventHandler {
     type Event = ();
     type ThreadReturn = ();
 
-    fn on_channel_event(
-        &mut self,
-        channel_event: ChannelEvent<Self::Event>,
-    ) -> EventHandleResult<Self> {
-        return match channel_event {
-            ChannelEvent::ReceivedEvent(_, ()) => EventHandleResult::TryForNextEvent,
-            ChannelEvent::Timeout => EventHandleResult::TryForNextEvent,
-            ChannelEvent::ChannelEmpty => EventHandleResult::WaitForNextEvent,
-            ChannelEvent::ChannelDisconnected => EventHandleResult::StopThread(()),
-        };
+    fn on_stop(self, _: ReceiveMetaData) -> Self::ThreadReturn {
+        (self.on_stop_func)();
+    }
+    
+    fn on_event(&mut self, _: ReceiveMetaData, _: Self::Event) -> EventHandleResult<Self> {
+        EventHandleResult::TryForNextEvent
     }
 
-    fn on_stop(self, _receive_meta_data: ReceiveMetaData) -> Self::ThreadReturn {
-        (self.on_stop_func)();
+    //TODO: could this be the default wait?
+    fn on_timeout(&mut self) -> EventHandleResult<Self> {
+        EventHandleResult::TryForNextEvent
+    }
+    
+    fn on_channel_disconnect(&mut self) -> EventHandleResult<Self> {
+        EventHandleResult::StopThread(())
     }
 }

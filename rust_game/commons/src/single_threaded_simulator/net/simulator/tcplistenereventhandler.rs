@@ -7,7 +7,6 @@ use crate::real_time::ReceiveMetaData;
 use crate::single_threaded_simulator::net::ChannelTcpWriter;
 use crate::single_threaded_simulator::SingleThreadedReceiver;
 use crate::threading::eventhandling::{
-    ChannelEvent,
     EventHandleResult,
     EventHandlerTrait,
 };
@@ -56,27 +55,28 @@ impl<TcpConnectionHandler: TcpConnectionHandlerTrait> EventHandlerTrait
     for TcpListenerEventHandler<TcpConnectionHandler>
 {
     type Event = TcpListenerEvent;
-    type ThreadReturn = ();
-
-    fn on_channel_event(
-        &mut self,
-        channel_event: ChannelEvent<Self::Event>,
-    ) -> EventHandleResult<Self> {
-        return match channel_event {
-            ChannelEvent::ReceivedEvent(_, TcpListenerEvent::Connection(writer, reader)) => {
-                self.on_connection(writer, reader)
-            }
-            ChannelEvent::ReceivedEvent(_, TcpListenerEvent::ListenerReady) => {
-                self.connection_handler.on_bind(self.socket_addr);
-                EventHandleResult::TryForNextEvent
-            }
-            ChannelEvent::Timeout => EventHandleResult::TryForNextEvent,
-            ChannelEvent::ChannelEmpty => EventHandleResult::WaitForNextEvent,
-            ChannelEvent::ChannelDisconnected => EventHandleResult::StopThread(()),
-        };
-    }
+    type ThreadReturn = ();   
 
     fn on_stop(self, _receive_meta_data: ReceiveMetaData) -> Self::ThreadReturn {
         return ();
+    }
+    
+    fn on_event(&mut self, _: ReceiveMetaData, event: Self::Event) -> EventHandleResult<Self> {
+        match event {
+            TcpListenerEvent::ListenerReady => {
+                self.connection_handler.on_bind(self.socket_addr);
+                EventHandleResult::TryForNextEvent
+            },
+            TcpListenerEvent::Connection(writer, reader) => self.on_connection(writer, reader),
+        }
+    }
+
+    //TODO: could this be the default wait?
+    fn on_timeout(&mut self) -> EventHandleResult<Self> {
+        EventHandleResult::TryForNextEvent
+    }
+    
+    fn on_channel_disconnect(&mut self) -> EventHandleResult<Self> {
+        EventHandleResult::StopThread(())
     }
 }

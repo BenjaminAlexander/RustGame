@@ -19,7 +19,6 @@ use crate::messaging::{
 };
 use commons::real_time::{FactoryTrait, ReceiveMetaData};
 use commons::threading::eventhandling::{
-    ChannelEvent,
     EventHandleResult,
     EventHandlerTrait,
 };
@@ -281,36 +280,30 @@ impl<ManagerObserver: ManagerObserverTrait> EventHandlerTrait for Manager<Manage
     type Event = ManagerEvent<ManagerObserver::Game>;
     type ThreadReturn = ();
 
-    fn on_channel_event(
-        &mut self,
-        channel_event: ChannelEvent<Self::Event>,
-    ) -> EventHandleResult<Self> {
-        match channel_event {
-            ChannelEvent::ReceivedEvent(_, DropStepsBeforeEvent(step)) => {
-                self.drop_steps_before(step)
-            }
-            ChannelEvent::ReceivedEvent(_, SetRequestedStepEvent(step)) => {
-                self.set_requested_step(step)
-            }
-            ChannelEvent::ReceivedEvent(_, InitialInformationEvent(initial_information)) => {
-                self.on_initial_information(initial_information)
-            }
-            ChannelEvent::ReceivedEvent(_, InputEvent(input_message)) => {
-                self.on_input_message(input_message)
-            }
-            ChannelEvent::ReceivedEvent(_, ServerInputEvent(server_input_message)) => {
-                self.on_server_input_message(server_input_message)
-            }
-            ChannelEvent::ReceivedEvent(_, StateEvent(state_message)) => {
-                self.on_state_message(state_message)
-            }
-            ChannelEvent::Timeout => self.on_none_pending(),
-            ChannelEvent::ChannelEmpty => self.on_none_pending(),
-            ChannelEvent::ChannelDisconnected => EventHandleResult::StopThread(()),
+    fn on_stop(self, _: ReceiveMetaData) -> Self::ThreadReturn {
+        ()
+    }
+    
+    fn on_event(&mut self, _: ReceiveMetaData, event: Self::Event) -> EventHandleResult<Self> {
+        match event {
+            DropStepsBeforeEvent(step) => self.drop_steps_before(step),
+            SetRequestedStepEvent(step) => self.set_requested_step(step),
+            InitialInformationEvent(initial_information) => self.on_initial_information(initial_information),
+            InputEvent(input_message) => self.on_input_message(input_message),
+            ServerInputEvent(server_input_message) => self.on_server_input_message(server_input_message),
+            StateEvent(state_message) => self.on_state_message(state_message),
         }
     }
 
-    fn on_stop(self, _receive_meta_data: ReceiveMetaData) -> Self::ThreadReturn {
-        ()
+    fn on_timeout(&mut self) -> EventHandleResult<Self> {
+        self.on_none_pending()
+    }
+
+    fn on_channel_empty(&mut self) -> EventHandleResult<Self> {
+        self.on_none_pending()
+    }
+    
+    fn on_channel_disconnect(&mut self) -> EventHandleResult<Self> {
+        EventHandleResult::StopThread(())
     }
 }

@@ -1,6 +1,5 @@
 use commons::{
     logging::setup_test_logging, real_time::{EventHandlerBuilder, RealFactory, ReceiveMetaData}, threading::eventhandling::{
-            ChannelEvent,
             EventHandleResult,
             EventHandlerTrait,
         }, time::TimeDuration
@@ -24,31 +23,32 @@ enum CountEvent {
 
 impl EventHandlerTrait for Count {
     type Event = CountEvent;
-
     type ThreadReturn = i32;
 
-    fn on_channel_event(
-        &mut self,
-        channel_event: ChannelEvent<CountEvent>,
-    ) -> EventHandleResult<Self> {
-        match channel_event {
-            ChannelEvent::ReceivedEvent(_, CountEvent::Add(x)) => self.count += x,
-            ChannelEvent::ReceivedEvent(_, CountEvent::Subtract(x)) => self.count -= x,
-            ChannelEvent::ReceivedEvent(_, CountEvent::WaitForTimeout) => {
-                return EventHandleResult::WaitForNextEventOrTimeout(TimeDuration::from_millis_f64(
-                    100.0,
-                ))
+    fn on_stop(self, _: ReceiveMetaData) -> i32 {
+        return self.count;
+    }
+    
+    fn on_event(&mut self, _: ReceiveMetaData, event: Self::Event) -> EventHandleResult<Self> {
+        match event {
+            CountEvent::Add(x) => {
+                self.count += x;
+                EventHandleResult::WaitForNextEvent
+            },
+            CountEvent::Subtract(x) => {
+                self.count -= x;
+                EventHandleResult::WaitForNextEvent
             }
-            ChannelEvent::Timeout => return EventHandleResult::StopThread(NUMBER),
-            ChannelEvent::ChannelDisconnected => return EventHandleResult::StopThread(self.count),
-            _ => { /*no-op*/ }
+            CountEvent::WaitForTimeout => EventHandleResult::WaitForNextEventOrTimeout(TimeDuration::from_millis_f64(100.0)),
         }
-
-        return EventHandleResult::WaitForNextEvent;
     }
 
-    fn on_stop(self, _receive_meta_data: ReceiveMetaData) -> i32 {
-        return self.count;
+    fn on_timeout(&mut self) -> EventHandleResult<Self> {
+        EventHandleResult::StopThread(NUMBER)
+    }
+    
+    fn on_channel_disconnect(&mut self) -> EventHandleResult<Self> {
+        EventHandleResult::StopThread(self.count)
     }
 }
 

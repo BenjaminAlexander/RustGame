@@ -1,13 +1,6 @@
 use commons::net::TcpStream;
 use commons::real_time::ReceiveMetaData;
-use commons::threading::eventhandling::ChannelEvent::{
-    ChannelDisconnected,
-    ChannelEmpty,
-    ReceivedEvent,
-    Timeout,
-};
 use commons::threading::eventhandling::{
-    ChannelEvent,
     EventHandleResult,
     EventHandlerTrait,
 };
@@ -27,19 +20,15 @@ impl EventHandlerTrait for TcpOutput {
     type Event = ();
     type ThreadReturn = ();
 
-    fn on_channel_event(
-        &mut self,
-        channel_event: ChannelEvent<Self::Event>,
-    ) -> EventHandleResult<Self> {
-        match channel_event {
-            ReceivedEvent(_, ()) => EventHandleResult::TryForNextEvent,
-            Timeout => EventHandleResult::WaitForNextEvent,
-            ChannelEmpty => EventHandleResult::WaitForNextEvent,
-            ChannelDisconnected => EventHandleResult::StopThread(()),
-        }
-    }
-
-    fn on_stop(self, _receive_meta_data: ReceiveMetaData) -> Self::ThreadReturn {
+    fn on_stop(self, _: ReceiveMetaData) -> Self::ThreadReturn {
         ()
+    }
+    
+    fn on_event(&mut self, _: ReceiveMetaData, _: Self::Event) -> EventHandleResult<Self> {
+        EventHandleResult::TryForNextEvent
+    }
+    
+    fn on_channel_disconnect(&mut self) -> EventHandleResult<Self> {
+        EventHandleResult::StopThread(())
     }
 }

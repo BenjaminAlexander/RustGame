@@ -8,7 +8,6 @@ use crate::server::ServerConfig;
 use commons::net::TcpStream;
 use commons::real_time::ReceiveMetaData;
 use commons::threading::eventhandling::{
-    ChannelEvent,
     EventHandleResult,
     EventHandlerTrait,
 };
@@ -61,22 +60,17 @@ impl<Game: GameTrait> EventHandlerTrait for TcpOutput<Game> {
     type Event = TcpOutputEvent<Game>;
     type ThreadReturn = ();
 
-    fn on_channel_event(
-        &mut self,
-        channel_event: ChannelEvent<Self::Event>,
-    ) -> EventHandleResult<Self> {
-        match channel_event {
-            ChannelEvent::ReceivedEvent(
-                _,
-                SendInitialInformation(server_config, player_count, initial_state),
-            ) => self.send_initial_information(server_config, player_count, initial_state),
-            ChannelEvent::Timeout => EventHandleResult::WaitForNextEvent,
-            ChannelEvent::ChannelEmpty => EventHandleResult::WaitForNextEvent,
-            ChannelEvent::ChannelDisconnected => EventHandleResult::StopThread(()),
+    fn on_stop(self, _: ReceiveMetaData) -> Self::ThreadReturn {
+        ()
+    }
+    
+    fn on_event(&mut self, _: ReceiveMetaData, event: Self::Event) -> EventHandleResult<Self> {
+        match event {
+            SendInitialInformation(server_config, player_count, initial_state) => self.send_initial_information(server_config, player_count, initial_state),
         }
     }
-
-    fn on_stop(self, _receive_meta_data: ReceiveMetaData) -> Self::ThreadReturn {
-        ()
+    
+    fn on_channel_disconnect(&mut self) -> EventHandleResult<Self> {
+        EventHandleResult::StopThread(())
     }
 }

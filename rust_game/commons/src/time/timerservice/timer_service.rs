@@ -1,12 +1,5 @@
 use crate::real_time::{EventHandlerBuilder, FactoryTrait, ReceiveMetaData};
-use crate::threading::eventhandling::ChannelEvent::{
-    ChannelDisconnected,
-    ChannelEmpty,
-    ReceivedEvent,
-    Timeout,
-};
 use crate::threading::eventhandling::{
-    ChannelEvent,
     EventHandleResult,
     EventHandlerTrait,
     EventSender,
@@ -300,28 +293,27 @@ impl<Factory: FactoryTrait, T: TimerCreationCallBack, U: TimerCallBack> EventHan
     type Event = TimerServiceEvent<T, U>;
     type ThreadReturn = ();
 
-    fn on_channel_event(
-        &mut self,
-        channel_event: ChannelEvent<Self::Event>,
-    ) -> EventHandleResult<Self> {
-        match channel_event {
-            ReceivedEvent(
-                _,
-                TimerServiceEvent::CreateTimer(creation_call_back, tick_call_back, schedule),
-            ) => self.create_timer_event_event(creation_call_back, tick_call_back, schedule),
-            ReceivedEvent(_, TimerServiceEvent::RescheduleTimer(timer_id, schedule)) => {
-                self.reschedule_timer_event(&timer_id, schedule)
-            }
-            ReceivedEvent(_, TimerServiceEvent::RemoveTimer(timer_id)) => {
-                self.cancel_timer_event(timer_id)
-            }
-            Timeout => self.trigger_timers(),
-            ChannelEmpty => self.trigger_timers(),
-            ChannelDisconnected => EventHandleResult::StopThread(()),
+    fn on_stop(self, _: ReceiveMetaData) -> Self::ThreadReturn {
+        return ();
+    }
+    
+    fn on_event(&mut self, _: ReceiveMetaData, event: Self::Event) -> EventHandleResult<Self> {
+        match event {
+            TimerServiceEvent::CreateTimer(creation_call_back, tick_call_back, schedule) => self.create_timer_event_event(creation_call_back, tick_call_back, schedule),
+            TimerServiceEvent::RescheduleTimer(timer_id, schedule) => self.reschedule_timer_event(&timer_id, schedule),
+            TimerServiceEvent::RemoveTimer(timer_id) => self.cancel_timer_event(timer_id),
         }
     }
 
-    fn on_stop(self, _: ReceiveMetaData) -> Self::ThreadReturn {
-        return ();
+    fn on_timeout(&mut self) -> EventHandleResult<Self> {
+        self.trigger_timers()
+    }
+
+    fn on_channel_empty(&mut self) -> EventHandleResult<Self> {
+        self.trigger_timers()
+    }
+    
+    fn on_channel_disconnect(&mut self) -> EventHandleResult<Self> {
+        EventHandleResult::StopThread(())
     }
 }

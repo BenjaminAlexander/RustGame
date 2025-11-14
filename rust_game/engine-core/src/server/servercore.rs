@@ -51,7 +51,6 @@ use commons::net::{
     MAX_UDP_DATAGRAM_SIZE,
 };
 use commons::threading::eventhandling::{
-    ChannelEvent,
     EventHandleResult,
     EventHandlerStopper,
     EventHandlerTrait,
@@ -103,30 +102,22 @@ impl<GameFactory: GameFactoryTrait> EventHandlerTrait for ServerCore<GameFactory
     type Event = ServerCoreEvent<GameFactory>;
     type ThreadReturn = ();
 
-    fn on_channel_event(
-        &mut self,
-        channel_event: ChannelEvent<Self::Event>,
-    ) -> EventHandleResult<Self> {
-        match channel_event {
-            ChannelEvent::ReceivedEvent(_, StartListenerEvent) => self.start_listener(),
-            ChannelEvent::ReceivedEvent(_, StartGameEvent(render_receiver_sender)) => {
-                self.start_game(render_receiver_sender)
-            }
-            ChannelEvent::ReceivedEvent(_, TcpConnectionEvent(tcp_sender, tcp_receiver)) => {
-                self.on_tcp_connection(tcp_sender, tcp_receiver)
-            }
-            ChannelEvent::ReceivedEvent(_, GameTimerTick) => self.on_game_timer_tick(),
-            ChannelEvent::ReceivedEvent(_, UdpPacket(source, len, buf)) => {
-                self.on_udp_packet(source, len, buf)
-            }
-            ChannelEvent::Timeout => EventHandleResult::WaitForNextEvent,
-            ChannelEvent::ChannelEmpty => EventHandleResult::WaitForNextEvent,
-            ChannelEvent::ChannelDisconnected => EventHandleResult::StopThread(()),
+    fn on_stop(self, _: ReceiveMetaData) -> Self::ThreadReturn {
+        ()
+    }
+    
+    fn on_event(&mut self, _: ReceiveMetaData, event: Self::Event) -> EventHandleResult<Self> {
+        match event {
+            StartListenerEvent => self.start_listener(),
+            StartGameEvent(render_receiver_sender) => self.start_game(render_receiver_sender),
+            TcpConnectionEvent(tcp_stream, tcp_reader) => self.on_tcp_connection(tcp_stream, tcp_reader),
+            GameTimerTick => self.on_game_timer_tick(),
+            UdpPacket(source, len, buf) => self.on_udp_packet(source, len, buf),
         }
     }
-
-    fn on_stop(self, _receive_meta_data: ReceiveMetaData) -> Self::ThreadReturn {
-        ()
+    
+    fn on_channel_disconnect(&mut self) -> EventHandleResult<Self> {
+        EventHandleResult::StopThread(())
     }
 }
 

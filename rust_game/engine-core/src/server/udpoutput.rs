@@ -25,7 +25,6 @@ use commons::net::{
 };
 use commons::stats::RollingAverage;
 use commons::threading::eventhandling::{
-    ChannelEvent,
     EventHandleResult,
     EventHandlerTrait,
 };
@@ -253,10 +252,12 @@ impl<GameFactory: GameFactoryTrait> EventHandlerTrait for UdpOutput<GameFactory>
     type Event = UdpOutputEvent<GameFactory::Game>;
     type ThreadReturn = ();
 
-    fn on_channel_event(
-        &mut self,
-        channel_event: ChannelEvent<Self::Event>,
-    ) -> EventHandleResult<Self> {
+    fn on_stop(self, _: ReceiveMetaData) -> Self::ThreadReturn {
+        ()
+    }
+    
+    fn on_event(&mut self, receive_meta_data: ReceiveMetaData, event: Self::Event) -> EventHandleResult<Self> {
+
         let now = self.factory.get_time_source().now();
 
         // let duration_since_last_input = now.duration_since(self.time_of_last_input_send);
@@ -274,30 +275,16 @@ impl<GameFactory: GameFactoryTrait> EventHandlerTrait for UdpOutput<GameFactory>
             );
         }
 
-        match channel_event {
-            ChannelEvent::ReceivedEvent(_, RemotePeer(remote_udp_peer)) => {
-                self.on_remote_peer(remote_udp_peer)
-            }
-            ChannelEvent::ReceivedEvent(receive_meta_data, SendCompletedStep(state_message)) => {
-                self.on_completed_step(receive_meta_data, state_message)
-            }
-            ChannelEvent::ReceivedEvent(receive_meta_data, SendTimeMessage(time_message)) => {
-                self.on_time_message(receive_meta_data, time_message)
-            }
-            ChannelEvent::ReceivedEvent(receive_meta_data, SendInputMessage(input_message)) => {
-                self.on_input_message(receive_meta_data, input_message)
-            }
-            ChannelEvent::ReceivedEvent(
-                receive_meta_data,
-                SendServerInputMessage(server_input_message),
-            ) => self.on_server_input_message(receive_meta_data, server_input_message),
-            ChannelEvent::Timeout => EventHandleResult::WaitForNextEvent,
-            ChannelEvent::ChannelEmpty => EventHandleResult::WaitForNextEvent,
-            ChannelEvent::ChannelDisconnected => EventHandleResult::StopThread(()),
+        match event {
+            RemotePeer(remote_udp_peer) => self.on_remote_peer(remote_udp_peer),
+            SendTimeMessage(time_message) => self.on_time_message(receive_meta_data, time_message),
+            SendInputMessage(input_message) => self.on_input_message(receive_meta_data, input_message),
+            SendServerInputMessage(server_input_message) => self.on_server_input_message(receive_meta_data, server_input_message),
+            SendCompletedStep(state_message) =>  self.on_completed_step(receive_meta_data, state_message),
         }
     }
-
-    fn on_stop(self, _receive_meta_data: ReceiveMetaData) -> Self::ThreadReturn {
-        ()
+    
+    fn on_channel_disconnect(&mut self) -> EventHandleResult<Self> {
+        EventHandleResult::StopThread(())
     }
 }

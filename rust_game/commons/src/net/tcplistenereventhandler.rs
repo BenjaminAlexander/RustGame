@@ -7,7 +7,6 @@ use crate::net::{
 };
 use crate::real_time::ReceiveMetaData;
 use crate::threading::eventhandling::{
-    ChannelEvent,
     EventHandleResult,
     EventHandlerTrait,
 };
@@ -100,16 +99,20 @@ impl<T: TcpConnectionHandlerTrait> EventHandlerTrait for TcpListenerEventHandler
     type Event = ();
     type ThreadReturn = ();
 
-    fn on_channel_event(
-        &mut self,
-        channel_event: ChannelEvent<Self::Event>,
-    ) -> EventHandleResult<Self> {
-        return match channel_event {
-            ChannelEvent::ReceivedEvent(_, ()) => EventHandleResult::TryForNextEvent,
-            ChannelEvent::Timeout => self.accept(),
-            ChannelEvent::ChannelEmpty => self.accept(),
-            ChannelEvent::ChannelDisconnected => EventHandleResult::StopThread(()),
-        };
+    fn on_event(&mut self, _: ReceiveMetaData, _: Self::Event) -> EventHandleResult<Self> {
+        return EventHandleResult::TryForNextEvent;
+    }
+
+    fn on_timeout(&mut self) -> EventHandleResult<Self> {
+        return self.accept();    
+    }
+
+    fn on_channel_empty(&mut self) -> EventHandleResult<Self> {
+        return self.accept();
+    }
+
+    fn on_channel_disconnect(&mut self) -> EventHandleResult<Self> {
+        return EventHandleResult::StopThread(());
     }
 
     fn on_stop(self, _receive_meta_data: ReceiveMetaData) -> Self::ThreadReturn {

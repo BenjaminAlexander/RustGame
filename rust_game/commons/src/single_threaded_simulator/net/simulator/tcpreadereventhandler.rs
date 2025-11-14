@@ -1,7 +1,6 @@
 use crate::net::TcpReadHandlerTrait;
 use crate::real_time::ReceiveMetaData;
 use crate::threading::eventhandling::{
-    ChannelEvent,
     EventHandleResult,
     EventHandlerTrait,
 };
@@ -35,19 +34,20 @@ impl<T: TcpReadHandlerTrait> EventHandlerTrait for TcpReaderEventHandler<T> {
     type Event = Vec<u8>;
     type ThreadReturn = ();
 
-    fn on_channel_event(
-        &mut self,
-        channel_event: ChannelEvent<Self::Event>,
-    ) -> EventHandleResult<Self> {
-        match channel_event {
-            ChannelEvent::ReceivedEvent(_, buf) => self.read(buf),
-            ChannelEvent::Timeout => EventHandleResult::TryForNextEvent,
-            ChannelEvent::ChannelEmpty => EventHandleResult::WaitForNextEvent,
-            ChannelEvent::ChannelDisconnected => EventHandleResult::StopThread(()),
-        }
+    fn on_stop(self, _: ReceiveMetaData) -> Self::ThreadReturn {
+        return ();
+    }
+    
+    fn on_event(&mut self, _: ReceiveMetaData, buf: Self::Event) -> EventHandleResult<Self> {
+        self.read(buf)
+    }
+    
+    //TODO: could this be the default wait?
+    fn on_timeout(&mut self) -> EventHandleResult<Self> {
+        EventHandleResult::TryForNextEvent
     }
 
-    fn on_stop(self, _receive_meta_data: ReceiveMetaData) -> Self::ThreadReturn {
-        return ();
+    fn on_channel_disconnect(&mut self) -> EventHandleResult<Self> {
+        EventHandleResult::StopThread(())
     }
 }

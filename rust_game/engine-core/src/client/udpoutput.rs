@@ -14,7 +14,6 @@ use commons::net::{
 };
 use commons::real_time::ReceiveMetaData;
 use commons::threading::eventhandling::{
-    ChannelEvent,
     EventHandleResult,
     EventHandlerTrait,
 };
@@ -117,35 +116,31 @@ impl<GameFactory: GameFactoryTrait> EventHandlerTrait for UdpOutput<GameFactory>
     type Event = UdpOutputEvent<GameFactory::Game>;
     type ThreadReturn = ();
 
-    fn on_channel_event(
-        &mut self,
-        channel_event: ChannelEvent<Self::Event>,
-    ) -> EventHandleResult<Self> {
-        match channel_event {
-            ChannelEvent::ReceivedEvent(_, event) => {
-                match event {
-                    UdpOutputEvent::InputMessageEvent(input_message) => {
-                        self.on_input_message(input_message)
-                    }
-                };
-
-                return EventHandleResult::TryForNextEvent;
-            }
-            ChannelEvent::Timeout => {
-                self.send_all_messages();
-                return EventHandleResult::WaitForNextEvent;
-            }
-            ChannelEvent::ChannelEmpty => {
-                self.send_all_messages();
-                return EventHandleResult::WaitForNextEvent;
-            }
-            ChannelEvent::ChannelDisconnected => {
-                return EventHandleResult::StopThread(());
-            }
-        }
-    }
-
     fn on_stop(self, _: ReceiveMetaData) -> Self::ThreadReturn {
         ()
+    }
+    
+    fn on_event(&mut self, _: ReceiveMetaData, event: Self::Event) -> EventHandleResult<Self> {
+        match event {
+            UdpOutputEvent::InputMessageEvent(input_message) => {
+                self.on_input_message(input_message)
+            }
+        };
+
+        return EventHandleResult::TryForNextEvent;
+    }
+    
+    fn on_channel_empty(&mut self) -> EventHandleResult<Self> {
+        self.send_all_messages();
+        return EventHandleResult::WaitForNextEvent;
+    }
+
+    fn on_timeout(&mut self) -> EventHandleResult<Self> {
+        self.send_all_messages();
+        return EventHandleResult::WaitForNextEvent;
+    }
+
+    fn on_channel_disconnect(&mut self) -> EventHandleResult<Self> {
+        EventHandleResult::StopThread(())
     }
 }

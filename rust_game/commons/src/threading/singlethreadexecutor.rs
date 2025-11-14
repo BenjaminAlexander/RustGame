@@ -1,7 +1,6 @@
 use crate::{
     real_time::{EventHandlerBuilder, RealFactory, ReceiveMetaData},
     threading::eventhandling::{
-        ChannelEvent,
         EventHandleResult,
         EventHandlerTrait,
         EventSender,
@@ -86,18 +85,13 @@ impl EventHandlerTrait for SingleThreadExecutorEventHandler {
     type Event = Runnable;
     type ThreadReturn = ();
 
-    fn on_channel_event(
-        &mut self,
-        channel_event: ChannelEvent<Self::Event>,
-    ) -> EventHandleResult<Self> {
-        match channel_event {
-            ChannelEvent::ReceivedEvent(_, runnable) => {
-                runnable();
-                return EventHandleResult::WaitForNextEvent;
-            }
-            ChannelEvent::ChannelDisconnected => EventHandleResult::StopThread(()),
-            _ => EventHandleResult::WaitForNextEvent,
-        }
+    fn on_event(&mut self, _: ReceiveMetaData, event: Self::Event) -> EventHandleResult<Self> {
+        event();
+        return EventHandleResult::WaitForNextEvent;
+    }
+    
+    fn on_channel_disconnect(&mut self) -> EventHandleResult<Self> {
+        return EventHandleResult::StopThread(());
     }
 
     fn on_stop(self, _: ReceiveMetaData) -> Self::ThreadReturn {

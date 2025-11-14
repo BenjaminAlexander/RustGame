@@ -5,7 +5,6 @@ use crate::net::tcp::resetablereader::{
 use crate::net::tcpreadhandlertrait::TcpReadHandlerTrait;
 use crate::real_time::ReceiveMetaData;
 use crate::threading::eventhandling::{
-    ChannelEvent,
     EventHandleResult,
     EventHandlerTrait,
 };
@@ -44,15 +43,20 @@ impl<T: TcpReadHandlerTrait> EventHandlerTrait for TcpReaderEventHandler<T> {
     type Event = ();
     type ThreadReturn = ();
 
-    fn on_channel_event(
-        &mut self,
-        channel_event: ChannelEvent<Self::Event>,
-    ) -> EventHandleResult<Self> {
-        return match channel_event {
-            ChannelEvent::ChannelEmpty => self.read(),
-            ChannelEvent::ChannelDisconnected => EventHandleResult::StopThread(()),
-            _ => EventHandleResult::TryForNextEvent,
-        };
+    fn on_event(&mut self, _: ReceiveMetaData, _: Self::Event) -> EventHandleResult<Self> {
+        return EventHandleResult::TryForNextEvent;
+    }
+
+    fn on_channel_empty(&mut self) -> EventHandleResult<Self> {
+        return self.read();
+    }
+    
+    fn on_channel_disconnect(&mut self) -> EventHandleResult<Self> {
+        return EventHandleResult::StopThread(());
+    }
+
+    fn on_timeout(&mut self) -> EventHandleResult<Self> {
+        return EventHandleResult::TryForNextEvent;
     }
 
     fn on_stop(self, _receive_meta_data: ReceiveMetaData) -> Self::ThreadReturn {

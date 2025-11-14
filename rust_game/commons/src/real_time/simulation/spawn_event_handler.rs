@@ -195,7 +195,7 @@ impl<T: EventHandlerTrait, U: FnOnce(T::ThreadReturn) + Send + 'static>
     ) -> Option<Self> {
         trace!("Event Handler: {:?}", self.thread_name);
 
-        match self.event_handler.on_channel_event(event) {
+        match event.handle(&mut self.event_handler) {
             EventHandleResult::WaitForNextEvent => {
                 trace!("WaitForNextEvent");
                 return Some(self);
