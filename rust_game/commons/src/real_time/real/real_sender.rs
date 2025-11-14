@@ -1,4 +1,4 @@
-use crate::{real_time::SendMetaData, time::TimeSource};
+use crate::real_time::{SendMetaData, TimeSource};
 use std::sync::mpsc::{
     self,
     SendError,

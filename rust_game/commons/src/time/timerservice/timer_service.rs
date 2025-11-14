@@ -1,4 +1,4 @@
-use crate::real_time::{EventHandleResult, EventHandlerBuilder, EventHandlerTrait, EventSender, FactoryTrait, ReceiveMetaData};
+use crate::real_time::{EventHandleResult, EventHandlerBuilder, HandleEvent, EventSender, FactoryTrait, ReceiveMetaData};
 use crate::time::timerservice::schedule::Schedule;
 use crate::time::timerservice::timer::Timer;
 use crate::time::timerservice::timer_call_back::TimerCallBack;
@@ -282,7 +282,7 @@ impl<Factory: FactoryTrait, T: TimerCreationCallBack, U: TimerCallBack>
     }
 }
 
-impl<Factory: FactoryTrait, T: TimerCreationCallBack, U: TimerCallBack> EventHandlerTrait
+impl<Factory: FactoryTrait, T: TimerCreationCallBack, U: TimerCallBack> HandleEvent
     for TimerServiceEventHandler<Factory, T, U>
 {
     type Event = TimerServiceEvent<T, U>;

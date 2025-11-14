@@ -1,14 +1,13 @@
 use crate::{real_time::ReceiveMetaData, time::TimeDuration};
 
-pub enum EventHandleResult<T: EventHandlerTrait> {
+pub enum EventHandleResult<T: HandleEvent> {
     WaitForNextEvent,
     WaitForNextEventOrTimeout(TimeDuration),
     TryForNextEvent,
     StopThread(T::ThreadReturn),
 }
 
-//TODO: rename this trait
-pub trait EventHandlerTrait: Send + Sized + 'static {
+pub trait HandleEvent: Send + Sized + 'static {
     type Event: Send + 'static;
     type ThreadReturn: Send + 'static;
 

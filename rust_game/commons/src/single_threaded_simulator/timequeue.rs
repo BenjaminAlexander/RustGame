@@ -1,6 +1,6 @@
+use crate::real_time::simulation::SimulatedTimeSource;
 use crate::single_threaded_simulator::event::Event;
 use crate::time::{
-    SimulatedTimeSource,
     TimeDuration,
     TimeValue,
 };

@@ -1,13 +1,13 @@
 use std::io::Error;
 
-use crate::real_time::{EventHandlerTrait, EventOrStopThread, EventSender, FactoryTrait, Receiver, real, receiver::ReceiverImplementation, simulation};
+use crate::real_time::{HandleEvent, EventOrStopThread, EventSender, FactoryTrait, Receiver, real, receiver::ReceiverImplementation, simulation};
 
-pub struct EventHandlerBuilder<T: EventHandlerTrait> {
+pub struct EventHandlerBuilder<T: HandleEvent> {
     sender: EventSender<T::Event>,
     receiver: Receiver<EventOrStopThread<T::Event>>,
 }
 
-impl<T: EventHandlerTrait> EventHandlerBuilder<T> {
+impl<T: HandleEvent> EventHandlerBuilder<T> {
     pub fn new(factory: &impl FactoryTrait) -> Self {
         let (sender, receiver) = factory.new_channel();
 

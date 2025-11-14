@@ -1,5 +1,5 @@
 use crate::net::UdpReadHandlerTrait;
-use crate::real_time::{EventHandleResult, EventHandlerTrait, ReceiveMetaData};
+use crate::real_time::{EventHandleResult, HandleEvent, ReceiveMetaData};
 use crate::single_threaded_simulator::net::NetworkSimulator;
 use std::net::SocketAddr;
 use std::ops::ControlFlow::{
@@ -33,7 +33,7 @@ impl<T: UdpReadHandlerTrait> UdpReadEventHandler<T> {
     }
 }
 
-impl<T: UdpReadHandlerTrait> EventHandlerTrait for UdpReadEventHandler<T> {
+impl<T: UdpReadHandlerTrait> HandleEvent for UdpReadEventHandler<T> {
     type Event = (SocketAddr, Vec<u8>);
     type ThreadReturn = ();
 

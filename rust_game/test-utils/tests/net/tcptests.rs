@@ -5,7 +5,7 @@ use commons::net::{
     LOCAL_EPHEMERAL_SOCKET_ADDR_V4,
     NET_POLLING_PERIOD,
 };
-use commons::threading::SingleThreadExecutor;
+use commons::real_time::SingleThreadExecutor;
 use commons::{
     real_time::RealFactory,
     net::{

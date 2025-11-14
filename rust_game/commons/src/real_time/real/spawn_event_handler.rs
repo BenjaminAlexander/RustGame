@@ -2,14 +2,14 @@ use std::ops::ControlFlow;
 use std::sync::mpsc::{self, TryRecvError};
 use std::thread::Builder;
 
-use crate::real_time::{EventHandleResult, EventHandlerTrait, EventOrStopThread, ReceiveMetaData};
+use crate::real_time::{EventHandleResult, HandleEvent, EventOrStopThread, ReceiveMetaData};
 use crate::real_time::real::RealReceiver;
 use crate::time::TimeDuration;
 use log::info;
 
 type EventReceiver<T> = RealReceiver<EventOrStopThread<T>>;
 
-pub fn spawn_event_handler<T: EventHandlerTrait>(
+pub fn spawn_event_handler<T: HandleEvent>(
     thread_name: String,
     receiver: EventReceiver<T::Event>,
     event_handler: T,
@@ -35,7 +35,7 @@ pub fn spawn_event_handler<T: EventHandlerTrait>(
     return Ok(());
 }
 
-fn run_event_handling_loop<T: EventHandlerTrait>(
+fn run_event_handling_loop<T: HandleEvent>(
     mut receiver: EventReceiver<T::Event>,
     mut message_handler: T,
 ) -> T::ThreadReturn {
@@ -60,7 +60,7 @@ fn run_event_handling_loop<T: EventHandlerTrait>(
     }
 }
 
-fn wait_for_message_or_timeout<T: EventHandlerTrait>(
+fn wait_for_message_or_timeout<T: HandleEvent>(
     receiver: &mut EventReceiver<T::Event>,
     time_duration: TimeDuration,
     message_handler: &mut T,
@@ -73,7 +73,7 @@ fn wait_for_message_or_timeout<T: EventHandlerTrait>(
     };
 }
 
-fn wait_for_message<T: EventHandlerTrait>(
+fn wait_for_message<T: HandleEvent>(
     receiver: &mut EventReceiver<T::Event>,
     message_handler: &mut T,
 ) -> ControlFlow<ReceiveMetaData, EventHandleResult<T>> {
@@ -86,7 +86,7 @@ fn wait_for_message<T: EventHandlerTrait>(
     };
 }
 
-fn try_for_message<T: EventHandlerTrait>(
+fn try_for_message<T: HandleEvent>(
     receiver: &mut EventReceiver<T::Event>,
     message_handler: &mut T,
 ) -> ControlFlow<ReceiveMetaData, EventHandleResult<T>> {

@@ -1,6 +1,6 @@
 use crate::net::udpreadhandlertrait::UdpReadHandlerTrait;
 use crate::net::RealUdpSocket;
-use crate::real_time::{EventHandleResult, EventHandlerTrait, ReceiveMetaData};
+use crate::real_time::{EventHandleResult, HandleEvent, ReceiveMetaData};
 use log::warn;
 use std::io::ErrorKind;
 use std::ops::ControlFlow::{
@@ -54,7 +54,7 @@ impl<T: UdpReadHandlerTrait> UdpReaderEventHandler<T> {
     }
 }
 
-impl<T: UdpReadHandlerTrait> EventHandlerTrait for UdpReaderEventHandler<T> {
+impl<T: UdpReadHandlerTrait> HandleEvent for UdpReaderEventHandler<T> {
     type Event = ();
     type ThreadReturn = ();
 

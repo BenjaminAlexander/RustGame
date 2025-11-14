@@ -1,5 +1,4 @@
-use crate::real_time::{ReceiveMetaData, SendMetaData};
-use crate::time::TimeSource;
+use crate::real_time::{ReceiveMetaData, SendMetaData, TimeSource};
 use log::{
     error,
     warn,

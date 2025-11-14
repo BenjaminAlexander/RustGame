@@ -18,7 +18,7 @@ use crate::server::udpoutput::UdpOutputEvent::{
     SendServerInputMessage,
     SendTimeMessage,
 };
-use commons::real_time::{EventHandleResult, EventHandlerTrait, FactoryTrait, ReceiveMetaData};
+use commons::real_time::{EventHandleResult, HandleEvent, FactoryTrait, ReceiveMetaData};
 use commons::net::{
     UdpSocket,
     MAX_UDP_DATAGRAM_SIZE,
@@ -244,7 +244,7 @@ impl<GameFactory: GameFactoryTrait> UdpOutput<GameFactory> {
     }
 }
 
-impl<GameFactory: GameFactoryTrait> EventHandlerTrait for UdpOutput<GameFactory> {
+impl<GameFactory: GameFactoryTrait> HandleEvent for UdpOutput<GameFactory> {
     type Event = UdpOutputEvent<GameFactory::Game>;
     type ThreadReturn = ();
 

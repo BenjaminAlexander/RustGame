@@ -1,12 +1,11 @@
 use commons::logging::setup_test_logging;
-use commons::real_time::RealFactory;
+use commons::real_time::{RealFactory, SingleThreadExecutor};
 use commons::net::{
     TcpListenerBuilder,
     TcpReadHandlerBuilder,
     LOCAL_EPHEMERAL_SOCKET_ADDR_V4,
     NET_POLLING_PERIOD,
 };
-use commons::threading::SingleThreadExecutor;
 use commons::{
     real_time::FactoryTrait,
     net::{

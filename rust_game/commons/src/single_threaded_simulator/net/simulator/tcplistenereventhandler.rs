@@ -3,7 +3,7 @@ use crate::net::{
     TcpReader,
     TcpStream,
 };
-use crate::real_time::{EventHandleResult, EventHandlerTrait, ReceiveMetaData};
+use crate::real_time::{EventHandleResult, HandleEvent, ReceiveMetaData};
 use crate::single_threaded_simulator::net::ChannelTcpWriter;
 use crate::single_threaded_simulator::SingleThreadedReceiver;
 use std::net::SocketAddr;
@@ -47,7 +47,7 @@ impl<TcpConnectionHandler: TcpConnectionHandlerTrait>
     }
 }
 
-impl<TcpConnectionHandler: TcpConnectionHandlerTrait> EventHandlerTrait
+impl<TcpConnectionHandler: TcpConnectionHandlerTrait> HandleEvent
     for TcpListenerEventHandler<TcpConnectionHandler>
 {
     type Event = TcpListenerEvent;

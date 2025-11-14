@@ -3,7 +3,7 @@ use crate::net::tcp::resetablereader::{
     ResetableReader,
 };
 use crate::net::tcpreadhandlertrait::TcpReadHandlerTrait;
-use crate::real_time::{EventHandleResult, EventHandlerTrait, ReceiveMetaData};
+use crate::real_time::{EventHandleResult, HandleEvent, ReceiveMetaData};
 use std::ops::ControlFlow;
 
 use crate::net::tcp::RealTcpStream;
@@ -35,7 +35,7 @@ impl<T: TcpReadHandlerTrait> TcpReaderEventHandler<T> {
     }
 }
 
-impl<T: TcpReadHandlerTrait> EventHandlerTrait for TcpReaderEventHandler<T> {
+impl<T: TcpReadHandlerTrait> HandleEvent for TcpReaderEventHandler<T> {
     type Event = ();
     type ThreadReturn = ();
 

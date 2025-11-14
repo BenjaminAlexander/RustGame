@@ -1,6 +1,5 @@
-use crate::{real_time::SendMetaData, time::{
+use crate::{real_time::{SendMetaData, TimeSource}, time::{
     TimeDuration,
-    TimeSource,
     TimeValue,
 }};
 

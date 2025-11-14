@@ -1,4 +1,4 @@
-use crate::real_time::{EventHandleResult, EventHandlerBuilder, EventHandlerTrait, EventSender, RealFactory, ReceiveMetaData};
+use crate::real_time::{EventHandleResult, EventHandlerBuilder, HandleEvent, EventSender, RealFactory, ReceiveMetaData};
 use std::sync::{
     Arc,
     Condvar,
@@ -74,7 +74,7 @@ impl SingleThreadExecutor {
 
 struct SingleThreadExecutorEventHandler();
 
-impl EventHandlerTrait for SingleThreadExecutorEventHandler {
+impl HandleEvent for SingleThreadExecutorEventHandler {
     type Event = Runnable;
     type ThreadReturn = ();
 

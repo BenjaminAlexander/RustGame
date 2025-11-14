@@ -1,5 +1,5 @@
 use commons::{
-    logging::setup_test_logging, real_time::{EventHandleResult, EventHandlerBuilder, EventHandlerTrait, RealFactory, ReceiveMetaData}, time::TimeDuration
+    logging::setup_test_logging, real_time::{EventHandleResult, EventHandlerBuilder, HandleEvent, RealFactory, ReceiveMetaData}, time::TimeDuration
 };
 use test_utils::{
     assert::AsyncExpects,
@@ -18,7 +18,7 @@ enum CountEvent {
     WaitForTimeout,
 }
 
-impl EventHandlerTrait for Count {
+impl HandleEvent for Count {
     type Event = CountEvent;
     type ThreadReturn = i32;
 

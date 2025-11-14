@@ -17,7 +17,7 @@ use crate::messaging::{
     ServerInputMessage,
     StateMessage,
 };
-use commons::real_time::{EventHandleResult, EventHandlerTrait, FactoryTrait, ReceiveMetaData};
+use commons::real_time::{EventHandleResult, HandleEvent, FactoryTrait, ReceiveMetaData};
 use commons::time::{
     TimeDuration,
     TimeValue,
@@ -272,7 +272,7 @@ impl<ManagerObserver: ManagerObserverTrait> Manager<ManagerObserver> {
     }
 }
 
-impl<ManagerObserver: ManagerObserverTrait> EventHandlerTrait for Manager<ManagerObserver> {
+impl<ManagerObserver: ManagerObserverTrait> HandleEvent for Manager<ManagerObserver> {
     type Event = ManagerEvent<ManagerObserver::Game>;
     type ThreadReturn = ();
 

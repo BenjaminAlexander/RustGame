@@ -6,7 +6,7 @@ use crate::messaging::ToClientMessageTCP;
 use crate::server::tcpoutput::TcpOutputEvent::SendInitialInformation;
 use crate::server::ServerConfig;
 use commons::net::TcpStream;
-use commons::real_time::{EventHandleResult, EventHandlerTrait, ReceiveMetaData};
+use commons::real_time::{EventHandleResult, HandleEvent, ReceiveMetaData};
 use log::debug;
 use std::marker::PhantomData;
 
@@ -52,7 +52,7 @@ impl<Game: GameTrait> TcpOutput<Game> {
     }
 }
 
-impl<Game: GameTrait> EventHandlerTrait for TcpOutput<Game> {
+impl<Game: GameTrait> HandleEvent for TcpOutput<Game> {
     type Event = TcpOutputEvent<Game>;
     type ThreadReturn = ();
 

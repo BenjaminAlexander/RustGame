@@ -1,5 +1,5 @@
 use crate::net::TcpReadHandlerTrait;
-use crate::real_time::{EventHandleResult, EventHandlerTrait, ReceiveMetaData};
+use crate::real_time::{EventHandleResult, HandleEvent, ReceiveMetaData};
 use std::io::Cursor;
 use std::ops::ControlFlow::{
     Break,
@@ -26,7 +26,7 @@ impl<T: TcpReadHandlerTrait> TcpReaderEventHandler<T> {
     }
 }
 
-impl<T: TcpReadHandlerTrait> EventHandlerTrait for TcpReaderEventHandler<T> {
+impl<T: TcpReadHandlerTrait> HandleEvent for TcpReaderEventHandler<T> {
     type Event = Vec<u8>;
     type ThreadReturn = ();
 

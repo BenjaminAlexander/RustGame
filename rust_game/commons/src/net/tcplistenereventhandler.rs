@@ -5,7 +5,7 @@ use crate::net::{
     TcpReader,
     TcpStream,
 };
-use crate::real_time::{EventHandleResult, EventHandlerTrait, ReceiveMetaData};
+use crate::real_time::{EventHandleResult, HandleEvent, ReceiveMetaData};
 use log::error;
 use std::io::{
     self,
@@ -91,7 +91,7 @@ impl<T: TcpConnectionHandlerTrait> TcpListenerEventHandler<T> {
     }
 }
 
-impl<T: TcpConnectionHandlerTrait> EventHandlerTrait for TcpListenerEventHandler<T> {
+impl<T: TcpConnectionHandlerTrait> HandleEvent for TcpListenerEventHandler<T> {
     type Event = ();
     type ThreadReturn = ();
 

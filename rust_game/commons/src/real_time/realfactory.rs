@@ -1,7 +1,7 @@
 use crate::real_time::real::{RealReceiver, RealSender};
 use crate::real_time::receiver::ReceiverImplementation;
 use crate::real_time::sender::SenderImplementation;
-use crate::real_time::{FactoryTrait, Receiver, SendMetaData, Sender};
+use crate::real_time::{FactoryTrait, Receiver, SendMetaData, Sender, TimeSource};
 use crate::net::{
     RealTcpStream,
     RealUdpSocket,
@@ -9,7 +9,6 @@ use crate::net::{
     TcpStream,
     UdpSocket,
 };
-use crate::time::TimeSource;
 use std::io::Error;
 use std::net::SocketAddr;
 use std::sync::mpsc;

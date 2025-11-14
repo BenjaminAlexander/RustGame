@@ -1,4 +1,4 @@
-use crate::real_time::{EventHandleResult, EventHandlerTrait, EventOrStopThread, ReceiveMetaData};
+use crate::real_time::{EventHandleResult, HandleEvent, EventOrStopThread, ReceiveMetaData};
 use crate::real_time::simulation::SingleThreadedFactory;
 use crate::single_threaded_simulator::{
     ReceiveOrDisconnected,
@@ -12,7 +12,7 @@ use std::sync::{
     Mutex,
 };
 
-pub fn spawn_event_handler<T: EventHandlerTrait, U: FnOnce(T::ThreadReturn) + Send + 'static>(
+pub fn spawn_event_handler<T: HandleEvent, U: FnOnce(T::ThreadReturn) + Send + 'static>(
     thread_name: String,
     receiver: SingleThreadedReceiver<EventOrStopThread<T::Event>>,
     event_handler: T,
@@ -65,12 +65,12 @@ pub fn spawn_event_handler<T: EventHandlerTrait, U: FnOnce(T::ThreadReturn) + Se
 }
 
 
-struct EventHandlerHolder<T: EventHandlerTrait, U: FnOnce(T::ThreadReturn) + Send + 'static> {
+struct EventHandlerHolder<T: HandleEvent, U: FnOnce(T::ThreadReturn) + Send + 'static> {
     internal: Arc<Mutex<Option<EventHandlerHolderInternal<T, U>>>>,
     factory: SingleThreadedFactory,
 }
 
-struct EventHandlerHolderInternal<T: EventHandlerTrait, U: FnOnce(T::ThreadReturn) + Send + 'static>
+struct EventHandlerHolderInternal<T: HandleEvent, U: FnOnce(T::ThreadReturn) + Send + 'static>
 {
     receiver_link: ReceiverLink<EventOrStopThread<T::Event>>,
     event_handler: T,
@@ -79,7 +79,7 @@ struct EventHandlerHolderInternal<T: EventHandlerTrait, U: FnOnce(T::ThreadRetur
     pending_channel_event: Option<usize>,
 }
 
-impl<T: EventHandlerTrait, U: FnOnce(T::ThreadReturn) + Send + 'static> Clone
+impl<T: HandleEvent, U: FnOnce(T::ThreadReturn) + Send + 'static> Clone
     for EventHandlerHolder<T, U>
 {
     fn clone(&self) -> Self {
@@ -91,7 +91,7 @@ impl<T: EventHandlerTrait, U: FnOnce(T::ThreadReturn) + Send + 'static> Clone
     }
 }
 
-impl<T: EventHandlerTrait, U: FnOnce(T::ThreadReturn) + Send + 'static> EventHandlerHolder<T, U> {
+impl<T: HandleEvent, U: FnOnce(T::ThreadReturn) + Send + 'static> EventHandlerHolder<T, U> {
 
     fn do_if_present(
         &self,
@@ -109,7 +109,7 @@ impl<T: EventHandlerTrait, U: FnOnce(T::ThreadReturn) + Send + 'static> EventHan
     }
 }
 
-impl<T: EventHandlerTrait, U: FnOnce(T::ThreadReturn) + Send + 'static>
+impl<T: HandleEvent, U: FnOnce(T::ThreadReturn) + Send + 'static>
     EventHandlerHolderInternal<T, U>
 {
     fn cancel_pending_event(&mut self, holder: &EventHandlerHolder<T, U>) {

@@ -12,7 +12,7 @@ use commons::net::{
     UdpSocket,
     MAX_UDP_DATAGRAM_SIZE,
 };
-use commons::real_time::{EventHandleResult, EventHandlerTrait, ReceiveMetaData};
+use commons::real_time::{EventHandleResult, HandleEvent, ReceiveMetaData};
 use log::{
     error,
     info,
@@ -108,7 +108,7 @@ impl<GameFactory: GameFactoryTrait> UdpOutput<GameFactory> {
     }
 }
 
-impl<GameFactory: GameFactoryTrait> EventHandlerTrait for UdpOutput<GameFactory> {
+impl<GameFactory: GameFactoryTrait> HandleEvent for UdpOutput<GameFactory> {
     type Event = UdpOutputEvent<GameFactory::Game>;
     type ThreadReturn = ();
 

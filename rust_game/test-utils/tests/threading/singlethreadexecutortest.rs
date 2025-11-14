@@ -1,6 +1,6 @@
 use std::time::Duration;
 
-use commons::threading::SingleThreadExecutor;
+use commons::real_time::SingleThreadExecutor;
 use test_utils::assert::AsyncExpects;
 
 #[test]

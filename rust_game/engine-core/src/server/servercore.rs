@@ -40,7 +40,7 @@ use crate::server::{
     ServerConfig,
     TcpConnectionHandler,
 };
-use commons::real_time::{EventHandleResult, EventHandlerBuilder, EventHandlerStopper, EventHandlerTrait, EventSender, FactoryTrait, ReceiveMetaData, Sender};
+use commons::real_time::{EventHandleResult, EventHandlerBuilder, EventHandlerStopper, HandleEvent, EventSender, FactoryTrait, ReceiveMetaData, Sender};
 use commons::net::{
     TcpListenerBuilder,
     TcpReadHandlerBuilder,
@@ -92,7 +92,7 @@ pub struct ServerCore<GameFactory: GameFactoryTrait> {
     drop_steps_before: usize,
 }
 
-impl<GameFactory: GameFactoryTrait> EventHandlerTrait for ServerCore<GameFactory> {
+impl<GameFactory: GameFactoryTrait> HandleEvent for ServerCore<GameFactory> {
     type Event = ServerCoreEvent<GameFactory>;
     type ThreadReturn = ();
 
