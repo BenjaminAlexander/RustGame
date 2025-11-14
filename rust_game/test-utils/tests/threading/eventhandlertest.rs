@@ -1,8 +1,5 @@
 use commons::{
-    logging::setup_test_logging, real_time::{EventHandlerBuilder, RealFactory, ReceiveMetaData}, threading::eventhandling::{
-            EventHandleResult,
-            EventHandlerTrait,
-        }, time::TimeDuration
+    logging::setup_test_logging, real_time::{EventHandleResult, EventHandlerBuilder, EventHandlerTrait, RealFactory, ReceiveMetaData}, time::TimeDuration
 };
 use test_utils::{
     assert::AsyncExpects,

@@ -17,11 +17,7 @@ use crate::messaging::{
     ServerInputMessage,
     StateMessage,
 };
-use commons::real_time::{FactoryTrait, ReceiveMetaData};
-use commons::threading::eventhandling::{
-    EventHandleResult,
-    EventHandlerTrait,
-};
+use commons::real_time::{EventHandleResult, EventHandlerTrait, FactoryTrait, ReceiveMetaData};
 use commons::time::{
     TimeDuration,
     TimeValue,

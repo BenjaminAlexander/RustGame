@@ -11,12 +11,12 @@ use crate::{
         TcpConnectionHandlerTrait,
         TcpReadHandlerTrait,
         UdpReadHandlerTrait,
-    }, real_time::{ReceiveMetaData, real::RealReceiver}, single_threaded_simulator::{
+    }, real_time::{EventOrStopThread, ReceiveMetaData, real::RealReceiver}, single_threaded_simulator::{
         SingleThreadedReceiver, net::{
             NetworkSimulator,
             UdpSocketSimulator,
         }
-    }, threading::eventhandling::EventOrStopThread
+    },
 };
 
 pub(super) enum ReceiverImplementation<T: Send> {

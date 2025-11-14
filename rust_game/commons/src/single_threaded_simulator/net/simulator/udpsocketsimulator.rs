@@ -2,12 +2,11 @@ use crate::net::{
     UdpReadHandlerTrait,
     UdpSocketTrait,
 };
-use crate::real_time::Receiver;
+use crate::real_time::{EventOrStopThread, Receiver};
 use crate::single_threaded_simulator::net::{
     HostSimulator,
     NetworkSimulator,
 };
-use crate::threading::eventhandling::EventOrStopThread;
 use std::io::Error;
 use std::net::SocketAddr;
 use std::sync::{

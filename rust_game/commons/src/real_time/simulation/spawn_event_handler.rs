@@ -1,21 +1,9 @@
-use crate::real_time::ReceiveMetaData;
+use crate::real_time::{EventHandleResult, EventHandlerTrait, EventOrStopThread, ReceiveMetaData};
 use crate::real_time::simulation::SingleThreadedFactory;
 use crate::single_threaded_simulator::{
     ReceiveOrDisconnected,
     ReceiverLink,
     SingleThreadedReceiver,
-};
-use crate::threading::eventhandling::ChannelEvent::{
-    ChannelDisconnected,
-    ChannelEmpty,
-    ReceivedEvent,
-    Timeout,
-};
-use crate::threading::eventhandling::{
-    ChannelEvent,
-    EventHandleResult,
-    EventHandlerTrait,
-    EventOrStopThread,
 };
 use crate::time::TimeDuration;
 use log::trace;
@@ -30,7 +18,7 @@ pub fn spawn_event_handler<T: EventHandlerTrait, U: FnOnce(T::ThreadReturn) + Se
     event_handler: T,
     join_call_back: U,
 ) {
-    let holder = EventHandlerHolder {
+    let holder = EventHandlerHolder::<T, U> {
         internal: Arc::new(Mutex::new(None)),
         factory: receiver.get_factory().clone(),
     };
@@ -53,9 +41,9 @@ pub fn spawn_event_handler<T: EventHandlerTrait, U: FnOnce(T::ThreadReturn) + Se
                     });
                 }
                 ReceiveOrDisconnected::Disconnected => {
-                    holder_clone_clone.do_if_present(|internal| {
-                        return internal
-                            .on_channel_event(&holder_clone_clone, ChannelDisconnected);
+                    holder_clone_clone.do_if_present(|mut internal| {
+                        let event_handle_result = internal.event_handler.on_channel_disconnect();
+                        return internal.handle_event_handle_result(&holder_clone_clone, event_handle_result);
                     });
                 }
             });
@@ -141,7 +129,8 @@ impl<T: EventHandlerTrait, U: FnOnce(T::ThreadReturn) + Send + 'static>
             holder_clone.do_if_present(|mut internal| {
                 internal.pending_channel_event = None;
                 trace!("Executing the previously scheduled ChannelEmpty");
-                return internal.on_channel_event(&holder_clone, ChannelEmpty);
+                let event_handle_result = internal.event_handler.on_channel_empty();
+                return internal.handle_event_handle_result(&holder_clone, event_handle_result);
             });
         });
 
@@ -161,7 +150,8 @@ impl<T: EventHandlerTrait, U: FnOnce(T::ThreadReturn) + Send + 'static>
                 holder_clone.do_if_present(|mut internal| {
                     internal.pending_channel_event = None;
                     trace!("Executing the previously scheduled Timeout");
-                    return internal.on_channel_event(&holder_clone, Timeout);
+                    let event_handle_result = internal.event_handler.on_timeout();
+                    return internal.handle_event_handle_result(&holder_clone, event_handle_result);
                 });
             });
 
@@ -169,7 +159,7 @@ impl<T: EventHandlerTrait, U: FnOnce(T::ThreadReturn) + Send + 'static>
     }
 
     fn on_receive(
-        self,
+        mut self,
         holder: &EventHandlerHolder<T, U>,
         receive_meta_data: ReceiveMetaData,
         event_or_stop: EventOrStopThread<T::Event>,
@@ -177,7 +167,8 @@ impl<T: EventHandlerTrait, U: FnOnce(T::ThreadReturn) + Send + 'static>
         match event_or_stop {
             EventOrStopThread::Event(event) => {
                 trace!("Executing a ReceivedEvent");
-                return self.on_channel_event(holder, ReceivedEvent(receive_meta_data, event));
+                let event_handle_result = self.event_handler.on_event(receive_meta_data, event);
+                return self.handle_event_handle_result(&holder, event_handle_result);
             }
             EventOrStopThread::StopThread => {
                 let result = self.event_handler.on_stop(receive_meta_data);
@@ -188,14 +179,14 @@ impl<T: EventHandlerTrait, U: FnOnce(T::ThreadReturn) + Send + 'static>
         }
     }
 
-    fn on_channel_event(
+    fn handle_event_handle_result(
         mut self,
         holder: &EventHandlerHolder<T, U>,
-        event: ChannelEvent<T::Event>,
+        event_handle_result: EventHandleResult<T>,
     ) -> Option<Self> {
         trace!("Event Handler: {:?}", self.thread_name);
 
-        match event.handle(&mut self.event_handler) {
+        match event_handle_result {
             EventHandleResult::WaitForNextEvent => {
                 trace!("WaitForNextEvent");
                 return Some(self);

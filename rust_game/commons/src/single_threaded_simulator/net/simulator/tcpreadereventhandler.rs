@@ -1,9 +1,5 @@
 use crate::net::TcpReadHandlerTrait;
-use crate::real_time::ReceiveMetaData;
-use crate::threading::eventhandling::{
-    EventHandleResult,
-    EventHandlerTrait,
-};
+use crate::real_time::{EventHandleResult, EventHandlerTrait, ReceiveMetaData};
 use std::io::Cursor;
 use std::ops::ControlFlow::{
     Break,

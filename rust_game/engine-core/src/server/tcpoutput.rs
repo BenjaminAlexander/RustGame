@@ -6,11 +6,7 @@ use crate::messaging::ToClientMessageTCP;
 use crate::server::tcpoutput::TcpOutputEvent::SendInitialInformation;
 use crate::server::ServerConfig;
 use commons::net::TcpStream;
-use commons::real_time::ReceiveMetaData;
-use commons::threading::eventhandling::{
-    EventHandleResult,
-    EventHandlerTrait,
-};
+use commons::real_time::{EventHandleResult, EventHandlerTrait, ReceiveMetaData};
 use log::debug;
 use std::marker::PhantomData;
 

@@ -4,9 +4,8 @@ use crate::net::{
     RealTcpStream,
     TcpReadHandlerTrait,
 };
-use crate::real_time::Receiver;
+use crate::real_time::{EventOrStopThread, Receiver};
 use crate::single_threaded_simulator::SingleThreadedReceiver;
-use crate::threading::eventhandling::EventOrStopThread;
 
 enum Implementation {
     Real(RealTcpStream),

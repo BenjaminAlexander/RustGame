@@ -1,11 +1,6 @@
 use std::io::Error;
 
-use crate::{
-    real_time::{EventSender, FactoryTrait, Receiver, real, receiver::ReceiverImplementation, simulation},
-    threading::eventhandling::{
-            EventHandlerTrait, EventOrStopThread,
-        },
-};
+use crate::real_time::{EventHandlerTrait, EventOrStopThread, EventSender, FactoryTrait, Receiver, real, receiver::ReceiverImplementation, simulation};
 
 pub struct EventHandlerBuilder<T: EventHandlerTrait> {
     sender: EventSender<T::Event>,

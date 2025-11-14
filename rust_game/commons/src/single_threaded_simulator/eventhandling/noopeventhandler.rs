@@ -1,7 +1,4 @@
-use crate::{real_time::ReceiveMetaData, threading::eventhandling::{
-    EventHandleResult,
-    EventHandlerTrait,
-}};
+use crate::real_time::{EventHandleResult, EventHandlerTrait, ReceiveMetaData};
 
 pub struct NoOpEventHandler {
     on_stop_func: Box<dyn FnOnce() + Send + 'static>,

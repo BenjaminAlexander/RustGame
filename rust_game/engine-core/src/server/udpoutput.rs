@@ -18,16 +18,12 @@ use crate::server::udpoutput::UdpOutputEvent::{
     SendServerInputMessage,
     SendTimeMessage,
 };
-use commons::real_time::{FactoryTrait, ReceiveMetaData};
+use commons::real_time::{EventHandleResult, EventHandlerTrait, FactoryTrait, ReceiveMetaData};
 use commons::net::{
     UdpSocket,
     MAX_UDP_DATAGRAM_SIZE,
 };
 use commons::stats::RollingAverage;
-use commons::threading::eventhandling::{
-    EventHandleResult,
-    EventHandlerTrait,
-};
 use commons::time::{
     TimeDuration,
     TimeValue,

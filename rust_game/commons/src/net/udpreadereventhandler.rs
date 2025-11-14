@@ -1,10 +1,6 @@
 use crate::net::udpreadhandlertrait::UdpReadHandlerTrait;
 use crate::net::RealUdpSocket;
-use crate::real_time::ReceiveMetaData;
-use crate::threading::eventhandling::{
-    EventHandleResult,
-    EventHandlerTrait,
-};
+use crate::real_time::{EventHandleResult, EventHandlerTrait, ReceiveMetaData};
 use log::warn;
 use std::io::ErrorKind;
 use std::ops::ControlFlow::{

@@ -1,10 +1,6 @@
 use crate::net::UdpReadHandlerTrait;
-use crate::real_time::ReceiveMetaData;
+use crate::real_time::{EventHandleResult, EventHandlerTrait, ReceiveMetaData};
 use crate::single_threaded_simulator::net::NetworkSimulator;
-use crate::threading::eventhandling::{
-    EventHandleResult,
-    EventHandlerTrait,
-};
 use std::net::SocketAddr;
 use std::ops::ControlFlow::{
     Break,

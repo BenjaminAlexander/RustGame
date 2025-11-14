@@ -1,10 +1,4 @@
-use crate::{
-    real_time::{EventHandlerBuilder, EventSender, RealFactory, ReceiveMetaData},
-    threading::eventhandling::{
-        EventHandleResult,
-        EventHandlerTrait,
-    },
-};
+use crate::real_time::{EventHandleResult, EventHandlerBuilder, EventHandlerTrait, EventSender, RealFactory, ReceiveMetaData};
 use std::sync::{
     Arc,
     Condvar,

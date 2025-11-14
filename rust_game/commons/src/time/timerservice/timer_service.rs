@@ -1,8 +1,4 @@
-use crate::real_time::{EventHandlerBuilder, EventSender, FactoryTrait, ReceiveMetaData};
-use crate::threading::eventhandling::{
-    EventHandleResult,
-    EventHandlerTrait,
-};
+use crate::real_time::{EventHandleResult, EventHandlerBuilder, EventHandlerTrait, EventSender, FactoryTrait, ReceiveMetaData};
 use crate::time::timerservice::schedule::Schedule;
 use crate::time::timerservice::timer::Timer;
 use crate::time::timerservice::timer_call_back::TimerCallBack;

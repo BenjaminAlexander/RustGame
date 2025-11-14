@@ -1,9 +1,5 @@
 use commons::net::TcpStream;
-use commons::real_time::ReceiveMetaData;
-use commons::threading::eventhandling::{
-    EventHandleResult,
-    EventHandlerTrait,
-};
+use commons::real_time::{EventHandleResult, EventHandlerTrait, ReceiveMetaData};
 
 //TODO: Send response to time messages to calculate ping
 pub struct TcpOutput {

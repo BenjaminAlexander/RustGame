@@ -1,4 +1,11 @@
-use crate::{real_time::ReceiveMetaData, threading::eventhandling::EventHandleResult};
+use crate::{real_time::ReceiveMetaData, time::TimeDuration};
+
+pub enum EventHandleResult<T: EventHandlerTrait> {
+    WaitForNextEvent,
+    WaitForNextEventOrTimeout(TimeDuration),
+    TryForNextEvent,
+    StopThread(T::ThreadReturn),
+}
 
 //TODO: rename this trait
 pub trait EventHandlerTrait: Send + Sized + 'static {
@@ -17,5 +24,6 @@ pub trait EventHandlerTrait: Send + Sized + 'static {
 
     fn on_channel_disconnect(&mut self) -> EventHandleResult<Self>;
 
+    //TODO: add more sane defaults for stop
     fn on_stop(self, receive_meta_data: ReceiveMetaData) -> Self::ThreadReturn;
 }

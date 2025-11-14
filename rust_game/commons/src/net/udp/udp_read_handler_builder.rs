@@ -4,7 +4,7 @@ use crate::{
     net::{
         UdpReadHandlerTrait,
         UdpSocket,
-    }, real_time::{EventHandlerStopper, EventSender, FactoryTrait, Receiver}, threading::eventhandling::EventOrStopThread
+    }, real_time::{EventHandlerStopper, EventOrStopThread, EventSender, FactoryTrait, Receiver},
 };
 
 pub struct UdpReadHandlerBuilder {

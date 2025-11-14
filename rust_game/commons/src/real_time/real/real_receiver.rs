@@ -8,10 +8,7 @@ use crate::net::{
     UdpReadHandlerTrait,
     UdpReaderEventHandler,
 };
-use crate::real_time::{ReceiveMetaData, SendMetaData, real};
-use crate::threading::eventhandling::{
-    EventOrStopThread,
-};
+use crate::real_time::{EventOrStopThread, ReceiveMetaData, SendMetaData, real};
 use crate::time::{
     TimeDuration,
     TimeSource,

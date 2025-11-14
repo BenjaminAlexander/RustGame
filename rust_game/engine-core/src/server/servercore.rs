@@ -40,7 +40,7 @@ use crate::server::{
     ServerConfig,
     TcpConnectionHandler,
 };
-use commons::real_time::{EventHandlerBuilder, EventHandlerStopper, EventSender, FactoryTrait, ReceiveMetaData, Sender};
+use commons::real_time::{EventHandleResult, EventHandlerBuilder, EventHandlerStopper, EventHandlerTrait, EventSender, FactoryTrait, ReceiveMetaData, Sender};
 use commons::net::{
     TcpListenerBuilder,
     TcpReadHandlerBuilder,
@@ -49,10 +49,6 @@ use commons::net::{
     UdpReadHandlerBuilder,
     UdpSocket,
     MAX_UDP_DATAGRAM_SIZE,
-};
-use commons::threading::eventhandling::{
-    EventHandleResult,
-    EventHandlerTrait,
 };
 use log::{
     error,

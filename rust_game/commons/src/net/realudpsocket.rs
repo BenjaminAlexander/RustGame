@@ -2,8 +2,7 @@ use crate::net::{
     UdpReadHandlerTrait,
     UdpSocketTrait,
 };
-use crate::real_time::Receiver;
-use crate::threading::eventhandling::EventOrStopThread;
+use crate::real_time::{EventOrStopThread, Receiver};
 use std::io::Error;
 use std::net::{
     SocketAddr,

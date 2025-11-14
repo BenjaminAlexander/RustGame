@@ -1,5 +1,7 @@
+mod eventhandlertrait;
 mod event_handler_builder;
 mod event_handler_stopper;
+mod event_or_stop_thread;
 mod event_sender;
 mod factorytrait;
 mod real;
@@ -20,3 +22,8 @@ pub use self::realfactory::RealFactory;
 pub use self::receiver::Receiver;
 pub use self::send_meta_data::SendMetaData;
 pub use self::sender::Sender;
+pub use self::eventhandlertrait::EventHandlerTrait;
+pub use self::eventhandlertrait::EventHandleResult;
+
+//TODO: hide this
+pub use self::event_or_stop_thread::EventOrStopThread;
