@@ -3,7 +3,7 @@ use std::{
     net::SocketAddr,
 };
 
-use crate::real_time::{EventOrStopThread, Receiver, net::udp::UdpReadHandlerTrait, real::net::udp::RealUdpSocket, simulation::net::udp::UdpSocketSimulator};
+use crate::real_time::{EventOrStopThread, Receiver, net::udp::{UdpReadHandlerTrait, UdpSocketTrait}, real::net::udp::RealUdpSocket, simulation::net::udp::UdpSocketSimulator};
 
 enum Implementation {
     Real(RealUdpSocket),

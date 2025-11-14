@@ -1,4 +1,4 @@
-use crate::net::UdpReadHandlerTrait;
+use crate::real_time::net::udp::UdpReadHandlerTrait;
 use crate::real_time::simulation::net::network_simulator::NetworkSimulator;
 use crate::real_time::{EventHandleResult, HandleEvent, ReceiveMetaData};
 use std::net::SocketAddr;

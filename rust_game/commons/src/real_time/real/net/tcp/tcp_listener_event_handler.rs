@@ -1,5 +1,5 @@
 use crate::real_time::net::NET_POLLING_PERIOD;
-use crate::real_time::net::tcp::{TcpConnectionHandlerTrait, TcpReader};
+use crate::real_time::net::tcp::{TcpConnectionHandlerTrait, TcpReader, TcpStream};
 use crate::real_time::real::net::tcp::RealTcpStream;
 use crate::real_time::{EventHandleResult, HandleEvent, ReceiveMetaData};
 use log::error;
@@ -9,7 +9,7 @@ use std::io::{
 };
 use std::net::{
     SocketAddr,
-    TcpListener, TcpStream,
+    TcpListener,
 };
 use std::ops::ControlFlow::{
     Break,

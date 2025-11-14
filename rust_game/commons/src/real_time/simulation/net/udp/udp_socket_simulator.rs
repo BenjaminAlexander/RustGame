@@ -1,7 +1,4 @@
-use crate::net::{
-    UdpReadHandlerTrait,
-    UdpSocketTrait,
-};
+use crate::real_time::net::udp::{UdpReadHandlerTrait, UdpSocketTrait};
 use crate::real_time::simulation::net::host_simulator::HostSimulator;
 use crate::real_time::simulation::net::network_simulator::NetworkSimulator;
 use crate::real_time::{EventOrStopThread, Receiver};

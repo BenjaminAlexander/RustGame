@@ -1,7 +1,4 @@
-use crate::net::{
-    TcpStream,
-};
-use crate::real_time::net::tcp::TcpReader;
+use crate::real_time::net::tcp::{TcpReader, TcpStream};
 use crate::real_time::simulation::SingleThreadedFactory;
 use crate::real_time::simulation::net::network_simulator::NetworkSimulator;
 use crate::real_time::simulation::net::udp::UdpSocketSimulator;

@@ -1,9 +1,6 @@
-use crate::net::{
-    TcpStream,
-    UdpSocket,
-    LOCAL_EPHEMERAL_SOCKET_ADDR_V4,
-};
-use crate::real_time::net::tcp::TcpReader;
+use crate::real_time::net::LOCAL_EPHEMERAL_SOCKET_ADDR_V4;
+use crate::real_time::net::tcp::{TcpReader, TcpStream};
+use crate::real_time::net::udp::UdpSocket;
 use crate::real_time::{Receiver, Sender, TimeSource};
 use std::io::Error;
 use std::net::SocketAddr;

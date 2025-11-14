@@ -4,15 +4,7 @@ use std::{
     sync::mpsc::TryRecvError,
 };
 
-use crate::{
-    net::{
-        RealTcpStream,
-        RealUdpSocket,
-        TcpConnectionHandlerTrait,
-        TcpReadHandlerTrait,
-        UdpReadHandlerTrait,
-    }, real_time::{EventOrStopThread, ReceiveMetaData, real::RealReceiver, simulation::{SingleThreadedReceiver, net::{NetworkSimulator, udp::UdpSocketSimulator}}},
-};
+use crate::real_time::{EventOrStopThread, ReceiveMetaData, net::{tcp::{TcpConnectionHandlerTrait, TcpReadHandlerTrait}, udp::UdpReadHandlerTrait}, real::{RealReceiver, net::{tcp::RealTcpStream, udp::RealUdpSocket}}, simulation::{SingleThreadedReceiver, net::{NetworkSimulator, udp::UdpSocketSimulator}}};
 
 pub(super) enum ReceiverImplementation<T: Send> {
     Real(RealReceiver<T>),

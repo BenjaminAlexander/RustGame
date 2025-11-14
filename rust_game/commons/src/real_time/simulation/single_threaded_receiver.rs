@@ -1,3 +1,5 @@
+use crate::real_time::net::tcp::{TcpConnectionHandlerTrait, TcpReadHandlerTrait};
+use crate::real_time::net::udp::UdpReadHandlerTrait;
 use crate::real_time::simulation::net::NetworkSimulator;
 use crate::real_time::simulation::net::tcp::TcpReaderEventHandler;
 use crate::real_time::simulation::net::udp::UdpSocketSimulator;
@@ -5,9 +7,6 @@ use crate::real_time::simulation::receiver_link::{ReceiveOrDisconnected, Receive
 use crate::real_time::simulation::sender_link::SenderLink;
 use crate::real_time::simulation::single_threaded_sender::SingleThreadedSender;
 use crate::real_time::{EventHandlerBuilder, EventOrStopThread, FactoryTrait, ReceiveMetaData, Receiver};
-use crate::net::{
-    TcpConnectionHandlerTrait, TcpReadHandlerTrait, UdpReadHandlerTrait
-};
 use crate::real_time::simulation::SingleThreadedFactory;
 use std::io::Error;
 use std::net::SocketAddr;

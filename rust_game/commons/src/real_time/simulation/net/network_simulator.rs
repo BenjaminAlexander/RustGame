@@ -1,7 +1,5 @@
-use crate::net::{
-    TcpConnectionHandlerTrait, TcpStream, UdpReadHandlerTrait
-};
-use crate::real_time::net::tcp::TcpReader;
+use crate::real_time::net::tcp::{TcpConnectionHandlerTrait, TcpReader, TcpStream};
+use crate::real_time::net::udp::UdpReadHandlerTrait;
 use crate::real_time::simulation::net::host_simulator::HostSimulator;
 use crate::real_time::simulation::net::tcp::{ChannelTcpWriter, TcpListenerEvent, TcpListenerEventHandler};
 use crate::real_time::simulation::net::udp::{UdpReadEventHandler, UdpSocketSimulator};
