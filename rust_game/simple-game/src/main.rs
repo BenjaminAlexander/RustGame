@@ -10,7 +10,6 @@ use commons::real_time::RealFactory;
 use commons::time::TimeDuration;
 use engine_core::{
     Client,
-    RealGameFactory,
     Server,
 };
 use log::{
@@ -80,14 +79,13 @@ pub fn main() {
     let factory = RealFactory::new();
 
     if let Some(true) = run_client {
-        let (client, render_receiver) =
-            Client::<RealGameFactory<SimpleGameImpl>>::new(factory.clone());
+        let (client, render_receiver) = Client::<SimpleGameImpl>::new(factory.clone());
 
         let client_window = SimpleWindow::new(window_name, render_receiver, Some(client));
 
         client_window.run();
     } else {
-        let mut server = Server::<RealGameFactory<SimpleGameImpl>>::new(factory.clone()).unwrap();
+        let mut server = Server::<SimpleGameImpl>::new(factory.clone()).unwrap();
 
         info!("Hit enter to start the game.");
         let stdin = stdin();

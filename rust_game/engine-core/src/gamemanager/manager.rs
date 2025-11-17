@@ -18,7 +18,10 @@ use crate::messaging::{
     StateMessage,
 };
 use commons::real_time::{
-    EventHandleResult, HandleEvent, ReceiveMetaData, TimeSource
+    EventHandleResult,
+    HandleEvent,
+    ReceiveMetaData,
+    TimeSource,
 };
 use commons::time::{
     TimeDuration,
@@ -70,7 +73,7 @@ impl<ManagerObserver: ManagerObserverTrait> Manager<ManagerObserver> {
             time_of_last_state_receive: time_source.now(),
             time_of_last_input_receive: time_source.now(),
 
-            time_source
+            time_source,
         }
     }
 

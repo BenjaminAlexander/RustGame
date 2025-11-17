@@ -11,7 +11,10 @@ use commons::real_time::timer_service::{
     TimerId,
     TimerService,
 };
-use commons::real_time::{FactoryTrait, TimeSource};
+use commons::real_time::{
+    FactoryTrait,
+    TimeSource,
+};
 use commons::stats::RollingAverage;
 use commons::time::{
     TimeDuration,

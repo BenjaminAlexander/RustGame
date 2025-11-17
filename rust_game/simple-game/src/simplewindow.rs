@@ -2,7 +2,6 @@ use crate::simplegameimpl::SimpleGameImpl;
 use crate::simpleinputevent::SimpleInputEvent;
 use engine_core::{
     Client,
-    GameFactoryTrait,
     RenderReceiver,
 };
 use glutin_window::GlutinWindow as Window;
@@ -23,19 +22,19 @@ use piston::{
     WindowSettings,
 };
 
-pub struct SimpleWindow<GameFactory: GameFactoryTrait<Game = SimpleGameImpl>> {
+pub struct SimpleWindow {
     window_name: String,
-    render_receiver: RenderReceiver<GameFactory>,
+    render_receiver: RenderReceiver<SimpleGameImpl>,
     //TODO: don't expose eventhandling, sender or ClientCore, or ClientCoreEvent, or GameFactoryTrait, or RealGameFactory
-    client_option: Option<Client<GameFactory>>,
+    client_option: Option<Client<SimpleGameImpl>>,
     mouse_position: [f64; 2],
 }
 
-impl<GameFactory: GameFactoryTrait<Game = SimpleGameImpl>> SimpleWindow<GameFactory> {
+impl SimpleWindow {
     pub fn new(
         window_name: String,
-        render_receiver: RenderReceiver<GameFactory>,
-        client_option: Option<Client<GameFactory>>,
+        render_receiver: RenderReceiver<SimpleGameImpl>,
+        client_option: Option<Client<SimpleGameImpl>>,
     ) -> Self {
         return Self {
             window_name,

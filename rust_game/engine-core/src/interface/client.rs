@@ -2,38 +2,34 @@ use crate::client::{
     ClientCore,
     ClientCoreEvent,
 };
-use crate::interface::{
-    ClientInputEvent,
-    Factory,
-    GameFactoryTrait,
-    RenderReceiver,
-};
+use crate::interface::RenderReceiver;
+use crate::GameTrait;
 use commons::real_time::{
     EventHandlerBuilder,
-    EventSender, FactoryTrait,
+    EventSender,
+    FactoryTrait,
 };
 use std::net::Ipv4Addr;
 use std::str::FromStr;
 
-pub struct Client<GameFactory: GameFactoryTrait> {
-    core_sender: EventSender<ClientCoreEvent<GameFactory>>,
+pub struct Client<Game: GameTrait> {
+    core_sender: EventSender<ClientCoreEvent<Game>>,
 }
 
-impl<GameFactory: GameFactoryTrait> Client<GameFactory> {
-    pub fn new(factory: Factory<GameFactory>) -> (Self, RenderReceiver<GameFactory>) {
+impl<Game: GameTrait> Client<Game> {
+    pub fn new<Factory: FactoryTrait>(factory: Factory) -> (Self, RenderReceiver<Game>) {
         let client_core_thread_builder =
-            EventHandlerBuilder::<ClientCore<GameFactory>>::new(&factory);
+            EventHandlerBuilder::<ClientCore<Factory, Game>>::new(&factory);
 
-        let (render_receiver_sender, render_receiver) =
-            RenderReceiver::<GameFactory>::new(&factory);
+        let (render_receiver_sender, render_receiver) = RenderReceiver::<Game>::new(&factory);
 
         let core_sender = client_core_thread_builder.get_sender().clone();
 
         client_core_thread_builder
             .spawn_thread(
                 "ClientCore".to_string(),
-                ClientCore::<GameFactory>::new(
-                    factory.clone(),
+                ClientCore::<Factory, Game>::new(
+                    factory,
                     Ipv4Addr::from_str("127.0.0.1").unwrap(),
                     core_sender.clone(),
                     render_receiver_sender,
@@ -48,8 +44,8 @@ impl<GameFactory: GameFactoryTrait> Client<GameFactory> {
 
     pub fn send_client_input_event(
         &self,
-        client_input_event: ClientInputEvent<GameFactory>,
-    ) -> Result<(), ClientInputEvent<GameFactory>> {
+        client_input_event: Game::ClientInputEvent,
+    ) -> Result<(), Game::ClientInputEvent> {
         return match self
             .core_sender
             .send_event(ClientCoreEvent::OnInputEvent(client_input_event))

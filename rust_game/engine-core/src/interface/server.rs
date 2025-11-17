@@ -1,4 +1,3 @@
-use super::GameFactoryTrait;
 use crate::{
     interface::{
         RenderReceiver,
@@ -8,10 +7,12 @@ use crate::{
         ServerCore,
         ServerCoreEvent,
     },
+    GameTrait,
 };
 use commons::real_time::{
     EventHandlerBuilder,
     EventSender,
+    FactoryTrait,
     Sender,
 };
 use log::{
@@ -19,21 +20,17 @@ use log::{
     warn,
 };
 
-pub struct Server<GameFactory: GameFactoryTrait> {
-    core_sender: EventSender<ServerCoreEvent<GameFactory>>,
-    render_receiver_sender_option: Option<Sender<RenderReceiverMessage<GameFactory::Game>>>,
-    render_receiver_option: Option<RenderReceiver<GameFactory>>,
+pub struct Server<Game: GameTrait> {
+    core_sender: EventSender<ServerCoreEvent<Game>>,
+    render_receiver_sender_option: Option<Sender<RenderReceiverMessage<Game>>>,
+    render_receiver_option: Option<RenderReceiver<Game>>,
 }
 
-impl<GameFactory: GameFactoryTrait> Server<GameFactory> {
-    pub fn new(factory: GameFactory::Factory) -> Result<Self, ()> {
-        let server_core_thread_builder =
-            EventHandlerBuilder::<ServerCore<GameFactory>>::new(&factory);
+impl<Game: GameTrait> Server<Game> {
+    pub fn new<Factory: FactoryTrait>(factory: Factory) -> Result<Self, ()> {
+        let (render_receiver_sender, render_receiver) = RenderReceiver::new(&factory);
 
-        let server_core = ServerCore::<GameFactory>::new(
-            factory.clone(),
-            server_core_thread_builder.get_sender().clone(),
-        );
+        let server_core_thread_builder = EventHandlerBuilder::new(&factory);
 
         let send_result = server_core_thread_builder
             .get_sender()
@@ -44,12 +41,11 @@ impl<GameFactory: GameFactoryTrait> Server<GameFactory> {
             return Err(());
         }
 
+        let server_core = ServerCore::new(factory, server_core_thread_builder.get_sender().clone());
+
         let core_sender = server_core_thread_builder
             .spawn_thread("ServerCore".to_string(), server_core)
             .unwrap();
-
-        let (render_receiver_sender, render_receiver) =
-            RenderReceiver::<GameFactory>::new(&factory);
 
         return Ok(Self {
             core_sender,
@@ -79,7 +75,7 @@ impl<GameFactory: GameFactoryTrait> Server<GameFactory> {
         }
     }
 
-    pub fn take_render_receiver(&mut self) -> Option<RenderReceiver<GameFactory>> {
+    pub fn take_render_receiver(&mut self) -> Option<RenderReceiver<Game>> {
         return self.render_receiver_option.take();
     }
 }

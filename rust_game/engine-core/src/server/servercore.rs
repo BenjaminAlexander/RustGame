@@ -13,7 +13,6 @@ use crate::gametime::{
     GameTimerConfig,
 };
 use crate::interface::{
-    GameFactoryTrait,
     GameTrait,
     InitialInformation,
     RenderReceiverMessage,
@@ -74,37 +73,37 @@ use std::net::{
 use std::ops::Sub;
 use std::str::FromStr;
 
-pub enum ServerCoreEvent<GameFactory: GameFactoryTrait> {
+pub enum ServerCoreEvent<Game: GameTrait> {
     //TODO: start listener before spawning event handler
     StartListenerEvent,
 
     //TODO: create render receiver sender before spawning event handler
-    StartGameEvent(Sender<RenderReceiverMessage<GameFactory::Game>>),
+    StartGameEvent(Sender<RenderReceiverMessage<Game>>),
     TcpConnectionEvent(TcpStream, TcpReader),
     GameTimerTick,
     UdpPacket(SocketAddr, usize, [u8; MAX_UDP_DATAGRAM_SIZE]),
 }
 
-pub struct ServerCore<GameFactory: GameFactoryTrait> {
-    factory: GameFactory::Factory,
-    sender: EventSender<ServerCoreEvent<GameFactory>>,
+pub struct ServerCore<Factory: FactoryTrait, Game: GameTrait> {
+    factory: Factory,
+    sender: EventSender<ServerCoreEvent<Game>>,
     game_is_started: bool,
     server_config: ServerConfig,
     tcp_listener_sender_option: Option<EventHandlerStopper>,
-    game_timer: Option<GameTimer<ServerGameTimerObserver<GameFactory>>>,
+    game_timer: Option<GameTimer<ServerGameTimerObserver<Game>>>,
     tcp_inputs: Vec<EventHandlerStopper>,
-    tcp_outputs: Vec<EventSender<TcpOutputEvent<GameFactory::Game>>>,
+    tcp_outputs: Vec<EventSender<TcpOutputEvent<Game>>>,
     udp_socket: Option<UdpSocket>,
-    udp_outputs: Vec<EventSender<UdpOutputEvent<GameFactory::Game>>>,
+    udp_outputs: Vec<EventSender<UdpOutputEvent<Game>>>,
     udp_input_sender_option: Option<EventHandlerStopper>,
-    udp_handler: UdpHandler<GameFactory::Game>,
-    manager_sender_option: Option<EventSender<ManagerEvent<GameFactory::Game>>>,
-    render_receiver_sender: Option<Sender<RenderReceiverMessage<GameFactory::Game>>>,
+    udp_handler: UdpHandler<Game>,
+    manager_sender_option: Option<EventSender<ManagerEvent<Game>>>,
+    render_receiver_sender: Option<Sender<RenderReceiverMessage<Game>>>,
     drop_steps_before: usize,
 }
 
-impl<GameFactory: GameFactoryTrait> HandleEvent for ServerCore<GameFactory> {
-    type Event = ServerCoreEvent<GameFactory>;
+impl<Factory: FactoryTrait, Game: GameTrait> HandleEvent for ServerCore<Factory, Game> {
+    type Event = ServerCoreEvent<Game>;
     type ThreadReturn = ();
 
     fn on_stop(self, _: ReceiveMetaData) -> Self::ThreadReturn {
@@ -128,15 +127,12 @@ impl<GameFactory: GameFactoryTrait> HandleEvent for ServerCore<GameFactory> {
     }
 }
 
-impl<GameFactory: GameFactoryTrait> ServerCore<GameFactory> {
-    pub fn new(
-        factory: GameFactory::Factory,
-        sender: EventSender<ServerCoreEvent<GameFactory>>,
-    ) -> Self {
-        let game_timer_config = GameTimerConfig::new(GameFactory::Game::STEP_PERIOD);
+impl<Factory: FactoryTrait, Game: GameTrait> ServerCore<Factory, Game> {
+    pub fn new(factory: Factory, sender: EventSender<ServerCoreEvent<Game>>) -> Self {
+        let game_timer_config = GameTimerConfig::new(Game::STEP_PERIOD);
         let server_config = ServerConfig::new(game_timer_config);
 
-        let udp_handler = UdpHandler::<GameFactory::Game>::new(factory.get_time_source().clone());
+        let udp_handler = UdpHandler::<Game>::new(factory.get_time_source().clone());
 
         Self {
             factory,
@@ -169,8 +165,7 @@ impl<GameFactory: GameFactoryTrait> ServerCore<GameFactory> {
             }
         };
 
-        let socket_addr =
-            SocketAddr::V4(SocketAddrV4::new(ip_addr_v4, GameFactory::Game::UDP_PORT));
+        let socket_addr = SocketAddr::V4(SocketAddrV4::new(ip_addr_v4, Game::UDP_PORT));
 
         let udp_socket = match self.factory.bind_udp_socket(socket_addr) {
             Ok(udp_socket) => udp_socket,
@@ -180,7 +175,7 @@ impl<GameFactory: GameFactoryTrait> ServerCore<GameFactory> {
             }
         };
 
-        let udp_input = UdpInput::<GameFactory>::new(self.sender.clone());
+        let udp_input = UdpInput::<Game>::new(self.sender.clone());
 
         let udp_input_builder = UdpReadHandlerBuilder::new_thread(
             &self.factory,
@@ -200,15 +195,14 @@ impl<GameFactory: GameFactoryTrait> ServerCore<GameFactory> {
         });
 
         //Bind to TcpListener Socket
-        let socket_addr_v4 =
-            SocketAddrV4::new(Ipv4Addr::new(127, 0, 0, 1), GameFactory::Game::TCP_PORT);
+        let socket_addr_v4 = SocketAddrV4::new(Ipv4Addr::new(127, 0, 0, 1), Game::TCP_PORT);
         let socket_addr = SocketAddr::from(socket_addr_v4);
 
         let tcp_listener_sender_result = TcpListenerBuilder::new_thread(
             &self.factory,
             "ServerTcpListener".to_string(),
             socket_addr,
-            TcpConnectionHandler::<GameFactory>::new(self.sender.clone()),
+            TcpConnectionHandler::<Game>::new(self.sender.clone()),
         );
 
         match tcp_listener_sender_result {
@@ -239,7 +233,7 @@ impl<GameFactory: GameFactoryTrait> ServerCore<GameFactory> {
 
     fn start_game(
         &mut self,
-        render_receiver_sender: Sender<RenderReceiverMessage<GameFactory::Game>>,
+        render_receiver_sender: Sender<RenderReceiverMessage<Game>>,
     ) -> EventHandleResult<Self> {
         //TODO: remove this line
         //let (render_receiver_sender, render_receiver) = RenderReceiver::<Game>::new();
@@ -247,24 +241,21 @@ impl<GameFactory: GameFactoryTrait> ServerCore<GameFactory> {
         if !self.game_is_started {
             self.game_is_started = true;
 
-            let initial_state = GameFactory::Game::get_initial_state(self.tcp_outputs.len());
+            let initial_state = Game::get_initial_state(self.tcp_outputs.len());
 
-            let mut udp_output_senders =
-                Vec::<EventSender<UdpOutputEvent<GameFactory::Game>>>::new();
+            let mut udp_output_senders = Vec::<EventSender<UdpOutputEvent<Game>>>::new();
 
             for udp_output_sender in self.udp_outputs.iter() {
                 udp_output_senders.push(udp_output_sender.clone());
             }
 
-            let server_manager_observer = ServerManagerObserver::<GameFactory>::new(
+            let server_manager_observer = ServerManagerObserver::<Game>::new(
                 udp_output_senders.clone(),
                 render_receiver_sender.clone(),
             );
 
             let manager_builder =
-                EventHandlerBuilder::<Manager<ServerManagerObserver<GameFactory>>>::new(
-                    &self.factory,
-                );
+                EventHandlerBuilder::<Manager<ServerManagerObserver<Game>>>::new(&self.factory);
 
             let server_game_timer_observer = ServerGameTimerObserver::new(self.sender.clone());
 
@@ -284,7 +275,7 @@ impl<GameFactory: GameFactoryTrait> ServerCore<GameFactory> {
                 return EventHandleResult::StopThread(());
             }
 
-            let server_initial_information = InitialInformation::<GameFactory::Game>::new(
+            let server_initial_information = InitialInformation::<Game>::new(
                 self.server_config.clone(),
                 self.tcp_outputs.len(),
                 usize::MAX,
@@ -336,7 +327,10 @@ impl<GameFactory: GameFactoryTrait> ServerCore<GameFactory> {
                 manager_builder
                     .spawn_thread(
                         "ServerManager".to_string(),
-                        Manager::new(self.factory.get_time_source().clone(), server_manager_observer),
+                        Manager::new(
+                            self.factory.get_time_source().clone(),
+                            server_manager_observer,
+                        ),
                     )
                     .unwrap(),
             );
@@ -377,8 +371,8 @@ impl<GameFactory: GameFactoryTrait> ServerCore<GameFactory> {
             let udp_out_sender = EventHandlerBuilder::new_thread(
                 &self.factory,
                 "ServerUdpOutput".to_string(),
-                UdpOutput::<GameFactory>::new(
-                    self.factory.clone(),
+                UdpOutput::<Game>::new(
+                    self.factory.get_time_source().clone(),
                     player_index,
                     self.udp_socket.as_ref().unwrap(),
                 )
@@ -391,7 +385,7 @@ impl<GameFactory: GameFactoryTrait> ServerCore<GameFactory> {
             let tcp_output_sender = EventHandlerBuilder::new_thread(
                 &self.factory,
                 "ServerTcpOutput".to_string(),
-                TcpOutput::<GameFactory::Game>::new(player_index, tcp_stream),
+                TcpOutput::<Game>::new(player_index, tcp_stream),
             )
             .unwrap();
 
@@ -443,11 +437,7 @@ impl<GameFactory: GameFactoryTrait> ServerCore<GameFactory> {
         */
 
         self.drop_steps_before = time_message
-            .get_step_from_actual_time(
-                time_message
-                    .get_scheduled_time()
-                    .sub(&GameFactory::Game::GRACE_PERIOD),
-            )
+            .get_step_from_actual_time(time_message.get_scheduled_time().sub(&Game::GRACE_PERIOD))
             .ceil() as usize;
 
         if let Some(manager_sender) = self.manager_sender_option.as_ref() {
@@ -497,10 +487,7 @@ impl<GameFactory: GameFactoryTrait> ServerCore<GameFactory> {
         return EventHandleResult::TryForNextEvent;
     }
 
-    pub(super) fn on_input_message(
-        &self,
-        input_message: InputMessage<GameFactory::Game>,
-    ) -> Result<(), ()> {
+    pub(super) fn on_input_message(&self, input_message: InputMessage<Game>) -> Result<(), ()> {
         //TODO: is game started?
 
         if self.drop_steps_before <= input_message.get_step()

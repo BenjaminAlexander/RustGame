@@ -1,11 +1,9 @@
 use crate::client::clientcore::ClientCoreEvent;
 use crate::client::ClientCoreEvent::OnInitialInformation;
 use crate::gamemanager::ManagerEvent;
-use crate::interface::{
-    GameFactoryTrait,
-    RenderReceiverMessage,
-};
+use crate::interface::RenderReceiverMessage;
 use crate::messaging::ToClientMessageTCP;
+use crate::GameTrait;
 use commons::real_time::net::tcp::TcpReadHandlerTrait;
 use commons::real_time::{
     EventSender,
@@ -18,23 +16,20 @@ use log::{
 use std::ops::ControlFlow;
 use std::ops::ControlFlow::*;
 
-pub struct TcpInput<GameFactory: GameFactoryTrait> {
-    factory: GameFactory::Factory,
+pub struct TcpInput<Game: GameTrait> {
     player_index: Option<usize>,
-    manager_sender: EventSender<ManagerEvent<GameFactory::Game>>,
-    client_core_sender: EventSender<ClientCoreEvent<GameFactory>>,
-    render_data_sender: Sender<RenderReceiverMessage<GameFactory::Game>>,
+    manager_sender: EventSender<ManagerEvent<Game>>,
+    client_core_sender: EventSender<ClientCoreEvent<Game>>,
+    render_data_sender: Sender<RenderReceiverMessage<Game>>,
 }
 
-impl<GameFactory: GameFactoryTrait> TcpInput<GameFactory> {
+impl<Game: GameTrait> TcpInput<Game> {
     pub fn new(
-        factory: GameFactory::Factory,
-        manager_sender: EventSender<ManagerEvent<GameFactory::Game>>,
-        client_core_sender: EventSender<ClientCoreEvent<GameFactory>>,
-        render_data_sender: Sender<RenderReceiverMessage<GameFactory::Game>>,
+        manager_sender: EventSender<ManagerEvent<Game>>,
+        client_core_sender: EventSender<ClientCoreEvent<Game>>,
+        render_data_sender: Sender<RenderReceiverMessage<Game>>,
     ) -> Self {
         return Self {
-            factory,
             player_index: None,
             manager_sender,
             client_core_sender,
@@ -43,8 +38,8 @@ impl<GameFactory: GameFactoryTrait> TcpInput<GameFactory> {
     }
 }
 
-impl<GameFactory: GameFactoryTrait> TcpReadHandlerTrait for TcpInput<GameFactory> {
-    type ReadType = ToClientMessageTCP<GameFactory::Game>;
+impl<Game: GameTrait> TcpReadHandlerTrait for TcpInput<Game> {
+    type ReadType = ToClientMessageTCP<Game>;
 
     fn on_read(&mut self, message: Self::ReadType) -> ControlFlow<()> {
         match message {

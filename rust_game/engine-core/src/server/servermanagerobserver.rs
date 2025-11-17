@@ -2,29 +2,27 @@ use crate::gamemanager::{
     ManagerObserverTrait,
     StepMessage,
 };
-use crate::interface::{
-    GameFactoryTrait,
-    RenderReceiverMessage,
-};
+use crate::interface::RenderReceiverMessage;
 use crate::messaging::{
     ServerInputMessage,
     StateMessage,
 };
 use crate::server::udpoutput::UdpOutputEvent;
+use crate::GameTrait;
 use commons::real_time::{
     EventSender,
     Sender,
 };
 
-pub struct ServerManagerObserver<GameFactory: GameFactoryTrait> {
-    udp_outputs: Vec<EventSender<UdpOutputEvent<GameFactory::Game>>>,
-    render_receiver_sender: Sender<RenderReceiverMessage<GameFactory::Game>>,
+pub struct ServerManagerObserver<Game: GameTrait> {
+    udp_outputs: Vec<EventSender<UdpOutputEvent<Game>>>,
+    render_receiver_sender: Sender<RenderReceiverMessage<Game>>,
 }
 
-impl<GameFactory: GameFactoryTrait> ServerManagerObserver<GameFactory> {
+impl<Game: GameTrait> ServerManagerObserver<Game> {
     pub fn new(
-        udp_outputs: Vec<EventSender<UdpOutputEvent<GameFactory::Game>>>,
-        render_receiver_sender: Sender<RenderReceiverMessage<GameFactory::Game>>,
+        udp_outputs: Vec<EventSender<UdpOutputEvent<Game>>>,
+        render_receiver_sender: Sender<RenderReceiverMessage<Game>>,
     ) -> Self {
         return Self {
             udp_outputs,
@@ -33,12 +31,12 @@ impl<GameFactory: GameFactoryTrait> ServerManagerObserver<GameFactory> {
     }
 }
 
-impl<GameFactory: GameFactoryTrait> ManagerObserverTrait for ServerManagerObserver<GameFactory> {
-    type Game = GameFactory::Game;
+impl<Game: GameTrait> ManagerObserverTrait for ServerManagerObserver<Game> {
+    type Game = Game;
 
     const IS_SERVER: bool = true;
 
-    fn on_step_message(&self, step_message: StepMessage<GameFactory::Game>) {
+    fn on_step_message(&self, step_message: StepMessage<Game>) {
         let send_result = self
             .render_receiver_sender
             .send(RenderReceiverMessage::StepMessage(step_message));
@@ -49,7 +47,7 @@ impl<GameFactory: GameFactoryTrait> ManagerObserverTrait for ServerManagerObserv
         }
     }
 
-    fn on_completed_step(&self, state_message: StateMessage<GameFactory::Game>) {
+    fn on_completed_step(&self, state_message: StateMessage<Game>) {
         for udp_output in self.udp_outputs.iter() {
             let send_result =
                 udp_output.send_event(UdpOutputEvent::SendCompletedStep(state_message.clone()));
@@ -61,7 +59,7 @@ impl<GameFactory: GameFactoryTrait> ManagerObserverTrait for ServerManagerObserv
         }
     }
 
-    fn on_server_input_message(&self, server_input_message: ServerInputMessage<GameFactory::Game>) {
+    fn on_server_input_message(&self, server_input_message: ServerInputMessage<Game>) {
         for udp_output in self.udp_outputs.iter() {
             let send_result = udp_output.send_event(UdpOutputEvent::SendServerInputMessage(
                 server_input_message.clone(),

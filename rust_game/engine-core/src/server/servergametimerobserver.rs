@@ -1,19 +1,19 @@
-use crate::interface::GameFactoryTrait;
 use crate::server::servercore::ServerCoreEvent;
+use crate::GameTrait;
 use commons::real_time::timer_service::TimerCallBack;
 use commons::real_time::EventSender;
 
-pub struct ServerGameTimerObserver<GameFactory: GameFactoryTrait> {
-    core_sender: EventSender<ServerCoreEvent<GameFactory>>,
+pub struct ServerGameTimerObserver<Game: GameTrait> {
+    core_sender: EventSender<ServerCoreEvent<Game>>,
 }
 
-impl<GameFactory: GameFactoryTrait> ServerGameTimerObserver<GameFactory> {
-    pub fn new(core_sender: EventSender<ServerCoreEvent<GameFactory>>) -> Self {
+impl<Game: GameTrait> ServerGameTimerObserver<Game> {
+    pub fn new(core_sender: EventSender<ServerCoreEvent<Game>>) -> Self {
         return Self { core_sender };
     }
 }
 
-impl<GameFactory: GameFactoryTrait> TimerCallBack for ServerGameTimerObserver<GameFactory> {
+impl<Game: GameTrait> TimerCallBack for ServerGameTimerObserver<Game> {
     fn tick(&mut self) {
         let send_result = self.core_sender.send_event(ServerCoreEvent::GameTimerTick);
 

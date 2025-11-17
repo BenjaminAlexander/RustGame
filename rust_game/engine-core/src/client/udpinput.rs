@@ -1,12 +1,12 @@
 use crate::client::ClientCoreEvent;
 use crate::gamemanager::ManagerEvent;
 use crate::gametime::TimeReceived;
-use crate::interface::GameFactoryTrait;
 use crate::messaging::{
     FragmentAssembler,
     MessageFragment,
     ToClientMessageUDP,
 };
+use crate::GameTrait;
 use commons::real_time::net::udp::UdpReadHandlerTrait;
 use commons::real_time::{
     EventSender,
@@ -25,11 +25,11 @@ use std::io;
 use std::net::SocketAddr;
 use std::ops::ControlFlow;
 
-pub struct UdpInput<GameFactory: GameFactoryTrait> {
+pub struct UdpInput<Game: GameTrait> {
     time_source: TimeSource,
     fragment_assembler: FragmentAssembler,
-    core_sender: EventSender<ClientCoreEvent<GameFactory>>,
-    manager_sender: EventSender<ManagerEvent<GameFactory::Game>>,
+    core_sender: EventSender<ClientCoreEvent<Game>>,
+    manager_sender: EventSender<ManagerEvent<Game>>,
 
     //metrics
     time_of_last_state_receive: TimeValue,
@@ -37,13 +37,12 @@ pub struct UdpInput<GameFactory: GameFactoryTrait> {
     time_of_last_server_input_receive: TimeValue,
 }
 
-impl<GameFactory: GameFactoryTrait> UdpInput<GameFactory> {
+impl<Game: GameTrait> UdpInput<Game> {
     pub fn new(
         time_source: TimeSource,
-        core_sender: EventSender<ClientCoreEvent<GameFactory>>,
-        manager_sender: EventSender<ManagerEvent<GameFactory::Game>>,
+        core_sender: EventSender<ClientCoreEvent<Game>>,
+        manager_sender: EventSender<ManagerEvent<Game>>,
     ) -> io::Result<Self> {
-
         let now = time_source.now();
 
         return Ok(Self {
@@ -57,19 +56,16 @@ impl<GameFactory: GameFactoryTrait> UdpInput<GameFactory> {
             time_of_last_input_receive: now,
             time_of_last_server_input_receive: now,
 
-            time_source
+            time_source,
         });
     }
 }
 
-impl<GameFactory: GameFactoryTrait> UdpReadHandlerTrait for UdpInput<GameFactory> {
+impl<Game: GameTrait> UdpReadHandlerTrait for UdpInput<Game> {
     fn on_read(&mut self, peer_addr: SocketAddr, buff: &[u8]) -> ControlFlow<()> {
         let fragment = MessageFragment::from_vec(buff.to_vec());
 
-        if let Some(message_buf) = self
-            .fragment_assembler
-            .add_fragment(fragment)
-        {
+        if let Some(message_buf) = self.fragment_assembler.add_fragment(fragment) {
             match rmp_serde::from_slice(&message_buf) {
                 Ok(message) => {
                     //Why does this crash the client?
@@ -87,11 +83,8 @@ impl<GameFactory: GameFactoryTrait> UdpReadHandlerTrait for UdpInput<GameFactory
     }
 }
 
-impl<GameFactory: GameFactoryTrait> UdpInput<GameFactory> {
-    fn handle_received_message(
-        &mut self,
-        value: ToClientMessageUDP<GameFactory::Game>,
-    ) -> ControlFlow<()> {
+impl<Game: GameTrait> UdpInput<Game> {
+    fn handle_received_message(&mut self, value: ToClientMessageUDP<Game>) -> ControlFlow<()> {
         let time_received = self.time_source.now();
 
         match value {

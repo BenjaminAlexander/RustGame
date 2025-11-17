@@ -11,7 +11,8 @@ use crate::real_time::{
     EventSender,
     FactoryTrait,
     HandleEvent,
-    ReceiveMetaData, TimeSource,
+    ReceiveMetaData,
+    TimeSource,
 };
 use crate::time::TimeValue;
 use log::{
@@ -35,9 +36,7 @@ pub struct IdleTimerService<T: TimerCreationCallBack, U: TimerCallBack> {
     phantom: PhantomData<T>,
 }
 
-impl<T: TimerCreationCallBack, U: TimerCallBack>
-    IdleTimerService<T, U>
-{
+impl<T: TimerCreationCallBack, U: TimerCallBack> IdleTimerService<T, U> {
     /// Creates a new [`IdleTimerService`]
     pub fn new() -> Self {
         return Self {
@@ -55,7 +54,7 @@ impl<T: TimerCreationCallBack, U: TimerCallBack>
             "TimerServiceThread".to_string(),
             TimerServiceEventHandler {
                 idle_timer_service: self,
-                time_source: factory.get_time_source().clone()
+                time_source: factory.get_time_source().clone(),
             },
         )?;
 
@@ -63,10 +62,7 @@ impl<T: TimerCreationCallBack, U: TimerCallBack>
     }
 
     fn insert(&mut self, timer: Timer<U>) {
-        trace!(
-            "Inserting Timer: {:?}",
-            timer.get_id()
-        );
+        trace!("Inserting Timer: {:?}", timer.get_id());
 
         if let Schedule::Never = timer.get_schedule() {
             self.unscheduled_timers.insert(*timer.get_id(), timer);
@@ -77,10 +73,7 @@ impl<T: TimerCreationCallBack, U: TimerCallBack>
     }
 
     fn move_timer(&mut self, timer_id: &TimerId) -> Option<Timer<U>> {
-        trace!(
-            "Moving Timer: {:?}",
-            timer_id
-        );
+        trace!("Moving Timer: {:?}", timer_id);
         if let Some(timer) = self.unscheduled_timers.remove(timer_id) {
             return Some(timer);
         } else {
@@ -95,7 +88,10 @@ impl<T: TimerCreationCallBack, U: TimerCallBack>
         return None;
     }
 
-    fn trigger_timers(&mut self, time_source: &TimeSource) -> EventHandleResult<TimerServiceEventHandler<T, U>> {
+    fn trigger_timers(
+        &mut self,
+        time_source: &TimeSource,
+    ) -> EventHandleResult<TimerServiceEventHandler<T, U>> {
         loop {
             let now = time_source.now();
 
@@ -118,7 +114,11 @@ impl<T: TimerCreationCallBack, U: TimerCallBack>
         }
     }
 
-    fn wait_for_next_trigger(&mut self, time_source: &TimeSource, now: TimeValue) -> EventHandleResult<TimerServiceEventHandler<T, U>> {
+    fn wait_for_next_trigger(
+        &mut self,
+        time_source: &TimeSource,
+        now: TimeValue,
+    ) -> EventHandleResult<TimerServiceEventHandler<T, U>> {
         if let Some(timer) = self.timers.get(0) {
             if let Some(trigger_time) = timer.get_trigger_time() {
                 let duration_to_wait = trigger_time.duration_since(&now);
@@ -234,21 +234,19 @@ enum TimerServiceEvent<T: TimerCreationCallBack, U: TimerCallBack> {
 /// An EventHandlerTrait implementation for [`TimerService`]
 struct TimerServiceEventHandler<T: TimerCreationCallBack, U: TimerCallBack> {
     time_source: TimeSource,
-    idle_timer_service: IdleTimerService<T, U>
+    idle_timer_service: IdleTimerService<T, U>,
 }
 
-impl<T: TimerCreationCallBack, U: TimerCallBack>
-    TimerServiceEventHandler<T, U>
-{
-
-
+impl<T: TimerCreationCallBack, U: TimerCallBack> TimerServiceEventHandler<T, U> {
     fn create_timer_event_event(
         &mut self,
         creation_call_back: T,
         tick_call_back: U,
         schedule: Schedule,
     ) -> EventHandleResult<Self> {
-        let timer_id = self.idle_timer_service.create_timer(tick_call_back, schedule);
+        let timer_id = self
+            .idle_timer_service
+            .create_timer(tick_call_back, schedule);
 
         trace!(
             "Time is: {:?}\nCreated Timer: {:?}",
@@ -288,9 +286,7 @@ impl<T: TimerCreationCallBack, U: TimerCallBack>
     }
 }
 
-impl<T: TimerCreationCallBack, U: TimerCallBack> HandleEvent
-    for TimerServiceEventHandler<T, U>
-{
+impl<T: TimerCreationCallBack, U: TimerCallBack> HandleEvent for TimerServiceEventHandler<T, U> {
     type Event = TimerServiceEvent<T, U>;
     type ThreadReturn = ();
 

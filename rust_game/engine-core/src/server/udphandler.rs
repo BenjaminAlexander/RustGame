@@ -1,4 +1,3 @@
-use crate::GameTrait;
 use crate::messaging::{
     FragmentAssembler,
     InputMessage,
@@ -7,8 +6,9 @@ use crate::messaging::{
 };
 use crate::server::clientaddress::ClientAddress;
 use crate::server::remoteudppeer::RemoteUdpPeer;
-use commons::real_time::TimeSource;
+use crate::GameTrait;
 use commons::real_time::net::MAX_UDP_DATAGRAM_SIZE;
+use commons::real_time::TimeSource;
 use log::{
     info,
     warn,
@@ -31,7 +31,7 @@ pub struct UdpHandler<Game: GameTrait> {
 
     //TODO: timeout fragments or fragment assemblers
     fragment_assemblers: HashMap<SocketAddr, FragmentAssembler>,
-    phantom: PhantomData<Game>
+    phantom: PhantomData<Game>,
 }
 
 impl<Game: GameTrait> UdpHandler<Game> {
@@ -43,7 +43,7 @@ impl<Game: GameTrait> UdpHandler<Game> {
             client_ip_set: HashSet::new(),
             //TODO: make this more configurable
             fragment_assemblers: HashMap::new(),
-            phantom: PhantomData
+            phantom: PhantomData,
         };
     }
 
@@ -68,10 +68,7 @@ impl<Game: GameTrait> UdpHandler<Game> {
         number_of_bytes: usize,
         mut buf: [u8; MAX_UDP_DATAGRAM_SIZE],
         source: SocketAddr,
-    ) -> (
-        Option<RemoteUdpPeer>,
-        Option<InputMessage<Game>>,
-    ) {
+    ) -> (Option<RemoteUdpPeer>, Option<InputMessage<Game>>) {
         //TODO: check source against valid sources
         let mut filled_buf = &mut buf[..number_of_bytes];
 
@@ -115,10 +112,7 @@ impl<Game: GameTrait> UdpHandler<Game> {
         &mut self,
         message: ToServerMessageUDP<Game>,
         source: SocketAddr,
-    ) -> (
-        Option<RemoteUdpPeer>,
-        Option<InputMessage<Game>>,
-    ) {
+    ) -> (Option<RemoteUdpPeer>, Option<InputMessage<Game>>) {
         let player_index = message.get_player_index();
 
         if self.client_addresses.len() <= player_index

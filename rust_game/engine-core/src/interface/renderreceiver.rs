@@ -3,15 +3,15 @@ use std::sync::mpsc::TryRecvError;
 use crate::gamemanager::StepMessage;
 use crate::gametime::TimeMessage;
 use crate::interface::{
-    Game,
-    GameFactoryTrait,
     GameTrait,
     InitialInformation,
     InterpolationArg,
-    InterpolationResult,
 };
 use commons::real_time::{
-    FactoryTrait, Receiver, Sender, TimeSource
+    FactoryTrait,
+    Receiver,
+    Sender,
+    TimeSource,
 };
 use commons::time::TimeDuration;
 use log::{
@@ -27,27 +27,25 @@ pub enum RenderReceiverMessage<Game: GameTrait> {
 }
 
 //TODO: make the difference between the render receiver and the Data more clear
-pub struct RenderReceiver<GameFactory: GameFactoryTrait> {
+pub struct RenderReceiver<Game: GameTrait> {
     time_source: TimeSource,
-    receiver: Receiver<RenderReceiverMessage<Game<GameFactory>>>,
-    data: Data<GameFactory>,
+    receiver: Receiver<RenderReceiverMessage<Game>>,
+    data: Data<Game>,
 }
 
-struct Data<GameFactory: GameFactoryTrait> {
+struct Data<Game: GameTrait> {
     time_source: TimeSource,
     //TODO: use vec deque so that this is more efficient
-    step_queue: Vec<StepMessage<Game<GameFactory>>>,
+    step_queue: Vec<StepMessage<Game>>,
     latest_time_message: Option<TimeMessage>,
-    initial_information: Option<InitialInformation<Game<GameFactory>>>,
+    initial_information: Option<InitialInformation<Game>>,
 }
 
-impl<GameFactory: GameFactoryTrait> RenderReceiver<GameFactory> {
-    pub fn new(
-        factory: &impl FactoryTrait,
-    ) -> (Sender<RenderReceiverMessage<Game<GameFactory>>>, Self) {
+impl<Game: GameTrait> RenderReceiver<Game> {
+    pub fn new(factory: &impl FactoryTrait) -> (Sender<RenderReceiverMessage<Game>>, Self) {
         let (sender, receiver) = factory.new_channel();
 
-        let data = Data::<GameFactory> {
+        let data = Data::<Game> {
             time_source: factory.get_time_source().clone(),
             step_queue: Vec::new(),
             latest_time_message: None,
@@ -65,9 +63,7 @@ impl<GameFactory: GameFactoryTrait> RenderReceiver<GameFactory> {
 
     //TODO: remove timeduration
     //TODO: notify the caller if the channel is disconnected
-    pub fn get_step_message(
-        self: &mut Self,
-    ) -> Option<(TimeDuration, InterpolationResult<GameFactory>)> {
+    pub fn get_step_message(self: &mut Self) -> Option<(TimeDuration, Game::InterpolationResult)> {
         loop {
             match self.receiver.try_recv() {
                 Ok(RenderReceiverMessage::InitialInformation(initial_information)) => {
@@ -150,7 +146,7 @@ impl<GameFactory: GameFactoryTrait> RenderReceiver<GameFactory> {
             }
 
             let arg = InterpolationArg::new(weight, duration_since_start);
-            let interpolation_result = Game::<GameFactory>::interpolate(
+            let interpolation_result = Game::interpolate(
                 self.data.initial_information.as_ref().unwrap(),
                 first_step.get_state(),
                 second_step.get_state(),
@@ -163,12 +159,12 @@ impl<GameFactory: GameFactoryTrait> RenderReceiver<GameFactory> {
         }
     }
 
-    pub fn get_initial_information(&self) -> &Option<InitialInformation<Game<GameFactory>>> {
+    pub fn get_initial_information(&self) -> &Option<InitialInformation<Game>> {
         return &self.data.initial_information;
     }
 }
 
-impl<GameFactory: GameFactoryTrait> Data<GameFactory> {
+impl<Game: GameTrait> Data<Game> {
     fn drop_steps_before(&mut self, drop_before: usize) {
         while self.step_queue.len() > 2
             && self.step_queue[self.step_queue.len() - 1].get_step_index() < drop_before
@@ -178,14 +174,11 @@ impl<GameFactory: GameFactoryTrait> Data<GameFactory> {
         }
     }
 
-    fn on_initial_information(
-        &mut self,
-        initial_information: InitialInformation<Game<GameFactory>>,
-    ) {
+    fn on_initial_information(&mut self, initial_information: InitialInformation<Game>) {
         self.initial_information = Some(initial_information);
     }
 
-    fn on_step_message(&mut self, step_message: StepMessage<Game<GameFactory>>) {
+    fn on_step_message(&mut self, step_message: StepMessage<Game>) {
         if !self.step_queue.is_empty()
             && self.step_queue[0].get_step_index() + 1 < step_message.get_step_index()
         {

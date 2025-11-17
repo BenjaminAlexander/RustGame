@@ -18,10 +18,7 @@ impl FragmentAssembler {
         };
     }
 
-    pub fn add_fragment(
-        &mut self,
-        fragment: MessageFragment,
-    ) -> Option<Vec<u8>> {
+    pub fn add_fragment(&mut self, fragment: MessageFragment) -> Option<Vec<u8>> {
         if fragment.get_count() == 1 {
             return Some(fragment.move_buf());
         }
@@ -56,8 +53,10 @@ impl FragmentAssembler {
                     }
                 }
 
-                self.messages
-                    .insert(id, PartiallyAssembledFragment::new(&self.time_source, fragment));
+                self.messages.insert(
+                    id,
+                    PartiallyAssembledFragment::new(&self.time_source, fragment),
+                );
                 self.messages.get_mut(&id).unwrap()
             }
             Some(partial) => {
