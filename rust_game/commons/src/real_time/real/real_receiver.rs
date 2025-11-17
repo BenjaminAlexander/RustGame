@@ -1,17 +1,9 @@
-use crate::real_time::net::udp::UdpReadHandlerTrait;
-use crate::real_time::real::net::udp::{
-    RealUdpSocket,
-    UdpReaderEventHandler,
-};
 use crate::real_time::{
-    real,
-    EventOrStopThread,
     ReceiveMetaData,
     SendMetaData,
     TimeSource,
 };
 use crate::time::TimeDuration;
-use std::io::Error;
 use std::sync::mpsc::{
     self,
     TryRecvError,
@@ -56,21 +48,6 @@ impl<T: Send> RealReceiver<T> {
         let receive_meta_data = ReceiveMetaData::new(&self.time_source, send_meta_data);
         //self.duration_in_queue_logger.add_value(receive_meta_data.get_duration_in_queue());
         return receive_meta_data;
-    }
-}
-
-impl RealReceiver<EventOrStopThread<()>> {
-    //TODO: can these spawn methods be on a trait and called with dynamic dispatch?
-
-    pub fn spawn_real_udp_reader<T: UdpReadHandlerTrait>(
-        self,
-        thread_name: String,
-        udp_socket: RealUdpSocket,
-        udp_read_handler: T,
-        join_call_back: impl FnOnce(()) + Send + 'static,
-    ) -> Result<(), Error> {
-        let event_handler = UdpReaderEventHandler::new(udp_socket, udp_read_handler);
-        return real::spawn_event_handler(thread_name, self, event_handler, join_call_back);
     }
 }
 

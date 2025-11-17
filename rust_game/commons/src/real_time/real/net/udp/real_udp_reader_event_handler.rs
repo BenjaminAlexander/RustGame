@@ -1,29 +1,38 @@
 use crate::real_time::net::udp::UdpReadHandlerTrait;
 use crate::real_time::net::MAX_UDP_DATAGRAM_SIZE;
+use crate::real_time::real::{self, RealReceiver};
 use crate::real_time::real::net::udp::RealUdpSocket;
 use crate::real_time::{
-    EventHandleResult,
-    HandleEvent,
-    ReceiveMetaData,
+    EventHandleResult, EventOrStopThread, HandleEvent, ReceiveMetaData
 };
 use log::warn;
-use std::io::ErrorKind;
+use std::io::{Error, ErrorKind};
 use std::ops::ControlFlow::{
     Break,
     Continue,
 };
 
-pub struct UdpReaderEventHandler<T: UdpReadHandlerTrait> {
+pub struct RealUdpReaderEventHandler<T: UdpReadHandlerTrait> {
     udp_socket: RealUdpSocket,
     udp_read_handler: T,
 }
 
-impl<T: UdpReadHandlerTrait> UdpReaderEventHandler<T> {
-    pub fn new(udp_socket: RealUdpSocket, udp_read_handler: T) -> Self {
-        return Self {
+impl<T: UdpReadHandlerTrait> RealUdpReaderEventHandler<T> {
+
+    pub fn spawn_udp_reader(
+        thread_name: String,
+        receiver: RealReceiver<EventOrStopThread<()>>,
+        udp_socket: RealUdpSocket,
+        udp_read_handler: T,
+        join_call_back: impl FnOnce(()) + Send + 'static,
+    ) -> Result<(), Error> {
+
+        let event_handler = Self {
             udp_socket,
             udp_read_handler,
         };
+
+        return real::spawn_event_handler(thread_name, receiver, event_handler, join_call_back);
     }
 
     fn read(&mut self) -> EventHandleResult<Self> {
@@ -57,7 +66,7 @@ impl<T: UdpReadHandlerTrait> UdpReaderEventHandler<T> {
     }
 }
 
-impl<T: UdpReadHandlerTrait> HandleEvent for UdpReaderEventHandler<T> {
+impl<T: UdpReadHandlerTrait> HandleEvent for RealUdpReaderEventHandler<T> {
     type Event = ();
     type ThreadReturn = ();
 
@@ -113,7 +122,7 @@ mod tests {
             return ControlFlow::Continue(());
         };
 
-        let mut read_handler = UdpReaderEventHandler::new(udp_socket, udp_read_handler);
+        let mut read_handler = RealUdpReaderEventHandler {udp_socket, udp_read_handler};
 
         let buf = [0];
 

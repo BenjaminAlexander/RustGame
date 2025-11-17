@@ -4,42 +4,40 @@ use std::{
 };
 
 use crate::real_time::{
-    net::udp::{
-        UdpReadHandlerTrait,
-        UdpSocketTrait,
-    },
     real::net::udp::RealUdpSocket,
     simulation::net::udp::UdpSocketSimulator,
-    EventOrStopThread,
-    Receiver,
 };
 
-enum Implementation {
+pub(super) enum UdpSocketImplementation {
     Real(RealUdpSocket),
     Simulated(UdpSocketSimulator),
 }
 
 pub struct UdpSocket {
-    implementation: Implementation,
+    implementation: UdpSocketImplementation,
 }
 
 impl UdpSocket {
     pub fn new(real_udp_socket: RealUdpSocket) -> Self {
         return Self {
-            implementation: Implementation::Real(real_udp_socket),
+            implementation: UdpSocketImplementation::Real(real_udp_socket),
         };
     }
 
     pub fn new_simulated(udp_socket_simulator: UdpSocketSimulator) -> Self {
         return Self {
-            implementation: Implementation::Simulated(udp_socket_simulator),
+            implementation: UdpSocketImplementation::Simulated(udp_socket_simulator),
         };
+    }
+
+    pub(super) fn take_implementation(self) -> UdpSocketImplementation {
+        return self.implementation;
     }
 
     pub fn local_addr(&self) -> Result<SocketAddr, Error> {
         match &self.implementation {
-            Implementation::Real(real_udp_socket) => real_udp_socket.local_addr(),
-            Implementation::Simulated(udp_socket_simulator) => {
+            UdpSocketImplementation::Real(real_udp_socket) => real_udp_socket.local_addr(),
+            UdpSocketImplementation::Simulated(udp_socket_simulator) => {
                 Ok(udp_socket_simulator.local_addr())
             }
         }
@@ -47,8 +45,8 @@ impl UdpSocket {
 
     pub fn send_to(&mut self, buf: &[u8], socket_addr: &SocketAddr) -> Result<usize, Error> {
         match &mut self.implementation {
-            Implementation::Real(real_udp_socket) => real_udp_socket.send_to(buf, socket_addr),
-            Implementation::Simulated(udp_socket_simulator) => {
+            UdpSocketImplementation::Real(real_udp_socket) => real_udp_socket.send_to(buf, socket_addr),
+            UdpSocketImplementation::Simulated(udp_socket_simulator) => {
                 udp_socket_simulator.send_to(buf, socket_addr)
             }
         }
@@ -56,36 +54,12 @@ impl UdpSocket {
 
     pub fn try_clone(&self) -> Result<Self, Error> {
         match &self.implementation {
-            Implementation::Real(real_udp_socket) => Ok(Self {
-                implementation: Implementation::Real(real_udp_socket.try_clone()?),
+            UdpSocketImplementation::Real(real_udp_socket) => Ok(Self {
+                implementation: UdpSocketImplementation::Real(real_udp_socket.try_clone()?),
             }),
-            Implementation::Simulated(udp_socket_simulator) => Ok(Self {
-                implementation: Implementation::Simulated(udp_socket_simulator.try_clone()?),
+            UdpSocketImplementation::Simulated(udp_socket_simulator) => Ok(Self {
+                implementation: UdpSocketImplementation::Simulated(udp_socket_simulator.try_clone()?),
             }),
-        }
-    }
-
-    pub fn spawn_udp_reader<T: UdpReadHandlerTrait>(
-        self,
-        thread_name: String,
-        receiver: Receiver<EventOrStopThread<()>>,
-        udp_read_handler: T,
-        join_call_back: impl FnOnce(()) + Send + 'static,
-    ) -> Result<(), Error> {
-        match self.implementation {
-            Implementation::Real(real_udp_socket) => real_udp_socket.spawn_real_udp_reader(
-                thread_name,
-                receiver,
-                udp_read_handler,
-                join_call_back,
-            ),
-            Implementation::Simulated(udp_socket_simulator) => udp_socket_simulator
-                .spawn_simulated_udp_reader(
-                    thread_name,
-                    receiver,
-                    udp_read_handler,
-                    join_call_back,
-                ),
         }
     }
 }

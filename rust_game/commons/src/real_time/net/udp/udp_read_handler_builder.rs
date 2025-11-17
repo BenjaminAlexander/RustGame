@@ -1,15 +1,10 @@
 use std::io::Error;
 
 use crate::real_time::{
-    net::udp::{
+    EventHandlerStopper, EventOrStopThread, EventSender, FactoryTrait, Receiver, net::udp::{
         udp_read_handler_trait::UdpReadHandlerTrait,
-        udp_socket::UdpSocket,
-    },
-    EventHandlerStopper,
-    EventOrStopThread,
-    EventSender,
-    FactoryTrait,
-    Receiver,
+        udp_socket::{UdpSocket, UdpSocketImplementation},
+    }, real::net::udp::RealUdpReaderEventHandler, receiver::ReceiverImplementation, simulation::net::NetworkSimulator
 };
 
 pub struct UdpReadHandlerBuilder {
@@ -38,12 +33,14 @@ impl UdpReadHandlerBuilder {
         udp_read_handler: T,
         join_call_back: impl FnOnce(()) + Send + 'static,
     ) -> Result<EventHandlerStopper, Error> {
-        udp_socket.spawn_udp_reader(
-            thread_name,
-            self.receiver,
-            udp_read_handler,
-            join_call_back,
-        )?;
+
+        match (self.receiver.take_implementation(), udp_socket.take_implementation()) {
+            (ReceiverImplementation::Real(real_receiver), UdpSocketImplementation::Real(real_udp_socket)) => RealUdpReaderEventHandler::spawn_udp_reader(thread_name, real_receiver, real_udp_socket, udp_read_handler, join_call_back),
+            (ReceiverImplementation::Real(_), UdpSocketImplementation::Simulated(_)) => panic!("Spawning a UDP reader thread with a simulated UDP socket and a real channel isn't supported"),
+            (ReceiverImplementation::Simulated(_), UdpSocketImplementation::Real(_)) => panic!("Spawning a UDP reader thread with a real UDP socket and a simulated channel isn't supported"),
+            (ReceiverImplementation::Simulated(single_threaded_receiver), UdpSocketImplementation::Simulated(udp_socket_simulator)) => NetworkSimulator::spawn_udp_reader(thread_name, single_threaded_receiver, udp_socket_simulator, udp_read_handler, join_call_back),
+        }?;
+
         return Ok(self.stopper);
     }
 
@@ -53,8 +50,7 @@ impl UdpReadHandlerBuilder {
         udp_socket: UdpSocket,
         udp_read_handler: T,
     ) -> Result<EventHandlerStopper, Error> {
-        udp_socket.spawn_udp_reader(thread_name, self.receiver, udp_read_handler, |_| {})?;
-        return Ok(self.stopper);
+        return self.spawn_thread_with_call_back(thread_name, udp_socket, udp_read_handler, |_| {});
     }
 
     pub fn new_thread<T: UdpReadHandlerTrait>(

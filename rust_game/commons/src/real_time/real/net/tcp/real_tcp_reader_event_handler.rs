@@ -8,13 +8,12 @@ use crate::real_time::{
 };
 use std::{io::Error, ops::ControlFlow};
 
-//TODO: rename as real
-pub struct TcpReaderEventHandler<T: TcpReadHandlerTrait> {
+pub struct RealTcpReaderEventHandler<T: TcpReadHandlerTrait> {
     tcp_resetable_reader: ResetableReader<std::net::TcpStream>,
     tcp_read_handler: T,
 }
 
-impl<T: TcpReadHandlerTrait> TcpReaderEventHandler<T> {
+impl<T: TcpReadHandlerTrait> RealTcpReaderEventHandler<T> {
 
     pub fn spawn_tcp_reader(
         thread_name: String,
@@ -45,7 +44,7 @@ impl<T: TcpReadHandlerTrait> TcpReaderEventHandler<T> {
     }
 }
 
-impl<T: TcpReadHandlerTrait> HandleEvent for TcpReaderEventHandler<T> {
+impl<T: TcpReadHandlerTrait> HandleEvent for RealTcpReaderEventHandler<T> {
     type Event = ();
     type ThreadReturn = ();
 

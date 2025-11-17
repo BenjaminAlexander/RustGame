@@ -1,6 +1,3 @@
-use crate::real_time::net::udp::UdpReadHandlerTrait;
-use crate::real_time::simulation::net::udp::UdpSocketSimulator;
-use crate::real_time::simulation::net::NetworkSimulator;
 use crate::real_time::simulation::receiver_link::{
     ReceiveOrDisconnected,
     ReceiverLink,
@@ -9,11 +6,9 @@ use crate::real_time::simulation::sender_link::SenderLink;
 use crate::real_time::simulation::single_threaded_sender::SingleThreadedSender;
 use crate::real_time::simulation::SingleThreadedFactory;
 use crate::real_time::{
-    EventOrStopThread,
     FactoryTrait,
     ReceiveMetaData,
 };
-use std::io::Error;
 use std::sync::mpsc::TryRecvError;
 
 pub struct SingleThreadedReceiver<T: Send> {
@@ -56,23 +51,3 @@ impl<T: Send> SingleThreadedReceiver<T> {
     }
 }
 
-impl SingleThreadedReceiver<EventOrStopThread<()>> {
-
-    pub fn spawn_simulated_udp_reader<T: UdpReadHandlerTrait>(
-        self,
-        network_simulator: NetworkSimulator,
-        thread_name: String,
-        udp_socket_simulator: UdpSocketSimulator,
-        udp_read_handler: T,
-        join_call_back: impl FnOnce(()) + Send + 'static,
-    ) -> Result<(), Error> {
-        return network_simulator.spawn_udp_reader(
-            self.factory.clone(),
-            thread_name,
-            self,
-            udp_socket_simulator,
-            udp_read_handler,
-            join_call_back,
-        );
-    }
-}

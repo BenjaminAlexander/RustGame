@@ -11,12 +11,12 @@ use std::ops::ControlFlow::{
     Continue,
 };
 
-pub struct UdpReadEventHandler<T: UdpReadHandlerTrait> {
+pub struct SimulatedUdpReadEventHandler<T: UdpReadHandlerTrait> {
     network_simulator: NetworkSimulator,
     socket_addr: SocketAddr,
     read_handler: T,
 }
-impl<T: UdpReadHandlerTrait> UdpReadEventHandler<T> {
+impl<T: UdpReadHandlerTrait> SimulatedUdpReadEventHandler<T> {
     pub fn new(
         network_simulator: NetworkSimulator,
         socket_addr: SocketAddr,
@@ -37,7 +37,7 @@ impl<T: UdpReadHandlerTrait> UdpReadEventHandler<T> {
     }
 }
 
-impl<T: UdpReadHandlerTrait> HandleEvent for UdpReadEventHandler<T> {
+impl<T: UdpReadHandlerTrait> HandleEvent for SimulatedUdpReadEventHandler<T> {
     type Event = (SocketAddr, Vec<u8>);
     type ThreadReturn = ();
 

@@ -1,12 +1,4 @@
-use crate::real_time::net::udp::{
-    UdpReadHandlerTrait,
-    UdpSocketTrait,
-};
 use crate::real_time::net::NET_POLLING_PERIOD;
-use crate::real_time::{
-    EventOrStopThread,
-    Receiver,
-};
 use std::io::Error;
 use std::net::{
     SocketAddr,
@@ -33,23 +25,11 @@ impl RealUdpSocket {
         return self.udp_socket.local_addr();
     }
 
-    pub fn spawn_real_udp_reader<T: UdpReadHandlerTrait>(
-        self,
-        thread_name: String,
-        receiver: Receiver<EventOrStopThread<()>>,
-        udp_read_handler: T,
-        join_call_back: impl FnOnce(()) + Send + 'static,
-    ) -> Result<(), Error> {
-        return receiver.spawn_real_udp_reader(thread_name, self, udp_read_handler, join_call_back);
-    }
-}
-
-impl UdpSocketTrait for RealUdpSocket {
-    fn send_to(&mut self, buf: &[u8], socket_addr: &SocketAddr) -> Result<usize, Error> {
+    pub fn send_to(&mut self, buf: &[u8], socket_addr: &SocketAddr) -> Result<usize, Error> {
         return self.udp_socket.send_to(buf, socket_addr);
     }
 
-    fn try_clone(&self) -> Result<Self, Error> {
+    pub fn try_clone(&self) -> Result<Self, Error> {
         return Ok(Self {
             udp_socket: self.udp_socket.try_clone()?,
         });

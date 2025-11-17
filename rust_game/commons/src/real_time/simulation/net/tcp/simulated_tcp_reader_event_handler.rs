@@ -10,7 +10,6 @@ use std::ops::ControlFlow::{
     Continue,
 };
 
-//TODO: rename file
 pub struct SimulatedTcpReaderEventHandler<T: TcpReadHandlerTrait> {
     read_handler: T,
 }

@@ -11,7 +11,7 @@ use crate::real_time::simulation::net::tcp::{
     TcpListenerEventHandler,
 };
 use crate::real_time::simulation::net::udp::{
-    UdpReadEventHandler,
+    SimulatedUdpReadEventHandler,
     UdpSocketSimulator,
 };
 use crate::real_time::simulation::receiver_link::ReceiveOrDisconnected;
@@ -81,9 +81,9 @@ impl NetworkSimulator {
     }
 
     pub fn spawn_tcp_listener<TcpConnectionHandler: TcpConnectionHandlerTrait>(
-        socket_addr: SocketAddr,
         thread_name: String,
         receiver: SingleThreadedReceiver<EventOrStopThread<()>>,
+        socket_addr: SocketAddr,
         connection_handler: TcpConnectionHandler,
         join_call_back: impl FnOnce(()) + Send + 'static,
     ) -> Result<(), Error> {
@@ -98,7 +98,6 @@ impl NetworkSimulator {
         let tcp_listener_event_handler =
             TcpListenerEventHandler::new(socket_addr, connection_handler);
 
-        //TODO: can this call a method that more directly/obviously doesn't spawn a thread
         let sender = EventHandlerBuilder::new(receiver.get_factory())
             .spawn_thread_with_callback(thread_name, tcp_listener_event_handler, join_call_back)
             .unwrap();
@@ -168,15 +167,14 @@ impl NetworkSimulator {
     }
 
     pub fn spawn_udp_reader<T: UdpReadHandlerTrait>(
-        &self,
-        factory: SingleThreadedFactory,
         thread_name: String,
         receiver: SingleThreadedReceiver<EventOrStopThread<()>>,
         udp_socket: UdpSocketSimulator,
         udp_read_handler: T,
         join_call_back: impl FnOnce(()) + Send + 'static,
     ) -> Result<(), Error> {
-        let mut guard = self.internal.lock().unwrap();
+        let network_simulator = receiver.get_factory().get_host_simulator().get_network_simulator().clone();
+        let mut guard = network_simulator.internal.lock().unwrap();
 
         let socket_addr = udp_socket.local_addr();
 
@@ -185,9 +183,9 @@ impl NetworkSimulator {
         }
 
         let udp_read_event_handler =
-            UdpReadEventHandler::new(self.clone(), udp_socket.local_addr(), udp_read_handler);
+            SimulatedUdpReadEventHandler::new(network_simulator.clone(), udp_socket.local_addr(), udp_read_handler);
 
-        let sender = EventHandlerBuilder::new(&factory)
+        let sender = EventHandlerBuilder::new(receiver.get_factory())
             .spawn_thread_with_callback(thread_name, udp_read_event_handler, join_call_back)
             .unwrap();
 

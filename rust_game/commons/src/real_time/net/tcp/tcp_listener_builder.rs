@@ -41,11 +41,10 @@ impl TcpListenerBuilder {
                 tcp_connection_handler,
                 join_call_back,
             ),
-            //TODO: reorder args to match above
             ReceiverImplementation::Simulated(single_threaded_receiver) => NetworkSimulator::spawn_tcp_listener(
-                socket_addr,
                 thread_name,
                 single_threaded_receiver,
+                socket_addr,
                 tcp_connection_handler,
                 join_call_back,
             ),

@@ -1,24 +1,8 @@
-use std::{
-    io::Error,
-    sync::mpsc::TryRecvError,
-};
+use std::sync::mpsc::TryRecvError;
 
 use crate::real_time::{
-    net::{
-        udp::UdpReadHandlerTrait,
-    },
-    real::{
-        net::udp::RealUdpSocket,
-        RealReceiver,
-    },
-    simulation::{
-        net::{
-            udp::UdpSocketSimulator,
-            NetworkSimulator,
-        },
-        SingleThreadedReceiver,
-    },
-    EventOrStopThread,
+    real::RealReceiver,
+    simulation::SingleThreadedReceiver,
     ReceiveMetaData,
 };
 
@@ -59,33 +43,3 @@ impl<T: Send> Receiver<T> {
     }
 }
 
-//TODO: squash these methods
-impl Receiver<EventOrStopThread<()>> {
-
-    pub fn spawn_real_udp_reader<T: UdpReadHandlerTrait>(
-        self,
-        thread_name: String,
-        real_udp_socket: RealUdpSocket,
-        udp_read_handler: T,
-        join_call_back: impl FnOnce(()) + Send + 'static,
-    ) -> Result<(), Error> {
-        match self.implementation {
-            ReceiverImplementation::Real(real_receiver) => real_receiver.spawn_real_udp_reader(thread_name, real_udp_socket, udp_read_handler, join_call_back),
-            ReceiverImplementation::Simulated(_) => panic!("Spawning a UDP reader thread with a real UDP socket and a simulated channel isn't implemented"),
-        }
-    }
-
-    pub fn spawn_simulated_udp_reader<T: UdpReadHandlerTrait>(
-        self,
-        network_simulator: NetworkSimulator,
-        thread_name: String,
-        udp_socket_simulator: UdpSocketSimulator,
-        udp_read_handler: T,
-        join_call_back: impl FnOnce(()) + Send + 'static,
-    ) -> Result<(), Error> {
-        match self.implementation {
-            ReceiverImplementation::Real(_) => panic!("Spawning a UDP reader thread with a simulated UDP socket and a real channel isn't implemented"),
-            ReceiverImplementation::Simulated(single_threaded_receiver) => single_threaded_receiver.spawn_simulated_udp_reader(network_simulator, thread_name, udp_socket_simulator, udp_read_handler, join_call_back),
-        }
-    }
-}
