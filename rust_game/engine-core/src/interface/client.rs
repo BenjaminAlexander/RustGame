@@ -10,7 +10,7 @@ use crate::interface::{
 };
 use commons::real_time::{
     EventHandlerBuilder,
-    EventSender,
+    EventSender, FactoryTrait,
 };
 use std::net::Ipv4Addr;
 use std::str::FromStr;

@@ -97,7 +97,7 @@ pub struct ServerCore<GameFactory: GameFactoryTrait> {
     udp_socket: Option<UdpSocket>,
     udp_outputs: Vec<EventSender<UdpOutputEvent<GameFactory::Game>>>,
     udp_input_sender_option: Option<EventHandlerStopper>,
-    udp_handler: UdpHandler<GameFactory>,
+    udp_handler: UdpHandler<GameFactory::Game>,
     manager_sender_option: Option<EventSender<ManagerEvent<GameFactory::Game>>>,
     render_receiver_sender: Option<Sender<RenderReceiverMessage<GameFactory::Game>>>,
     drop_steps_before: usize,
@@ -136,7 +136,7 @@ impl<GameFactory: GameFactoryTrait> ServerCore<GameFactory> {
         let game_timer_config = GameTimerConfig::new(GameFactory::Game::STEP_PERIOD);
         let server_config = ServerConfig::new(game_timer_config);
 
-        let udp_handler = UdpHandler::new(factory.clone());
+        let udp_handler = UdpHandler::<GameFactory::Game>::new(factory.get_time_source().clone());
 
         Self {
             factory,
@@ -336,7 +336,7 @@ impl<GameFactory: GameFactoryTrait> ServerCore<GameFactory> {
                 manager_builder
                     .spawn_thread(
                         "ServerManager".to_string(),
-                        Manager::new(&self.factory, server_manager_observer),
+                        Manager::new(self.factory.get_time_source().clone(), server_manager_observer),
                     )
                     .unwrap(),
             );

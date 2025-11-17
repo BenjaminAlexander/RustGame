@@ -1,4 +1,4 @@
-use crate::interface::GameFactoryTrait;
+use crate::GameTrait;
 use crate::messaging::{
     FragmentAssembler,
     InputMessage,
@@ -7,6 +7,7 @@ use crate::messaging::{
 };
 use crate::server::clientaddress::ClientAddress;
 use crate::server::remoteudppeer::RemoteUdpPeer;
+use commons::real_time::TimeSource;
 use commons::real_time::net::MAX_UDP_DATAGRAM_SIZE;
 use log::{
     info,
@@ -16,30 +17,33 @@ use std::collections::{
     HashMap,
     HashSet,
 };
+use std::marker::PhantomData;
 use std::net::{
     IpAddr,
     SocketAddr,
 };
 
-pub struct UdpHandler<GameFactory: GameFactoryTrait> {
-    factory: GameFactory::Factory,
+pub struct UdpHandler<Game: GameTrait> {
+    time_source: TimeSource,
     remote_peers: Vec<Option<RemoteUdpPeer>>,
     client_addresses: Vec<Option<ClientAddress>>,
     client_ip_set: HashSet<IpAddr>,
 
     //TODO: timeout fragments or fragment assemblers
     fragment_assemblers: HashMap<SocketAddr, FragmentAssembler>,
+    phantom: PhantomData<Game>
 }
 
-impl<GameFactory: GameFactoryTrait> UdpHandler<GameFactory> {
-    pub fn new(factory: GameFactory::Factory) -> Self {
+impl<Game: GameTrait> UdpHandler<Game> {
+    pub fn new(time_source: TimeSource) -> Self {
         return Self {
-            factory,
+            time_source,
             remote_peers: Vec::new(),
             client_addresses: Vec::new(),
             client_ip_set: HashSet::new(),
             //TODO: make this more configurable
             fragment_assemblers: HashMap::new(),
+            phantom: PhantomData
         };
     }
 
@@ -66,7 +70,7 @@ impl<GameFactory: GameFactoryTrait> UdpHandler<GameFactory> {
         source: SocketAddr,
     ) -> (
         Option<RemoteUdpPeer>,
-        Option<InputMessage<GameFactory::Game>>,
+        Option<InputMessage<Game>>,
     ) {
         //TODO: check source against valid sources
         let mut filled_buf = &mut buf[..number_of_bytes];
@@ -98,7 +102,7 @@ impl<GameFactory: GameFactoryTrait> UdpHandler<GameFactory> {
             None => {
                 //TODO: make max_messages more configurable
                 self.fragment_assemblers
-                    .insert(source, FragmentAssembler::new(&self.factory, 5));
+                    .insert(source, FragmentAssembler::new(self.time_source.clone(), 5));
                 self.fragment_assemblers.get_mut(&source).unwrap()
             }
             Some(assembler) => assembler,
@@ -109,11 +113,11 @@ impl<GameFactory: GameFactoryTrait> UdpHandler<GameFactory> {
 
     fn handle_message(
         &mut self,
-        message: ToServerMessageUDP<GameFactory::Game>,
+        message: ToServerMessageUDP<Game>,
         source: SocketAddr,
     ) -> (
         Option<RemoteUdpPeer>,
-        Option<InputMessage<GameFactory::Game>>,
+        Option<InputMessage<Game>>,
     ) {
         let player_index = message.get_player_index();
 

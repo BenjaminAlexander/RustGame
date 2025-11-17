@@ -18,7 +18,7 @@ use crate::messaging::{
     StateMessage,
 };
 use commons::real_time::{
-    EventHandleResult, FactoryTrait, HandleEvent, ReceiveMetaData, TimeSource
+    EventHandleResult, HandleEvent, ReceiveMetaData, TimeSource
 };
 use commons::time::{
     TimeDuration,
@@ -58,7 +58,7 @@ pub struct Manager<ManagerObserver: ManagerObserverTrait> {
 }
 
 impl<ManagerObserver: ManagerObserverTrait> Manager<ManagerObserver> {
-    pub fn new(factory: &impl FactoryTrait, manager_observer: ManagerObserver) -> Self {
+    pub fn new(time_source: TimeSource, manager_observer: ManagerObserver) -> Self {
         Self {
             initial_information: None,
             steps: VecDeque::new(),
@@ -67,10 +67,10 @@ impl<ManagerObserver: ManagerObserverTrait> Manager<ManagerObserver> {
             manager_observer,
 
             //metrics
-            time_of_last_state_receive: factory.get_time_source().now(),
-            time_of_last_input_receive: factory.get_time_source().now(),
+            time_of_last_state_receive: time_source.now(),
+            time_of_last_input_receive: time_source.now(),
 
-            time_source: factory.get_time_source().clone()
+            time_source
         }
     }
 

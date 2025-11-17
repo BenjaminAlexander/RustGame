@@ -84,7 +84,7 @@ impl<GameFactory: GameFactoryTrait> ClientCore<GameFactory> {
         let client_manager_observer =
             ClientManagerObserver::<GameFactory>::new(render_receiver_sender.clone());
 
-        let manager = Manager::new(&factory, client_manager_observer);
+        let manager = Manager::new(factory.get_time_source().clone(), client_manager_observer);
 
         let manager_sender =
             EventHandlerBuilder::new_thread(&factory, "ClientManager".to_string(), manager)
@@ -161,7 +161,7 @@ impl<GameFactory: GameFactoryTrait> ClientCore<GameFactory> {
             "ClientUdpInput".to_string(),
             udp_socket.try_clone().unwrap(),
             UdpInput::<GameFactory>::new(
-                self.factory.clone(),
+                self.factory.get_time_source().clone(),
                 self.sender.clone(),
                 self.manager_sender.clone(),
             )

@@ -10,7 +10,7 @@ use crate::messaging::{
 use commons::real_time::net::udp::UdpReadHandlerTrait;
 use commons::real_time::{
     EventSender,
-    FactoryTrait,
+    TimeSource,
 };
 use commons::time::{
     TimeDuration,
@@ -26,7 +26,7 @@ use std::net::SocketAddr;
 use std::ops::ControlFlow;
 
 pub struct UdpInput<GameFactory: GameFactoryTrait> {
-    factory: GameFactory::Factory,
+    time_source: TimeSource,
     fragment_assembler: FragmentAssembler,
     core_sender: EventSender<ClientCoreEvent<GameFactory>>,
     manager_sender: EventSender<ManagerEvent<GameFactory::Game>>,
@@ -39,21 +39,25 @@ pub struct UdpInput<GameFactory: GameFactoryTrait> {
 
 impl<GameFactory: GameFactoryTrait> UdpInput<GameFactory> {
     pub fn new(
-        factory: GameFactory::Factory,
+        time_source: TimeSource,
         core_sender: EventSender<ClientCoreEvent<GameFactory>>,
         manager_sender: EventSender<ManagerEvent<GameFactory::Game>>,
     ) -> io::Result<Self> {
+
+        let now = time_source.now();
+
         return Ok(Self {
             //TODO: make this more configurable
-            fragment_assembler: FragmentAssembler::new(&factory, 5),
+            fragment_assembler: FragmentAssembler::new(time_source.clone(), 5),
             core_sender,
             manager_sender,
 
             //metrics
-            time_of_last_state_receive: factory.get_time_source().now(),
-            time_of_last_input_receive: factory.get_time_source().now(),
-            time_of_last_server_input_receive: factory.get_time_source().now(),
-            factory,
+            time_of_last_state_receive: now,
+            time_of_last_input_receive: now,
+            time_of_last_server_input_receive: now,
+
+            time_source
         });
     }
 }
@@ -88,7 +92,7 @@ impl<GameFactory: GameFactoryTrait> UdpInput<GameFactory> {
         &mut self,
         value: ToClientMessageUDP<GameFactory::Game>,
     ) -> ControlFlow<()> {
-        let time_received = self.factory.get_time_source().now();
+        let time_received = self.time_source.now();
 
         match value {
             ToClientMessageUDP::TimeMessage(time_message) => {

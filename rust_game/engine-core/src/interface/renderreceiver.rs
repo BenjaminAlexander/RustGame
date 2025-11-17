@@ -11,9 +11,7 @@ use crate::interface::{
     InterpolationResult,
 };
 use commons::real_time::{
-    FactoryTrait,
-    Receiver,
-    Sender, TimeSource,
+    FactoryTrait, Receiver, Sender, TimeSource
 };
 use commons::time::TimeDuration;
 use log::{

@@ -1,4 +1,4 @@
-use crate::real_time::{FactoryTrait, TimeSource};
+use crate::real_time::TimeSource;
 use crate::stats::RollingStats;
 use crate::time::{
     TimeDuration,
@@ -22,12 +22,12 @@ impl<T: Into<f64>> RollingStatsLogger<T> {
         size: usize,
         standard_deviation_ration: f64,
         min_log_interval: TimeDuration,
-        factory: & impl FactoryTrait,
+        time_source: TimeSource,
     ) -> Self {
-        let last_log = factory.get_time_source().now();
+        let last_log = time_source.now();
 
         Self {
-            time_source: factory.get_time_source().clone(),
+            time_source,
             min_log_interval,
             last_log,
             need_to_log: false,

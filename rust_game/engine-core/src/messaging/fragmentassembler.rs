@@ -1,5 +1,5 @@
 use crate::messaging::MessageFragment;
-use commons::real_time::{FactoryTrait, TimeSource};
+use commons::real_time::TimeSource;
 use commons::time::TimeValue;
 use std::collections::HashMap;
 
@@ -10,9 +10,9 @@ pub struct FragmentAssembler {
 }
 
 impl FragmentAssembler {
-    pub fn new(factory: &impl FactoryTrait, max_messages: usize) -> Self {
+    pub fn new(time_source: TimeSource, max_messages: usize) -> Self {
         return Self {
-            time_source: factory.get_time_source().clone(),
+            time_source,
             max_messages,
             messages: HashMap::new(),
         };
