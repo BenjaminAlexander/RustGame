@@ -1,12 +1,25 @@
 use crate::real_time::{
-    EventHandleResult, EventOrStopThread, HandleEvent, ReceiveMetaData, net::tcp::TcpReadHandlerTrait, real::{self, RealReceiver, net::tcp::{
-        RealTcpStream, resetable_reader::{
-            DeserializeResult,
-            ResetableReader,
-        }
-    }}
+    net::tcp::TcpReadHandlerTrait,
+    real::{
+        self,
+        net::tcp::{
+            resetable_reader::{
+                DeserializeResult,
+                ResetableReader,
+            },
+            RealTcpStream,
+        },
+        RealReceiver,
+    },
+    EventHandleResult,
+    EventOrStopThread,
+    HandleEvent,
+    ReceiveMetaData,
 };
-use std::{io::Error, ops::ControlFlow};
+use std::{
+    io::Error,
+    ops::ControlFlow,
+};
 
 pub struct RealTcpReaderEventHandler<T: TcpReadHandlerTrait> {
     tcp_resetable_reader: ResetableReader<std::net::TcpStream>,
@@ -14,7 +27,6 @@ pub struct RealTcpReaderEventHandler<T: TcpReadHandlerTrait> {
 }
 
 impl<T: TcpReadHandlerTrait> RealTcpReaderEventHandler<T> {
-
     pub fn spawn_tcp_reader(
         thread_name: String,
         receiver: RealReceiver<EventOrStopThread<()>>,

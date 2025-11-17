@@ -1,10 +1,21 @@
 use std::io::Error;
 
 use crate::real_time::{
-    EventHandlerStopper, EventOrStopThread, EventSender, FactoryTrait, Receiver, net::udp::{
+    net::udp::{
         udp_read_handler_trait::UdpReadHandlerTrait,
-        udp_socket::{UdpSocket, UdpSocketImplementation},
-    }, real::net::udp::RealUdpReaderEventHandler, receiver::ReceiverImplementation, simulation::net::NetworkSimulator
+        udp_socket::{
+            UdpSocket,
+            UdpSocketImplementation,
+        },
+    },
+    real::net::udp::RealUdpReaderEventHandler,
+    receiver::ReceiverImplementation,
+    simulation::net::NetworkSimulator,
+    EventHandlerStopper,
+    EventOrStopThread,
+    EventSender,
+    FactoryTrait,
+    Receiver,
 };
 
 pub struct UdpReadHandlerBuilder {
@@ -33,7 +44,6 @@ impl UdpReadHandlerBuilder {
         udp_read_handler: T,
         join_call_back: impl FnOnce(()) + Send + 'static,
     ) -> Result<EventHandlerStopper, Error> {
-
         match (self.receiver.take_implementation(), udp_socket.take_implementation()) {
             (ReceiverImplementation::Real(real_receiver), UdpSocketImplementation::Real(real_udp_socket)) => RealUdpReaderEventHandler::spawn_udp_reader(thread_name, real_receiver, real_udp_socket, udp_read_handler, join_call_back),
             (ReceiverImplementation::Real(_), UdpSocketImplementation::Simulated(_)) => panic!("Spawning a UDP reader thread with a simulated UDP socket and a real channel isn't supported"),

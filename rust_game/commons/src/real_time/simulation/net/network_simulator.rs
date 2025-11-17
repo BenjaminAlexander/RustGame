@@ -87,8 +87,11 @@ impl NetworkSimulator {
         connection_handler: TcpConnectionHandler,
         join_call_back: impl FnOnce(()) + Send + 'static,
     ) -> Result<(), Error> {
-
-        let network_simulator = receiver.get_factory().get_host_simulator().get_network_simulator().clone();
+        let network_simulator = receiver
+            .get_factory()
+            .get_host_simulator()
+            .get_network_simulator()
+            .clone();
         let mut guard = network_simulator.internal.lock().unwrap();
 
         if guard.tcp_listeners.contains_key(&socket_addr) {
@@ -173,7 +176,11 @@ impl NetworkSimulator {
         udp_read_handler: T,
         join_call_back: impl FnOnce(()) + Send + 'static,
     ) -> Result<(), Error> {
-        let network_simulator = receiver.get_factory().get_host_simulator().get_network_simulator().clone();
+        let network_simulator = receiver
+            .get_factory()
+            .get_host_simulator()
+            .get_network_simulator()
+            .clone();
         let mut guard = network_simulator.internal.lock().unwrap();
 
         let socket_addr = udp_socket.local_addr();
@@ -182,8 +189,11 @@ impl NetworkSimulator {
             return Err(Error::from(ErrorKind::AddrInUse));
         }
 
-        let udp_read_event_handler =
-            SimulatedUdpReadEventHandler::new(network_simulator.clone(), udp_socket.local_addr(), udp_read_handler);
+        let udp_read_event_handler = SimulatedUdpReadEventHandler::new(
+            network_simulator.clone(),
+            udp_socket.local_addr(),
+            udp_read_handler,
+        );
 
         let sender = EventHandlerBuilder::new(receiver.get_factory())
             .spawn_thread_with_callback(thread_name, udp_read_event_handler, join_call_back)

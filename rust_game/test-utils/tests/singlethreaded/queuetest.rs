@@ -1,8 +1,8 @@
 use commons::{
     real_time::simulation::SingleThreadedFactory,
+    test_utils::Counter,
     time::TimeDuration,
 };
-use test_utils::utils::Counter;
 
 #[test]
 fn test_queue() {

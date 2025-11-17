@@ -4,7 +4,15 @@ use std::{
 };
 
 use crate::real_time::{
-    EventHandlerStopper, EventOrStopThread, EventSender, FactoryTrait, Receiver, net::tcp::tcp_connection_handler_trait::TcpConnectionHandlerTrait, real::net::tcp::TcpListenerEventHandler, receiver::ReceiverImplementation, simulation::net::NetworkSimulator
+    net::tcp::tcp_connection_handler_trait::TcpConnectionHandlerTrait,
+    real::net::tcp::TcpListenerEventHandler,
+    receiver::ReceiverImplementation,
+    simulation::net::NetworkSimulator,
+    EventHandlerStopper,
+    EventOrStopThread,
+    EventSender,
+    FactoryTrait,
+    Receiver,
 };
 
 pub struct TcpListenerBuilder {
@@ -34,20 +42,24 @@ impl TcpListenerBuilder {
         join_call_back: impl FnOnce(()) + Send + 'static,
     ) -> Result<EventHandlerStopper, Error> {
         match self.receiver.take_implementation() {
-            ReceiverImplementation::Real(real_receiver) => TcpListenerEventHandler::spawn_tcp_listener(
-                thread_name,
-                real_receiver,
-                socket_addr,
-                tcp_connection_handler,
-                join_call_back,
-            ),
-            ReceiverImplementation::Simulated(single_threaded_receiver) => NetworkSimulator::spawn_tcp_listener(
-                thread_name,
-                single_threaded_receiver,
-                socket_addr,
-                tcp_connection_handler,
-                join_call_back,
-            ),
+            ReceiverImplementation::Real(real_receiver) => {
+                TcpListenerEventHandler::spawn_tcp_listener(
+                    thread_name,
+                    real_receiver,
+                    socket_addr,
+                    tcp_connection_handler,
+                    join_call_back,
+                )
+            }
+            ReceiverImplementation::Simulated(single_threaded_receiver) => {
+                NetworkSimulator::spawn_tcp_listener(
+                    thread_name,
+                    single_threaded_receiver,
+                    socket_addr,
+                    tcp_connection_handler,
+                    join_call_back,
+                )
+            }
         }?;
         return Ok(self.stopper);
     }

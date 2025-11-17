@@ -13,3 +13,6 @@ pub use self::timer_service::{
     IdleTimerService,
     TimerService,
 };
+
+#[cfg(test)]
+mod tests;

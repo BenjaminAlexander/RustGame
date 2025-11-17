@@ -45,7 +45,9 @@ impl UdpSocket {
 
     pub fn send_to(&mut self, buf: &[u8], socket_addr: &SocketAddr) -> Result<usize, Error> {
         match &mut self.implementation {
-            UdpSocketImplementation::Real(real_udp_socket) => real_udp_socket.send_to(buf, socket_addr),
+            UdpSocketImplementation::Real(real_udp_socket) => {
+                real_udp_socket.send_to(buf, socket_addr)
+            }
             UdpSocketImplementation::Simulated(udp_socket_simulator) => {
                 udp_socket_simulator.send_to(buf, socket_addr)
             }
@@ -58,7 +60,9 @@ impl UdpSocket {
                 implementation: UdpSocketImplementation::Real(real_udp_socket.try_clone()?),
             }),
             UdpSocketImplementation::Simulated(udp_socket_simulator) => Ok(Self {
-                implementation: UdpSocketImplementation::Simulated(udp_socket_simulator.try_clone()?),
+                implementation: UdpSocketImplementation::Simulated(
+                    udp_socket_simulator.try_clone()?,
+                ),
             }),
         }
     }

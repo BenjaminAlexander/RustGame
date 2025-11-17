@@ -1,8 +1,8 @@
 use crate::client::ClientCoreEvent;
 use crate::client::ClientCoreEvent::GameTimerTick;
 use crate::interface::GameFactoryTrait;
+use commons::real_time::timer_service::TimerCallBack;
 use commons::real_time::EventSender;
-use commons::time::timerservice::TimerCallBack;
 
 pub struct ClientGameTimerObserver<GameFactory: GameFactoryTrait> {
     core_sender: EventSender<ClientCoreEvent<GameFactory>>,

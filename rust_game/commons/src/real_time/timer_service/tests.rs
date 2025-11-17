@@ -1,25 +1,23 @@
-use commons::logging::LoggingConfigBuilder;
-use commons::real_time::simulation::SingleThreadedFactory;
-use commons::real_time::FactoryTrait;
-use commons::time::timerservice::{
-    IdleTimerService,
-    Schedule,
-    TimerId,
-};
-use commons::time::TimeDuration;
-use log::LevelFilter;
 use std::ops::Add;
 use std::sync::{
     Arc,
     Mutex,
 };
-use test_utils::utils::Counter;
+
+use crate::logging;
+use crate::real_time::simulation::SingleThreadedFactory;
+use crate::real_time::timer_service::{
+    IdleTimerService,
+    Schedule,
+    TimerId,
+};
+use crate::real_time::FactoryTrait;
+use crate::test_utils::Counter;
+use crate::time::TimeDuration;
 
 #[test]
 fn timer_service_test() {
-    LoggingConfigBuilder::new()
-        .add_console_appender()
-        .init(LevelFilter::Trace);
+    logging::setup_test_logging();
 
     let two_seconds = TimeDuration::from_secs_f64(2.0);
     let five_seconds = TimeDuration::from_secs_f64(5.0);

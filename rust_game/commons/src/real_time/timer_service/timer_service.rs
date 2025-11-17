@@ -1,3 +1,10 @@
+use crate::real_time::timer_service::timer::Timer;
+use crate::real_time::timer_service::{
+    Schedule,
+    TimerCallBack,
+    TimerCreationCallBack,
+    TimerId,
+};
 use crate::real_time::{
     EventHandleResult,
     EventHandlerBuilder,
@@ -6,11 +13,6 @@ use crate::real_time::{
     HandleEvent,
     ReceiveMetaData,
 };
-use crate::time::timerservice::schedule::Schedule;
-use crate::time::timerservice::timer::Timer;
-use crate::time::timerservice::timer_call_back::TimerCallBack;
-use crate::time::timerservice::timer_creation_call_back::TimerCreationCallBack;
-use crate::time::timerservice::timer_id::TimerId;
 use crate::time::TimeValue;
 use log::{
     trace,
@@ -26,6 +28,7 @@ use std::marker::PhantomData;
 /// An idle [`TimerService`] that is not currently running.  Timers belonging to this service will not be called.
 ///
 /// This struct can be used to add timers to the service before starting it, as well as starting the [`TimerService`] itself.
+// TODO: don't paramterize on Factory
 pub struct IdleTimerService<Factory: FactoryTrait, T: TimerCreationCallBack, U: TimerCallBack> {
     /// used to handle events when the [`TimerService`] thread starts
     event_handler: TimerServiceEventHandler<Factory, T, U>,

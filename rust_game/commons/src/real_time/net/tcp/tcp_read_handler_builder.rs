@@ -1,9 +1,19 @@
 use std::io::Error;
 
 use crate::real_time::{
-    EventHandlerStopper, EventOrStopThread, EventSender, FactoryTrait, Receiver, net::tcp::{
-        TcpReader, tcp_read_handler_trait::TcpReadHandlerTrait, tcp_reader::TcpReaderImplementation
-    }, real::net::tcp::RealTcpReaderEventHandler, receiver::ReceiverImplementation, simulation::net::tcp::SimulatedTcpReaderEventHandler
+    net::tcp::{
+        tcp_read_handler_trait::TcpReadHandlerTrait,
+        tcp_reader::TcpReaderImplementation,
+        TcpReader,
+    },
+    real::net::tcp::RealTcpReaderEventHandler,
+    receiver::ReceiverImplementation,
+    simulation::net::tcp::SimulatedTcpReaderEventHandler,
+    EventHandlerStopper,
+    EventOrStopThread,
+    EventSender,
+    FactoryTrait,
+    Receiver,
 };
 
 pub struct TcpReadHandlerBuilder {
@@ -32,7 +42,6 @@ impl TcpReadHandlerBuilder {
         tcp_read_handler: T,
         join_call_back: impl FnOnce(()) + Send + 'static,
     ) -> Result<EventHandlerStopper, Error> {
-
         match (self.receiver.take_implementation(), tcp_reader.take_implementation()) {
             (ReceiverImplementation::Real(real_receiver), TcpReaderImplementation::Real(real_tcp_stream)) => RealTcpReaderEventHandler::spawn_tcp_reader(thread_name, real_receiver, real_tcp_stream, tcp_read_handler, join_call_back),
             (ReceiverImplementation::Real(_), TcpReaderImplementation::Simulated(_)) => panic!("Spawning a TCP reader thread with a simulated TCP reader and a real channel isn't supported"),

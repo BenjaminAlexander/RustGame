@@ -3,9 +3,7 @@ use crate::gametime::{
     TimeMessage,
     TimeReceived,
 };
-use commons::real_time::FactoryTrait;
-use commons::stats::RollingAverage;
-use commons::time::timerservice::{
+use commons::real_time::timer_service::{
     IdleTimerService,
     Schedule,
     TimerCallBack,
@@ -13,6 +11,8 @@ use commons::time::timerservice::{
     TimerId,
     TimerService,
 };
+use commons::real_time::FactoryTrait;
+use commons::stats::RollingAverage;
 use commons::time::{
     TimeDuration,
     TimeValue,

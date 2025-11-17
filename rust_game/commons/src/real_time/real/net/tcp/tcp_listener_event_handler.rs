@@ -7,7 +7,11 @@ use crate::real_time::net::NET_POLLING_PERIOD;
 use crate::real_time::real::net::tcp::RealTcpStream;
 use crate::real_time::real::RealReceiver;
 use crate::real_time::{
-    EventHandleResult, EventOrStopThread, HandleEvent, ReceiveMetaData, real
+    real,
+    EventHandleResult,
+    EventOrStopThread,
+    HandleEvent,
+    ReceiveMetaData,
 };
 use log::error;
 use std::io::{
@@ -29,7 +33,6 @@ pub struct TcpListenerEventHandler<T: TcpConnectionHandlerTrait> {
 }
 
 impl<T: TcpConnectionHandlerTrait> TcpListenerEventHandler<T> {
-
     pub fn spawn_tcp_listener(
         thread_name: String,
         real_receiver: RealReceiver<EventOrStopThread<()>>,
@@ -47,7 +50,12 @@ impl<T: TcpConnectionHandlerTrait> TcpListenerEventHandler<T> {
             tcp_connection_handler,
         };
 
-        return real::spawn_event_handler(thread_name, real_receiver, event_handler, join_call_back);
+        return real::spawn_event_handler(
+            thread_name,
+            real_receiver,
+            event_handler,
+            join_call_back,
+        );
     }
 
     fn accept(&mut self) -> EventHandleResult<Self> {
@@ -163,9 +171,9 @@ mod tests {
 
         let real_tcp_stream = RealTcpStream::new(tcp_stream, listener_addr);
 
-        let mut event_handler = TcpListenerEventHandler{
+        let mut event_handler = TcpListenerEventHandler {
             tcp_listener,
-            tcp_connection_handler
+            tcp_connection_handler,
         };
 
         let event_handler_result = event_handler.handle_tcp_stream_clone_result(
@@ -189,9 +197,9 @@ mod tests {
 
         let tcp_listener = TcpListener::bind(LOCAL_EPHEMERAL_SOCKET_ADDR_V4).unwrap();
 
-        let mut event_handler = TcpListenerEventHandler{
+        let mut event_handler = TcpListenerEventHandler {
             tcp_listener,
-            tcp_connection_handler
+            tcp_connection_handler,
         };
 
         let event_handler_result =

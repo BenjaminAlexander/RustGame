@@ -50,4 +50,3 @@ impl<T: Send> SingleThreadedReceiver<T> {
         return self.link;
     }
 }
-

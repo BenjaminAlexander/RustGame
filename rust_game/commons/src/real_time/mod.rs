@@ -15,6 +15,7 @@ mod time_source;
 
 pub mod net;
 pub mod simulation;
+pub mod timer_service;
 
 pub use self::event_handler_builder::EventHandlerBuilder;
 pub use self::event_handler_stopper::EventHandlerStopper;

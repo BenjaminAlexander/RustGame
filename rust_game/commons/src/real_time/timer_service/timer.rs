@@ -1,6 +1,8 @@
-use crate::time::timerservice::schedule::Schedule;
-use crate::time::timerservice::timer_call_back::TimerCallBack;
-use crate::time::timerservice::timer_id::TimerId;
+use crate::real_time::timer_service::{
+    Schedule,
+    TimerCallBack,
+    TimerId,
+};
 use crate::time::TimeValue;
 use std::cmp::Ordering;
 use std::ops::Add;

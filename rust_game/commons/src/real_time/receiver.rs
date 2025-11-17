@@ -42,4 +42,3 @@ impl<T: Send> Receiver<T> {
         return Ok(value);
     }
 }
-

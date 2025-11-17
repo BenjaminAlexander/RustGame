@@ -1,12 +1,21 @@
 use crate::real_time::net::udp::UdpReadHandlerTrait;
 use crate::real_time::net::MAX_UDP_DATAGRAM_SIZE;
-use crate::real_time::real::{self, RealReceiver};
 use crate::real_time::real::net::udp::RealUdpSocket;
+use crate::real_time::real::{
+    self,
+    RealReceiver,
+};
 use crate::real_time::{
-    EventHandleResult, EventOrStopThread, HandleEvent, ReceiveMetaData
+    EventHandleResult,
+    EventOrStopThread,
+    HandleEvent,
+    ReceiveMetaData,
 };
 use log::warn;
-use std::io::{Error, ErrorKind};
+use std::io::{
+    Error,
+    ErrorKind,
+};
 use std::ops::ControlFlow::{
     Break,
     Continue,
@@ -18,7 +27,6 @@ pub struct RealUdpReaderEventHandler<T: UdpReadHandlerTrait> {
 }
 
 impl<T: UdpReadHandlerTrait> RealUdpReaderEventHandler<T> {
-
     pub fn spawn_udp_reader(
         thread_name: String,
         receiver: RealReceiver<EventOrStopThread<()>>,
@@ -26,7 +34,6 @@ impl<T: UdpReadHandlerTrait> RealUdpReaderEventHandler<T> {
         udp_read_handler: T,
         join_call_back: impl FnOnce(()) + Send + 'static,
     ) -> Result<(), Error> {
-
         let event_handler = Self {
             udp_socket,
             udp_read_handler,
@@ -122,7 +129,10 @@ mod tests {
             return ControlFlow::Continue(());
         };
 
-        let mut read_handler = RealUdpReaderEventHandler {udp_socket, udp_read_handler};
+        let mut read_handler = RealUdpReaderEventHandler {
+            udp_socket,
+            udp_read_handler,
+        };
 
         let buf = [0];
 

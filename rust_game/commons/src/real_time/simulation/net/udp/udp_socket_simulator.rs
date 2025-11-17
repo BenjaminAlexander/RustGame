@@ -8,7 +8,7 @@ use std::sync::{
 
 #[derive(Clone)]
 pub struct UdpSocketSimulator {
-    internal: Arc<Mutex<Internal>>
+    internal: Arc<Mutex<Internal>>,
 }
 
 struct Internal {
