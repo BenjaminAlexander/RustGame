@@ -91,7 +91,7 @@ pub struct ServerCore<GameFactory: GameFactoryTrait> {
     game_is_started: bool,
     server_config: ServerConfig,
     tcp_listener_sender_option: Option<EventHandlerStopper>,
-    game_timer: Option<GameTimer<GameFactory::Factory, ServerGameTimerObserver<GameFactory>>>,
+    game_timer: Option<GameTimer<ServerGameTimerObserver<GameFactory>>>,
     tcp_inputs: Vec<EventHandlerStopper>,
     tcp_outputs: Vec<EventSender<TcpOutputEvent<GameFactory::Game>>>,
     udp_socket: Option<UdpSocket>,
@@ -269,7 +269,7 @@ impl<GameFactory: GameFactoryTrait> ServerCore<GameFactory> {
             let server_game_timer_observer = ServerGameTimerObserver::new(self.sender.clone());
 
             let mut game_timer = GameTimer::new(
-                self.factory.clone(),
+                &self.factory,
                 *self.server_config.get_game_timer_config(),
                 0,
                 server_game_timer_observer,
@@ -336,7 +336,7 @@ impl<GameFactory: GameFactoryTrait> ServerCore<GameFactory> {
                 manager_builder
                     .spawn_thread(
                         "ServerManager".to_string(),
-                        Manager::new(self.factory.clone(), server_manager_observer),
+                        Manager::new(&self.factory, server_manager_observer),
                     )
                     .unwrap(),
             );

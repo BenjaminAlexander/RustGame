@@ -45,7 +45,7 @@ impl<GameFactory: GameFactoryTrait> UdpInput<GameFactory> {
     ) -> io::Result<Self> {
         return Ok(Self {
             //TODO: make this more configurable
-            fragment_assembler: FragmentAssembler::new(5),
+            fragment_assembler: FragmentAssembler::new(&factory, 5),
             core_sender,
             manager_sender,
 
@@ -64,7 +64,7 @@ impl<GameFactory: GameFactoryTrait> UdpReadHandlerTrait for UdpInput<GameFactory
 
         if let Some(message_buf) = self
             .fragment_assembler
-            .add_fragment(&self.factory, fragment)
+            .add_fragment(fragment)
         {
             match rmp_serde::from_slice(&message_buf) {
                 Ok(message) => {

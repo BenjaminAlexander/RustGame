@@ -25,7 +25,7 @@ impl<GameFactory: GameFactoryTrait> Client<GameFactory> {
             EventHandlerBuilder::<ClientCore<GameFactory>>::new(&factory);
 
         let (render_receiver_sender, render_receiver) =
-            RenderReceiver::<GameFactory>::new(factory.clone());
+            RenderReceiver::<GameFactory>::new(&factory);
 
         let core_sender = client_core_thread_builder.get_sender().clone();
 

@@ -11,7 +11,7 @@ use crate::real_time::{
     EventSender,
     FactoryTrait,
     HandleEvent,
-    ReceiveMetaData,
+    ReceiveMetaData, TimeSource,
 };
 use crate::time::TimeValue;
 use log::{
@@ -28,42 +28,140 @@ use std::marker::PhantomData;
 /// An idle [`TimerService`] that is not currently running.  Timers belonging to this service will not be called.
 ///
 /// This struct can be used to add timers to the service before starting it, as well as starting the [`TimerService`] itself.
-// TODO: don't paramterize on Factory
-pub struct IdleTimerService<Factory: FactoryTrait, T: TimerCreationCallBack, U: TimerCallBack> {
-    /// used to handle events when the [`TimerService`] thread starts
-    event_handler: TimerServiceEventHandler<Factory, T, U>,
+pub struct IdleTimerService<T: TimerCreationCallBack, U: TimerCallBack> {
+    next_timer_id: usize,
+    timers: VecDeque<Timer<U>>,
+    unscheduled_timers: HashMap<TimerId, Timer<U>>,
+    phantom: PhantomData<T>,
 }
 
-impl<Factory: FactoryTrait, T: TimerCreationCallBack, U: TimerCallBack>
-    IdleTimerService<Factory, T, U>
+impl<T: TimerCreationCallBack, U: TimerCallBack>
+    IdleTimerService<T, U>
 {
     /// Creates a new [`IdleTimerService`]
-    pub fn new(factory: Factory) -> Self {
+    pub fn new() -> Self {
         return Self {
-            event_handler: TimerServiceEventHandler {
-                factory,
-                next_timer_id: 0,
-                timers: VecDeque::new(),
-                unscheduled_timers: HashMap::new(),
-                phantom: PhantomData::default(),
-            },
+            next_timer_id: 0,
+            timers: VecDeque::new(),
+            unscheduled_timers: HashMap::new(),
+            phantom: PhantomData::default(),
         };
+    }
+
+    /// Starts the [`TimerService`] thread and begins triggering timers
+    pub fn start(self, factory: &impl FactoryTrait) -> Result<TimerService<T, U>, Error> {
+        let sender = EventHandlerBuilder::new_thread(
+            factory,
+            "TimerServiceThread".to_string(),
+            TimerServiceEventHandler {
+                idle_timer_service: self,
+                time_source: factory.get_time_source().clone()
+            },
+        )?;
+
+        return Ok(TimerService { sender });
+    }
+
+    fn insert(&mut self, timer: Timer<U>) {
+        trace!(
+            "Inserting Timer: {:?}",
+            timer.get_id()
+        );
+
+        if let Schedule::Never = timer.get_schedule() {
+            self.unscheduled_timers.insert(*timer.get_id(), timer);
+        } else {
+            let index = self.timers.binary_search(&timer).unwrap_or_else(|e| e);
+            self.timers.insert(index, timer);
+        }
+    }
+
+    fn move_timer(&mut self, timer_id: &TimerId) -> Option<Timer<U>> {
+        trace!(
+            "Moving Timer: {:?}",
+            timer_id
+        );
+        if let Some(timer) = self.unscheduled_timers.remove(timer_id) {
+            return Some(timer);
+        } else {
+            for i in 0..self.timers.len() {
+                if let Some(timer) = self.timers.get(i) {
+                    if timer.get_id() == timer_id {
+                        return Some(self.timers.remove(i).unwrap());
+                    }
+                }
+            }
+        }
+        return None;
+    }
+
+    fn trigger_timers(&mut self, time_source: &TimeSource) -> EventHandleResult<TimerServiceEventHandler<T, U>> {
+        loop {
+            let now = time_source.now();
+
+            if let Some(timer) = self.timers.get(0) {
+                if timer.should_trigger(&now) {
+                    let mut timer = self.timers.pop_front().unwrap();
+                    timer.trigger();
+
+                    if timer.get_trigger_time().is_some() {
+                        self.insert(timer);
+                    } else {
+                        self.unscheduled_timers.insert(*timer.get_id(), timer);
+                    }
+                } else {
+                    return self.wait_for_next_trigger(time_source, now);
+                }
+            } else {
+                return self.wait_for_next_trigger(time_source, now);
+            }
+        }
+    }
+
+    fn wait_for_next_trigger(&mut self, time_source: &TimeSource, now: TimeValue) -> EventHandleResult<TimerServiceEventHandler<T, U>> {
+        if let Some(timer) = self.timers.get(0) {
+            if let Some(trigger_time) = timer.get_trigger_time() {
+                let duration_to_wait = trigger_time.duration_since(&now);
+
+                if duration_to_wait.is_positive() {
+                    return EventHandleResult::WaitForNextEventOrTimeout(duration_to_wait);
+                } else {
+                    warn!("Timers that should be triggered were left in the queue!  TimerID: {:?} Duration Until Trigger: {:?}", timer.get_id(), duration_to_wait);
+                    return self.trigger_timers(time_source);
+                }
+            } else {
+                warn!("An unscheduled timer was left in the queue!");
+                let timer = self.timers.pop_front().unwrap();
+                self.unscheduled_timers.insert(*timer.get_id(), timer);
+                return self.trigger_timers(time_source);
+            }
+        } else {
+            return EventHandleResult::WaitForNextEvent;
+        }
     }
 
     /// Creates a new timer with an associated callback in the [`TimerService`]
     pub fn create_timer(&mut self, tick_call_back: U, schedule: Schedule) -> TimerId {
-        return self.event_handler.create_timer(tick_call_back, schedule);
+        let timer_id = TimerId::new(self.next_timer_id);
+        self.next_timer_id = self.next_timer_id + 1;
+        let timer = Timer::new(&timer_id, schedule, tick_call_back);
+        self.insert(timer);
+        return timer_id;
     }
 
-    /// Starts the [`TimerService`] thread and begins triggering timers
-    pub fn start(self) -> Result<TimerService<T, U>, Error> {
-        let sender = EventHandlerBuilder::new_thread(
-            &self.event_handler.factory.clone(),
-            "TimerServiceThread".to_string(),
-            self.event_handler,
-        )?;
+    fn reschedule_timer(&mut self, timer_id: &TimerId, schedule: Schedule) {
+        if let Some(mut timer) = self.move_timer(timer_id) {
+            timer.set_schedule(schedule);
+            self.insert(timer);
+        } else {
+            warn!("TimerID {:?} does not exist.", timer_id)
+        }
+    }
 
-        return Ok(TimerService { sender });
+    fn cancel_timer(&mut self, timer_id: TimerId) {
+        if self.move_timer(&timer_id).is_none() {
+            warn!("TimerID {:?} does not exist.", timer_id)
+        }
     }
 }
 
@@ -134,137 +232,15 @@ enum TimerServiceEvent<T: TimerCreationCallBack, U: TimerCallBack> {
 }
 
 /// An EventHandlerTrait implementation for [`TimerService`]
-struct TimerServiceEventHandler<Factory: FactoryTrait, T: TimerCreationCallBack, U: TimerCallBack> {
-    //TODO: replace with Time source
-    factory: Factory,
-    next_timer_id: usize,
-    timers: VecDeque<Timer<U>>,
-    unscheduled_timers: HashMap<TimerId, Timer<U>>,
-    phantom: PhantomData<T>,
+struct TimerServiceEventHandler<T: TimerCreationCallBack, U: TimerCallBack> {
+    time_source: TimeSource,
+    idle_timer_service: IdleTimerService<T, U>
 }
 
-impl<Factory: FactoryTrait, T: TimerCreationCallBack, U: TimerCallBack>
-    TimerServiceEventHandler<Factory, T, U>
+impl<T: TimerCreationCallBack, U: TimerCallBack>
+    TimerServiceEventHandler<T, U>
 {
-    fn insert(&mut self, timer: Timer<U>) {
-        trace!(
-            "Time is: {:?}\nInserting Timer: {:?}",
-            self.factory.get_time_source().now(),
-            timer.get_id()
-        );
 
-        if let Schedule::Never = timer.get_schedule() {
-            self.unscheduled_timers.insert(*timer.get_id(), timer);
-        } else {
-            let index = self.timers.binary_search(&timer).unwrap_or_else(|e| e);
-            self.timers.insert(index, timer);
-        }
-    }
-
-    fn move_timer(&mut self, timer_id: &TimerId) -> Option<Timer<U>> {
-        trace!(
-            "Time is: {:?}\nMoving Timer: {:?}",
-            self.factory.get_time_source().now(),
-            timer_id
-        );
-        if let Some(timer) = self.unscheduled_timers.remove(timer_id) {
-            return Some(timer);
-        } else {
-            for i in 0..self.timers.len() {
-                if let Some(timer) = self.timers.get(i) {
-                    if timer.get_id() == timer_id {
-                        return Some(self.timers.remove(i).unwrap());
-                    }
-                }
-            }
-        }
-        return None;
-    }
-
-    fn trigger_timers(&mut self) -> EventHandleResult<Self> {
-        loop {
-            let now = self.factory.get_time_source().now();
-
-            if let Some(timer) = self.timers.get(0) {
-                if timer.should_trigger(&now) {
-                    let mut timer = self.timers.pop_front().unwrap();
-                    timer.trigger();
-
-                    if timer.get_trigger_time().is_some() {
-                        self.insert(timer);
-                    } else {
-                        self.unscheduled_timers.insert(*timer.get_id(), timer);
-                    }
-                } else {
-                    return self.wait_for_next_trigger(now);
-                }
-            } else {
-                return self.wait_for_next_trigger(now);
-            }
-        }
-    }
-
-    fn wait_for_next_trigger(&mut self, now: TimeValue) -> EventHandleResult<Self> {
-        if let Some(timer) = self.timers.get(0) {
-            if let Some(trigger_time) = timer.get_trigger_time() {
-                let duration_to_wait = trigger_time.duration_since(&now);
-
-                if duration_to_wait.is_positive() {
-                    return EventHandleResult::WaitForNextEventOrTimeout(duration_to_wait);
-                } else {
-                    warn!("Timers that should be triggered were left in the queue!  TimerID: {:?} Duration Until Trigger: {:?}", timer.get_id(), duration_to_wait);
-                    return self.trigger_timers();
-                }
-            } else {
-                warn!("An unscheduled timer was left in the queue!");
-                let timer = self.timers.pop_front().unwrap();
-                self.unscheduled_timers.insert(*timer.get_id(), timer);
-                return self.trigger_timers();
-            }
-        } else {
-            return EventHandleResult::WaitForNextEvent;
-        }
-    }
-
-    fn create_timer(&mut self, tick_call_back: U, schedule: Schedule) -> TimerId {
-        let timer_id = TimerId::new(self.next_timer_id);
-
-        trace!(
-            "Time is: {:?}\nCreating Timer: {:?}",
-            self.factory.get_time_source().now(),
-            timer_id
-        );
-        self.next_timer_id = self.next_timer_id + 1;
-        let timer = Timer::new(&timer_id, schedule, tick_call_back);
-        self.insert(timer);
-        return timer_id;
-    }
-
-    pub fn reschedule_timer(&mut self, timer_id: &TimerId, schedule: Schedule) {
-        trace!(
-            "Time is: {:?}\nRescheduling Timer: {:?} to {:?}",
-            self.factory.get_time_source().now(),
-            timer_id,
-            schedule
-        );
-        if let Some(mut timer) = self.move_timer(timer_id) {
-            timer.set_schedule(schedule);
-            self.insert(timer);
-        } else {
-            warn!("TimerID {:?} does not exist.", timer_id)
-        }
-    }
-
-    pub fn cancel_timer(&mut self, timer_id: TimerId) {
-        trace!(
-            "Time is: {:?}\nCanceling Timer: {:?}",
-            self.factory.get_time_source().now(),
-            timer_id
-        );
-        if self.move_timer(&timer_id).is_none() {
-            warn!("TimerID {:?} does not exist.", timer_id)
-        }
-    }
 
     fn create_timer_event_event(
         &mut self,
@@ -272,7 +248,14 @@ impl<Factory: FactoryTrait, T: TimerCreationCallBack, U: TimerCallBack>
         tick_call_back: U,
         schedule: Schedule,
     ) -> EventHandleResult<Self> {
-        let timer_id = self.create_timer(tick_call_back, schedule);
+        let timer_id = self.idle_timer_service.create_timer(tick_call_back, schedule);
+
+        trace!(
+            "Time is: {:?}\nCreated Timer: {:?}",
+            self.time_source.now(),
+            timer_id
+        );
+
         creation_call_back.timer_created(&timer_id);
         return EventHandleResult::TryForNextEvent;
     }
@@ -282,18 +265,31 @@ impl<Factory: FactoryTrait, T: TimerCreationCallBack, U: TimerCallBack>
         timer_id: &TimerId,
         schedule: Schedule,
     ) -> EventHandleResult<Self> {
-        self.reschedule_timer(timer_id, schedule);
+        trace!(
+            "Time is: {:?}\nRescheduling Timer: {:?} to {:?}",
+            self.time_source.now(),
+            timer_id,
+            schedule
+        );
+
+        self.idle_timer_service.reschedule_timer(timer_id, schedule);
         return EventHandleResult::TryForNextEvent;
     }
 
     fn cancel_timer_event(&mut self, timer_id: TimerId) -> EventHandleResult<Self> {
-        self.cancel_timer(timer_id);
+        trace!(
+            "Time is: {:?}\nCanceling Timer: {:?}",
+            self.time_source.now(),
+            timer_id
+        );
+
+        self.idle_timer_service.cancel_timer(timer_id);
         return EventHandleResult::TryForNextEvent;
     }
 }
 
-impl<Factory: FactoryTrait, T: TimerCreationCallBack, U: TimerCallBack> HandleEvent
-    for TimerServiceEventHandler<Factory, T, U>
+impl<T: TimerCreationCallBack, U: TimerCallBack> HandleEvent
+    for TimerServiceEventHandler<T, U>
 {
     type Event = TimerServiceEvent<T, U>;
     type ThreadReturn = ();
@@ -315,11 +311,11 @@ impl<Factory: FactoryTrait, T: TimerCreationCallBack, U: TimerCallBack> HandleEv
     }
 
     fn on_timeout(&mut self) -> EventHandleResult<Self> {
-        self.trigger_timers()
+        self.idle_timer_service.trigger_timers(&self.time_source)
     }
 
     fn on_channel_empty(&mut self) -> EventHandleResult<Self> {
-        self.trigger_timers()
+        self.idle_timer_service.trigger_timers(&self.time_source)
     }
 
     fn on_channel_disconnect(&mut self) -> EventHandleResult<Self> {

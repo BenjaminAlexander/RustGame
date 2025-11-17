@@ -34,7 +34,6 @@ impl<GameFactory: GameFactoryTrait> ServerManagerObserver<GameFactory> {
 }
 
 impl<GameFactory: GameFactoryTrait> ManagerObserverTrait for ServerManagerObserver<GameFactory> {
-    type Factory = GameFactory::Factory;
     type Game = GameFactory::Game;
 
     const IS_SERVER: bool = true;

@@ -49,7 +49,7 @@ impl<GameFactory: GameFactoryTrait> Server<GameFactory> {
             .unwrap();
 
         let (render_receiver_sender, render_receiver) =
-            RenderReceiver::<GameFactory>::new(factory.clone());
+            RenderReceiver::<GameFactory>::new(&factory);
 
         return Ok(Self {
             core_sender,

@@ -67,7 +67,7 @@ pub struct ClientCore<GameFactory: GameFactoryTrait> {
 //TODO: don't start client core before hello
 struct RunningState<GameFactory: GameFactoryTrait> {
     input_event_handler: <GameFactory::Game as GameTrait>::ClientInputEventHandler,
-    game_timer: GameTimer<GameFactory::Factory, ClientGameTimerObserver<GameFactory>>,
+    game_timer: GameTimer<ClientGameTimerObserver<GameFactory>>,
     udp_input_sender: EventHandlerStopper,
     udp_output_sender: EventSender<UdpOutputEvent<GameFactory::Game>>,
     initial_information: InitialInformation<GameFactory::Game>,
@@ -84,7 +84,7 @@ impl<GameFactory: GameFactoryTrait> ClientCore<GameFactory> {
         let client_manager_observer =
             ClientManagerObserver::<GameFactory>::new(render_receiver_sender.clone());
 
-        let manager = Manager::new(factory.clone(), client_manager_observer);
+        let manager = Manager::new(&factory, client_manager_observer);
 
         let manager_sender =
             EventHandlerBuilder::new_thread(&factory, "ClientManager".to_string(), manager)
@@ -141,7 +141,7 @@ impl<GameFactory: GameFactoryTrait> ClientCore<GameFactory> {
         let client_game_time_observer = ClientGameTimerObserver::new(self.sender.clone());
 
         let game_timer = GameTimer::new(
-            self.factory.clone(),
+            &self.factory,
             *initial_information
                 .get_server_config()
                 .get_game_timer_config(),

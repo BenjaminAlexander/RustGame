@@ -26,7 +26,6 @@ impl<GameFactory: GameFactoryTrait> ClientManagerObserver<GameFactory> {
 }
 
 impl<GameFactory: GameFactoryTrait> ManagerObserverTrait for ClientManagerObserver<GameFactory> {
-    type Factory = GameFactory::Factory;
     type Game = GameFactory::Game;
 
     const IS_SERVER: bool = false;

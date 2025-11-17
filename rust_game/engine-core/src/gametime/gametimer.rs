@@ -11,7 +11,7 @@ use commons::real_time::timer_service::{
     TimerId,
     TimerService,
 };
-use commons::real_time::FactoryTrait;
+use commons::real_time::{FactoryTrait, TimeSource};
 use commons::stats::RollingAverage;
 use commons::time::{
     TimeDuration,
@@ -30,8 +30,8 @@ use std::ops::{
 const TICK_LATENESS_WARN_DURATION: TimeDuration = TimeDuration::new(0, 20_000_000);
 const CLIENT_ERROR_WARN_DURATION: TimeDuration = TimeDuration::new(0, 20_000_000);
 
-pub struct GameTimer<Factory: FactoryTrait, T: TimerCallBack> {
-    factory: Factory,
+pub struct GameTimer<T: TimerCallBack> {
+    time_source: TimeSource,
     game_timer_config: GameTimerConfig,
     start: Option<TimeValue>,
     rolling_average: RollingAverage,
@@ -39,22 +39,22 @@ pub struct GameTimer<Factory: FactoryTrait, T: TimerCallBack> {
     timer_service: TimerService<GameTimerCreationCallBack, T>,
 }
 
-impl<Factory: FactoryTrait, T: TimerCallBack> GameTimer<Factory, T> {
+impl<T: TimerCallBack> GameTimer<T> {
     pub fn new(
-        factory: Factory,
+        factory: &impl FactoryTrait,
         game_timer_config: GameTimerConfig,
         rolling_average_size: usize,
         call_back: T,
     ) -> Self {
-        let mut idle_timer_service = IdleTimerService::new(factory.clone());
+        let mut idle_timer_service = IdleTimerService::new();
 
         let timer_id = idle_timer_service.create_timer(call_back, Schedule::Never);
 
         //TODO: remove unwrap
-        let timer_service = idle_timer_service.start().unwrap();
+        let timer_service = idle_timer_service.start(factory).unwrap();
 
         return Self {
-            factory,
+            time_source: factory.get_time_source().clone(),
             game_timer_config,
             start: None,
             rolling_average: RollingAverage::new(rolling_average_size),
@@ -69,7 +69,7 @@ impl<Factory: FactoryTrait, T: TimerCallBack> GameTimer<Factory, T> {
             self.game_timer_config.get_frame_duration()
         );
 
-        let now = self.factory.get_time_source().now();
+        let now = self.time_source.now();
 
         // add a frame duration to now so the first timer call back is at frame 0
         self.start = Some(now.add(&self.game_timer_config.get_frame_duration()));
@@ -123,8 +123,7 @@ impl<Factory: FactoryTrait, T: TimerCallBack> GameTimer<Factory, T> {
             let next_tick = self.start.unwrap().add(
                 &step_duration.mul_f64(
                     (self
-                        .factory
-                        .get_time_source()
+                        .time_source
                         .now()
                         .duration_since(&self.start.unwrap())
                         .as_secs_f64()
@@ -151,7 +150,7 @@ impl<Factory: FactoryTrait, T: TimerCallBack> GameTimer<Factory, T> {
     }
 
     pub fn create_timer_message(&self) -> TimeMessage {
-        let now = self.factory.get_time_source().now();
+        let now = self.time_source.now();
 
         //TODO: tick_time_value is the value from the remote thread, this value gets older and older as the event makes its way through the queue
         //TODO: How much of this can move into the other thread?

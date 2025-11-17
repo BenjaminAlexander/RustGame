@@ -3,7 +3,6 @@ use std::sync::mpsc::TryRecvError;
 use crate::gamemanager::StepMessage;
 use crate::gametime::TimeMessage;
 use crate::interface::{
-    Factory,
     Game,
     GameFactoryTrait,
     GameTrait,
@@ -14,7 +13,7 @@ use crate::interface::{
 use commons::real_time::{
     FactoryTrait,
     Receiver,
-    Sender,
+    Sender, TimeSource,
 };
 use commons::time::TimeDuration;
 use log::{
@@ -31,13 +30,13 @@ pub enum RenderReceiverMessage<Game: GameTrait> {
 
 //TODO: make the difference between the render receiver and the Data more clear
 pub struct RenderReceiver<GameFactory: GameFactoryTrait> {
-    factory: Factory<GameFactory>,
+    time_source: TimeSource,
     receiver: Receiver<RenderReceiverMessage<Game<GameFactory>>>,
     data: Data<GameFactory>,
 }
 
 struct Data<GameFactory: GameFactoryTrait> {
-    factory: Factory<GameFactory>,
+    time_source: TimeSource,
     //TODO: use vec deque so that this is more efficient
     step_queue: Vec<StepMessage<Game<GameFactory>>>,
     latest_time_message: Option<TimeMessage>,
@@ -46,19 +45,19 @@ struct Data<GameFactory: GameFactoryTrait> {
 
 impl<GameFactory: GameFactoryTrait> RenderReceiver<GameFactory> {
     pub fn new(
-        factory: Factory<GameFactory>,
+        factory: &impl FactoryTrait,
     ) -> (Sender<RenderReceiverMessage<Game<GameFactory>>>, Self) {
         let (sender, receiver) = factory.new_channel();
 
         let data = Data::<GameFactory> {
-            factory: factory.clone(),
+            time_source: factory.get_time_source().clone(),
             step_queue: Vec::new(),
             latest_time_message: None,
             initial_information: None,
         };
 
         let render_receiver = Self {
-            factory,
+            time_source: factory.get_time_source().clone(),
             receiver,
             data,
         };
@@ -106,7 +105,7 @@ impl<GameFactory: GameFactoryTrait> RenderReceiver<GameFactory> {
         } else if self.data.step_queue.is_empty() {
             return None;
         } else if self.data.latest_time_message.is_some() {
-            let now = self.factory.get_time_source().now();
+            let now = self.time_source.now();
             let latest_time_message = self.data.latest_time_message.as_ref().unwrap();
             let mut duration_since_start = latest_time_message.get_duration_since_start(now);
             //used to be floor
@@ -210,7 +209,7 @@ impl<GameFactory: GameFactoryTrait> Data<GameFactory> {
         }
 
         if let Some(time_message) = self.latest_time_message {
-            let now = self.factory.get_time_source().now();
+            let now = self.time_source.now();
 
             //TODO: put this in a method
             let latest_step = time_message.get_step_from_actual_time(now).floor() as usize;
@@ -221,7 +220,7 @@ impl<GameFactory: GameFactoryTrait> Data<GameFactory> {
 
     fn on_time_message(&mut self, time_message: TimeMessage) {
         //TODO: put this in a method
-        let now = self.factory.get_time_source().now();
+        let now = self.time_source.now();
         let latest_step = time_message.get_step_from_actual_time(now).floor() as usize;
 
         self.latest_time_message = Some(time_message);

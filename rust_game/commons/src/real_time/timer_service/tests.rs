@@ -25,7 +25,7 @@ fn timer_service_test() {
 
     let factory = SingleThreadedFactory::new();
 
-    let timer_service = IdleTimerService::new(factory.clone()).start().unwrap();
+    let timer_service = IdleTimerService::new().start(&factory).unwrap();
 
     let timer_id_cell = Arc::new(Mutex::new(None::<TimerId>));
     let tick_count_cell = Counter::new(0);

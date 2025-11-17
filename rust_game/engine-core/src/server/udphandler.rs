@@ -98,13 +98,13 @@ impl<GameFactory: GameFactoryTrait> UdpHandler<GameFactory> {
             None => {
                 //TODO: make max_messages more configurable
                 self.fragment_assemblers
-                    .insert(source, FragmentAssembler::new(5));
+                    .insert(source, FragmentAssembler::new(&self.factory, 5));
                 self.fragment_assemblers.get_mut(&source).unwrap()
             }
             Some(assembler) => assembler,
         };
 
-        return assembler.add_fragment(&self.factory, MessageFragment::from_vec(fragment.to_vec()));
+        return assembler.add_fragment(MessageFragment::from_vec(fragment.to_vec()));
     }
 
     fn handle_message(
