@@ -1,13 +1,4 @@
-use crate::real_time::net::tcp::{
-    TcpConnectionHandlerTrait,
-    TcpReadHandlerTrait,
-};
 use crate::real_time::net::udp::UdpReadHandlerTrait;
-use crate::real_time::real::net::tcp::{
-    RealTcpStream,
-    TcpListenerEventHandler,
-    TcpReaderEventHandler,
-};
 use crate::real_time::real::net::udp::{
     RealUdpSocket,
     UdpReaderEventHandler,
@@ -21,10 +12,6 @@ use crate::real_time::{
 };
 use crate::time::TimeDuration;
 use std::io::Error;
-use std::net::{
-    SocketAddr,
-    TcpListener,
-};
 use std::sync::mpsc::{
     self,
     TryRecvError,
@@ -74,33 +61,6 @@ impl<T: Send> RealReceiver<T> {
 
 impl RealReceiver<EventOrStopThread<()>> {
     //TODO: can these spawn methods be on a trait and called with dynamic dispatch?
-
-    pub fn spawn_tcp_listener<T: TcpConnectionHandlerTrait>(
-        self,
-        thread_name: String,
-        socket_addr: SocketAddr,
-        mut tcp_connection_handler: T,
-        join_call_back: impl FnOnce(()) + Send + 'static,
-    ) -> std::io::Result<()> {
-        let tcp_listener = TcpListener::bind(socket_addr)?;
-
-        tcp_connection_handler.on_bind(tcp_listener.local_addr()?);
-
-        let event_handler = TcpListenerEventHandler::new(tcp_listener, tcp_connection_handler)?;
-
-        return real::spawn_event_handler(thread_name, self, event_handler, join_call_back);
-    }
-
-    pub fn spawn_real_tcp_reader<T: TcpReadHandlerTrait>(
-        self,
-        thread_name: String,
-        real_tcp_stream: RealTcpStream,
-        tcp_read_handler: T,
-        join_call_back: impl FnOnce(()) + Send + 'static,
-    ) -> Result<(), Error> {
-        let event_handler = TcpReaderEventHandler::new(real_tcp_stream, tcp_read_handler);
-        return real::spawn_event_handler(thread_name, self, event_handler, join_call_back);
-    }
 
     pub fn spawn_real_udp_reader<T: UdpReadHandlerTrait>(
         self,

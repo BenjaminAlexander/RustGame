@@ -4,12 +4,7 @@ use std::{
 };
 
 use crate::real_time::{
-    net::tcp::tcp_connection_handler_trait::TcpConnectionHandlerTrait,
-    EventHandlerStopper,
-    EventOrStopThread,
-    EventSender,
-    FactoryTrait,
-    Receiver,
+    EventHandlerStopper, EventOrStopThread, EventSender, FactoryTrait, Receiver, net::tcp::tcp_connection_handler_trait::TcpConnectionHandlerTrait, real::net::tcp::TcpListenerEventHandler, receiver::ReceiverImplementation, simulation::net::NetworkSimulator
 };
 
 pub struct TcpListenerBuilder {
@@ -38,12 +33,23 @@ impl TcpListenerBuilder {
         tcp_connection_handler: T,
         join_call_back: impl FnOnce(()) + Send + 'static,
     ) -> Result<EventHandlerStopper, Error> {
-        self.receiver.spawn_tcp_listener(
-            thread_name,
-            socket_addr,
-            tcp_connection_handler,
-            join_call_back,
-        )?;
+        match self.receiver.take_implementation() {
+            ReceiverImplementation::Real(real_receiver) => TcpListenerEventHandler::spawn_tcp_listener(
+                thread_name,
+                real_receiver,
+                socket_addr,
+                tcp_connection_handler,
+                join_call_back,
+            ),
+            //TODO: reorder args to match above
+            ReceiverImplementation::Simulated(single_threaded_receiver) => NetworkSimulator::spawn_tcp_listener(
+                socket_addr,
+                thread_name,
+                single_threaded_receiver,
+                tcp_connection_handler,
+                join_call_back,
+            ),
+        }?;
         return Ok(self.stopper);
     }
 

@@ -5,10 +5,9 @@ use crate::real_time::net::tcp::{
 };
 use crate::real_time::net::NET_POLLING_PERIOD;
 use crate::real_time::real::net::tcp::RealTcpStream;
+use crate::real_time::real::RealReceiver;
 use crate::real_time::{
-    EventHandleResult,
-    HandleEvent,
-    ReceiveMetaData,
+    EventHandleResult, EventOrStopThread, HandleEvent, ReceiveMetaData, real
 };
 use log::error;
 use std::io::{
@@ -30,13 +29,25 @@ pub struct TcpListenerEventHandler<T: TcpConnectionHandlerTrait> {
 }
 
 impl<T: TcpConnectionHandlerTrait> TcpListenerEventHandler<T> {
-    pub fn new(tcp_listener: TcpListener, tcp_connection_handler: T) -> io::Result<Self> {
+
+    pub fn spawn_tcp_listener(
+        thread_name: String,
+        real_receiver: RealReceiver<EventOrStopThread<()>>,
+        socket_addr: SocketAddr,
+        mut tcp_connection_handler: T,
+        join_call_back: impl FnOnce(()) + Send + 'static,
+    ) -> std::io::Result<()> {
+        let tcp_listener = TcpListener::bind(socket_addr)?;
         tcp_listener.set_nonblocking(true)?;
 
-        return Ok(Self {
+        tcp_connection_handler.on_bind(tcp_listener.local_addr()?);
+
+        let event_handler = Self {
             tcp_listener,
             tcp_connection_handler,
-        });
+        };
+
+        return real::spawn_event_handler(thread_name, real_receiver, event_handler, join_call_back);
     }
 
     fn accept(&mut self) -> EventHandleResult<Self> {
@@ -152,8 +163,10 @@ mod tests {
 
         let real_tcp_stream = RealTcpStream::new(tcp_stream, listener_addr);
 
-        let mut event_handler =
-            TcpListenerEventHandler::new(tcp_listener, tcp_connection_handler).unwrap();
+        let mut event_handler = TcpListenerEventHandler{
+            tcp_listener,
+            tcp_connection_handler
+        };
 
         let event_handler_result = event_handler.handle_tcp_stream_clone_result(
             real_tcp_stream,
@@ -176,8 +189,10 @@ mod tests {
 
         let tcp_listener = TcpListener::bind(LOCAL_EPHEMERAL_SOCKET_ADDR_V4).unwrap();
 
-        let mut event_handler =
-            TcpListenerEventHandler::new(tcp_listener, tcp_connection_handler).unwrap();
+        let mut event_handler = TcpListenerEventHandler{
+            tcp_listener,
+            tcp_connection_handler
+        };
 
         let event_handler_result =
             event_handler.handle_accept_result(Result::Err(Error::from(ErrorKind::NotConnected)));

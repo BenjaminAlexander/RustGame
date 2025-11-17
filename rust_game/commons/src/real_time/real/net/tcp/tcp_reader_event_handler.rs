@@ -1,29 +1,34 @@
 use crate::real_time::{
-    net::tcp::TcpReadHandlerTrait,
-    real::net::tcp::{
-        resetable_reader::{
+    EventHandleResult, EventOrStopThread, HandleEvent, ReceiveMetaData, net::tcp::TcpReadHandlerTrait, real::{self, RealReceiver, net::tcp::{
+        RealTcpStream, resetable_reader::{
             DeserializeResult,
             ResetableReader,
-        },
-        RealTcpStream,
-    },
-    EventHandleResult,
-    HandleEvent,
-    ReceiveMetaData,
+        }
+    }}
 };
-use std::ops::ControlFlow;
+use std::{io::Error, ops::ControlFlow};
 
+//TODO: rename as real
 pub struct TcpReaderEventHandler<T: TcpReadHandlerTrait> {
     tcp_resetable_reader: ResetableReader<std::net::TcpStream>,
     tcp_read_handler: T,
 }
 
 impl<T: TcpReadHandlerTrait> TcpReaderEventHandler<T> {
-    pub fn new(tcp_reader: RealTcpStream, tcp_read_handler: T) -> Self {
-        return Self {
-            tcp_resetable_reader: ResetableReader::new(tcp_reader.take_std_net_tcp_reader()),
+
+    pub fn spawn_tcp_reader(
+        thread_name: String,
+        receiver: RealReceiver<EventOrStopThread<()>>,
+        real_tcp_stream: RealTcpStream,
+        tcp_read_handler: T,
+        join_call_back: impl FnOnce(()) + Send + 'static,
+    ) -> Result<(), Error> {
+        let event_handler = Self {
+            tcp_resetable_reader: ResetableReader::new(real_tcp_stream.take_std_net_tcp_reader()),
             tcp_read_handler,
         };
+
+        return real::spawn_event_handler(thread_name, receiver, event_handler, join_call_back);
     }
 
     fn read(&mut self) -> EventHandleResult<Self> {

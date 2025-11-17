@@ -29,6 +29,8 @@ pub struct TcpListenerEventHandler<TcpConnectionHandler: TcpConnectionHandlerTra
 impl<TcpConnectionHandler: TcpConnectionHandlerTrait>
     TcpListenerEventHandler<TcpConnectionHandler>
 {
+
+    //TODO: should this new call be the entry point for spawning a simulated tcp listener?
     pub fn new(socket_addr: SocketAddr, connection_handler: TcpConnectionHandler) -> Self {
         return Self {
             socket_addr,

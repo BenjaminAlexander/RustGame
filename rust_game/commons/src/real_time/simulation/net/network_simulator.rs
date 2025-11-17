@@ -81,15 +81,15 @@ impl NetworkSimulator {
     }
 
     pub fn spawn_tcp_listener<TcpConnectionHandler: TcpConnectionHandlerTrait>(
-        &self,
-        factory: SingleThreadedFactory,
         socket_addr: SocketAddr,
         thread_name: String,
         receiver: SingleThreadedReceiver<EventOrStopThread<()>>,
         connection_handler: TcpConnectionHandler,
         join_call_back: impl FnOnce(()) + Send + 'static,
     ) -> Result<(), Error> {
-        let mut guard = self.internal.lock().unwrap();
+
+        let network_simulator = receiver.get_factory().get_host_simulator().get_network_simulator().clone();
+        let mut guard = network_simulator.internal.lock().unwrap();
 
         if guard.tcp_listeners.contains_key(&socket_addr) {
             return Err(Error::from(ErrorKind::AddrInUse));
@@ -99,7 +99,7 @@ impl NetworkSimulator {
             TcpListenerEventHandler::new(socket_addr, connection_handler);
 
         //TODO: can this call a method that more directly/obviously doesn't spawn a thread
-        let sender = EventHandlerBuilder::new(&factory)
+        let sender = EventHandlerBuilder::new(receiver.get_factory())
             .spawn_thread_with_callback(thread_name, tcp_listener_event_handler, join_call_back)
             .unwrap();
 

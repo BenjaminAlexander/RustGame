@@ -1,9 +1,4 @@
-use crate::real_time::net::tcp::TcpReadHandlerTrait;
 use crate::real_time::net::NET_POLLING_PERIOD;
-use crate::real_time::{
-    EventOrStopThread,
-    Receiver,
-};
 use rmp_serde::encode::Error as EncodeError;
 use serde::de::DeserializeOwned;
 use serde::Serialize;
@@ -57,15 +52,5 @@ impl RealTcpStream {
 
     pub fn flush(&mut self) -> Result<(), Error> {
         return self.tcp_stream.flush();
-    }
-
-    pub fn spawn_real_tcp_reader<T: TcpReadHandlerTrait>(
-        self,
-        thread_name: String,
-        receiver: Receiver<EventOrStopThread<()>>,
-        tcp_read_handler: T,
-        join_call_back: impl FnOnce(()) + Send + 'static,
-    ) -> Result<(), Error> {
-        return receiver.spawn_real_tcp_reader(thread_name, self, tcp_read_handler, join_call_back);
     }
 }
