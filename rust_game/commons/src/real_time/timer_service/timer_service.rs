@@ -9,7 +9,7 @@ use crate::real_time::{
     EventHandleResult,
     EventHandlerBuilder,
     EventSender,
-    FactoryTrait,
+    Factory,
     HandleEvent,
     ReceiveMetaData,
     TimeSource,
@@ -48,7 +48,7 @@ impl<T: TimerCreationCallBack, U: TimerCallBack> IdleTimerService<T, U> {
     }
 
     /// Starts the [`TimerService`] thread and begins triggering timers
-    pub fn start(self, factory: &impl FactoryTrait) -> Result<TimerService<T, U>, Error> {
+    pub fn start(self, factory: &Factory) -> Result<TimerService<T, U>, Error> {
         let sender = EventHandlerBuilder::new_thread(
             factory,
             "TimerServiceThread".to_string(),

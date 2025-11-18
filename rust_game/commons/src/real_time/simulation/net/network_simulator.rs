@@ -101,7 +101,7 @@ impl NetworkSimulator {
         let tcp_listener_event_handler =
             TcpListenerEventHandler::new(socket_addr, connection_handler);
 
-        let sender = EventHandlerBuilder::new(receiver.get_factory())
+        let sender = EventHandlerBuilder::new(&receiver.get_factory().clone().into())
             .spawn_thread_with_callback(thread_name, tcp_listener_event_handler, join_call_back)
             .unwrap();
 
@@ -195,7 +195,7 @@ impl NetworkSimulator {
             udp_read_handler,
         );
 
-        let sender = EventHandlerBuilder::new(receiver.get_factory())
+        let sender = EventHandlerBuilder::new(&receiver.get_factory().clone().into())
             .spawn_thread_with_callback(thread_name, udp_read_event_handler, join_call_back)
             .unwrap();
 

@@ -1,3 +1,4 @@
+use crate::real_time::factory::FactoryImplementation;
 use crate::real_time::net::tcp::{
     TcpReader,
     TcpStream,
@@ -13,7 +14,7 @@ use crate::real_time::simulation::single_threaded_receiver::SingleThreadedReceiv
 use crate::real_time::simulation::time_queue::TimeQueue;
 use crate::real_time::simulation::SimulatedTimeSource;
 use crate::real_time::{
-    FactoryTrait,
+    Factory,
     Receiver,
     Sender,
     TimeSource,
@@ -68,27 +69,33 @@ impl SingleThreadedFactory {
             .new_host(ip_adder);
         return clone;
     }
-}
 
-impl FactoryTrait for SingleThreadedFactory {
-    fn get_time_source(&self) -> &TimeSource {
+    pub fn get_time_source(&self) -> &TimeSource {
         return &self.time_source;
     }
 
-    fn new_channel<T: Send>(&self) -> (Sender<T>, Receiver<T>) {
+    pub fn new_channel<T: Send>(&self) -> (Sender<T>, Receiver<T>) {
         let (simulated_sender, simulated_receiver) = SingleThreadedReceiver::new(self.clone());
         let sender = Sender::new(SenderImplementation::Simulated(simulated_sender));
         let receiver = Receiver::new(ReceiverImplementation::Simulated(simulated_receiver));
         return (sender, receiver);
     }
 
-    fn connect_tcp(&self, socket_addr: SocketAddr) -> Result<(TcpStream, TcpReader), Error> {
+    pub fn connect_tcp(&self, socket_addr: SocketAddr) -> Result<(TcpStream, TcpReader), Error> {
         return self.host_simulator.connect_tcp(&self, socket_addr);
     }
 
-    fn bind_udp_socket(&self, socket_addr: SocketAddr) -> Result<UdpSocket, Error> {
+    pub fn bind_udp_socket(&self, socket_addr: SocketAddr) -> Result<UdpSocket, Error> {
         return Ok(UdpSocket::new_simulated(
             self.host_simulator.bind_udp_socket(socket_addr)?,
         ));
+    }
+}
+
+impl Into<Factory> for SingleThreadedFactory {
+    fn into(self) -> Factory {
+        Factory {
+            implementation: FactoryImplementation::Simulated(self),
+        }
     }
 }

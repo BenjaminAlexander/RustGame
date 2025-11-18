@@ -7,7 +7,7 @@ use crate::GameTrait;
 use commons::real_time::{
     EventHandlerBuilder,
     EventSender,
-    FactoryTrait,
+    Factory,
 };
 use std::net::Ipv4Addr;
 use std::str::FromStr;
@@ -17,9 +17,8 @@ pub struct Client<Game: GameTrait> {
 }
 
 impl<Game: GameTrait> Client<Game> {
-    pub fn new<Factory: FactoryTrait>(factory: Factory) -> (Self, RenderReceiver<Game>) {
-        let client_core_thread_builder =
-            EventHandlerBuilder::<ClientCore<Factory, Game>>::new(&factory);
+    pub fn new(factory: Factory) -> (Self, RenderReceiver<Game>) {
+        let client_core_thread_builder = EventHandlerBuilder::<ClientCore<Game>>::new(&factory);
 
         let (render_receiver_sender, render_receiver) = RenderReceiver::<Game>::new(&factory);
 
@@ -28,7 +27,7 @@ impl<Game: GameTrait> Client<Game> {
         client_core_thread_builder
             .spawn_thread(
                 "ClientCore".to_string(),
-                ClientCore::<Factory, Game>::new(
+                ClientCore::<Game>::new(
                     factory,
                     Ipv4Addr::from_str("127.0.0.1").unwrap(),
                     core_sender.clone(),

@@ -9,8 +9,10 @@ use commons::real_time::net::{
     LOCAL_EPHEMERAL_SOCKET_ADDR_V4,
     NET_POLLING_PERIOD,
 };
-use commons::real_time::RealFactory;
-use commons::real_time::SingleThreadExecutor;
+use commons::real_time::{
+    Factory,
+    SingleThreadExecutor,
+};
 use log::info;
 use serde::{
     Deserialize,
@@ -41,7 +43,7 @@ fn test_non_blocking_tcp_reader() {
 
     let async_expects = AsyncExpects::new();
 
-    let real_factory = RealFactory::new();
+    let real_factory = Factory::new();
 
     let executor = SingleThreadExecutor::new();
 
@@ -87,7 +89,7 @@ fn test_non_blocking_tcp_reader() {
             return ControlFlow::Break(());
         });
 
-        let real_factory = RealFactory::new();
+        let real_factory = Factory::new();
 
         let reader_sender = TcpReadHandlerBuilder::new(&real_factory)
             .spawn_thread_with_call_back(

@@ -11,7 +11,7 @@ use crate::real_time::{
     EventHandlerStopper,
     EventOrStopThread,
     EventSender,
-    FactoryTrait,
+    Factory,
     Receiver,
 };
 
@@ -21,7 +21,7 @@ pub struct TcpListenerBuilder {
 }
 
 impl TcpListenerBuilder {
-    pub fn new(factory: &impl FactoryTrait) -> Self {
+    pub fn new(factory: &Factory) -> Self {
         let (sender, receiver) = factory.new_channel();
 
         return Self {
@@ -79,7 +79,7 @@ impl TcpListenerBuilder {
     }
 
     pub fn new_thread<T: TcpConnectionHandlerTrait>(
-        factory: &impl FactoryTrait,
+        factory: &Factory,
         thread_name: String,
         socket_addr: SocketAddr,
         tcp_connection_handler: T,

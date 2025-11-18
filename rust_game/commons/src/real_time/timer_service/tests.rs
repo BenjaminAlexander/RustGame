@@ -11,7 +11,6 @@ use crate::real_time::timer_service::{
     Schedule,
     TimerId,
 };
-use crate::real_time::FactoryTrait;
 use crate::test_utils::Counter;
 use crate::time::TimeDuration;
 
@@ -23,7 +22,8 @@ fn timer_service_test() {
     let five_seconds = TimeDuration::from_secs_f64(5.0);
     let seven_seconds = two_seconds.add(&five_seconds);
 
-    let factory = SingleThreadedFactory::new();
+    let single_threaded_factory = SingleThreadedFactory::new();
+    let factory = single_threaded_factory.clone().into();
 
     let timer_service = IdleTimerService::new().start(&factory).unwrap();
 
@@ -52,18 +52,20 @@ fn timer_service_test() {
 
     assert_eq!(None, *timer_id_cell.lock().unwrap());
 
-    factory.get_time_queue().run_events();
+    single_threaded_factory.get_time_queue().run_events();
 
     assert_ne!(None, *timer_id_cell.lock().unwrap());
     assert_eq!(0, tick_count_cell.get());
 
-    factory.get_time_queue().advance_time_until(time_value);
+    single_threaded_factory
+        .get_time_queue()
+        .advance_time_until(time_value);
     assert_eq!(1, tick_count_cell.get());
 
-    factory
+    single_threaded_factory
         .get_time_queue()
         .advance_time_for_duration(five_seconds);
-    factory
+    single_threaded_factory
         .get_time_queue()
         .advance_time_for_duration(five_seconds);
     assert_eq!(1, tick_count_cell.get());
@@ -76,23 +78,23 @@ fn timer_service_test() {
         .reschedule_timer(timer_id_cell.lock().unwrap().unwrap(), new_schedule)
         .unwrap();
 
-    factory.get_time_queue().run_events();
+    single_threaded_factory.get_time_queue().run_events();
     assert_eq!(1, tick_count_cell.get());
 
-    factory
+    single_threaded_factory
         .get_time_queue()
         .advance_time_for_duration(five_seconds);
     assert_eq!(1, tick_count_cell.get());
 
-    factory
+    single_threaded_factory
         .get_time_queue()
         .advance_time_for_duration(two_seconds);
     assert_eq!(2, tick_count_cell.get());
 
-    factory
+    single_threaded_factory
         .get_time_queue()
         .advance_time_for_duration(five_seconds);
     assert_eq!(3, tick_count_cell.get());
 
-    factory.get_time_queue().run_events();
+    single_threaded_factory.get_time_queue().run_events();
 }

@@ -6,7 +6,7 @@ use crate::simpleserverinput::SimpleServerInput;
 use crate::simplestate::*;
 use crate::simplewindow::SimpleWindow;
 use commons::logging::LoggingConfigBuilder;
-use commons::real_time::RealFactory;
+use commons::real_time::Factory;
 use commons::time::TimeDuration;
 use engine_core::{
     Client,
@@ -76,7 +76,7 @@ pub fn main() {
 
     info!("args: {:?}", args);
 
-    let factory = RealFactory::new();
+    let factory = Factory::new();
 
     if let Some(true) = run_client {
         let (client, render_receiver) = Client::<SimpleGameImpl>::new(factory.clone());

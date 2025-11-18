@@ -31,9 +31,10 @@ impl<T: TcpReadHandlerTrait> SimulatedTcpReaderEventHandler<T> {
     ) -> Result<(), Error> {
         let tcp_reader_event_handler = Self { read_handler };
 
-        let sender = EventHandlerBuilder::new(single_threaded_receiver.get_factory())
-            .spawn_thread_with_callback(thread_name, tcp_reader_event_handler, join_call_back)
-            .unwrap();
+        let sender =
+            EventHandlerBuilder::new(&single_threaded_receiver.get_factory().clone().into())
+                .spawn_thread_with_callback(thread_name, tcp_reader_event_handler, join_call_back)
+                .unwrap();
 
         let sender_clone = sender.clone();
         simulated_tcp_reader.to_consumer(move |receive_or_disconnect| {

@@ -8,7 +8,7 @@ use crate::interface::{
     InterpolationArg,
 };
 use commons::real_time::{
-    FactoryTrait,
+    Factory,
     Receiver,
     Sender,
     TimeSource,
@@ -42,7 +42,7 @@ struct Data<Game: GameTrait> {
 }
 
 impl<Game: GameTrait> RenderReceiver<Game> {
-    pub fn new(factory: &impl FactoryTrait) -> (Sender<RenderReceiverMessage<Game>>, Self) {
+    pub fn new(factory: &Factory) -> (Sender<RenderReceiverMessage<Game>>, Self) {
         let (sender, receiver) = factory.new_channel();
 
         let data = Data::<Game> {

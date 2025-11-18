@@ -3,8 +3,8 @@ use commons::{
     real_time::{
         EventHandleResult,
         EventHandlerBuilder,
+        Factory,
         HandleEvent,
-        RealFactory,
         ReceiveMetaData,
     },
     time::TimeDuration,
@@ -69,7 +69,7 @@ fn test_async_join() {
         expect_five.set_actual(result);
     };
 
-    let real_factory = RealFactory::new();
+    let real_factory = Factory::new();
 
     let sender = EventHandlerBuilder::new(&real_factory)
         .spawn_thread_with_callback("EventHandler".to_string(), event_handler, join_call_back)
@@ -94,7 +94,7 @@ fn test_no_timeout() {
         expect_five.set_actual(result);
     };
 
-    let real_factory = RealFactory::new();
+    let real_factory = Factory::new();
 
     let sender = EventHandlerBuilder::new(&real_factory)
         .spawn_thread_with_callback("EventHandler".to_string(), event_handler, join_call_back)
@@ -120,7 +120,7 @@ fn test_timeout() {
         expect_five.set_actual(result);
     };
 
-    let real_factory = RealFactory::new();
+    let real_factory = Factory::new();
 
     let sender = EventHandlerBuilder::new(&real_factory)
         .spawn_thread_with_callback("EventHandler".to_string(), event_handler, join_call_back)
@@ -146,7 +146,7 @@ fn test_drop_sender_while_waiting_for_timeout() {
     };
 
     {
-        let real_factory = RealFactory::new();
+        let real_factory = Factory::new();
 
         let sender = EventHandlerBuilder::new(&real_factory)
             .spawn_thread_with_callback("EventHandler".to_string(), event_handler, join_call_back)

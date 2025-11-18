@@ -12,7 +12,7 @@ use crate::{
 use commons::real_time::{
     EventHandlerBuilder,
     EventSender,
-    FactoryTrait,
+    Factory,
     Sender,
 };
 use log::{
@@ -27,7 +27,7 @@ pub struct Server<Game: GameTrait> {
 }
 
 impl<Game: GameTrait> Server<Game> {
-    pub fn new<Factory: FactoryTrait>(factory: Factory) -> Result<Self, ()> {
+    pub fn new(factory: Factory) -> Result<Self, ()> {
         let (render_receiver_sender, render_receiver) = RenderReceiver::new(&factory);
 
         let server_core_thread_builder = EventHandlerBuilder::new(&factory);

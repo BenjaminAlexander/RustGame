@@ -5,10 +5,7 @@ use crate::real_time::simulation::receiver_link::{
 use crate::real_time::simulation::sender_link::SenderLink;
 use crate::real_time::simulation::single_threaded_sender::SingleThreadedSender;
 use crate::real_time::simulation::SingleThreadedFactory;
-use crate::real_time::{
-    FactoryTrait,
-    ReceiveMetaData,
-};
+use crate::real_time::ReceiveMetaData;
 use std::sync::mpsc::TryRecvError;
 
 pub struct SingleThreadedReceiver<T: Send> {

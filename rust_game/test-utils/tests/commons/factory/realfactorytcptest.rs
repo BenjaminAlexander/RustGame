@@ -9,9 +9,8 @@ use commons::real_time::net::{
     LOCAL_EPHEMERAL_SOCKET_ADDR_V4,
     NET_POLLING_PERIOD,
 };
-use commons::real_time::FactoryTrait;
 use commons::real_time::{
-    RealFactory,
+    Factory,
     SingleThreadExecutor,
 };
 use log::info;
@@ -32,14 +31,14 @@ fn test_real_factory_tcp() {
     let expected_number =
         async_expects.new_async_expect("An expected number sent over TCP", A_NUMBER);
 
-    let real_factory = RealFactory::new();
+    let real_factory = Factory::new();
 
     let mut tcp_connection_handler = TcpConnectionHandler::new();
 
     tcp_connection_handler.set_on_bind(move |socket_addr| {
         info!("TcpListener bound to {:?}", socket_addr);
 
-        let (mut tcp_stream, _) = RealFactory::new().connect_tcp(socket_addr).unwrap();
+        let (mut tcp_stream, _) = Factory::new().connect_tcp(socket_addr).unwrap();
 
         tcp_stream.write(&A_NUMBER).unwrap();
         tcp_stream.flush().unwrap();
@@ -73,7 +72,7 @@ fn test_real_factory_tcp() {
             return ControlFlow::Continue(());
         });
 
-        let real_factory = RealFactory::new();
+        let real_factory = Factory::new();
 
         let sender = TcpReadHandlerBuilder::new(&real_factory)
             .spawn_thread_with_call_back(
@@ -106,7 +105,7 @@ fn test_tcp_listener_channel_disconnect() {
     setup_test_logging();
 
     let async_expects = AsyncExpects::new();
-    let real_factory = RealFactory::new();
+    let real_factory = Factory::new();
 
     //Drop the sender to cause a channel disconnect
     TcpListenerBuilder::new(&real_factory)
@@ -138,7 +137,7 @@ fn test_tcp_listener_polling_timeout() {
             //Sleep to cause the listener to poll
             std::thread::sleep(NET_POLLING_PERIOD.mul_f64(2.0).to_duration().unwrap());
 
-            RealFactory::new().connect_tcp(socket_addr).unwrap();
+            Factory::new().connect_tcp(socket_addr).unwrap();
         });
     });
 
@@ -147,7 +146,7 @@ fn test_tcp_listener_polling_timeout() {
         return ControlFlow::Break(());
     });
 
-    let real_factory = RealFactory::new();
+    let real_factory = Factory::new();
 
     let _sender = TcpListenerBuilder::new(&real_factory)
         .spawn_thread_with_call_back(
@@ -171,7 +170,7 @@ fn test_tcp_listener_send_event() {
 
     let executor = SingleThreadExecutor::new();
 
-    let real_factory = RealFactory::new();
+    let real_factory = Factory::new();
 
     let thread_builder = TcpListenerBuilder::new(&real_factory);
 
@@ -179,7 +178,7 @@ fn test_tcp_listener_send_event() {
 
     tcp_connection_handler.set_on_bind(move |socket_addr| {
         executor.execute_function_or_panic(move || {
-            RealFactory::new().connect_tcp(socket_addr).unwrap();
+            Factory::new().connect_tcp(socket_addr).unwrap();
         });
     });
 
@@ -208,7 +207,7 @@ fn test_stop_tcp_reader() {
 
     let async_expects = AsyncExpects::new();
 
-    let real_factory = RealFactory::new();
+    let real_factory = Factory::new();
 
     let mut tcp_connection_handler = TcpConnectionHandler::new();
 
@@ -217,13 +216,13 @@ fn test_stop_tcp_reader() {
     tcp_connection_handler.set_on_bind(move |socket_addr| {
         info!("TcpListener bound to {:?}", socket_addr);
 
-        let (_, tcp_reader) = RealFactory::new().connect_tcp(socket_addr).unwrap();
+        let (_, tcp_reader) = Factory::new().connect_tcp(socket_addr).unwrap();
 
         let tcp_read_handler = TcpReadHandler::new(move |_: i32| {
             return ControlFlow::Continue(());
         });
 
-        let real_factory = RealFactory::new();
+        let real_factory = Factory::new();
 
         let sender = TcpReadHandlerBuilder::new(&real_factory)
             .spawn_thread_with_call_back(
@@ -263,7 +262,7 @@ fn test_stop_tcp_reader() {
             listener_sender.send_stop_thread().unwrap();
         };
 
-        let real_factory = RealFactory::new();
+        let real_factory = Factory::new();
 
         let reader_sender = TcpReadHandlerBuilder::new(&real_factory)
             .spawn_thread_with_call_back(
@@ -300,7 +299,7 @@ fn test_tcp_reader_channel_disconnect() {
 
     let async_expects = AsyncExpects::new();
 
-    let real_factory = RealFactory::new();
+    let real_factory = Factory::new();
 
     let mut tcp_connection_handler = TcpConnectionHandler::new();
 
@@ -308,13 +307,13 @@ fn test_tcp_reader_channel_disconnect() {
     tcp_connection_handler.set_on_bind(move |socket_addr| {
         info!("TcpListener bound to {:?}", socket_addr);
 
-        let (_, tcp_reader) = RealFactory::new().connect_tcp(socket_addr).unwrap();
+        let (_, tcp_reader) = Factory::new().connect_tcp(socket_addr).unwrap();
 
         let tcp_read_handler = TcpReadHandler::new(move |_: i32| {
             return ControlFlow::Continue(());
         });
 
-        let real_factory = RealFactory::new();
+        let real_factory = Factory::new();
 
         // Drop the sender so the reader gets a channel disconnect
         TcpReadHandlerBuilder::new(&real_factory)
@@ -342,7 +341,7 @@ fn test_tcp_reader_channel_disconnect() {
             return ControlFlow::Continue(());
         });
 
-        let real_factory = RealFactory::new();
+        let real_factory = Factory::new();
 
         // Drop the sender so the reader gets a channel disconnect
         TcpReadHandlerBuilder::new(&real_factory)

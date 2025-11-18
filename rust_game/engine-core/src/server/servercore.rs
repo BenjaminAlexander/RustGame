@@ -55,7 +55,7 @@ use commons::real_time::{
     EventHandlerBuilder,
     EventHandlerStopper,
     EventSender,
-    FactoryTrait,
+    Factory,
     HandleEvent,
     ReceiveMetaData,
     Sender,
@@ -84,7 +84,7 @@ pub enum ServerCoreEvent<Game: GameTrait> {
     UdpPacket(SocketAddr, usize, [u8; MAX_UDP_DATAGRAM_SIZE]),
 }
 
-pub struct ServerCore<Factory: FactoryTrait, Game: GameTrait> {
+pub struct ServerCore<Game: GameTrait> {
     factory: Factory,
     sender: EventSender<ServerCoreEvent<Game>>,
     game_is_started: bool,
@@ -102,7 +102,7 @@ pub struct ServerCore<Factory: FactoryTrait, Game: GameTrait> {
     drop_steps_before: usize,
 }
 
-impl<Factory: FactoryTrait, Game: GameTrait> HandleEvent for ServerCore<Factory, Game> {
+impl<Game: GameTrait> HandleEvent for ServerCore<Game> {
     type Event = ServerCoreEvent<Game>;
     type ThreadReturn = ();
 
@@ -127,7 +127,7 @@ impl<Factory: FactoryTrait, Game: GameTrait> HandleEvent for ServerCore<Factory,
     }
 }
 
-impl<Factory: FactoryTrait, Game: GameTrait> ServerCore<Factory, Game> {
+impl<Game: GameTrait> ServerCore<Game> {
     pub fn new(factory: Factory, sender: EventSender<ServerCoreEvent<Game>>) -> Self {
         let game_timer_config = GameTimerConfig::new(Game::STEP_PERIOD);
         let server_config = ServerConfig::new(game_timer_config);

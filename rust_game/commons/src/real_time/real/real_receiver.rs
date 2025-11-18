@@ -63,11 +63,10 @@ mod tests {
         logging::setup_test_logging,
         real_time::{
             real::{
+                RealFactory,
                 RealReceiver,
                 RealSender,
             },
-            FactoryTrait,
-            RealFactory,
             SendMetaData,
         },
         time::TimeDuration,

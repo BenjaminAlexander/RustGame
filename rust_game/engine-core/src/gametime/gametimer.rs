@@ -12,7 +12,7 @@ use commons::real_time::timer_service::{
     TimerService,
 };
 use commons::real_time::{
-    FactoryTrait,
+    Factory,
     TimeSource,
 };
 use commons::stats::RollingAverage;
@@ -44,7 +44,7 @@ pub struct GameTimer<T: TimerCallBack> {
 
 impl<T: TimerCallBack> GameTimer<T> {
     pub fn new(
-        factory: &impl FactoryTrait,
+        factory: &Factory,
         game_timer_config: GameTimerConfig,
         rolling_average_size: usize,
         call_back: T,

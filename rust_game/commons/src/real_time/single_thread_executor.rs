@@ -2,8 +2,8 @@ use crate::real_time::{
     EventHandleResult,
     EventHandlerBuilder,
     EventSender,
+    Factory,
     HandleEvent,
-    RealFactory,
     ReceiveMetaData,
 };
 use std::sync::{
@@ -25,7 +25,7 @@ impl SingleThreadExecutor {
         let join_signal = Arc::new((Mutex::new(true), Condvar::new()));
         let join_signal_clone = join_signal.clone();
 
-        let factory = RealFactory::new();
+        let factory = Factory::new();
 
         let sender = EventHandlerBuilder::new(&factory)
             .spawn_thread_with_callback(

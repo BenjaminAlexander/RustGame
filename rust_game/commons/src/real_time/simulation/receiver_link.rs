@@ -150,13 +150,10 @@ mod tests {
         Mutex,
     };
 
-    use crate::real_time::{
-        simulation::{
-            receiver_link::ReceiveOrDisconnected,
-            SingleThreadedFactory,
-            SingleThreadedReceiver,
-        },
-        FactoryTrait,
+    use crate::real_time::simulation::{
+        receiver_link::ReceiveOrDisconnected,
+        SingleThreadedFactory,
+        SingleThreadedReceiver,
     };
 
     #[test]

@@ -29,7 +29,7 @@ use commons::real_time::{
     EventHandlerBuilder,
     EventHandlerStopper,
     EventSender,
-    FactoryTrait,
+    Factory,
     HandleEvent,
     ReceiveMetaData,
     Sender,
@@ -52,7 +52,7 @@ pub enum ClientCoreEvent<Game: GameTrait> {
     RemoteTimeMessageEvent(TimeReceived<TimeMessage>),
 }
 
-pub struct ClientCore<Factory: FactoryTrait, Game: GameTrait> {
+pub struct ClientCore<Game: GameTrait> {
     factory: Factory,
     sender: EventSender<ClientCoreEvent<Game>>,
     server_ip: Ipv4Addr,
@@ -73,7 +73,7 @@ struct RunningState<Game: GameTrait> {
     last_time_message: Option<TimeMessage>,
 }
 
-impl<Factory: FactoryTrait, Game: GameTrait> ClientCore<Factory, Game> {
+impl<Game: GameTrait> ClientCore<Game> {
     pub fn new(
         factory: Factory,
         server_ip: Ipv4Addr,
@@ -130,7 +130,7 @@ impl<Factory: FactoryTrait, Game: GameTrait> ClientCore<Factory, Game> {
     fn on_initial_information(
         &mut self,
         initial_information: InitialInformation<Game>,
-    ) -> EventHandleResult<ClientCore<Factory, Game>> {
+    ) -> EventHandleResult<Self> {
         if self.running_state.is_some() {
             warn!("Received a hello from the server after the client has already received a hello");
             return EventHandleResult::TryForNextEvent;
@@ -189,10 +189,7 @@ impl<Factory: FactoryTrait, Game: GameTrait> ClientCore<Factory, Game> {
         return EventHandleResult::TryForNextEvent;
     }
 
-    fn on_input_event(
-        &mut self,
-        input_event: Game::ClientInputEvent,
-    ) -> EventHandleResult<ClientCore<Factory, Game>> {
+    fn on_input_event(&mut self, input_event: Game::ClientInputEvent) -> EventHandleResult<Self> {
         if let Some(ref mut running_state) = self.running_state {
             if running_state.last_time_message.is_some() {
                 Game::handle_input_event(&mut running_state.input_event_handler, input_event);
@@ -203,7 +200,7 @@ impl<Factory: FactoryTrait, Game: GameTrait> ClientCore<Factory, Game> {
         return EventHandleResult::TryForNextEvent;
     }
 
-    fn on_game_timer_tick(&mut self) -> EventHandleResult<ClientCore<Factory, Game>> {
+    fn on_game_timer_tick(&mut self) -> EventHandleResult<Self> {
         if let Some(ref mut running_state) = self.running_state {
             let time_message = running_state.game_timer.create_timer_message();
 
@@ -293,7 +290,7 @@ impl<Factory: FactoryTrait, Game: GameTrait> ClientCore<Factory, Game> {
     fn on_remote_timer_message(
         &mut self,
         time_message: TimeReceived<TimeMessage>,
-    ) -> EventHandleResult<ClientCore<Factory, Game>> {
+    ) -> EventHandleResult<Self> {
         if let Some(ref mut running_state) = self.running_state {
             running_state
                 .game_timer
@@ -307,7 +304,7 @@ impl<Factory: FactoryTrait, Game: GameTrait> ClientCore<Factory, Game> {
     }
 }
 
-impl<Factory: FactoryTrait, Game: GameTrait> HandleEvent for ClientCore<Factory, Game> {
+impl<Game: GameTrait> HandleEvent for ClientCore<Game> {
     type Event = ClientCoreEvent<Game>;
     type ThreadReturn = ();
 

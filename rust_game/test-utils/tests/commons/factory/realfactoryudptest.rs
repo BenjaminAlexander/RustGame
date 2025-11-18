@@ -2,8 +2,7 @@ use commons::{
     logging::LoggingConfigBuilder,
     real_time::{
         net::udp::UdpReadHandlerBuilder,
-        FactoryTrait,
-        RealFactory,
+        Factory,
     },
 };
 use log::{
@@ -29,7 +28,7 @@ fn test_real_factory_udp() {
     let expected_number =
         async_expects.new_async_expect("An expected number sent over UDP", A_NUMBER);
 
-    let real_factory = RealFactory::new();
+    let real_factory = Factory::new();
 
     let mut send_udp_socket = real_factory.bind_udp_ephemeral_port().unwrap();
 
@@ -83,7 +82,7 @@ fn test_udp_reader_break() {
     let expected_number =
         async_expects.new_async_expect("An expected number sent over UDP", A_NUMBER);
 
-    let real_factory = RealFactory::new();
+    let real_factory = Factory::new();
 
     let mut send_udp_socket = real_factory.bind_udp_ephemeral_port().unwrap();
 
@@ -121,7 +120,7 @@ fn test_drop_udp_reader_sender() {
 
     let async_expects = AsyncExpects::new();
 
-    let real_factory = RealFactory::new();
+    let real_factory = Factory::new();
 
     let udp_socket_1 = real_factory.bind_udp_ephemeral_port().unwrap();
 

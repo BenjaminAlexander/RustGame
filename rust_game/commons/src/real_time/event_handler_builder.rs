@@ -6,7 +6,7 @@ use crate::real_time::{
     simulation,
     EventOrStopThread,
     EventSender,
-    FactoryTrait,
+    Factory,
     HandleEvent,
     Receiver,
 };
@@ -17,7 +17,7 @@ pub struct EventHandlerBuilder<T: HandleEvent> {
 }
 
 impl<T: HandleEvent> EventHandlerBuilder<T> {
-    pub fn new(factory: &impl FactoryTrait) -> Self {
+    pub fn new(factory: &Factory) -> Self {
         let (sender, receiver) = factory.new_channel();
 
         return Self {
@@ -66,7 +66,7 @@ impl<T: HandleEvent> EventHandlerBuilder<T> {
     }
 
     pub fn new_thread(
-        factory: &impl FactoryTrait,
+        factory: &Factory,
         thread_name: String,
         event_handler: T,
     ) -> Result<EventSender<T::Event>, Error> {

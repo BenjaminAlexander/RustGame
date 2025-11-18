@@ -1,3 +1,4 @@
+use crate::real_time::factory::FactoryImplementation;
 use crate::real_time::net::tcp::{
     TcpReader,
     TcpStream,
@@ -12,7 +13,7 @@ use crate::real_time::real::{
 use crate::real_time::receiver::ReceiverImplementation;
 use crate::real_time::sender::SenderImplementation;
 use crate::real_time::{
-    FactoryTrait,
+    Factory,
     Receiver,
     SendMetaData,
     Sender,
@@ -34,14 +35,12 @@ impl RealFactory {
             time_source: TimeSource::new(),
         };
     }
-}
 
-impl FactoryTrait for RealFactory {
-    fn get_time_source(&self) -> &TimeSource {
+    pub fn get_time_source(&self) -> &TimeSource {
         return &self.time_source;
     }
 
-    fn new_channel<T: Send>(&self) -> (Sender<T>, Receiver<T>) {
+    pub fn new_channel<T: Send>(&self) -> (Sender<T>, Receiver<T>) {
         let (sender, receiver) = mpsc::channel::<(SendMetaData, T)>();
         let real_sender = RealSender::new(self.time_source.clone(), sender);
         let real_receiver = RealReceiver::new(self.time_source.clone(), receiver);
@@ -50,7 +49,7 @@ impl FactoryTrait for RealFactory {
         return (sender, receiver);
     }
 
-    fn connect_tcp(&self, socket_addr: SocketAddr) -> Result<(TcpStream, TcpReader), Error> {
+    pub fn connect_tcp(&self, socket_addr: SocketAddr) -> Result<(TcpStream, TcpReader), Error> {
         let net_tcp_stream = std::net::TcpStream::connect(socket_addr.clone())?;
         let real_tcp_stream = RealTcpStream::new(net_tcp_stream, socket_addr.clone());
         let tcp_stream = TcpStream::new(real_tcp_stream.try_clone()?);
@@ -58,7 +57,15 @@ impl FactoryTrait for RealFactory {
         return Ok((tcp_stream, tcp_reader));
     }
 
-    fn bind_udp_socket(&self, socket_addr: SocketAddr) -> Result<UdpSocket, Error> {
+    pub fn bind_udp_socket(&self, socket_addr: SocketAddr) -> Result<UdpSocket, Error> {
         return Ok(UdpSocket::new(RealUdpSocket::bind(socket_addr)?));
+    }
+}
+
+impl Into<Factory> for RealFactory {
+    fn into(self) -> Factory {
+        Factory {
+            implementation: FactoryImplementation::Real(self),
+        }
     }
 }

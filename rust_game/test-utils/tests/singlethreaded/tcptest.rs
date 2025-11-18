@@ -8,10 +8,7 @@ use commons::real_time::net::tcp::{
     TcpStream,
 };
 use commons::real_time::simulation::SingleThreadedFactory;
-use commons::real_time::{
-    EventHandlerStopper,
-    FactoryTrait,
-};
+use commons::real_time::EventHandlerStopper;
 use log::{
     error,
     info,
@@ -49,7 +46,7 @@ fn test_tcp() {
     let listen_socket = SocketAddr::new(server_factory.get_host_simulator().get_ip_addr(), PORT);
 
     let connection_handler_sender = TcpListenerBuilder::new_thread(
-        &server_factory,
+        &server_factory.clone().into(),
         "TcpConnectionListener".to_string(),
         listen_socket.clone(),
         connection_handler,
@@ -60,7 +57,7 @@ fn test_tcp() {
 
     let (tcp_stream, reader) = client_factory.connect_tcp(listen_socket).unwrap();
 
-    let client_thread_builder = TcpReadHandlerBuilder::new(&client_factory);
+    let client_thread_builder = TcpReadHandlerBuilder::new(&client_factory.clone().into());
 
     let client_side = Arc::new(Mutex::new(Some(TestConnection {
         tcp_stream,
@@ -152,7 +149,7 @@ impl TcpConnectionHandlerTrait for ConnectionHandler {
         };
 
         let reader_sender = TcpReadHandlerBuilder::new_thread(
-            &self.factory,
+            &self.factory.clone().into(),
             "TcpReader".to_string(),
             tcp_receiver,
             tcp_read_handler,

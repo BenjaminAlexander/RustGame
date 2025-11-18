@@ -14,7 +14,7 @@ use crate::real_time::{
     EventHandlerStopper,
     EventOrStopThread,
     EventSender,
-    FactoryTrait,
+    Factory,
     Receiver,
 };
 
@@ -24,7 +24,7 @@ pub struct UdpReadHandlerBuilder {
 }
 
 impl UdpReadHandlerBuilder {
-    pub fn new(factory: &impl FactoryTrait) -> Self {
+    pub fn new(factory: &Factory) -> Self {
         let (sender, receiver) = factory.new_channel();
 
         return Self {
@@ -64,7 +64,7 @@ impl UdpReadHandlerBuilder {
     }
 
     pub fn new_thread<T: UdpReadHandlerTrait>(
-        factory: &impl FactoryTrait,
+        factory: &Factory,
         thread_name: String,
         udp_socket: UdpSocket,
         udp_read_handler: T,
