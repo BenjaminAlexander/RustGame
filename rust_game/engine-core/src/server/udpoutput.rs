@@ -92,7 +92,7 @@ impl<Game: GameTrait> UdpOutput<Game> {
         })
     }
 
-    fn on_remote_peer(&mut self, remote_peer: RemoteUdpPeer) -> EventHandleResult<Self> {
+    fn on_remote_peer(&mut self, remote_peer: RemoteUdpPeer) -> EventHandleResult {
         //TODO: could this be checked before calling udpoutput?
         if self.player_index == remote_peer.get_player_index() {
             info!("Setting remote peer: {:?}", remote_peer);
@@ -106,7 +106,7 @@ impl<Game: GameTrait> UdpOutput<Game> {
         &mut self,
         receive_meta_data: ReceiveMetaData,
         state_message: StateMessage<Game>,
-    ) -> EventHandleResult<Self> {
+    ) -> EventHandleResult {
         let time_in_queue = receive_meta_data.get_send_meta_data().get_time_sent();
 
         if self.last_state_sequence.is_none()
@@ -129,7 +129,7 @@ impl<Game: GameTrait> UdpOutput<Game> {
         &mut self,
         receive_meta_data: ReceiveMetaData,
         time_message: TimeMessage,
-    ) -> EventHandleResult<Self> {
+    ) -> EventHandleResult {
         let time_in_queue = receive_meta_data.get_send_meta_data().get_time_sent();
 
         let mut send_it = false;
@@ -165,7 +165,7 @@ impl<Game: GameTrait> UdpOutput<Game> {
         &mut self,
         receive_meta_data: ReceiveMetaData,
         input_message: InputMessage<Game>,
-    ) -> EventHandleResult<Self> {
+    ) -> EventHandleResult {
         let time_in_queue = receive_meta_data.get_send_meta_data().get_time_sent();
 
         if self.player_index != input_message.get_player_index()
@@ -190,7 +190,7 @@ impl<Game: GameTrait> UdpOutput<Game> {
         &mut self,
         receive_meta_data: ReceiveMetaData,
         server_input_message: ServerInputMessage<Game>,
-    ) -> EventHandleResult<Self> {
+    ) -> EventHandleResult {
         let time_in_queue = receive_meta_data.get_send_meta_data().get_time_sent();
 
         if self.last_state_sequence.is_none()
@@ -252,15 +252,11 @@ impl<Game: GameTrait> HandleEvent for UdpOutput<Game> {
     type Event = UdpOutputEvent<Game>;
     type ThreadReturn = ();
 
-    fn on_stop(self, _: ReceiveMetaData) -> Self::ThreadReturn {
-        ()
-    }
-
     fn on_event(
         &mut self,
         receive_meta_data: ReceiveMetaData,
         event: Self::Event,
-    ) -> EventHandleResult<Self> {
+    ) -> EventHandleResult {
         let now = self.time_source.now();
 
         // let duration_since_last_input = now.duration_since(self.time_of_last_input_send);
@@ -292,8 +288,8 @@ impl<Game: GameTrait> HandleEvent for UdpOutput<Game> {
             }
         }
     }
-
-    fn on_channel_disconnect(&mut self) -> EventHandleResult<Self> {
-        EventHandleResult::StopThread(())
+    
+    fn on_stop_self(self) -> Self::ThreadReturn {
+        ()
     }
 }

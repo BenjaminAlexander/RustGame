@@ -85,16 +85,12 @@ impl HandleEvent for SingleThreadExecutorEventHandler {
     type Event = Runnable;
     type ThreadReturn = ();
 
-    fn on_event(&mut self, _: ReceiveMetaData, event: Self::Event) -> EventHandleResult<Self> {
+    fn on_event(&mut self, _: ReceiveMetaData, event: Self::Event) -> EventHandleResult {
         event();
         return EventHandleResult::WaitForNextEvent;
     }
-
-    fn on_channel_disconnect(&mut self) -> EventHandleResult<Self> {
-        return EventHandleResult::StopThread(());
-    }
-
-    fn on_stop(self, _: ReceiveMetaData) -> Self::ThreadReturn {
+    
+    fn on_stop_self(self) -> Self::ThreadReturn {
         return ();
     }
 }

@@ -60,13 +60,13 @@ fn run_event_handling_loop<T: HandleEvent>(
             EventHandleResult::TryForNextEvent => {
                 try_for_message(&mut receiver, &mut message_handler)
             }
-            EventHandleResult::StopThread(return_value) => return return_value,
+            EventHandleResult::StopThread => return message_handler.on_stop_self(),
         };
 
         wait_or_try = match control_flow {
             ControlFlow::Continue(event_handle_result) => event_handle_result,
             ControlFlow::Break(receive_meta_data) => {
-                return message_handler.on_stop(receive_meta_data)
+                return message_handler.on_stop_remote(receive_meta_data)
             }
         }
     }
@@ -76,7 +76,7 @@ fn wait_for_message_or_timeout<T: HandleEvent>(
     receiver: &mut EventReceiver<T::Event>,
     time_duration: TimeDuration,
     message_handler: &mut T,
-) -> ControlFlow<ReceiveMetaData, EventHandleResult<T>> {
+) -> ControlFlow<ReceiveMetaData, EventHandleResult> {
     return match receiver.recv_timeout_meta_data(time_duration) {
         Ok((receive_meta_data, EventOrStopThread::Event(event))) => {
             ControlFlow::Continue(message_handler.on_event(receive_meta_data, event))
@@ -94,7 +94,7 @@ fn wait_for_message_or_timeout<T: HandleEvent>(
 fn wait_for_message<T: HandleEvent>(
     receiver: &mut EventReceiver<T::Event>,
     message_handler: &mut T,
-) -> ControlFlow<ReceiveMetaData, EventHandleResult<T>> {
+) -> ControlFlow<ReceiveMetaData, EventHandleResult> {
     return match receiver.recv_meta_data() {
         Ok((receive_meta_data, EventOrStopThread::Event(event))) => {
             ControlFlow::Continue(message_handler.on_event(receive_meta_data, event))
@@ -109,7 +109,7 @@ fn wait_for_message<T: HandleEvent>(
 fn try_for_message<T: HandleEvent>(
     receiver: &mut EventReceiver<T::Event>,
     message_handler: &mut T,
-) -> ControlFlow<ReceiveMetaData, EventHandleResult<T>> {
+) -> ControlFlow<ReceiveMetaData, EventHandleResult> {
     return match receiver.try_recv_meta_data() {
         Ok((receive_meta_data, EventOrStopThread::Event(event))) => {
             ControlFlow::Continue(message_handler.on_event(receive_meta_data, event))

@@ -20,15 +20,11 @@ impl HandleEvent for TcpOutput {
     type Event = ();
     type ThreadReturn = ();
 
-    fn on_stop(self, _: ReceiveMetaData) -> Self::ThreadReturn {
-        ()
-    }
-
-    fn on_event(&mut self, _: ReceiveMetaData, _: Self::Event) -> EventHandleResult<Self> {
+    fn on_event(&mut self, _: ReceiveMetaData, _: Self::Event) -> EventHandleResult {
         EventHandleResult::TryForNextEvent
     }
-
-    fn on_channel_disconnect(&mut self) -> EventHandleResult<Self> {
-        EventHandleResult::StopThread(())
+    
+    fn on_stop_self(self) -> Self::ThreadReturn {
+        ()
     }
 }

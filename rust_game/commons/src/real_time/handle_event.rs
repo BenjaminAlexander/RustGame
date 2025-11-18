@@ -3,11 +3,11 @@ use crate::{
     time::TimeDuration,
 };
 
-pub enum EventHandleResult<T: HandleEvent> {
+pub enum EventHandleResult {
     WaitForNextEvent,
     WaitForNextEventOrTimeout(TimeDuration),
     TryForNextEvent,
-    StopThread(T::ThreadReturn),
+    StopThread,
 }
 
 pub trait HandleEvent: Send + Sized + 'static {
@@ -18,18 +18,23 @@ pub trait HandleEvent: Send + Sized + 'static {
         &mut self,
         receive_meta_data: ReceiveMetaData,
         event: Self::Event,
-    ) -> EventHandleResult<Self>;
+    ) -> EventHandleResult;
 
-    fn on_timeout(&mut self) -> EventHandleResult<Self> {
+    fn on_timeout(&mut self) -> EventHandleResult {
         return EventHandleResult::WaitForNextEvent;
     }
 
-    fn on_channel_empty(&mut self) -> EventHandleResult<Self> {
+    fn on_channel_empty(&mut self) -> EventHandleResult{
         return EventHandleResult::WaitForNextEvent;
     }
 
-    fn on_channel_disconnect(&mut self) -> EventHandleResult<Self>;
+    fn on_channel_disconnect(&mut self) -> EventHandleResult {
+        return EventHandleResult::StopThread;
+    }
 
-    //TODO: add more sane defaults for stop
-    fn on_stop(self, receive_meta_data: ReceiveMetaData) -> Self::ThreadReturn;
+    fn on_stop_remote(self, _receive_meta_data: ReceiveMetaData) -> Self::ThreadReturn {
+        return self.on_stop_self();
+    }
+
+    fn on_stop_self(self) -> Self::ThreadReturn;
 }

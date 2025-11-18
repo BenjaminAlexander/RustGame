@@ -12,6 +12,7 @@ const NUMBER: i32 = 87;
 
 struct Count {
     count: i32,
+    is_timeout: bool
 }
 
 #[derive(Debug)]
@@ -25,11 +26,7 @@ impl HandleEvent for Count {
     type Event = CountEvent;
     type ThreadReturn = i32;
 
-    fn on_stop(self, _: ReceiveMetaData) -> i32 {
-        return self.count;
-    }
-
-    fn on_event(&mut self, _: ReceiveMetaData, event: Self::Event) -> EventHandleResult<Self> {
+    fn on_event(&mut self, _: ReceiveMetaData, event: Self::Event) -> EventHandleResult {
         match event {
             CountEvent::Add(x) => {
                 self.count += x;
@@ -45,12 +42,17 @@ impl HandleEvent for Count {
         }
     }
 
-    fn on_timeout(&mut self) -> EventHandleResult<Self> {
-        EventHandleResult::StopThread(NUMBER)
+    fn on_timeout(&mut self) -> EventHandleResult {
+        self.is_timeout = true;
+        EventHandleResult::StopThread
     }
-
-    fn on_channel_disconnect(&mut self) -> EventHandleResult<Self> {
-        EventHandleResult::StopThread(self.count)
+    
+    fn on_stop_self(self) -> Self::ThreadReturn {
+        if self.is_timeout {
+            return NUMBER;
+        } else {
+            return self.count;
+        }
     }
 }
 
@@ -58,7 +60,10 @@ impl HandleEvent for Count {
 fn test_async_join() {
     setup_test_logging();
 
-    let event_handler = Count { count: 0 };
+    let event_handler = Count { 
+        count: 0,
+        is_timeout: false
+    };
 
     let async_expects = AsyncExpects::new();
     let expect_five = async_expects.new_async_expect("Five", 5);
@@ -83,7 +88,10 @@ fn test_async_join() {
 fn test_no_timeout() {
     setup_test_logging();
 
-    let event_handler = Count { count: 0 };
+    let event_handler = Count { 
+        count: 0,
+        is_timeout: false
+    };
 
     let async_expects = AsyncExpects::new();
     let expect_five = async_expects.new_async_expect("Five", 5);
@@ -109,7 +117,10 @@ fn test_no_timeout() {
 fn test_timeout() {
     setup_test_logging();
 
-    let event_handler = Count { count: 0 };
+    let event_handler = Count { 
+        count: 0,
+        is_timeout: false
+    };
 
     let async_expects = AsyncExpects::new();
     let expect_five = async_expects.new_async_expect("A Number", NUMBER);
@@ -134,7 +145,10 @@ fn test_timeout() {
 fn test_drop_sender_while_waiting_for_timeout() {
     setup_test_logging();
 
-    let event_handler = Count { count: 0 };
+    let event_handler = Count { 
+        count: 0,
+        is_timeout: false
+    };
 
     let async_expects = AsyncExpects::new();
     let expect_five = async_expects.new_async_expect("Five", 5);

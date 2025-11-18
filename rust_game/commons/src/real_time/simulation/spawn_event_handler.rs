@@ -172,7 +172,7 @@ impl<T: HandleEvent, U: FnOnce(T::ThreadReturn) + Send + 'static> EventHandlerHo
                 return self.handle_event_handle_result(&holder, event_handle_result);
             }
             EventOrStopThread::StopThread => {
-                let result = self.event_handler.on_stop(receive_meta_data);
+                let result = self.event_handler.on_stop_remote(receive_meta_data);
                 self.receiver_link.disconnect_receiver();
                 (self.join_call_back)(result);
                 return None;
@@ -183,7 +183,7 @@ impl<T: HandleEvent, U: FnOnce(T::ThreadReturn) + Send + 'static> EventHandlerHo
     fn handle_event_handle_result(
         mut self,
         holder: &EventHandlerHolder<T, U>,
-        event_handle_result: EventHandleResult<T>,
+        event_handle_result: EventHandleResult,
     ) -> Option<Self> {
         trace!("Event Handler: {:?}", self.thread_name);
 
@@ -202,8 +202,9 @@ impl<T: HandleEvent, U: FnOnce(T::ThreadReturn) + Send + 'static> EventHandlerHo
                 self.schedule_channel_empty(&holder);
                 return Some(self);
             }
-            EventHandleResult::StopThread(result) => {
+            EventHandleResult::StopThread => {
                 trace!("Join");
+                let result = self.event_handler.on_stop_self();
                 self.receiver_link.disconnect_receiver();
                 (self.join_call_back)(result);
                 return None;

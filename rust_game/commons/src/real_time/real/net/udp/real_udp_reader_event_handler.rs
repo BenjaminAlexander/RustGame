@@ -42,7 +42,7 @@ impl<T: UdpReadHandlerTrait> RealUdpReaderEventHandler<T> {
         return real::spawn_event_handler(thread_name, receiver, event_handler, join_call_back);
     }
 
-    fn read(&mut self) -> EventHandleResult<Self> {
+    fn read(&mut self) -> EventHandleResult {
         let mut buf = [0; MAX_UDP_DATAGRAM_SIZE];
         let result = self.udp_socket.recv_from(&mut buf);
         return self.handle_read_result(result, &buf);
@@ -52,12 +52,12 @@ impl<T: UdpReadHandlerTrait> RealUdpReaderEventHandler<T> {
         &mut self,
         result: Result<(usize, std::net::SocketAddr), std::io::Error>,
         buf: &[u8],
-    ) -> EventHandleResult<Self> {
+    ) -> EventHandleResult {
         match result {
             Ok((len, peer_addr)) => {
                 return match self.udp_read_handler.on_read(peer_addr, &buf[..len]) {
                     Continue(()) => EventHandleResult::TryForNextEvent,
-                    Break(()) => EventHandleResult::StopThread(()),
+                    Break(()) => EventHandleResult::StopThread,
                 };
             }
             Err(error)
@@ -77,23 +77,19 @@ impl<T: UdpReadHandlerTrait> HandleEvent for RealUdpReaderEventHandler<T> {
     type Event = ();
     type ThreadReturn = ();
 
-    fn on_event(&mut self, _: ReceiveMetaData, _: Self::Event) -> EventHandleResult<Self> {
+    fn on_event(&mut self, _: ReceiveMetaData, _: Self::Event) -> EventHandleResult {
         return EventHandleResult::TryForNextEvent;
     }
 
-    fn on_timeout(&mut self) -> EventHandleResult<Self> {
+    fn on_timeout(&mut self) -> EventHandleResult {
         return EventHandleResult::TryForNextEvent;
     }
 
-    fn on_channel_empty(&mut self) -> EventHandleResult<Self> {
+    fn on_channel_empty(&mut self) -> EventHandleResult {
         return self.read();
     }
-
-    fn on_channel_disconnect(&mut self) -> EventHandleResult<Self> {
-        return EventHandleResult::StopThread(());
-    }
-
-    fn on_stop(self, _receive_meta_data: ReceiveMetaData) -> Self::ThreadReturn {
+    
+    fn on_stop_self(self) -> Self::ThreadReturn {
         return ();
     }
 }

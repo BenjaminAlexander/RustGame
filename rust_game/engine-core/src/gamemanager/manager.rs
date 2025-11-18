@@ -116,7 +116,7 @@ impl<ManagerObserver: ManagerObserverTrait> Manager<ManagerObserver> {
         }
     }
 
-    fn drop_steps_before(&mut self, step: usize) -> EventHandleResult<Self> {
+    fn drop_steps_before(&mut self, step: usize) -> EventHandleResult {
         trace!("Setting drop_steps_before: {:?}", step);
         self.drop_steps_before = step;
         if self.requested_step < self.drop_steps_before {
@@ -130,7 +130,7 @@ impl<ManagerObserver: ManagerObserverTrait> Manager<ManagerObserver> {
         return EventHandleResult::TryForNextEvent;
     }
 
-    fn set_requested_step(&mut self, step: usize) -> EventHandleResult<Self> {
+    fn set_requested_step(&mut self, step: usize) -> EventHandleResult {
         trace!("Setting requested_step: {:?}", step);
         self.requested_step = step;
         return EventHandleResult::TryForNextEvent;
@@ -156,7 +156,7 @@ impl<ManagerObserver: ManagerObserverTrait> Manager<ManagerObserver> {
         }
     }
 
-    fn on_none_pending(&mut self) -> EventHandleResult<Self> {
+    fn on_none_pending(&mut self) -> EventHandleResult {
         let now = self.time_source.now();
         let duration_since_last_state = now.duration_since(&self.time_of_last_state_receive);
         if duration_since_last_state > TimeDuration::ONE_SECOND {
@@ -230,7 +230,7 @@ impl<ManagerObserver: ManagerObserverTrait> Manager<ManagerObserver> {
     fn on_initial_information(
         &mut self,
         initial_information: InitialInformation<ManagerObserver::Game>,
-    ) -> EventHandleResult<Self> {
+    ) -> EventHandleResult {
         //TODO: move Arc outside lambda
         self.initial_information = Some(Arc::new(initial_information));
         let state = self
@@ -246,7 +246,7 @@ impl<ManagerObserver: ManagerObserverTrait> Manager<ManagerObserver> {
     fn on_input_message(
         &mut self,
         input_message: InputMessage<ManagerObserver::Game>,
-    ) -> EventHandleResult<Self> {
+    ) -> EventHandleResult {
         if let Some(step) = self.get_state(input_message.get_step()) {
             step.set_input(input_message);
             self.time_of_last_input_receive = self.time_source.now();
@@ -257,7 +257,7 @@ impl<ManagerObserver: ManagerObserverTrait> Manager<ManagerObserver> {
     fn on_server_input_message(
         &mut self,
         server_input_message: ServerInputMessage<ManagerObserver::Game>,
-    ) -> EventHandleResult<Self> {
+    ) -> EventHandleResult {
         //info!("Server Input received: {:?}", server_input_message.get_step());
         if let Some(step) = self.get_state(server_input_message.get_step()) {
             step.set_server_input(server_input_message.get_server_input());
@@ -268,7 +268,7 @@ impl<ManagerObserver: ManagerObserverTrait> Manager<ManagerObserver> {
     fn on_state_message(
         &mut self,
         state_message: StateMessage<ManagerObserver::Game>,
-    ) -> EventHandleResult<Self> {
+    ) -> EventHandleResult {
         self.handle_state_message(state_message);
 
         self.time_of_last_state_receive = self.time_source.now();
@@ -281,11 +281,7 @@ impl<ManagerObserver: ManagerObserverTrait> HandleEvent for Manager<ManagerObser
     type Event = ManagerEvent<ManagerObserver::Game>;
     type ThreadReturn = ();
 
-    fn on_stop(self, _: ReceiveMetaData) -> Self::ThreadReturn {
-        ()
-    }
-
-    fn on_event(&mut self, _: ReceiveMetaData, event: Self::Event) -> EventHandleResult<Self> {
+    fn on_event(&mut self, _: ReceiveMetaData, event: Self::Event) -> EventHandleResult {
         match event {
             DropStepsBeforeEvent(step) => self.drop_steps_before(step),
             SetRequestedStepEvent(step) => self.set_requested_step(step),
@@ -300,15 +296,15 @@ impl<ManagerObserver: ManagerObserverTrait> HandleEvent for Manager<ManagerObser
         }
     }
 
-    fn on_timeout(&mut self) -> EventHandleResult<Self> {
+    fn on_timeout(&mut self) -> EventHandleResult {
         self.on_none_pending()
     }
 
-    fn on_channel_empty(&mut self) -> EventHandleResult<Self> {
+    fn on_channel_empty(&mut self) -> EventHandleResult {
         self.on_none_pending()
     }
-
-    fn on_channel_disconnect(&mut self) -> EventHandleResult<Self> {
-        EventHandleResult::StopThread(())
+    
+    fn on_stop_self(self) -> Self::ThreadReturn {
+        ()
     }
 }

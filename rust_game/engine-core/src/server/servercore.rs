@@ -106,11 +106,7 @@ impl<Game: GameTrait> HandleEvent for ServerCore<Game> {
     type Event = ServerCoreEvent<Game>;
     type ThreadReturn = ();
 
-    fn on_stop(self, _: ReceiveMetaData) -> Self::ThreadReturn {
-        ()
-    }
-
-    fn on_event(&mut self, _: ReceiveMetaData, event: Self::Event) -> EventHandleResult<Self> {
+    fn on_event(&mut self, _: ReceiveMetaData, event: Self::Event) -> EventHandleResult {
         match event {
             StartListenerEvent => self.start_listener(),
             StartGameEvent(render_receiver_sender) => self.start_game(render_receiver_sender),
@@ -122,8 +118,8 @@ impl<Game: GameTrait> HandleEvent for ServerCore<Game> {
         }
     }
 
-    fn on_channel_disconnect(&mut self) -> EventHandleResult<Self> {
-        EventHandleResult::StopThread(())
+    fn on_stop_self(self) -> Self::ThreadReturn {
+        ()
     }
 }
 
@@ -153,7 +149,7 @@ impl<Game: GameTrait> ServerCore<Game> {
         }
     }
 
-    fn start_listener(&mut self) -> EventHandleResult<Self> {
+    fn start_listener(&mut self) -> EventHandleResult {
         //TODO: on error, make sure other threads are closed
         //TODO: could these other threads be started somewhere else?
 
@@ -161,7 +157,7 @@ impl<Game: GameTrait> ServerCore<Game> {
             Ok(ip_addr_v4) => ip_addr_v4,
             Err(error) => {
                 error!("{:?}", error);
-                return EventHandleResult::StopThread(());
+                return EventHandleResult::StopThread;
             }
         };
 
@@ -171,7 +167,7 @@ impl<Game: GameTrait> ServerCore<Game> {
             Ok(udp_socket) => udp_socket,
             Err(error) => {
                 error!("{:?}", error);
-                return EventHandleResult::StopThread(());
+                return EventHandleResult::StopThread;
             }
         };
 
@@ -190,7 +186,7 @@ impl<Game: GameTrait> ServerCore<Game> {
             Ok(udp_input_sender) => udp_input_sender,
             Err(error) => {
                 error!("{:?}", error);
-                return EventHandleResult::StopThread(());
+                return EventHandleResult::StopThread;
             }
         });
 
@@ -212,7 +208,7 @@ impl<Game: GameTrait> ServerCore<Game> {
             }
             Err(error) => {
                 error!("Error starting Tcp Listener Thread: {:?}", error);
-                return EventHandleResult::StopThread(());
+                return EventHandleResult::StopThread;
             }
         }
     }
@@ -234,7 +230,7 @@ impl<Game: GameTrait> ServerCore<Game> {
     fn start_game(
         &mut self,
         render_receiver_sender: Sender<RenderReceiverMessage<Game>>,
-    ) -> EventHandleResult<Self> {
+    ) -> EventHandleResult {
         //TODO: remove this line
         //let (render_receiver_sender, render_receiver) = RenderReceiver::<Game>::new();
 
@@ -272,7 +268,7 @@ impl<Game: GameTrait> ServerCore<Game> {
 
             if send_result.is_err() {
                 warn!("Failed to send DropSteps to Game Manager");
-                return EventHandleResult::StopThread(());
+                return EventHandleResult::StopThread;
             }
 
             let server_initial_information = InitialInformation::<Game>::new(
@@ -291,7 +287,7 @@ impl<Game: GameTrait> ServerCore<Game> {
 
             if send_result.is_err() {
                 warn!("Failed to send InitialInformation to Game Manager");
-                return EventHandleResult::StopThread(());
+                return EventHandleResult::StopThread;
             }
 
             let send_result = render_receiver_sender.send(
@@ -300,7 +296,7 @@ impl<Game: GameTrait> ServerCore<Game> {
 
             if send_result.is_err() {
                 warn!("Failed to send InitialInformation to Render Receiver");
-                return EventHandleResult::StopThread(());
+                return EventHandleResult::StopThread;
             }
 
             for tcp_output in self.tcp_outputs.iter() {
@@ -312,13 +308,13 @@ impl<Game: GameTrait> ServerCore<Game> {
 
                 if send_result.is_err() {
                     warn!("Failed to send InitialInformation to TcpOutput");
-                    return EventHandleResult::StopThread(());
+                    return EventHandleResult::StopThread;
                 }
             }
 
             if game_timer.start_ticking().is_err() {
                 warn!("Failed to Start the GameTimer");
-                return EventHandleResult::StopThread(());
+                return EventHandleResult::StopThread;
             };
 
             self.game_timer = Some(game_timer);
@@ -350,7 +346,7 @@ impl<Game: GameTrait> ServerCore<Game> {
         &mut self,
         tcp_stream: TcpStream,
         tcp_receiver: TcpReader,
-    ) -> EventHandleResult<Self> {
+    ) -> EventHandleResult {
         if !self.game_is_started {
             info!("TcpStream accepted: {:?}", tcp_stream.get_peer_addr());
 
@@ -406,26 +402,26 @@ impl<Game: GameTrait> ServerCore<Game> {
         source: SocketAddr,
         len: usize,
         buf: [u8; MAX_UDP_DATAGRAM_SIZE],
-    ) -> EventHandleResult<Self> {
+    ) -> EventHandleResult {
         let (remote_peer, input_message) = self.udp_handler.on_udp_packet(len, buf, source);
 
         //TODO: does this happen too often?  Should the core keep a list of known peers and check against that?
         if let Some(remote_peer) = remote_peer {
             if self.on_remote_udp_peer(remote_peer).is_err() {
-                return EventHandleResult::StopThread(());
+                return EventHandleResult::StopThread;
             }
         }
 
         if let Some(input_message) = input_message {
             if self.on_input_message(input_message).is_err() {
-                return EventHandleResult::StopThread(());
+                return EventHandleResult::StopThread;
             }
         }
 
         return EventHandleResult::TryForNextEvent;
     }
 
-    fn on_game_timer_tick(&mut self) -> EventHandleResult<Self> {
+    fn on_game_timer_tick(&mut self) -> EventHandleResult {
         let time_message = self.game_timer.as_ref().unwrap().create_timer_message();
 
         /*
@@ -449,7 +445,7 @@ impl<Game: GameTrait> ServerCore<Game> {
 
                 if send_result.is_err() {
                     warn!("Failed to send DropSteps to Game Manager");
-                    return EventHandleResult::StopThread(());
+                    return EventHandleResult::StopThread;
                 }
             }
 
@@ -459,7 +455,7 @@ impl<Game: GameTrait> ServerCore<Game> {
 
             if send_result.is_err() {
                 warn!("Failed to send RequestedStep to Game Manager");
-                return EventHandleResult::StopThread(());
+                return EventHandleResult::StopThread;
             }
         }
 
@@ -469,7 +465,7 @@ impl<Game: GameTrait> ServerCore<Game> {
 
             if send_result.is_err() {
                 warn!("Failed to send TimeMessage to UdpOutput");
-                return EventHandleResult::StopThread(());
+                return EventHandleResult::StopThread;
             }
         }
 
@@ -481,7 +477,7 @@ impl<Game: GameTrait> ServerCore<Game> {
 
         if send_result.is_err() {
             warn!("Failed to send TimeMessage to Render Receiver");
-            return EventHandleResult::StopThread(());
+            return EventHandleResult::StopThread;
         }
 
         return EventHandleResult::TryForNextEvent;

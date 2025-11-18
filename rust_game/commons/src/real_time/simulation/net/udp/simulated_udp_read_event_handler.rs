@@ -29,10 +29,10 @@ impl<T: UdpReadHandlerTrait> SimulatedUdpReadEventHandler<T> {
         };
     }
 
-    fn read(&mut self, source: SocketAddr, buf: Vec<u8>) -> EventHandleResult<Self> {
+    fn read(&mut self, source: SocketAddr, buf: Vec<u8>) -> EventHandleResult {
         return match self.read_handler.on_read(source, &buf) {
             Continue(()) => EventHandleResult::TryForNextEvent,
-            Break(()) => EventHandleResult::StopThread(()),
+            Break(()) => EventHandleResult::StopThread,
         };
     }
 }
@@ -41,17 +41,13 @@ impl<T: UdpReadHandlerTrait> HandleEvent for SimulatedUdpReadEventHandler<T> {
     type Event = (SocketAddr, Vec<u8>);
     type ThreadReturn = ();
 
-    fn on_stop(self, _: ReceiveMetaData) -> Self::ThreadReturn {
-        self.network_simulator.remove_udp_reader(&self.socket_addr);
-        return ();
-    }
-
-    fn on_event(&mut self, _: ReceiveMetaData, event: Self::Event) -> EventHandleResult<Self> {
+    fn on_event(&mut self, _: ReceiveMetaData, event: Self::Event) -> EventHandleResult {
         let (source, buf) = event;
         self.read(source, buf)
     }
 
-    fn on_channel_disconnect(&mut self) -> EventHandleResult<Self> {
-        EventHandleResult::StopThread(())
+    fn on_stop_self(self) -> Self::ThreadReturn {
+        self.network_simulator.remove_udp_reader(&self.socket_addr);
+        return ();
     }
 }

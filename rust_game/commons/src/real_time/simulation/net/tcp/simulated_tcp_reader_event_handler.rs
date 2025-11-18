@@ -74,13 +74,13 @@ impl<T: TcpReadHandlerTrait> SimulatedTcpReaderEventHandler<T> {
         return Self { read_handler };
     }
 
-    fn read(&mut self, buf: Vec<u8>) -> EventHandleResult<Self> {
+    fn read(&mut self, buf: Vec<u8>) -> EventHandleResult {
         return match rmp_serde::from_read::<Cursor<Vec<u8>>, T::ReadType>(Cursor::new(buf)) {
             Ok(read) => match self.read_handler.on_read(read) {
                 Continue(()) => EventHandleResult::TryForNextEvent,
-                Break(()) => EventHandleResult::StopThread(()),
+                Break(()) => EventHandleResult::StopThread,
             },
-            Err(_) => EventHandleResult::StopThread(()),
+            Err(_) => EventHandleResult::StopThread,
         };
     }
 }
@@ -89,15 +89,11 @@ impl<T: TcpReadHandlerTrait> HandleEvent for SimulatedTcpReaderEventHandler<T> {
     type Event = Vec<u8>;
     type ThreadReturn = ();
 
-    fn on_stop(self, _: ReceiveMetaData) -> Self::ThreadReturn {
-        return ();
-    }
-
-    fn on_event(&mut self, _: ReceiveMetaData, buf: Self::Event) -> EventHandleResult<Self> {
+    fn on_event(&mut self, _: ReceiveMetaData, buf: Self::Event) -> EventHandleResult {
         self.read(buf)
     }
 
-    fn on_channel_disconnect(&mut self) -> EventHandleResult<Self> {
-        EventHandleResult::StopThread(())
+    fn on_stop_self(self) -> Self::ThreadReturn {
+        return ();
     }
 }

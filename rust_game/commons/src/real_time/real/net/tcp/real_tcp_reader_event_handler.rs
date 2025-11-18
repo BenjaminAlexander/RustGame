@@ -34,16 +34,16 @@ impl<T: TcpReadHandlerTrait> RealTcpReaderEventHandler<T> {
         return real::spawn_event_handler(thread_name, receiver, event_handler, join_call_back);
     }
 
-    fn read(&mut self) -> EventHandleResult<Self> {
+    fn read(&mut self) -> EventHandleResult {
         match self.tcp_resetable_reader.deserialize::<T::ReadType>() {
             DeserializeResult::Ok(read_value) => {
                 return match self.tcp_read_handler.on_read(read_value) {
                     ControlFlow::Continue(()) => EventHandleResult::TryForNextEvent,
-                    ControlFlow::Break(()) => EventHandleResult::StopThread(()),
+                    ControlFlow::Break(()) => EventHandleResult::StopThread,
                 };
             }
             DeserializeResult::TimedOut => EventHandleResult::TryForNextEvent,
-            DeserializeResult::Err => EventHandleResult::StopThread(()),
+            DeserializeResult::Err => EventHandleResult::StopThread,
         }
     }
 }
@@ -52,23 +52,19 @@ impl<T: TcpReadHandlerTrait> HandleEvent for RealTcpReaderEventHandler<T> {
     type Event = ();
     type ThreadReturn = ();
 
-    fn on_event(&mut self, _: ReceiveMetaData, _: Self::Event) -> EventHandleResult<Self> {
+    fn on_event(&mut self, _: ReceiveMetaData, _: Self::Event) -> EventHandleResult {
         return EventHandleResult::TryForNextEvent;
     }
 
-    fn on_channel_empty(&mut self) -> EventHandleResult<Self> {
+    fn on_channel_empty(&mut self) -> EventHandleResult {
         return self.read();
     }
 
-    fn on_channel_disconnect(&mut self) -> EventHandleResult<Self> {
-        return EventHandleResult::StopThread(());
-    }
-
-    fn on_timeout(&mut self) -> EventHandleResult<Self> {
+    fn on_timeout(&mut self) -> EventHandleResult {
         return EventHandleResult::TryForNextEvent;
     }
-
-    fn on_stop(self, _receive_meta_data: ReceiveMetaData) -> Self::ThreadReturn {
+    
+    fn on_stop_self(self) -> Self::ThreadReturn {
         return ();
     }
 }

@@ -38,7 +38,7 @@ impl<Game: GameTrait> TcpOutput<Game> {
         server_config: ServerConfig,
         player_count: usize,
         initial_state: Game::State,
-    ) -> EventHandleResult<Self> {
+    ) -> EventHandleResult {
         let initial_information = InitialInformation::<Game>::new(
             server_config,
             player_count,
@@ -60,11 +60,7 @@ impl<Game: GameTrait> HandleEvent for TcpOutput<Game> {
     type Event = TcpOutputEvent<Game>;
     type ThreadReturn = ();
 
-    fn on_stop(self, _: ReceiveMetaData) -> Self::ThreadReturn {
-        ()
-    }
-
-    fn on_event(&mut self, _: ReceiveMetaData, event: Self::Event) -> EventHandleResult<Self> {
+    fn on_event(&mut self, _: ReceiveMetaData, event: Self::Event) -> EventHandleResult {
         match event {
             SendInitialInformation(server_config, player_count, initial_state) => {
                 self.send_initial_information(server_config, player_count, initial_state)
@@ -72,7 +68,7 @@ impl<Game: GameTrait> HandleEvent for TcpOutput<Game> {
         }
     }
 
-    fn on_channel_disconnect(&mut self) -> EventHandleResult<Self> {
-        EventHandleResult::StopThread(())
+    fn on_stop_self(self) -> Self::ThreadReturn {
+        ()
     }
 }

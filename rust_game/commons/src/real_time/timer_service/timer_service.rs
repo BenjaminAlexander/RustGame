@@ -91,7 +91,7 @@ impl<T: TimerCreationCallBack, U: TimerCallBack> IdleTimerService<T, U> {
     fn trigger_timers(
         &mut self,
         time_source: &TimeSource,
-    ) -> EventHandleResult<TimerServiceEventHandler<T, U>> {
+    ) -> EventHandleResult {
         loop {
             let now = time_source.now();
 
@@ -118,7 +118,7 @@ impl<T: TimerCreationCallBack, U: TimerCallBack> IdleTimerService<T, U> {
         &mut self,
         time_source: &TimeSource,
         now: TimeValue,
-    ) -> EventHandleResult<TimerServiceEventHandler<T, U>> {
+    ) -> EventHandleResult {
         if let Some(timer) = self.timers.get(0) {
             if let Some(trigger_time) = timer.get_trigger_time() {
                 let duration_to_wait = trigger_time.duration_since(&now);
@@ -243,7 +243,7 @@ impl<T: TimerCreationCallBack, U: TimerCallBack> TimerServiceEventHandler<T, U> 
         creation_call_back: T,
         tick_call_back: U,
         schedule: Schedule,
-    ) -> EventHandleResult<Self> {
+    ) -> EventHandleResult {
         let timer_id = self
             .idle_timer_service
             .create_timer(tick_call_back, schedule);
@@ -262,7 +262,7 @@ impl<T: TimerCreationCallBack, U: TimerCallBack> TimerServiceEventHandler<T, U> 
         &mut self,
         timer_id: &TimerId,
         schedule: Schedule,
-    ) -> EventHandleResult<Self> {
+    ) -> EventHandleResult {
         trace!(
             "Time is: {:?}\nRescheduling Timer: {:?} to {:?}",
             self.time_source.now(),
@@ -274,7 +274,7 @@ impl<T: TimerCreationCallBack, U: TimerCallBack> TimerServiceEventHandler<T, U> 
         return EventHandleResult::TryForNextEvent;
     }
 
-    fn cancel_timer_event(&mut self, timer_id: TimerId) -> EventHandleResult<Self> {
+    fn cancel_timer_event(&mut self, timer_id: TimerId) -> EventHandleResult {
         trace!(
             "Time is: {:?}\nCanceling Timer: {:?}",
             self.time_source.now(),
@@ -290,11 +290,7 @@ impl<T: TimerCreationCallBack, U: TimerCallBack> HandleEvent for TimerServiceEve
     type Event = TimerServiceEvent<T, U>;
     type ThreadReturn = ();
 
-    fn on_stop(self, _: ReceiveMetaData) -> Self::ThreadReturn {
-        return ();
-    }
-
-    fn on_event(&mut self, _: ReceiveMetaData, event: Self::Event) -> EventHandleResult<Self> {
+    fn on_event(&mut self, _: ReceiveMetaData, event: Self::Event) -> EventHandleResult {
         match event {
             TimerServiceEvent::CreateTimer(creation_call_back, tick_call_back, schedule) => {
                 self.create_timer_event_event(creation_call_back, tick_call_back, schedule)
@@ -306,15 +302,15 @@ impl<T: TimerCreationCallBack, U: TimerCallBack> HandleEvent for TimerServiceEve
         }
     }
 
-    fn on_timeout(&mut self) -> EventHandleResult<Self> {
+    fn on_timeout(&mut self) -> EventHandleResult {
         self.idle_timer_service.trigger_timers(&self.time_source)
     }
 
-    fn on_channel_empty(&mut self) -> EventHandleResult<Self> {
+    fn on_channel_empty(&mut self) -> EventHandleResult {
         self.idle_timer_service.trigger_timers(&self.time_source)
     }
 
-    fn on_channel_disconnect(&mut self) -> EventHandleResult<Self> {
-        EventHandleResult::StopThread(())
+    fn on_stop_self(self) -> Self::ThreadReturn {
+        ()
     }
 }

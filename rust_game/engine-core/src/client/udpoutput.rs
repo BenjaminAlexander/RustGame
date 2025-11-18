@@ -113,11 +113,7 @@ impl<Game: GameTrait> HandleEvent for UdpOutput<Game> {
     type Event = UdpOutputEvent<Game>;
     type ThreadReturn = ();
 
-    fn on_stop(self, _: ReceiveMetaData) -> Self::ThreadReturn {
-        ()
-    }
-
-    fn on_event(&mut self, _: ReceiveMetaData, event: Self::Event) -> EventHandleResult<Self> {
+    fn on_event(&mut self, _: ReceiveMetaData, event: Self::Event) -> EventHandleResult {
         match event {
             UdpOutputEvent::InputMessageEvent(input_message) => {
                 self.on_input_message(input_message)
@@ -127,17 +123,17 @@ impl<Game: GameTrait> HandleEvent for UdpOutput<Game> {
         return EventHandleResult::TryForNextEvent;
     }
 
-    fn on_channel_empty(&mut self) -> EventHandleResult<Self> {
+    fn on_channel_empty(&mut self) -> EventHandleResult {
         self.send_all_messages();
         return EventHandleResult::WaitForNextEvent;
     }
 
-    fn on_timeout(&mut self) -> EventHandleResult<Self> {
+    fn on_timeout(&mut self) -> EventHandleResult {
         self.send_all_messages();
         return EventHandleResult::WaitForNextEvent;
     }
 
-    fn on_channel_disconnect(&mut self) -> EventHandleResult<Self> {
-        EventHandleResult::StopThread(())
+    fn on_stop_self(self) -> Self::ThreadReturn {
+        ()
     }
 }

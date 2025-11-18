@@ -130,7 +130,7 @@ impl<Game: GameTrait> ClientCore<Game> {
     fn on_initial_information(
         &mut self,
         initial_information: InitialInformation<Game>,
-    ) -> EventHandleResult<Self> {
+    ) -> EventHandleResult {
         if self.running_state.is_some() {
             warn!("Received a hello from the server after the client has already received a hello");
             return EventHandleResult::TryForNextEvent;
@@ -189,7 +189,7 @@ impl<Game: GameTrait> ClientCore<Game> {
         return EventHandleResult::TryForNextEvent;
     }
 
-    fn on_input_event(&mut self, input_event: Game::ClientInputEvent) -> EventHandleResult<Self> {
+    fn on_input_event(&mut self, input_event: Game::ClientInputEvent) -> EventHandleResult {
         if let Some(ref mut running_state) = self.running_state {
             if running_state.last_time_message.is_some() {
                 Game::handle_input_event(&mut running_state.input_event_handler, input_event);
@@ -200,7 +200,7 @@ impl<Game: GameTrait> ClientCore<Game> {
         return EventHandleResult::TryForNextEvent;
     }
 
-    fn on_game_timer_tick(&mut self) -> EventHandleResult<Self> {
+    fn on_game_timer_tick(&mut self) -> EventHandleResult {
         if let Some(ref mut running_state) = self.running_state {
             let time_message = running_state.game_timer.create_timer_message();
 
@@ -226,7 +226,7 @@ impl<Game: GameTrait> ClientCore<Game> {
 
                     if send_result.is_err() {
                         warn!("Failed to send InputMessage to Game Manager");
-                        return EventHandleResult::StopThread(());
+                        return EventHandleResult::StopThread;
                     }
 
                     let send_result = running_state
@@ -235,7 +235,7 @@ impl<Game: GameTrait> ClientCore<Game> {
 
                     if send_result.is_err() {
                         warn!("Failed to send InputMessage to Udp Output");
-                        return EventHandleResult::StopThread(());
+                        return EventHandleResult::StopThread;
                     }
 
                     let client_drop_time = time_message
@@ -252,7 +252,7 @@ impl<Game: GameTrait> ClientCore<Game> {
 
                     if send_result.is_err() {
                         warn!("Failed to send Drop Steps to Game Manager");
-                        return EventHandleResult::StopThread(());
+                        return EventHandleResult::StopThread;
                     }
 
                     //TODO: message or last message or next?
@@ -265,7 +265,7 @@ impl<Game: GameTrait> ClientCore<Game> {
 
                     if send_result.is_err() {
                         warn!("Failed to send Request Step to Game Manager");
-                        return EventHandleResult::StopThread(());
+                        return EventHandleResult::StopThread;
                     }
                 }
             }
@@ -276,7 +276,7 @@ impl<Game: GameTrait> ClientCore<Game> {
 
             if send_result.is_err() {
                 warn!("Failed to send TimeMessage Step to Render Receiver");
-                return EventHandleResult::StopThread(());
+                return EventHandleResult::StopThread;
             }
 
             running_state.last_time_message = Some(time_message);
@@ -290,7 +290,7 @@ impl<Game: GameTrait> ClientCore<Game> {
     fn on_remote_timer_message(
         &mut self,
         time_message: TimeReceived<TimeMessage>,
-    ) -> EventHandleResult<Self> {
+    ) -> EventHandleResult {
         if let Some(ref mut running_state) = self.running_state {
             running_state
                 .game_timer
@@ -308,11 +308,7 @@ impl<Game: GameTrait> HandleEvent for ClientCore<Game> {
     type Event = ClientCoreEvent<Game>;
     type ThreadReturn = ();
 
-    fn on_stop(self, _: ReceiveMetaData) -> Self::ThreadReturn {
-        return ();
-    }
-
-    fn on_event(&mut self, _: ReceiveMetaData, event: Self::Event) -> EventHandleResult<Self> {
+    fn on_event(&mut self, _: ReceiveMetaData, event: Self::Event) -> EventHandleResult {
         return match event {
             ClientCoreEvent::OnInitialInformation(initial_information) => {
                 self.on_initial_information(initial_information)
@@ -327,7 +323,7 @@ impl<Game: GameTrait> HandleEvent for ClientCore<Game> {
         };
     }
 
-    fn on_channel_disconnect(&mut self) -> EventHandleResult<Self> {
-        EventHandleResult::StopThread(())
+    fn on_stop_self(self) -> Self::ThreadReturn {
+        return ();
     }
 }

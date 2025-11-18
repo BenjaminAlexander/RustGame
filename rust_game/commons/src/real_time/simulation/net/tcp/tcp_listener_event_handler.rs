@@ -41,13 +41,13 @@ impl<TcpConnectionHandler: TcpConnectionHandlerTrait>
         &mut self,
         writer: ChannelTcpWriter,
         reader: SingleThreadedReceiver<Vec<u8>>,
-    ) -> EventHandleResult<Self> {
+    ) -> EventHandleResult {
         return match self.connection_handler.on_connection(
             TcpStream::new_simulated(writer),
             TcpReader::new_simulated(reader),
         ) {
             Continue(()) => EventHandleResult::TryForNextEvent,
-            Break(()) => EventHandleResult::StopThread(()),
+            Break(()) => EventHandleResult::StopThread,
         };
     }
 }
@@ -58,11 +58,7 @@ impl<TcpConnectionHandler: TcpConnectionHandlerTrait> HandleEvent
     type Event = TcpListenerEvent;
     type ThreadReturn = ();
 
-    fn on_stop(self, _receive_meta_data: ReceiveMetaData) -> Self::ThreadReturn {
-        return ();
-    }
-
-    fn on_event(&mut self, _: ReceiveMetaData, event: Self::Event) -> EventHandleResult<Self> {
+    fn on_event(&mut self, _: ReceiveMetaData, event: Self::Event) -> EventHandleResult {
         match event {
             TcpListenerEvent::ListenerReady => {
                 self.connection_handler.on_bind(self.socket_addr);
@@ -72,7 +68,7 @@ impl<TcpConnectionHandler: TcpConnectionHandlerTrait> HandleEvent
         }
     }
 
-    fn on_channel_disconnect(&mut self) -> EventHandleResult<Self> {
-        EventHandleResult::StopThread(())
+    fn on_stop_self(self) -> Self::ThreadReturn {
+        return ();
     }
 }

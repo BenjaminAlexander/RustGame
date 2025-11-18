@@ -58,7 +58,7 @@ impl<T: TcpConnectionHandlerTrait> TcpListenerEventHandler<T> {
         );
     }
 
-    fn accept(&mut self) -> EventHandleResult<Self> {
+    fn accept(&mut self) -> EventHandleResult {
         let accept_result = self.tcp_listener.accept();
         return self.handle_accept_result(accept_result);
     }
@@ -66,7 +66,7 @@ impl<T: TcpConnectionHandlerTrait> TcpListenerEventHandler<T> {
     fn handle_accept_result(
         &mut self,
         accept_result: Result<(std::net::TcpStream, SocketAddr), Error>,
-    ) -> EventHandleResult<Self> {
+    ) -> EventHandleResult {
         match accept_result {
             Ok((net_tcp_stream, remote_peer_socket_addr)) => {
                 let real_tcp_stream = RealTcpStream::new(net_tcp_stream, remote_peer_socket_addr);
@@ -88,7 +88,7 @@ impl<T: TcpConnectionHandlerTrait> TcpListenerEventHandler<T> {
         &mut self,
         real_tcp_stream: RealTcpStream,
         clone_result: Result<RealTcpStream, Error>,
-    ) -> EventHandleResult<Self> {
+    ) -> EventHandleResult {
         match clone_result {
             Ok(real_tcp_stream_clone) => {
                 match self.tcp_connection_handler.on_connection(
@@ -99,7 +99,7 @@ impl<T: TcpConnectionHandlerTrait> TcpListenerEventHandler<T> {
                         return EventHandleResult::TryForNextEvent;
                     }
                     Break(()) => {
-                        return EventHandleResult::StopThread(());
+                        return EventHandleResult::StopThread;
                     }
                 }
             }
@@ -118,23 +118,19 @@ impl<T: TcpConnectionHandlerTrait> HandleEvent for TcpListenerEventHandler<T> {
     type Event = ();
     type ThreadReturn = ();
 
-    fn on_event(&mut self, _: ReceiveMetaData, _: Self::Event) -> EventHandleResult<Self> {
+    fn on_event(&mut self, _: ReceiveMetaData, _: Self::Event) -> EventHandleResult {
         return EventHandleResult::TryForNextEvent;
     }
 
-    fn on_timeout(&mut self) -> EventHandleResult<Self> {
+    fn on_timeout(&mut self) -> EventHandleResult {
         return self.accept();
     }
 
-    fn on_channel_empty(&mut self) -> EventHandleResult<Self> {
+    fn on_channel_empty(&mut self) -> EventHandleResult {
         return self.accept();
     }
 
-    fn on_channel_disconnect(&mut self) -> EventHandleResult<Self> {
-        return EventHandleResult::StopThread(());
-    }
-
-    fn on_stop(self, _receive_meta_data: ReceiveMetaData) -> Self::ThreadReturn {
+    fn on_stop_self(self) -> Self::ThreadReturn {
         return ();
     }
 }
