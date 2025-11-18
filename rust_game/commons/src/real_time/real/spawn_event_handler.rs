@@ -5,10 +5,10 @@ use std::sync::mpsc::{
 };
 use std::thread::Builder;
 
+use crate::real_time::event_or_stop_thread::EventOrStopThread;
 use crate::real_time::real::RealReceiver;
 use crate::real_time::{
     EventHandleResult,
-    EventOrStopThread,
     HandleEvent,
     ReceiveMetaData,
 };

@@ -1,3 +1,4 @@
+use crate::real_time::event_or_stop_thread::EventOrStopThread;
 use crate::real_time::simulation::receiver_link::{
     ReceiveOrDisconnected,
     ReceiverLink,
@@ -6,7 +7,6 @@ use crate::real_time::simulation::single_threaded_receiver::SingleThreadedReceiv
 use crate::real_time::simulation::SingleThreadedFactory;
 use crate::real_time::{
     EventHandleResult,
-    EventOrStopThread,
     HandleEvent,
     ReceiveMetaData,
 };

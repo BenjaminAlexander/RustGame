@@ -1,3 +1,4 @@
+use crate::real_time::event_or_stop_thread::EventOrStopThread;
 use crate::real_time::net::tcp::{
     TcpConnectionHandlerTrait,
     TcpReader,
@@ -9,7 +10,6 @@ use crate::real_time::real::RealReceiver;
 use crate::real_time::{
     real,
     EventHandleResult,
-    EventOrStopThread,
     HandleEvent,
     ReceiveMetaData,
 };

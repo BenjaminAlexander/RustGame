@@ -1,21 +1,13 @@
 use std::io::Error;
 
 use crate::real_time::{
-    net::udp::{
+    EventHandlerStopper, EventSender, Factory, Receiver, event_or_stop_thread::EventOrStopThread, net::udp::{
         udp_read_handler_trait::UdpReadHandlerTrait,
         udp_socket::{
             UdpSocket,
             UdpSocketImplementation,
         },
-    },
-    real::net::udp::RealUdpReaderEventHandler,
-    receiver::ReceiverImplementation,
-    simulation::net::NetworkSimulator,
-    EventHandlerStopper,
-    EventOrStopThread,
-    EventSender,
-    Factory,
-    Receiver,
+    }, real::net::udp::RealUdpReaderEventHandler, receiver::ReceiverImplementation, simulation::net::NetworkSimulator
 };
 
 pub struct UdpReadHandlerBuilder {

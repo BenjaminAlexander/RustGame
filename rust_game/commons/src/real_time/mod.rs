@@ -29,5 +29,3 @@ pub use self::sender::Sender;
 pub use self::single_thread_executor::SingleThreadExecutor;
 pub use self::time_source::TimeSource;
 
-//TODO: hide this
-pub use self::event_or_stop_thread::EventOrStopThread;

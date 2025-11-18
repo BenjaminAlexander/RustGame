@@ -1,15 +1,11 @@
-use crate::real_time::{
-    EventOrStopThread,
-    Sender,
-};
+use crate::real_time::{Sender, event_or_stop_thread::EventOrStopThread};
 
 pub struct EventSender<T: Send> {
     sender: Sender<EventOrStopThread<T>>,
 }
 
 impl<T: Send> EventSender<T> {
-    //TODO: find all pub(crate) in real_time and make them private in real_time
-    pub(crate) fn new(sender: Sender<EventOrStopThread<T>>) -> Self {
+    pub(super) fn new(sender: Sender<EventOrStopThread<T>>) -> Self {
         return Self { sender };
     }
 

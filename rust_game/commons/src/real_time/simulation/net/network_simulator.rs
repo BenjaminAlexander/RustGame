@@ -1,3 +1,4 @@
+use crate::real_time::event_or_stop_thread::EventOrStopThread;
 use crate::real_time::net::tcp::{
     TcpConnectionHandlerTrait,
     TcpReader,
@@ -21,7 +22,6 @@ use crate::real_time::simulation::{
 };
 use crate::real_time::{
     EventHandlerBuilder,
-    EventOrStopThread,
     EventSender,
 };
 use log::{

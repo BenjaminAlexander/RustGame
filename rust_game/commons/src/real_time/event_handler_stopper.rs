@@ -5,7 +5,7 @@ pub struct EventHandlerStopper {
 }
 
 impl EventHandlerStopper {
-    pub(crate) fn new(sender: EventSender<()>) -> Self {
+    pub(super) fn new(sender: EventSender<()>) -> Self {
         return Self { sender };
     }
 
