@@ -11,7 +11,6 @@ use log::{
 use crate::logging::LoggingConfigBuilder;
 
 pub fn setup_test_logging() {
-    //TODO: set up this logging in non-test code
     let orig_hook = panic::take_hook();
     panic::set_hook(Box::new(move |panic_info| {
         error!(

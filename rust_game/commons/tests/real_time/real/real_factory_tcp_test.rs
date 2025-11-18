@@ -13,12 +13,12 @@ use commons::real_time::{
     Factory,
     SingleThreadExecutor,
 };
+use commons::test_utils::AsyncExpects;
 use log::info;
 use std::{
     net::SocketAddr,
     ops::ControlFlow,
 };
-use test_utils::assert::AsyncExpects;
 
 const A_NUMBER: i32 = 42;
 

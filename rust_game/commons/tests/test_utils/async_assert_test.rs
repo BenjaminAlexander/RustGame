@@ -1,10 +1,9 @@
 use commons::{
     logging::LoggingConfigBuilder,
-    real_time::SingleThreadExecutor,
+    real_time::SingleThreadExecutor, test_utils::AsyncExpects,
 };
 use log::LevelFilter;
 use std::panic::catch_unwind;
-use test_utils::assert::AsyncExpects;
 
 #[test]
 fn test_async_expect() {

@@ -1,9 +1,8 @@
 use commons::{
     logging::LoggingConfigBuilder,
     real_time::{
-        net::udp::UdpReadHandlerBuilder,
-        Factory,
-    },
+        Factory, net::udp::UdpReadHandlerBuilder
+    }, test_utils::AsyncExpects,
 };
 use log::{
     info,
@@ -13,7 +12,6 @@ use std::{
     net::SocketAddr,
     ops::ControlFlow,
 };
-use test_utils::assert::AsyncExpects;
 
 const A_NUMBER: u8 = 42;
 

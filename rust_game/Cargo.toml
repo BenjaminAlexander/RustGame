@@ -3,7 +3,6 @@ members = [
     "commons",
     "engine-core",
     "simple-game",
-    "test-utils"
 ]
 
 [workspace.package]
@@ -17,7 +16,6 @@ authors = ["Benjamin A. Alexander"]
 commons = { path = "./commons" }
 engine-core = { path = "./engine-core" }
 simple-game = { path = "./simple-game" }
-test-utils = { path = "./test-utils" }
 
 #Dependencies on crates outside the workspace
 chrono = "0.4.19"
@@ -28,6 +26,7 @@ piston = "0.53.2"
 piston2d-graphics = "0.43.0"
 pistoncore-glutin_window = "0.71.0"
 piston2d-opengl_graphics = "0.82.0"
+rand = { version = "0.8.5" }
 rmp-serde = "1.1.1"
 serde = { version = "1", features = ["derive"] }
 timer = "0.2.0"

@@ -1,9 +1,8 @@
-use commons::logging::LoggingConfigBuilder;
+use commons::{logging::LoggingConfigBuilder, test_utils::with_test_temp_dir};
 use log::{
     info,
     LevelFilter,
 };
-use test_utils::files::with_test_temp_dir;
 
 #[test]
 fn test_log_to_file() {
