@@ -33,9 +33,9 @@ pub trait GameTrait: 'static + Send + Sized {
 
     fn get_initial_state(player_count: usize) -> Self::State;
 
-    fn get_server_input(state: &Self::State, arg: &ServerUpdateArg<Self>) -> Self::ServerInput;
+    fn get_server_input(arg: &ServerUpdateArg<Self>) -> Self::ServerInput;
 
-    fn get_next_state(state: &Self::State, arg: &ClientUpdateArg<Self>) -> Self::State;
+    fn get_next_state(arg: &ClientUpdateArg<Self>) -> Self::State;
 
     //TODO: this method needs to include the last interpolation result
     fn interpolate(

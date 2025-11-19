@@ -3,21 +3,24 @@ use crate::interface::InitialInformation;
 use commons::time::TimeDuration;
 
 #[derive(Debug)]
-pub struct ServerUpdateArg<'a, 'b, Game: GameTrait> {
+pub struct ServerUpdateArg<'a, Game: GameTrait> {
     initial_information: &'a InitialInformation<Game>,
     step: usize,
-    inputs: &'b Vec<Option<Game::ClientInput>>,
+    state: &'a Game::State,
+    inputs: &'a Vec<Option<Game::ClientInput>>,
 }
 
-impl<'a, 'b, Game: GameTrait> ServerUpdateArg<'a, 'b, Game> {
+impl<'a, 'b, Game: GameTrait> ServerUpdateArg<'a, Game> {
     pub fn new(
         initial_information: &'a InitialInformation<Game>,
         step: usize,
-        inputs: &'b Vec<Option<Game::ClientInput>>,
+        state: &'a Game::State,
+        inputs: &'a Vec<Option<Game::ClientInput>>,
     ) -> Self {
         return Self {
             initial_information,
             step,
+            state,
             inputs,
         };
     }
@@ -32,6 +35,10 @@ impl<'a, 'b, Game: GameTrait> ServerUpdateArg<'a, 'b, Game> {
 
     pub fn get_current_step(&self) -> usize {
         return self.step;
+    }
+
+    pub fn get_state(&self) -> &'a Game::State {
+        return self.state;
     }
 
     pub fn get_next_step(&self) -> usize {

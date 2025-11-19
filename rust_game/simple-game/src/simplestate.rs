@@ -42,13 +42,12 @@ impl SimpleState {
     }
 
     pub fn get_server_input(
-        state: &SimpleState,
         arg: &ServerUpdateArg<SimpleGameImpl>,
     ) -> SimpleServerInput {
         let mut server_input = SimpleServerInput::new();
 
-        for character in &state.player_characters {
-            for bullet in &state.bullets {
+        for character in &arg.get_state().player_characters {
+            for bullet in &arg.get_state().bullets {
                 if character.is_hit(bullet, arg.get_current_duration_since_start()) {
                     server_input.add_event(SimplServerInputEvent::CharacterHit {
                         index: character.get_player_index(),
@@ -61,10 +60,9 @@ impl SimpleState {
     }
 
     pub fn get_next_state(
-        state: &SimpleState,
         arg: &ClientUpdateArg<SimpleGameImpl>,
     ) -> SimpleState {
-        let mut new = state.clone();
+        let mut new = arg.get_state().clone();
         new.update(arg);
         return new;
     }

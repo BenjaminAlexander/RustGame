@@ -40,12 +40,12 @@ impl GameTrait for SimpleGameImpl {
         Self::State::new(player_count)
     }
 
-    fn get_server_input(state: &Self::State, arg: &ServerUpdateArg<Self>) -> Self::ServerInput {
-        return SimpleState::get_server_input(state, arg);
+    fn get_server_input(arg: &ServerUpdateArg<Self>) -> Self::ServerInput {
+        return SimpleState::get_server_input(arg);
     }
 
-    fn get_next_state(state: &Self::State, arg: &ClientUpdateArg<Self>) -> Self::State {
-        return SimpleState::get_next_state(state, arg);
+    fn get_next_state(arg: &ClientUpdateArg<Self>) -> Self::State {
+        return SimpleState::get_next_state(arg);
     }
 
     fn interpolate(

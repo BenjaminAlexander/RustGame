@@ -149,7 +149,7 @@ impl<Game: GameTrait> Step<Game> {
                 StateHolder::ComputedIncomplete { state, .. } => Some(state),
                 StateHolder::ComputedComplete { state, .. } => Some(state),
             } {
-                let server_input = Game::get_server_input(state, &self.get_server_update_arg());
+                let server_input = Game::get_server_input(&self.get_server_update_arg(state));
 
                 if self.are_inputs_complete() {
                     self.server_input = ServerInputHolder::ComputedComplete {
@@ -179,9 +179,9 @@ impl<Game: GameTrait> Step<Game> {
                 ServerInputHolder::ComputedComplete { server_input, .. } => Some(server_input),
             };
 
-            let arg = ClientUpdateArg::new(self.get_server_update_arg(), server_input);
+            let arg = ClientUpdateArg::new(self.get_server_update_arg(state), server_input);
 
-            let next_state = Game::get_next_state(state, &arg);
+            let next_state = Game::get_next_state(&arg);
 
             if self.are_inputs_complete() {
                 return StateHolder::ComputedComplete {
@@ -263,8 +263,13 @@ impl<Game: GameTrait> Step<Game> {
         }
     }
 
-    pub fn get_server_update_arg(&self) -> ServerUpdateArg<Game> {
-        return ServerUpdateArg::new(&*self.initial_information, self.step, &self.inputs);
+    pub fn get_server_update_arg<'a>(&'a self, state: &'a Game::State) -> ServerUpdateArg<'a, Game> {
+        return ServerUpdateArg::new(
+            &*self.initial_information, 
+            self.step, 
+            state,
+            &self.inputs
+        );
     }
 
     pub fn get_changed_message(&mut self) -> Option<StepMessage<Game>> {
