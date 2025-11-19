@@ -1,6 +1,6 @@
 use crate::real_time::event_or_stop_thread::EventOrStopThread;
 use crate::real_time::net::tcp::{
-    TcpConnectionHandlerTrait,
+    HandleTcpConnection,
     TcpReader,
     TcpStream,
 };
@@ -27,12 +27,12 @@ use std::ops::ControlFlow::{
     Continue,
 };
 
-pub struct TcpListenerEventHandler<T: TcpConnectionHandlerTrait> {
+pub struct TcpListenerEventHandler<T: HandleTcpConnection> {
     tcp_listener: TcpListener,
     tcp_connection_handler: T,
 }
 
-impl<T: TcpConnectionHandlerTrait> TcpListenerEventHandler<T> {
+impl<T: HandleTcpConnection> TcpListenerEventHandler<T> {
     pub fn spawn_tcp_listener(
         thread_name: String,
         real_receiver: RealReceiver<EventOrStopThread<()>>,
@@ -114,7 +114,7 @@ impl<T: TcpConnectionHandlerTrait> TcpListenerEventHandler<T> {
     }
 }
 
-impl<T: TcpConnectionHandlerTrait> HandleEvent for TcpListenerEventHandler<T> {
+impl<T: HandleTcpConnection> HandleEvent for TcpListenerEventHandler<T> {
     type Event = ();
     type ThreadReturn = ();
 

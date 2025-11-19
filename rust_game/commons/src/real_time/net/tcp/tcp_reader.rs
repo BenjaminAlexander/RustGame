@@ -8,7 +8,6 @@ pub(super) enum TcpReaderImplementation {
     Simulated(SingleThreadedReceiver<Vec<u8>>),
 }
 
-//TODO: rename to Reader
 pub struct TcpReader {
     implementation: TcpReaderImplementation,
 }

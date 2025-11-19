@@ -1,6 +1,6 @@
 use crate::server::servercore::ServerCoreEvent;
 use crate::GameTrait;
-use commons::real_time::net::udp::UdpReadHandlerTrait;
+use commons::real_time::net::udp::HandleUdpRead;
 use commons::real_time::net::MAX_UDP_DATAGRAM_SIZE;
 use commons::real_time::EventSender;
 use std::net::SocketAddr;
@@ -16,7 +16,7 @@ impl<Game: GameTrait> UdpInput<Game> {
     }
 }
 
-impl<Game: GameTrait> UdpReadHandlerTrait for UdpInput<Game> {
+impl<Game: GameTrait> HandleUdpRead for UdpInput<Game> {
     fn on_read(&mut self, peer_addr: SocketAddr, buf: &[u8]) -> ControlFlow<()> {
         let mut buf_to_send = [0; MAX_UDP_DATAGRAM_SIZE];
         buf_to_send[..buf.len()].copy_from_slice(buf);

@@ -89,7 +89,7 @@ impl HandleEvent for SingleThreadExecutorEventHandler {
         event();
         return EventHandleResult::WaitForNextEvent;
     }
-    
+
     fn on_stop_self(self) -> Self::ThreadReturn {
         return ();
     }

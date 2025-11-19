@@ -8,8 +8,7 @@ use crate::real_time::net::tcp::{
     TcpReader,
 };
 
-//TODO: get rid of this trait
-pub trait TcpConnectionHandlerTrait: Send + 'static {
+pub trait HandleTcpConnection: Send + 'static {
     fn on_bind(&mut self, _socket_addr: SocketAddr) {}
 
     fn on_connection(&mut self, tcp_stream: TcpStream, tcp_receiver: TcpReader) -> ControlFlow<()>;
@@ -40,7 +39,7 @@ impl TcpConnectionHandler {
     }
 }
 
-impl TcpConnectionHandlerTrait for TcpConnectionHandler {
+impl HandleTcpConnection for TcpConnectionHandler {
     fn on_bind(&mut self, socket_addr: SocketAddr) {
         return (self.on_bind)(socket_addr);
     }

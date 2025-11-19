@@ -1,9 +1,9 @@
 use commons::logging::LoggingConfigBuilder;
 use commons::real_time::net::tcp::{
-    TcpConnectionHandlerTrait,
+    HandleTcpConnection,
+    HandleTcpRead,
     TcpListenerBuilder,
     TcpReadHandlerBuilder,
-    TcpReadHandlerTrait,
     TcpReader,
     TcpStream,
 };
@@ -136,7 +136,7 @@ struct ConnectionHandler {
     server_side: Arc<Mutex<Option<TestConnection>>>,
 }
 
-impl TcpConnectionHandlerTrait for ConnectionHandler {
+impl HandleTcpConnection for ConnectionHandler {
     fn on_connection(&mut self, tcp_stream: TcpStream, tcp_receiver: TcpReader) -> ControlFlow<()> {
         info!(
             "{:?} is handling a connection from {:?}",
@@ -179,7 +179,7 @@ struct TcpReadHandler {
     test_connection: Arc<Mutex<Option<TestConnection>>>,
 }
 
-impl TcpReadHandlerTrait for TcpReadHandler {
+impl HandleTcpRead for TcpReadHandler {
     type ReadType = u32;
 
     fn on_read(&mut self, read: Self::ReadType) -> ControlFlow<()> {

@@ -1,9 +1,19 @@
 use std::io::Error;
 
 use crate::real_time::{
-    EventHandlerStopper, EventSender, Factory, Receiver, event_or_stop_thread::EventOrStopThread, net::tcp::{
-        TcpReader, tcp_read_handler_trait::TcpReadHandlerTrait, tcp_reader::TcpReaderImplementation
-    }, real::net::tcp::RealTcpReaderEventHandler, receiver::ReceiverImplementation, simulation::net::tcp::SimulatedTcpReaderEventHandler
+    event_or_stop_thread::EventOrStopThread,
+    net::tcp::{
+        handle_tcp_read::HandleTcpRead,
+        tcp_reader::TcpReaderImplementation,
+        TcpReader,
+    },
+    real::net::tcp::RealTcpReaderEventHandler,
+    receiver::ReceiverImplementation,
+    simulation::net::tcp::SimulatedTcpReaderEventHandler,
+    EventHandlerStopper,
+    EventSender,
+    Factory,
+    Receiver,
 };
 
 pub struct TcpReadHandlerBuilder {
@@ -25,7 +35,7 @@ impl TcpReadHandlerBuilder {
         return &self.stopper;
     }
 
-    pub fn spawn_thread_with_call_back<T: TcpReadHandlerTrait>(
+    pub fn spawn_thread_with_call_back<T: HandleTcpRead>(
         self,
         thread_name: String,
         tcp_reader: TcpReader,
@@ -42,7 +52,7 @@ impl TcpReadHandlerBuilder {
         return Ok(self.stopper);
     }
 
-    pub fn spawn_thread<T: TcpReadHandlerTrait>(
+    pub fn spawn_thread<T: HandleTcpRead>(
         self,
         thread_name: String,
         tcp_reader: TcpReader,
@@ -51,7 +61,7 @@ impl TcpReadHandlerBuilder {
         return self.spawn_thread_with_call_back(thread_name, tcp_reader, tcp_read_handler, |_| {});
     }
 
-    pub fn new_thread<T: TcpReadHandlerTrait>(
+    pub fn new_thread<T: HandleTcpRead>(
         factory: &Factory,
         thread_name: String,
         tcp_reader: TcpReader,

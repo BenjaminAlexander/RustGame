@@ -1,4 +1,4 @@
-use crate::real_time::net::udp::UdpReadHandlerTrait;
+use crate::real_time::net::udp::HandleUdpRead;
 use crate::real_time::simulation::net::network_simulator::NetworkSimulator;
 use crate::real_time::{
     EventHandleResult,
@@ -11,12 +11,12 @@ use std::ops::ControlFlow::{
     Continue,
 };
 
-pub struct SimulatedUdpReadEventHandler<T: UdpReadHandlerTrait> {
+pub struct SimulatedUdpReadEventHandler<T: HandleUdpRead> {
     network_simulator: NetworkSimulator,
     socket_addr: SocketAddr,
     read_handler: T,
 }
-impl<T: UdpReadHandlerTrait> SimulatedUdpReadEventHandler<T> {
+impl<T: HandleUdpRead> SimulatedUdpReadEventHandler<T> {
     pub fn new(
         network_simulator: NetworkSimulator,
         socket_addr: SocketAddr,
@@ -37,7 +37,7 @@ impl<T: UdpReadHandlerTrait> SimulatedUdpReadEventHandler<T> {
     }
 }
 
-impl<T: UdpReadHandlerTrait> HandleEvent for SimulatedUdpReadEventHandler<T> {
+impl<T: HandleUdpRead> HandleEvent for SimulatedUdpReadEventHandler<T> {
     type Event = (SocketAddr, Vec<u8>);
     type ThreadReturn = ();
 

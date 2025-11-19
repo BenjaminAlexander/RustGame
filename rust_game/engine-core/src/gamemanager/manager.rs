@@ -303,7 +303,7 @@ impl<ManagerObserver: ManagerObserverTrait> HandleEvent for Manager<ManagerObser
     fn on_channel_empty(&mut self) -> EventHandleResult {
         self.on_none_pending()
     }
-    
+
     fn on_stop_self(self) -> Self::ThreadReturn {
         ()
     }

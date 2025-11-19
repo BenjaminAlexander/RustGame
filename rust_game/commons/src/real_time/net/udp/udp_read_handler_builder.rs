@@ -1,13 +1,21 @@
 use std::io::Error;
 
 use crate::real_time::{
-    EventHandlerStopper, EventSender, Factory, Receiver, event_or_stop_thread::EventOrStopThread, net::udp::{
-        udp_read_handler_trait::UdpReadHandlerTrait,
+    event_or_stop_thread::EventOrStopThread,
+    net::udp::{
+        handle_udp_read::HandleUdpRead,
         udp_socket::{
             UdpSocket,
             UdpSocketImplementation,
         },
-    }, real::net::udp::RealUdpReaderEventHandler, receiver::ReceiverImplementation, simulation::net::NetworkSimulator
+    },
+    real::net::udp::RealUdpReaderEventHandler,
+    receiver::ReceiverImplementation,
+    simulation::net::NetworkSimulator,
+    EventHandlerStopper,
+    EventSender,
+    Factory,
+    Receiver,
 };
 
 pub struct UdpReadHandlerBuilder {
@@ -29,7 +37,7 @@ impl UdpReadHandlerBuilder {
         return &self.stopper;
     }
 
-    pub fn spawn_thread_with_call_back<T: UdpReadHandlerTrait>(
+    pub fn spawn_thread_with_call_back<T: HandleUdpRead>(
         self,
         thread_name: String,
         udp_socket: UdpSocket,
@@ -46,7 +54,7 @@ impl UdpReadHandlerBuilder {
         return Ok(self.stopper);
     }
 
-    pub fn spawn_thread<T: UdpReadHandlerTrait>(
+    pub fn spawn_thread<T: HandleUdpRead>(
         self,
         thread_name: String,
         udp_socket: UdpSocket,
@@ -55,7 +63,7 @@ impl UdpReadHandlerBuilder {
         return self.spawn_thread_with_call_back(thread_name, udp_socket, udp_read_handler, |_| {});
     }
 
-    pub fn new_thread<T: UdpReadHandlerTrait>(
+    pub fn new_thread<T: HandleUdpRead>(
         factory: &Factory,
         thread_name: String,
         udp_socket: UdpSocket,

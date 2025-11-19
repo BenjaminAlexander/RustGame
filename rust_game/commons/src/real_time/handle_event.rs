@@ -24,7 +24,7 @@ pub trait HandleEvent: Send + Sized + 'static {
         return EventHandleResult::WaitForNextEvent;
     }
 
-    fn on_channel_empty(&mut self) -> EventHandleResult{
+    fn on_channel_empty(&mut self) -> EventHandleResult {
         return EventHandleResult::WaitForNextEvent;
     }
 

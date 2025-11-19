@@ -7,7 +7,7 @@ use crate::messaging::{
     ToClientMessageUDP,
 };
 use crate::GameTrait;
-use commons::real_time::net::udp::UdpReadHandlerTrait;
+use commons::real_time::net::udp::HandleUdpRead;
 use commons::real_time::{
     EventSender,
     TimeSource,
@@ -61,7 +61,7 @@ impl<Game: GameTrait> UdpInput<Game> {
     }
 }
 
-impl<Game: GameTrait> UdpReadHandlerTrait for UdpInput<Game> {
+impl<Game: GameTrait> HandleUdpRead for UdpInput<Game> {
     fn on_read(&mut self, peer_addr: SocketAddr, buff: &[u8]) -> ControlFlow<()> {
         let fragment = MessageFragment::from_vec(buff.to_vec());
 

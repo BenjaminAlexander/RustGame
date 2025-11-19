@@ -1,24 +1,32 @@
 use crate::real_time::{
-    EventHandleResult, HandleEvent, ReceiveMetaData, event_or_stop_thread::EventOrStopThread, net::tcp::TcpReadHandlerTrait, real::{
-        self, RealReceiver, net::tcp::{
-            RealTcpStream, resetable_reader::{
+    event_or_stop_thread::EventOrStopThread,
+    net::tcp::HandleTcpRead,
+    real::{
+        self,
+        net::tcp::{
+            resetable_reader::{
                 DeserializeResult,
                 ResetableReader,
-            }
-        }
-    }
+            },
+            RealTcpStream,
+        },
+        RealReceiver,
+    },
+    EventHandleResult,
+    HandleEvent,
+    ReceiveMetaData,
 };
 use std::{
     io::Error,
     ops::ControlFlow,
 };
 
-pub struct RealTcpReaderEventHandler<T: TcpReadHandlerTrait> {
+pub struct RealTcpReaderEventHandler<T: HandleTcpRead> {
     tcp_resetable_reader: ResetableReader<std::net::TcpStream>,
     tcp_read_handler: T,
 }
 
-impl<T: TcpReadHandlerTrait> RealTcpReaderEventHandler<T> {
+impl<T: HandleTcpRead> RealTcpReaderEventHandler<T> {
     pub fn spawn_tcp_reader(
         thread_name: String,
         receiver: RealReceiver<EventOrStopThread<()>>,
@@ -48,7 +56,7 @@ impl<T: TcpReadHandlerTrait> RealTcpReaderEventHandler<T> {
     }
 }
 
-impl<T: TcpReadHandlerTrait> HandleEvent for RealTcpReaderEventHandler<T> {
+impl<T: HandleTcpRead> HandleEvent for RealTcpReaderEventHandler<T> {
     type Event = ();
     type ThreadReturn = ();
 
@@ -63,7 +71,7 @@ impl<T: TcpReadHandlerTrait> HandleEvent for RealTcpReaderEventHandler<T> {
     fn on_timeout(&mut self) -> EventHandleResult {
         return EventHandleResult::TryForNextEvent;
     }
-    
+
     fn on_stop_self(self) -> Self::ThreadReturn {
         return ();
     }

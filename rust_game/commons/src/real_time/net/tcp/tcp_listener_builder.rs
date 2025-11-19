@@ -4,7 +4,15 @@ use std::{
 };
 
 use crate::real_time::{
-    EventHandlerStopper, EventSender, Factory, Receiver, event_or_stop_thread::EventOrStopThread, net::tcp::tcp_connection_handler_trait::TcpConnectionHandlerTrait, real::net::tcp::TcpListenerEventHandler, receiver::ReceiverImplementation, simulation::net::NetworkSimulator
+    event_or_stop_thread::EventOrStopThread,
+    net::tcp::handle_tcp_connection::HandleTcpConnection,
+    real::net::tcp::TcpListenerEventHandler,
+    receiver::ReceiverImplementation,
+    simulation::net::NetworkSimulator,
+    EventHandlerStopper,
+    EventSender,
+    Factory,
+    Receiver,
 };
 
 pub struct TcpListenerBuilder {
@@ -26,7 +34,7 @@ impl TcpListenerBuilder {
         return &self.stopper;
     }
 
-    pub fn spawn_thread_with_call_back<T: TcpConnectionHandlerTrait>(
+    pub fn spawn_thread_with_call_back<T: HandleTcpConnection>(
         self,
         thread_name: String,
         socket_addr: SocketAddr,
@@ -56,7 +64,7 @@ impl TcpListenerBuilder {
         return Ok(self.stopper);
     }
 
-    pub fn spawn_thread<T: TcpConnectionHandlerTrait>(
+    pub fn spawn_thread<T: HandleTcpConnection>(
         self,
         thread_name: String,
         socket_addr: SocketAddr,
@@ -70,7 +78,7 @@ impl TcpListenerBuilder {
         );
     }
 
-    pub fn new_thread<T: TcpConnectionHandlerTrait>(
+    pub fn new_thread<T: HandleTcpConnection>(
         factory: &Factory,
         thread_name: String,
         socket_addr: SocketAddr,

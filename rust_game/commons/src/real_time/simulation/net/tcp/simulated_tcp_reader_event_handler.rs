@@ -1,5 +1,5 @@
 use crate::real_time::event_or_stop_thread::EventOrStopThread;
-use crate::real_time::net::tcp::TcpReadHandlerTrait;
+use crate::real_time::net::tcp::HandleTcpRead;
 use crate::real_time::simulation::receiver_link::ReceiveOrDisconnected;
 use crate::real_time::simulation::SingleThreadedReceiver;
 use crate::real_time::{
@@ -17,11 +17,11 @@ use std::ops::ControlFlow::{
     Continue,
 };
 
-pub struct SimulatedTcpReaderEventHandler<T: TcpReadHandlerTrait> {
+pub struct SimulatedTcpReaderEventHandler<T: HandleTcpRead> {
     read_handler: T,
 }
 
-impl<T: TcpReadHandlerTrait> SimulatedTcpReaderEventHandler<T> {
+impl<T: HandleTcpRead> SimulatedTcpReaderEventHandler<T> {
     pub fn spawn_tcp_reader(
         thread_name: String,
         single_threaded_receiver: SingleThreadedReceiver<EventOrStopThread<()>>,
@@ -85,7 +85,7 @@ impl<T: TcpReadHandlerTrait> SimulatedTcpReaderEventHandler<T> {
     }
 }
 
-impl<T: TcpReadHandlerTrait> HandleEvent for SimulatedTcpReaderEventHandler<T> {
+impl<T: HandleTcpRead> HandleEvent for SimulatedTcpReaderEventHandler<T> {
     type Event = Vec<u8>;
     type ThreadReturn = ();
 

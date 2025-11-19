@@ -1,5 +1,5 @@
 use crate::real_time::net::tcp::{
-    TcpConnectionHandlerTrait,
+    HandleTcpConnection,
     TcpReader,
     TcpStream,
 };
@@ -21,15 +21,12 @@ pub enum TcpListenerEvent {
     Connection(ChannelTcpWriter, SingleThreadedReceiver<Vec<u8>>),
 }
 
-pub struct TcpListenerEventHandler<TcpConnectionHandler: TcpConnectionHandlerTrait> {
+pub struct TcpListenerEventHandler<TcpConnectionHandler: HandleTcpConnection> {
     socket_addr: SocketAddr,
     connection_handler: TcpConnectionHandler,
 }
 
-impl<TcpConnectionHandler: TcpConnectionHandlerTrait>
-    TcpListenerEventHandler<TcpConnectionHandler>
-{
-    //TODO: should this new call be the entry point for spawning a simulated tcp listener?
+impl<TcpConnectionHandler: HandleTcpConnection> TcpListenerEventHandler<TcpConnectionHandler> {
     pub fn new(socket_addr: SocketAddr, connection_handler: TcpConnectionHandler) -> Self {
         return Self {
             socket_addr,
@@ -52,7 +49,7 @@ impl<TcpConnectionHandler: TcpConnectionHandlerTrait>
     }
 }
 
-impl<TcpConnectionHandler: TcpConnectionHandlerTrait> HandleEvent
+impl<TcpConnectionHandler: HandleTcpConnection> HandleEvent
     for TcpListenerEventHandler<TcpConnectionHandler>
 {
     type Event = TcpListenerEvent;

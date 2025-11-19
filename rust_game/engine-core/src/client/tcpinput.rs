@@ -4,7 +4,7 @@ use crate::gamemanager::ManagerEvent;
 use crate::interface::RenderReceiverMessage;
 use crate::messaging::ToClientMessageTCP;
 use crate::GameTrait;
-use commons::real_time::net::tcp::TcpReadHandlerTrait;
+use commons::real_time::net::tcp::HandleTcpRead;
 use commons::real_time::{
     EventSender,
     Sender,
@@ -38,7 +38,7 @@ impl<Game: GameTrait> TcpInput<Game> {
     }
 }
 
-impl<Game: GameTrait> TcpReadHandlerTrait for TcpInput<Game> {
+impl<Game: GameTrait> HandleTcpRead for TcpInput<Game> {
     type ReadType = ToClientMessageTCP<Game>;
 
     fn on_read(&mut self, message: Self::ReadType) -> ControlFlow<()> {

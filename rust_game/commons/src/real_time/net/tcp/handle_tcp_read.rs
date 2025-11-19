@@ -2,7 +2,7 @@ use serde::de::DeserializeOwned;
 use serde::Serialize;
 use std::ops::ControlFlow;
 
-pub trait TcpReadHandlerTrait: Send + 'static {
+pub trait HandleTcpRead: Send + 'static {
     type ReadType: Serialize + DeserializeOwned;
 
     fn on_read(&mut self, read: Self::ReadType) -> ControlFlow<()>;
@@ -20,7 +20,7 @@ impl<T: Serialize + DeserializeOwned + 'static> TcpReadHandler<T> {
     }
 }
 
-impl<T: Serialize + DeserializeOwned + 'static> TcpReadHandlerTrait for TcpReadHandler<T> {
+impl<T: Serialize + DeserializeOwned + 'static> HandleTcpRead for TcpReadHandler<T> {
     type ReadType = T;
 
     fn on_read(&mut self, read: Self::ReadType) -> ControlFlow<()> {

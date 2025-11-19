@@ -1,8 +1,10 @@
 use commons::{
     logging::LoggingConfigBuilder,
     real_time::{
-        Factory, net::udp::UdpReadHandlerBuilder
-    }, test_utils::AsyncExpects,
+        net::udp::UdpReadHandlerBuilder,
+        Factory,
+    },
+    test_utils::AsyncExpects,
 };
 use log::{
     info,

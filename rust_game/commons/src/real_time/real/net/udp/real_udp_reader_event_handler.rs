@@ -1,5 +1,5 @@
 use crate::real_time::event_or_stop_thread::EventOrStopThread;
-use crate::real_time::net::udp::UdpReadHandlerTrait;
+use crate::real_time::net::udp::HandleUdpRead;
 use crate::real_time::net::MAX_UDP_DATAGRAM_SIZE;
 use crate::real_time::real::net::udp::RealUdpSocket;
 use crate::real_time::real::{
@@ -21,12 +21,12 @@ use std::ops::ControlFlow::{
     Continue,
 };
 
-pub struct RealUdpReaderEventHandler<T: UdpReadHandlerTrait> {
+pub struct RealUdpReaderEventHandler<T: HandleUdpRead> {
     udp_socket: RealUdpSocket,
     udp_read_handler: T,
 }
 
-impl<T: UdpReadHandlerTrait> RealUdpReaderEventHandler<T> {
+impl<T: HandleUdpRead> RealUdpReaderEventHandler<T> {
     pub fn spawn_udp_reader(
         thread_name: String,
         receiver: RealReceiver<EventOrStopThread<()>>,
@@ -73,7 +73,7 @@ impl<T: UdpReadHandlerTrait> RealUdpReaderEventHandler<T> {
     }
 }
 
-impl<T: UdpReadHandlerTrait> HandleEvent for RealUdpReaderEventHandler<T> {
+impl<T: HandleUdpRead> HandleEvent for RealUdpReaderEventHandler<T> {
     type Event = ();
     type ThreadReturn = ();
 
@@ -88,7 +88,7 @@ impl<T: UdpReadHandlerTrait> HandleEvent for RealUdpReaderEventHandler<T> {
     fn on_channel_empty(&mut self) -> EventHandleResult {
         return self.read();
     }
-    
+
     fn on_stop_self(self) -> Self::ThreadReturn {
         return ();
     }

@@ -30,7 +30,6 @@ use std::net::{
 pub struct SingleThreadedFactory {
     time_source: TimeSource,
     simulated_time_source: SimulatedTimeSource,
-    //TODO: don't let this TimeQueue escape SingleThreaded package
     time_queue: TimeQueue,
     host_simulator: HostSimulator,
 }

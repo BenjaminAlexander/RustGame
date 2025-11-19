@@ -1,6 +1,9 @@
 use std::time::Duration;
 
-use commons::{real_time::SingleThreadExecutor, test_utils::AsyncExpects};
+use commons::{
+    real_time::SingleThreadExecutor,
+    test_utils::AsyncExpects,
+};
 
 #[test]
 fn test_executor_wait() {

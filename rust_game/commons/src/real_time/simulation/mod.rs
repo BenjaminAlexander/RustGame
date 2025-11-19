@@ -10,8 +10,7 @@ mod time_queue;
 
 pub mod net;
 
-//TODO: make private
-pub use self::simulated_time_source::SimulatedTimeSource;
+pub(super) use self::simulated_time_source::SimulatedTimeSource;
 pub use self::single_threaded_factory::SingleThreadedFactory;
 pub(super) use self::single_threaded_receiver::SingleThreadedReceiver;
 pub(super) use self::single_threaded_sender::SingleThreadedSender;

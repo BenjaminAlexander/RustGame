@@ -15,6 +15,7 @@ use crate::real_time::{
     TimeSource,
 };
 use crate::time::TimeValue;
+use crate::utils::simplify_result;
 use log::{
     trace,
     warn,
@@ -88,10 +89,7 @@ impl<T: TimerCreationCallBack, U: TimerCallBack> IdleTimerService<T, U> {
         return None;
     }
 
-    fn trigger_timers(
-        &mut self,
-        time_source: &TimeSource,
-    ) -> EventHandleResult {
+    fn trigger_timers(&mut self, time_source: &TimeSource) -> EventHandleResult {
         loop {
             let now = time_source.now();
 
@@ -214,14 +212,6 @@ impl<T: TimerCreationCallBack, U: TimerCallBack> TimerService<T, U> {
     }
 
     //TODO: add stop function
-}
-
-//TODO: probably move to a util
-fn simplify_result<T, U>(result: Result<T, U>) -> Result<T, ()> {
-    return match result {
-        Ok(t) => Ok(t),
-        Err(_) => Err(()),
-    };
 }
 
 /// The set of events that can be sent to the [`TimerService`]'s thread.

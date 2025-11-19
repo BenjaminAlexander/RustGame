@@ -1,18 +1,21 @@
 use commons::{
-    logging::setup_test_logging, real_time::{
+    logging::setup_test_logging,
+    real_time::{
         EventHandleResult,
         EventHandlerBuilder,
         Factory,
         HandleEvent,
         ReceiveMetaData,
-    }, test_utils::AsyncExpects, time::TimeDuration
+    },
+    test_utils::AsyncExpects,
+    time::TimeDuration,
 };
 
 const NUMBER: i32 = 87;
 
 struct Count {
     count: i32,
-    is_timeout: bool
+    is_timeout: bool,
 }
 
 #[derive(Debug)]
@@ -46,7 +49,7 @@ impl HandleEvent for Count {
         self.is_timeout = true;
         EventHandleResult::StopThread
     }
-    
+
     fn on_stop_self(self) -> Self::ThreadReturn {
         if self.is_timeout {
             return NUMBER;
@@ -60,9 +63,9 @@ impl HandleEvent for Count {
 fn test_async_join() {
     setup_test_logging();
 
-    let event_handler = Count { 
+    let event_handler = Count {
         count: 0,
-        is_timeout: false
+        is_timeout: false,
     };
 
     let async_expects = AsyncExpects::new();
@@ -88,9 +91,9 @@ fn test_async_join() {
 fn test_no_timeout() {
     setup_test_logging();
 
-    let event_handler = Count { 
+    let event_handler = Count {
         count: 0,
-        is_timeout: false
+        is_timeout: false,
     };
 
     let async_expects = AsyncExpects::new();
@@ -117,9 +120,9 @@ fn test_no_timeout() {
 fn test_timeout() {
     setup_test_logging();
 
-    let event_handler = Count { 
+    let event_handler = Count {
         count: 0,
-        is_timeout: false
+        is_timeout: false,
     };
 
     let async_expects = AsyncExpects::new();
@@ -145,9 +148,9 @@ fn test_timeout() {
 fn test_drop_sender_while_waiting_for_timeout() {
     setup_test_logging();
 
-    let event_handler = Count { 
+    let event_handler = Count {
         count: 0,
-        is_timeout: false
+        is_timeout: false,
     };
 
     let async_expects = AsyncExpects::new();

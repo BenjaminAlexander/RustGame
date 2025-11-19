@@ -23,7 +23,6 @@ use std::io::Error;
 use std::net::SocketAddr;
 use std::sync::mpsc;
 
-//TODO: rename trait and file
 #[derive(Clone)]
 pub struct RealFactory {
     time_source: TimeSource,

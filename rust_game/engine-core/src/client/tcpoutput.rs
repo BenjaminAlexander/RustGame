@@ -23,7 +23,7 @@ impl HandleEvent for TcpOutput {
     fn on_event(&mut self, _: ReceiveMetaData, _: Self::Event) -> EventHandleResult {
         EventHandleResult::TryForNextEvent
     }
-    
+
     fn on_stop_self(self) -> Self::ThreadReturn {
         ()
     }

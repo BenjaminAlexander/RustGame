@@ -1,4 +1,4 @@
-use commons::real_time::net::tcp::TcpReadHandlerTrait;
+use commons::real_time::net::tcp::HandleTcpRead;
 
 use crate::messaging::ToServerMessageTCP;
 use std::ops::ControlFlow;
@@ -12,7 +12,7 @@ impl TcpInput {
     }
 }
 
-impl TcpReadHandlerTrait for TcpInput {
+impl HandleTcpRead for TcpInput {
     type ReadType = ToServerMessageTCP;
 
     fn on_read(&mut self, read: Self::ReadType) -> ControlFlow<()> {

@@ -2,7 +2,7 @@ use crate::server::servercore::ServerCoreEvent;
 use crate::server::servercore::ServerCoreEvent::TcpConnectionEvent;
 use crate::GameTrait;
 use commons::real_time::net::tcp::{
-    TcpConnectionHandlerTrait,
+    HandleTcpConnection,
     TcpReader,
     TcpStream,
 };
@@ -24,7 +24,7 @@ impl<Game: GameTrait> TcpConnectionHandler<Game> {
     }
 }
 
-impl<Game: GameTrait> TcpConnectionHandlerTrait for TcpConnectionHandler<Game> {
+impl<Game: GameTrait> HandleTcpConnection for TcpConnectionHandler<Game> {
     fn on_connection(&mut self, tcp_stream: TcpStream, tcp_receiver: TcpReader) -> ControlFlow<()> {
         info!("New TCP connection from {:?}", tcp_stream.get_peer_addr());
 

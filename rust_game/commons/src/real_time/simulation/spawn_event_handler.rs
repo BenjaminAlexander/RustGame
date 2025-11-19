@@ -89,7 +89,6 @@ impl<T: HandleEvent, U: FnOnce(T::ThreadReturn) + Send + 'static> Clone
     fn clone(&self) -> Self {
         return Self {
             internal: self.internal.clone(),
-            //TODO: can we get rid of this factory?
             factory: self.factory.clone(),
         };
     }

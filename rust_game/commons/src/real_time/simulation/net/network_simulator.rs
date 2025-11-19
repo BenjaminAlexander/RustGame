@@ -1,10 +1,10 @@
 use crate::real_time::event_or_stop_thread::EventOrStopThread;
 use crate::real_time::net::tcp::{
-    TcpConnectionHandlerTrait,
+    HandleTcpConnection,
     TcpReader,
     TcpStream,
 };
-use crate::real_time::net::udp::UdpReadHandlerTrait;
+use crate::real_time::net::udp::HandleUdpRead;
 use crate::real_time::simulation::net::host_simulator::HostSimulator;
 use crate::real_time::simulation::net::tcp::{
     ChannelTcpWriter,
@@ -73,14 +73,12 @@ impl NetworkSimulator {
         factory: &SingleThreadedFactory,
         dest_socket_addr: SocketAddr,
     ) -> (ChannelTcpWriter, SingleThreadedReceiver<Vec<u8>>) {
-        //TODO: make this an EventOrStop so it can be used for an event handler
-        //TODO: or, even better, make a channel thread builder and stash it in the reader
         let (sender, reader) = SingleThreadedReceiver::new(factory.clone());
         let writer = ChannelTcpWriter::new(dest_socket_addr, sender);
         return (writer, reader);
     }
 
-    pub fn spawn_tcp_listener<TcpConnectionHandler: TcpConnectionHandlerTrait>(
+    pub fn spawn_tcp_listener<TcpConnectionHandler: HandleTcpConnection>(
         thread_name: String,
         receiver: SingleThreadedReceiver<EventOrStopThread<()>>,
         socket_addr: SocketAddr,
@@ -169,7 +167,7 @@ impl NetworkSimulator {
         }
     }
 
-    pub fn spawn_udp_reader<T: UdpReadHandlerTrait>(
+    pub fn spawn_udp_reader<T: HandleUdpRead>(
         thread_name: String,
         receiver: SingleThreadedReceiver<EventOrStopThread<()>>,
         udp_socket: UdpSocketSimulator,

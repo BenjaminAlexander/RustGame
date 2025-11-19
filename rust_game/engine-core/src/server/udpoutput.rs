@@ -288,7 +288,7 @@ impl<Game: GameTrait> HandleEvent for UdpOutput<Game> {
             }
         }
     }
-    
+
     fn on_stop_self(self) -> Self::ThreadReturn {
         ()
     }
