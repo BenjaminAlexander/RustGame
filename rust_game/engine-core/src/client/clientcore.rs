@@ -56,7 +56,6 @@ pub struct ClientCore<Game: GameTrait> {
     factory: Factory,
     sender: EventSender<ClientCoreEvent<Game>>,
     server_ip: Ipv4Addr,
-    manager_sender: EventSender<ManagerEvent<Game>>,
     tcp_input_sender: EventHandlerStopper,
     tcp_output_sender: EventSender<()>,
     render_receiver_sender: Sender<RenderReceiverMessage<Game>>,
@@ -65,6 +64,7 @@ pub struct ClientCore<Game: GameTrait> {
 
 //TODO: don't start client core before hello
 struct RunningState<Game: GameTrait> {
+    manager_sender: EventSender<ManagerEvent<Game>>,
     input_event_handler: Game::ClientInputEventHandler,
     game_timer: GameTimer<ClientGameTimerObserver<Game>>,
     udp_input_sender: EventHandlerStopper,
@@ -80,25 +80,12 @@ impl<Game: GameTrait> ClientCore<Game> {
         sender: EventSender<ClientCoreEvent<Game>>,
         render_receiver_sender: Sender<RenderReceiverMessage<Game>>,
     ) -> Self {
-        let client_manager_observer =
-            ClientManagerObserver::<Game>::new(render_receiver_sender.clone());
-
-        let manager = Manager::new(factory.get_time_source().clone(), client_manager_observer);
-
-        let manager_sender =
-            EventHandlerBuilder::new_thread(&factory, "ClientManager".to_string(), manager)
-                .unwrap();
-
         let socket_addr_v4 = SocketAddrV4::new(server_ip.clone(), Game::TCP_PORT);
         let socket_addr = SocketAddr::from(socket_addr_v4);
 
         let (tcp_sender, tcp_receiver) = factory.connect_tcp(socket_addr).unwrap();
 
-        let tcp_input = TcpInput::<Game>::new(
-            manager_sender.clone(),
-            sender.clone(),
-            render_receiver_sender.clone(),
-        );
+        let tcp_input = TcpInput::<Game>::new(sender.clone(), render_receiver_sender.clone());
 
         let tcp_input_sender = TcpReadHandlerBuilder::new_thread(
             &factory,
@@ -119,7 +106,6 @@ impl<Game: GameTrait> ClientCore<Game> {
             factory,
             sender,
             server_ip,
-            manager_sender,
             tcp_input_sender,
             tcp_output_sender,
             render_receiver_sender,
@@ -135,6 +121,20 @@ impl<Game: GameTrait> ClientCore<Game> {
             warn!("Received a hello from the server after the client has already received a hello");
             return EventHandleResult::TryForNextEvent;
         }
+
+        //TODO: maybe consolidate building of the manager into its own method
+        let client_manager_observer =
+            ClientManagerObserver::<Game>::new(self.render_receiver_sender.clone());
+
+        let manager = Manager::new(
+            self.factory.get_time_source().clone(),
+            client_manager_observer,
+            initial_information.clone(),
+        );
+
+        let manager_sender =
+            EventHandlerBuilder::new_thread(&self.factory, "ClientManager".to_string(), manager)
+                .unwrap();
 
         let client_game_time_observer = ClientGameTimerObserver::new(self.sender.clone());
 
@@ -159,7 +159,7 @@ impl<Game: GameTrait> ClientCore<Game> {
             UdpInput::<Game>::new(
                 self.factory.get_time_source().clone(),
                 self.sender.clone(),
-                self.manager_sender.clone(),
+                manager_sender.clone(),
             )
             .unwrap(),
         )
@@ -178,6 +178,7 @@ impl<Game: GameTrait> ClientCore<Game> {
         .unwrap();
 
         self.running_state = Some(RunningState {
+            manager_sender,
             input_event_handler: Game::new_input_event_handler(),
             game_timer,
             udp_input_sender,
@@ -220,7 +221,7 @@ impl<Game: GameTrait> ClientCore<Game> {
                         Game::get_input(&mut running_state.input_event_handler),
                     );
 
-                    let send_result = self
+                    let send_result = running_state
                         .manager_sender
                         .send_event(ManagerEvent::InputEvent(message.clone()));
 
@@ -246,7 +247,7 @@ impl<Game: GameTrait> ClientCore<Game> {
                         .get_step_from_actual_time(client_drop_time)
                         .ceil() as usize;
 
-                    let send_result = self
+                    let send_result = running_state
                         .manager_sender
                         .send_event(ManagerEvent::DropStepsBeforeEvent(drop_step));
 
@@ -257,11 +258,9 @@ impl<Game: GameTrait> ClientCore<Game> {
 
                     //TODO: message or last message or next?
                     //TODO: define strict and consistent rules for how real time relates to ticks, input deadlines and display states
-                    let send_result =
-                        self.manager_sender
-                            .send_event(ManagerEvent::SetRequestedStepEvent(
-                                time_message.get_step() + 1,
-                            ));
+                    let send_result = running_state.manager_sender.send_event(
+                        ManagerEvent::SetRequestedStepEvent(time_message.get_step() + 1),
+                    );
 
                     if send_result.is_err() {
                         warn!("Failed to send Request Step to Game Manager");

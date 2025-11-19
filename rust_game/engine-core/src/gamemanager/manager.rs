@@ -1,6 +1,5 @@
 use crate::gamemanager::manager::ManagerEvent::{
     DropStepsBeforeEvent,
-    InitialInformationEvent,
     InputEvent,
     ServerInputEvent,
     SetRequestedStepEvent,
@@ -32,14 +31,11 @@ use log::{
     warn,
 };
 use std::collections::vec_deque::VecDeque;
-use std::sync::Arc;
 
 pub enum ManagerEvent<Game: GameTrait> {
     //TODO: can drop steps and requested Step be combined?
     DropStepsBeforeEvent(usize),
     SetRequestedStepEvent(usize),
-    //TODO: get initial information before starting
-    InitialInformationEvent(InitialInformation<Game>),
     InputEvent(InputMessage<Game>),
     ServerInputEvent(ServerInputMessage<Game>),
     StateEvent(StateMessage<Game>),
@@ -50,7 +46,7 @@ pub struct Manager<ManagerObserver: ManagerObserverTrait> {
     drop_steps_before: usize,
     //TODO: send requested state immediately if available
     requested_step: usize,
-    initial_information: Option<Arc<InitialInformation<ManagerObserver::Game>>>,
+    initial_information: InitialInformation<ManagerObserver::Game>,
     //New states at the back, old at the front (index 0)
     steps: VecDeque<Step<ManagerObserver::Game>>,
     manager_observer: ManagerObserver,
@@ -61,9 +57,15 @@ pub struct Manager<ManagerObserver: ManagerObserverTrait> {
 }
 
 impl<ManagerObserver: ManagerObserverTrait> Manager<ManagerObserver> {
-    pub fn new(time_source: TimeSource, manager_observer: ManagerObserver) -> Self {
-        Self {
-            initial_information: None,
+    pub fn new(
+        time_source: TimeSource,
+        manager_observer: ManagerObserver,
+        initial_information: InitialInformation<ManagerObserver::Game>,
+    ) -> Self {
+        let state = initial_information.get_state().clone();
+
+        let mut manager = Self {
+            initial_information,
             steps: VecDeque::new(),
             requested_step: 0,
             drop_steps_before: 0,
@@ -74,18 +76,16 @@ impl<ManagerObserver: ManagerObserverTrait> Manager<ManagerObserver> {
             time_of_last_input_receive: time_source.now(),
 
             time_source,
-        }
+        };
+
+        manager.handle_state_message(StateMessage::new(0, state));
+
+        return manager;
     }
 
     fn get_state(&mut self, step_index: usize) -> Option<&mut Step<ManagerObserver::Game>> {
-        if self.initial_information.is_none() {
-            return None;
-        };
-
-        let intial_information_rc = self.initial_information.as_ref().unwrap().clone();
-
         if self.steps.is_empty() {
-            let step = Step::blank(step_index, intial_information_rc);
+            let step = Step::blank(step_index);
             self.steps.push_back(step);
             return Some(&mut self.steps[0]);
         } else if step_index <= self.steps[0].get_step_index() {
@@ -94,8 +94,7 @@ impl<ManagerObserver: ManagerObserverTrait> Manager<ManagerObserver> {
                 if zero_index == step_index {
                     return Some(&mut self.steps[0]);
                 } else {
-                    self.steps
-                        .push_front(Step::blank(zero_index - 1, intial_information_rc.clone()))
+                    self.steps.push_front(Step::blank(zero_index - 1))
                 }
             }
         } else {
@@ -103,7 +102,6 @@ impl<ManagerObserver: ManagerObserverTrait> Manager<ManagerObserver> {
             while self.steps.len() <= index_to_get {
                 self.steps.push_back(Step::blank(
                     self.steps[self.steps.len() - 1].get_step_index() + 1,
-                    intial_information_rc.clone(),
                 ));
             }
             return Some(&mut self.steps[index_to_get]);
@@ -169,15 +167,11 @@ impl<ManagerObserver: ManagerObserverTrait> Manager<ManagerObserver> {
             return EventHandleResult::WaitForNextEvent;
         }
 
-        if self.initial_information.is_none() {
-            return EventHandleResult::WaitForNextEvent;
-        }
-
         let mut current: usize = 0;
 
         self.send_messages(current);
 
-        while self.steps[current].are_inputs_complete()
+        while self.steps[current].are_inputs_complete(&self.initial_information)
             || self.steps[current].get_step_index() < self.requested_step
         {
             let next = current + 1;
@@ -197,23 +191,24 @@ impl<ManagerObserver: ManagerObserverTrait> Manager<ManagerObserver> {
                     || (should_drop_current && self.steps[next].is_state_none()))
             {
                 if ManagerObserver::IS_SERVER {
-                    self.steps[current].calculate_server_input();
+                    self.steps[current].calculate_server_input(&self.initial_information);
                 }
 
-                let next_state = self.steps[current].calculate_next_state();
+                let next_state =
+                    self.steps[current].calculate_next_state(&self.initial_information);
                 self.steps[next].set_calculated_state(next_state);
             }
 
             self.steps[current].mark_as_calculation_not_needed();
 
-            if self.steps[current].are_inputs_complete() {
-                self.steps[next].mark_as_complete();
+            if self.steps[current].are_inputs_complete(&self.initial_information) {
+                self.steps[next].mark_as_complete(&self.initial_information);
             }
 
             self.send_messages(current);
 
             if should_drop_current {
-                self.steps[next].mark_as_complete();
+                self.steps[next].mark_as_complete(&self.initial_information);
 
                 let dropped = self.steps.pop_front().unwrap();
                 trace!("Dropped step: {:?}", dropped.get_step_index());
@@ -225,22 +220,6 @@ impl<ManagerObserver: ManagerObserverTrait> Manager<ManagerObserver> {
         self.send_messages(current);
 
         return EventHandleResult::WaitForNextEvent;
-    }
-
-    fn on_initial_information(
-        &mut self,
-        initial_information: InitialInformation<ManagerObserver::Game>,
-    ) -> EventHandleResult {
-        //TODO: move Arc outside lambda
-        self.initial_information = Some(Arc::new(initial_information));
-        let state = self
-            .initial_information
-            .as_ref()
-            .unwrap()
-            .get_state()
-            .clone();
-        self.handle_state_message(StateMessage::new(0, state));
-        return EventHandleResult::TryForNextEvent;
     }
 
     fn on_input_message(
@@ -285,9 +264,6 @@ impl<ManagerObserver: ManagerObserverTrait> HandleEvent for Manager<ManagerObser
         match event {
             DropStepsBeforeEvent(step) => self.drop_steps_before(step),
             SetRequestedStepEvent(step) => self.set_requested_step(step),
-            InitialInformationEvent(initial_information) => {
-                self.on_initial_information(initial_information)
-            }
             InputEvent(input_message) => self.on_input_message(input_message),
             ServerInputEvent(server_input_message) => {
                 self.on_server_input_message(server_input_message)

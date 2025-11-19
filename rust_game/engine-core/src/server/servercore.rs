@@ -278,13 +278,6 @@ impl<Game: GameTrait> ServerCore<Game> {
                 initial_state.clone(),
             );
 
-            let send_result =
-                manager_builder
-                    .get_sender()
-                    .send_event(ManagerEvent::InitialInformationEvent(
-                        server_initial_information.clone(),
-                    ));
-
             if send_result.is_err() {
                 warn!("Failed to send InitialInformation to Game Manager");
                 return EventHandleResult::StopThread;
@@ -326,6 +319,7 @@ impl<Game: GameTrait> ServerCore<Game> {
                         Manager::new(
                             self.factory.get_time_source().clone(),
                             server_manager_observer,
+                            server_initial_information.clone(),
                         ),
                     )
                     .unwrap(),

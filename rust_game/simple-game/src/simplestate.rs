@@ -41,9 +41,7 @@ impl SimpleState {
         return new;
     }
 
-    pub fn get_server_input(
-        arg: &ServerUpdateArg<SimpleGameImpl>,
-    ) -> SimpleServerInput {
+    pub fn get_server_input(arg: &ServerUpdateArg<SimpleGameImpl>) -> SimpleServerInput {
         let mut server_input = SimpleServerInput::new();
 
         for character in &arg.get_state().player_characters {
@@ -59,9 +57,7 @@ impl SimpleState {
         return server_input;
     }
 
-    pub fn get_next_state(
-        arg: &ClientUpdateArg<SimpleGameImpl>,
-    ) -> SimpleState {
+    pub fn get_next_state(arg: &ClientUpdateArg<SimpleGameImpl>) -> SimpleState {
         let mut new = arg.get_state().clone();
         new.update(arg);
         return new;
