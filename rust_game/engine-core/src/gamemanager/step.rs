@@ -1,3 +1,5 @@
+use log::warn;
+
 use crate::gamemanager::stepmessage::StepMessage;
 use crate::interface::{
     ClientUpdateArg,
@@ -15,9 +17,26 @@ pub struct Step<Game: GameTrait> {
     step: usize,
     state: StateHolder<Game>,
     server_input: ServerInputHolder<Game>,
-    inputs: Vec<Option<Game::ClientInput>>,
+    inputs: Vec<Input<Game::ClientInput>>,
     input_count: usize,
     need_to_compute_next_state: bool,
+}
+
+pub struct FrameIndex(usize);
+
+#[derive(Clone, Debug)]
+pub enum Input<T> {
+
+    /// Pending signifies that an input from a client isn't yet known but may 
+    /// become known in the future.
+    Pending,
+
+    /// The Input has been received from the client which is the authoritative source
+    Authoritative(T),
+
+    /// The client never submitted an input in a timely manner and the server 
+    /// has authoritatively decided that the client cannot submit an input in the future
+    AuthoritativeMissing,
 }
 
 pub enum StateHolder<Game: GameTrait> {
@@ -48,12 +67,15 @@ pub enum ServerInputHolder<Game: GameTrait> {
 }
 
 impl<Game: GameTrait> Step<Game> {
-    pub fn blank(step_index: usize) -> Self {
+    pub fn blank(step_index: usize, player_count: usize) -> Self {
+
+        let inputs = vec![Input::Pending; player_count];
+
         return Self {
             step: step_index,
             state: StateHolder::None,
             server_input: ServerInputHolder::None,
-            inputs: Vec::new(),
+            inputs,
             input_count: 0,
             need_to_compute_next_state: false,
         };
@@ -61,17 +83,24 @@ impl<Game: GameTrait> Step<Game> {
 
     pub fn set_input(&mut self, input_message: InputMessage<Game>) {
         let index = input_message.get_player_index();
-        while self.inputs.len() <= index {
-            self.inputs.push(None);
+
+        //TODO: make a way for the server to say a input is missing
+        //let x = &mut self.inputs[index];
+        match self.inputs[index] {
+            Input::Pending => {
+                self.input_count = self.input_count + 1;
+                self.inputs[index] = Input::Authoritative(input_message.get_input());
+                self.need_to_compute_next_state = true;
+            },
+            Input::Authoritative(_) => {
+                warn!("Received a duplicate input, ignorning it")
+            },
+            Input::AuthoritativeMissing => {
+                warn!("Received a input where one has athoritatively been declared missing")
+            },
         }
 
-        if self.inputs[index].is_none() {
-            self.input_count = self.input_count + 1;
-        }
-
-        self.inputs[index] = Some(input_message.get_input());
-        self.need_to_compute_next_state = true;
-
+        //TODO: is this logic necessary if the input is authoritatively know to be missing?
         if let ServerInputHolder::Deserialized(_) = self.server_input {
             //No-Op
         } else {

@@ -4,6 +4,7 @@ pub use self::manager::{
 };
 pub use self::managerobservertrait::ManagerObserverTrait;
 pub use self::stepmessage::StepMessage;
+pub use self::step::Input;
 
 mod manager;
 mod managerobservertrait;

@@ -400,6 +400,7 @@ impl<Game: GameTrait> ServerCore<Game> {
         let (remote_peer, input_message) = self.udp_handler.on_udp_packet(len, buf, source);
 
         //TODO: does this happen too often?  Should the core keep a list of known peers and check against that?
+        //TODO: validate that inputs are coming from the right peers
         if let Some(remote_peer) = remote_peer {
             if self.on_remote_udp_peer(remote_peer).is_err() {
                 return EventHandleResult::StopThread;

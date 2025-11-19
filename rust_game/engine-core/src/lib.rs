@@ -5,6 +5,8 @@ mod interface;
 mod messaging;
 mod server;
 
+pub use self::gamemanager::Input;
+
 pub use interface::Client;
 pub use interface::ClientUpdateArg;
 pub use interface::GameTrait;

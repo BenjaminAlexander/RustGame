@@ -1,3 +1,4 @@
+use crate::gamemanager::Input;
 use crate::interface::game::GameTrait;
 use crate::interface::ServerUpdateArg;
 
@@ -18,7 +19,7 @@ impl<'a, Game: GameTrait> ClientUpdateArg<'a, Game> {
         };
     }
 
-    pub fn get_input(&self, player_index: usize) -> Option<&Game::ClientInput> {
+    pub fn get_input(&self, player_index: usize) -> &Input<Game::ClientInput> {
         return self.server_update_arg.get_input(player_index);
     }
 

@@ -1,3 +1,4 @@
+use crate::gamemanager::Input;
 use crate::interface::game::GameTrait;
 use crate::interface::InitialInformation;
 use commons::time::TimeDuration;
@@ -7,7 +8,7 @@ pub struct ServerUpdateArg<'a, Game: GameTrait> {
     initial_information: &'a InitialInformation<Game>,
     step: usize,
     state: &'a Game::State,
-    inputs: &'a Vec<Option<Game::ClientInput>>,
+    inputs: &'a Vec<Input<Game::ClientInput>>,
 }
 
 impl<'a, 'b, Game: GameTrait> ServerUpdateArg<'a, Game> {
@@ -15,7 +16,7 @@ impl<'a, 'b, Game: GameTrait> ServerUpdateArg<'a, Game> {
         initial_information: &'a InitialInformation<Game>,
         step: usize,
         state: &'a Game::State,
-        inputs: &'a Vec<Option<Game::ClientInput>>,
+        inputs: &'a Vec<Input<Game::ClientInput>>,
     ) -> Self {
         return Self {
             initial_information,
@@ -25,12 +26,8 @@ impl<'a, 'b, Game: GameTrait> ServerUpdateArg<'a, Game> {
         };
     }
 
-    pub fn get_input(&self, player_index: usize) -> Option<&Game::ClientInput> {
-        if let Some(option) = self.inputs.get(player_index) {
-            return option.as_ref();
-        } else {
-            return None;
-        }
+    pub fn get_input(&self, player_index: usize) -> &Input<Game::ClientInput> {
+        return &self.inputs[player_index];
     }
 
     pub fn get_current_step(&self) -> usize {

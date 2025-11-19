@@ -239,6 +239,7 @@ impl<Game: GameTrait> ClientCore<Game> {
                         return EventHandleResult::StopThread;
                     }
 
+                    //TODO: don't calculate this every time
                     let client_drop_time = time_message
                         .get_scheduled_time()
                         .sub(&Game::GRACE_PERIOD.mul_f64(2.0));

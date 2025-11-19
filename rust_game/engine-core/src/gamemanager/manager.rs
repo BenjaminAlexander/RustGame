@@ -85,7 +85,7 @@ impl<ManagerObserver: ManagerObserverTrait> Manager<ManagerObserver> {
 
     fn get_state(&mut self, step_index: usize) -> Option<&mut Step<ManagerObserver::Game>> {
         if self.steps.is_empty() {
-            let step = Step::blank(step_index);
+            let step = Step::blank(step_index, self.initial_information.get_player_count());
             self.steps.push_back(step);
             return Some(&mut self.steps[0]);
         } else if step_index <= self.steps[0].get_step_index() {
@@ -94,7 +94,7 @@ impl<ManagerObserver: ManagerObserverTrait> Manager<ManagerObserver> {
                 if zero_index == step_index {
                     return Some(&mut self.steps[0]);
                 } else {
-                    self.steps.push_front(Step::blank(zero_index - 1))
+                    self.steps.push_front(Step::blank(zero_index - 1, self.initial_information.get_player_count()))
                 }
             }
         } else {
@@ -102,6 +102,7 @@ impl<ManagerObserver: ManagerObserverTrait> Manager<ManagerObserver> {
             while self.steps.len() <= index_to_get {
                 self.steps.push_back(Step::blank(
                     self.steps[self.steps.len() - 1].get_step_index() + 1,
+                    self.initial_information.get_player_count()
                 ));
             }
             return Some(&mut self.steps[index_to_get]);
