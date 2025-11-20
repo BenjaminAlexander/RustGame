@@ -24,6 +24,7 @@ use crate::interface::{
 use crate::messaging::InputMessage;
 use commons::real_time::net::tcp::TcpReadHandlerBuilder;
 use commons::real_time::net::udp::UdpReadHandlerBuilder;
+use commons::real_time::timer_service::{IdleTimerService, TimerService};
 use commons::real_time::{
     EventHandleResult,
     EventHandlerBuilder,
@@ -66,7 +67,8 @@ pub struct ClientCore<Game: GameTrait> {
 struct RunningState<Game: GameTrait> {
     manager_sender: EventSender<ManagerEvent<Game>>,
     input_event_handler: Game::ClientInputEventHandler,
-    game_timer: GameTimer<ClientGameTimerObserver<Game>>,
+    timer_service: TimerService<(), ClientGameTimerObserver<Game>>,
+    game_timer: GameTimer,
     udp_input_sender: EventHandlerStopper,
     udp_output_sender: EventSender<UdpOutputEvent<Game>>,
     initial_information: InitialInformation<Game>,
@@ -136,16 +138,19 @@ impl<Game: GameTrait> ClientCore<Game> {
             EventHandlerBuilder::new_thread(&self.factory, "ClientManager".to_string(), manager)
                 .unwrap();
 
-        let client_game_time_observer = ClientGameTimerObserver::new(self.sender.clone());
+        let mut idle_timer_service = IdleTimerService::new();
 
         let game_timer = GameTimer::new(
             &self.factory,
+            &mut idle_timer_service,
             *initial_information
                 .get_server_config()
                 .get_game_timer_config(),
             Game::CLOCK_AVERAGE_SIZE,
-            client_game_time_observer,
+            ClientGameTimerObserver::new(self.sender.clone()),
         );
+
+        let timer_service = idle_timer_service.start(&self.factory).unwrap();
 
         let server_udp_socket_addr =
             SocketAddr::V4(SocketAddrV4::new(self.server_ip, Game::UDP_PORT));
@@ -180,6 +185,7 @@ impl<Game: GameTrait> ClientCore<Game> {
         self.running_state = Some(RunningState {
             manager_sender,
             input_event_handler: Game::new_input_event_handler(),
+            timer_service,
             game_timer,
             udp_input_sender,
             udp_output_sender,
@@ -294,7 +300,7 @@ impl<Game: GameTrait> ClientCore<Game> {
         if let Some(ref mut running_state) = self.running_state {
             running_state
                 .game_timer
-                .on_remote_timer_message(time_message)
+                .on_remote_timer_message(&running_state.timer_service, time_message)
                 .unwrap();
         } else {
             warn!("Received a remote timer message while waiting for the hello from the server")

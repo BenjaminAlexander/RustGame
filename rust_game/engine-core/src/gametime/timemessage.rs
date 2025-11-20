@@ -11,12 +11,14 @@ use serde::{
 
 /// A TimeMessage represents a tick of the game clock as close to a Frame's time of occurance as possible.
 /// These messages are used to propogate the occurance of a new frame from the clock throughout the system.
+/// TODO: write tests for this
 #[derive(Serialize, Deserialize, Debug, Clone, Copy)]
 pub struct TimeMessage {
     /// The time of occurance for frame index 0.  On clients, this time can float around to slave the client's clock to the server's clock.
     start: TimeValue,
 
     /// The time duration between each frame
+    // TODO: remove this and use the timer_config
     frame_duration: TimeDuration,
 
     /// The actual time this message was create by the clock

@@ -22,8 +22,6 @@ pub struct Step<Game: GameTrait> {
     need_to_compute_next_state: bool,
 }
 
-pub struct FrameIndex(usize);
-
 #[derive(Clone, Debug)]
 pub enum Input<T> {
 

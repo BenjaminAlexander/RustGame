@@ -10,7 +10,7 @@ use crate::gamemanager::{
 };
 use crate::gametime::{
     GameTimer,
-    GameTimerConfig,
+    FrameDuration,
 };
 use crate::interface::{
     GameTrait,
@@ -50,6 +50,7 @@ use commons::real_time::net::udp::{
     UdpSocket,
 };
 use commons::real_time::net::MAX_UDP_DATAGRAM_SIZE;
+use commons::real_time::timer_service::{IdleTimerService, TimerService};
 use commons::real_time::{
     EventHandleResult,
     EventHandlerBuilder,
@@ -65,6 +66,7 @@ use log::{
     info,
     warn,
 };
+use std::io::Error;
 use std::net::{
     Ipv4Addr,
     SocketAddr,
@@ -90,7 +92,8 @@ pub struct ServerCore<Game: GameTrait> {
     game_is_started: bool,
     server_config: ServerConfig,
     tcp_listener_sender_option: Option<EventHandlerStopper>,
-    game_timer: Option<GameTimer<ServerGameTimerObserver<Game>>>,
+    timer_service: TimerService<(), ServerGameTimerObserver<Game>>,
+    game_timer: GameTimer,
     tcp_inputs: Vec<EventHandlerStopper>,
     tcp_outputs: Vec<EventSender<TcpOutputEvent<Game>>>,
     udp_socket: Option<UdpSocket>,
@@ -124,19 +127,32 @@ impl<Game: GameTrait> HandleEvent for ServerCore<Game> {
 }
 
 impl<Game: GameTrait> ServerCore<Game> {
-    pub fn new(factory: Factory, sender: EventSender<ServerCoreEvent<Game>>) -> Self {
-        let game_timer_config = GameTimerConfig::new(Game::STEP_PERIOD);
+    pub fn new(factory: Factory, sender: EventSender<ServerCoreEvent<Game>>) -> Result<Self, Error> {
+        let game_timer_config = FrameDuration::new(Game::STEP_PERIOD);
         let server_config = ServerConfig::new(game_timer_config);
 
         let udp_handler = UdpHandler::<Game>::new(factory.get_time_source().clone());
 
-        Self {
+        let mut idle_timer_service = IdleTimerService::new();
+
+        let game_timer = GameTimer::new(
+            &factory,
+            &mut idle_timer_service,
+            *server_config.get_game_timer_config(),
+            0,
+            ServerGameTimerObserver::new(sender.clone()),
+        );
+
+        let timer_service = idle_timer_service.start(&factory)?;
+
+        Ok(Self {
             factory,
             sender,
             game_is_started: false,
             server_config,
             tcp_listener_sender_option: None,
-            game_timer: None,
+            timer_service,
+            game_timer,
             tcp_inputs: Vec::new(),
             tcp_outputs: Vec::new(),
             udp_outputs: Vec::new(),
@@ -146,7 +162,7 @@ impl<Game: GameTrait> ServerCore<Game> {
             udp_handler,
             manager_sender_option: None,
             render_receiver_sender: None,
-        }
+        })
     }
 
     fn start_listener(&mut self) -> EventHandleResult {
@@ -253,15 +269,6 @@ impl<Game: GameTrait> ServerCore<Game> {
             let manager_builder =
                 EventHandlerBuilder::<Manager<ServerManagerObserver<Game>>>::new(&self.factory);
 
-            let server_game_timer_observer = ServerGameTimerObserver::new(self.sender.clone());
-
-            let mut game_timer = GameTimer::new(
-                &self.factory,
-                *self.server_config.get_game_timer_config(),
-                0,
-                server_game_timer_observer,
-            );
-
             let send_result = manager_builder
                 .get_sender()
                 .send_event(ManagerEvent::DropStepsBeforeEvent(self.drop_steps_before));
@@ -305,12 +312,10 @@ impl<Game: GameTrait> ServerCore<Game> {
                 }
             }
 
-            if game_timer.start_ticking().is_err() {
+            if self.game_timer.start_ticking(&self.timer_service).is_err() {
                 warn!("Failed to Start the GameTimer");
                 return EventHandleResult::StopThread;
             };
-
-            self.game_timer = Some(game_timer);
 
             self.manager_sender_option = Some(
                 manager_builder
@@ -417,7 +422,7 @@ impl<Game: GameTrait> ServerCore<Game> {
     }
 
     fn on_game_timer_tick(&mut self) -> EventHandleResult {
-        let time_message = self.game_timer.as_ref().unwrap().create_timer_message();
+        let time_message = self.game_timer.create_timer_message();
 
         /*
         TODO: time is also sent directly fomr gametime observer, seems like this is a bug

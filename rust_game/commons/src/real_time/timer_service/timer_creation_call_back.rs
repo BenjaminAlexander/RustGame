@@ -1,5 +1,7 @@
 use std::ops::Deref;
 
+use log::trace;
+
 use crate::real_time::timer_service::TimerId;
 
 pub trait TimerCreationCallBack: Send + 'static {
@@ -15,5 +17,11 @@ impl<T: Fn(&TimerId) + Send + 'static> TimerCreationCallBack for T {
 impl TimerCreationCallBack for Box<dyn TimerCreationCallBack> {
     fn timer_created(&self, timer_id: &TimerId) {
         (*self).deref().timer_created(timer_id);
+    }
+}
+
+impl TimerCreationCallBack for () {
+    fn timer_created(&self, timer_id: &TimerId) {
+        trace!("Timer Created: {:?}", timer_id);
     }
 }
