@@ -120,6 +120,14 @@ impl Add<&TimeDuration> for TimeValue {
     }
 }
 
+impl Add<TimeDuration> for TimeValue {
+    type Output = Self;
+
+    fn add(self, rhs: TimeDuration) -> Self::Output {
+        self.add(&rhs)
+    }
+}
+
 impl Sub<&TimeDuration> for TimeValue {
     type Output = Self;
 

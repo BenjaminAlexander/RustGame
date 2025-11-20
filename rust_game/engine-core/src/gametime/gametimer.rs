@@ -1,4 +1,4 @@
-use crate::gametime::game_timer_config::FrameIndex;
+use crate::gametime::game_timer_config::{FrameIndex, StartTime};
 use crate::gametime::{
     FrameDuration,
     TimeMessage,
@@ -33,7 +33,7 @@ const CLIENT_ERROR_WARN_DURATION: TimeDuration = TimeDuration::new(0, 20_000_000
 pub struct GameTimer {
     time_source: TimeSource,
     game_timer_config: FrameDuration,
-    start: Option<TimeValue>,
+    start: Option<StartTime>,
     
     /// The FrameIndex of the frame occuring most recently in the past.
     /// This can be thought of as the current frame.
@@ -64,21 +64,20 @@ impl GameTimer {
         };
     }
 
-    pub fn start_ticking<T: TimerCallBack>(&mut self, timer_service: &TimerService<(), T>) -> Result<(), ()> {
+    pub fn start_ticking<T: TimerCallBack>(&mut self, timer_service: &TimerService<(), T>) -> Result<StartTime, ()> {
         info!(
             "Starting timer with duration {:?}",
             self.game_timer_config.get_frame_duration()
         );
 
-        let start = self.time_source.now();
+        let start = StartTime::new(self.time_source.now());
 
         // start is now, which is the same as the time of occurance of FrameIndex 0
         self.start = Some(start);
 
         let next_frame_index = self.current_frame_index.next();
-        let next_frame_duration_from_start = self.game_timer_config.duration_from_start(&next_frame_index);
-        let next_frame_time = start.add(&next_frame_duration_from_start);
-
+        let next_frame_time = start.frame_time_of_occurence(&self.game_timer_config, &next_frame_index);
+        
         //TODO: duplicate code in on_remote_timer_message
         let schedule = Schedule::Repeating(
             next_frame_time,
@@ -94,7 +93,7 @@ impl GameTimer {
 
         //TODO: send message for FrameIndex 0
 
-        return Ok(());
+        return Ok(start);
     }
 
     pub fn on_remote_timer_message<T: TimerCallBack>(
@@ -116,24 +115,24 @@ impl GameTimer {
 
         let average = self.rolling_average.get_average();
 
-        if self.start.is_none() || (self.start.unwrap().as_secs_f64() - average).abs() > 1.0 {
+        if self.start.is_none() || (self.start.unwrap().time_value().as_secs_f64() - average).abs() > 1.0 {
             if self.start.is_none() {
                 info!("Start client clock from signal from server clock.");
             } else {
-                let error = self.start.unwrap().as_secs_f64() - average;
+                let error = self.start.unwrap().time_value().as_secs_f64() - average;
                 if error > CLIENT_ERROR_WARN_DURATION.as_secs_f64() {
                     warn!("High client error (millis): {:?}", error);
                 }
             }
 
-            self.start = Some(TimeValue::from_secs_f64(average));
+            self.start = Some(StartTime::new(TimeValue::from_secs_f64(average)));
 
-            let next_tick = self.start.unwrap().add(
+            let next_tick = self.start.unwrap().time_value().add(
                 &step_duration.mul_f64(
                     (self
                         .time_source
                         .now()
-                        .duration_since(&self.start.unwrap())
+                        .duration_since(&self.start.unwrap().time_value())
                         .as_secs_f64()
                         / step_duration.as_secs_f64())
                     .floor() as f64
@@ -142,7 +141,7 @@ impl GameTimer {
             );
 
             let schedule = Schedule::Repeating(
-                self.start.unwrap(),
+                *self.start.unwrap().time_value(),
                 *self.game_timer_config.get_frame_duration(),
             );
 
@@ -165,7 +164,7 @@ impl GameTimer {
         //TODO: tick_time_value is the value from the remote thread, this value gets older and older as the event makes its way through the queue
         //TODO: How much of this can move into the other thread?
         let time_message = TimeMessage::new(
-            self.start.clone().unwrap(),
+            *self.start.clone().unwrap().time_value(),
             *self.game_timer_config.get_frame_duration(),
             now,
         );

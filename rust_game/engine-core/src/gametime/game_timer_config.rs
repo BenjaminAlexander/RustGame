@@ -3,6 +3,7 @@ use serde::{
     Deserialize,
     Serialize,
 };
+use std::ops::Add;
 
 // TODO: rename file
 
@@ -67,9 +68,16 @@ impl FrameDuration {
 pub struct StartTime(TimeValue);
 
 impl StartTime {
-    fn new(start_time: TimeValue) -> Self {
+    pub(super) fn new(start_time: TimeValue) -> Self {
         Self(start_time)
     }
 
+    pub fn frame_time_of_occurence(&self, frame_duration: &FrameDuration, frame_index: &FrameIndex) -> TimeValue {
+        self.0.add(frame_duration.duration_from_start(frame_index))
+    }
+
+    pub fn time_value(&self) -> &TimeValue {
+        &self.0
+    }
 }
 
