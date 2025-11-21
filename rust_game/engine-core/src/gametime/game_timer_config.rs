@@ -7,7 +7,7 @@ use std::ops::Add;
 
 // TODO: rename file
 
-#[derive(Serialize, Deserialize, Clone, Debug, Copy)]
+#[derive(Serialize, Deserialize, Clone, Debug, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub struct FrameIndex(usize);
 
 impl FrameIndex {
@@ -64,6 +64,7 @@ impl FrameDuration {
     //TODO: get FrameIndex
 }
 
+/// The time of occurance for frame index 0.  On clients, this time can float around to slave the client's clock to the server's clock.
 #[derive(Serialize, Deserialize, Clone, Debug, Copy)]
 pub struct StartTime(TimeValue);
 
@@ -72,11 +73,20 @@ impl StartTime {
         Self(start_time)
     }
 
-    pub fn frame_time_of_occurence(&self, frame_duration: &FrameDuration, frame_index: &FrameIndex) -> TimeValue {
+    pub fn get_frame_time_of_occurence(&self, frame_duration: &FrameDuration, frame_index: &FrameIndex) -> TimeValue {
         self.0.add(frame_duration.duration_from_start(frame_index))
     }
 
-    pub fn time_value(&self) -> &TimeValue {
+    pub fn get_fractional_frame_index(&self, frame_duration: &FrameDuration, time_value: &TimeValue) -> f64 {
+        let duration_since_start = time_value.duration_since(&self.0);
+        duration_since_start.as_secs_f64() / frame_duration.0.as_secs_f64()
+    }
+
+    pub fn get_frame_index(&self, frame_duration: &FrameDuration, time_value: &TimeValue) -> FrameIndex {
+        FrameIndex(self.get_fractional_frame_index(frame_duration, time_value).floor() as usize)
+    }
+
+    pub fn get_time_value(&self) -> &TimeValue {
         &self.0
     }
 }
