@@ -3,7 +3,7 @@ use serde::{
     Deserialize,
     Serialize,
 };
-use std::ops::Add;
+use std::ops::{Add, Sub};
 
 // TODO: rename file
 
@@ -11,12 +11,22 @@ use std::ops::Add;
 pub struct FrameIndex(usize);
 
 impl FrameIndex {
-    pub fn zero() -> Self {
+    pub const fn zero() -> Self {
         Self(0)
     }
 
-    pub fn next(&self) -> FrameIndex {
+    pub const fn next(&self) -> FrameIndex {
         Self(self.0 + 1) 
+    }
+
+    pub const fn usize(&self) -> usize {
+        self.0
+    }
+}
+
+impl From<usize> for FrameIndex {
+    fn from(value: usize) -> Self {
+        Self(value)
     }
 }
 
@@ -44,6 +54,38 @@ impl Into<f64> for &FrameIndex {
     }
 }
 
+impl Add<usize> for &FrameIndex {
+    type Output = FrameIndex;
+
+    fn add(self, rhs: usize) -> Self::Output {
+        FrameIndex(self.0 + rhs)
+    }
+}
+
+impl Add<usize> for FrameIndex {
+    type Output = FrameIndex;
+
+    fn add(self, rhs: usize) -> Self::Output {
+        FrameIndex(self.0 + rhs)
+    }
+}
+
+impl Sub<usize> for &FrameIndex {
+    type Output = FrameIndex;
+
+    fn sub(self, rhs: usize) -> Self::Output {
+        FrameIndex(self.0 - rhs)
+    }
+}
+
+impl Sub<usize> for FrameIndex {
+    type Output = FrameIndex;
+
+    fn sub(self, rhs: usize) -> Self::Output {
+        FrameIndex(self.0 - rhs)
+    }
+}
+
 /// The [`TimeDuration`] between frames
 #[derive(Serialize, Deserialize, Clone, Debug, Copy)]
 pub struct FrameDuration (TimeDuration);
@@ -59,6 +101,10 @@ impl FrameDuration {
 
     pub fn duration_from_start(&self, frame_index: &FrameIndex) -> TimeDuration {
         self.0.mul_f64(frame_index.0 as f64)
+    }
+
+    pub fn to_frame_count(&self, time_duration: &TimeDuration) -> f64 {
+        time_duration.as_secs_f64() / self.0.as_secs_f64()
     }
 
     //TODO: get FrameIndex
