@@ -12,7 +12,7 @@ use crate::gamemanager::{
     ManagerEvent,
 };
 use crate::gametime::{
-    FrameIndex, GameTimer, TimeReceived
+    FrameIndex, GameTimer, TimeMessage, TimeReceived
 };
 use crate::interface::{
     GameTrait,
@@ -70,8 +70,7 @@ struct RunningState<Game: GameTrait> {
     udp_input_sender: EventHandlerStopper,
     udp_output_sender: EventSender<UdpOutputEvent<Game>>,
     initial_information: InitialInformation<Game>,
-    //TODO: rename
-    last_time_message: Option<FrameIndex>,
+    last_time_message: Option<TimeMessage>,
 }
 
 impl<Game: GameTrait> ClientCore<Game> {
@@ -208,15 +207,8 @@ impl<Game: GameTrait> ClientCore<Game> {
 
     fn on_game_timer_tick(&mut self) -> EventHandleResult {
         if let Some(ref mut running_state) = self.running_state {
-            let frame_index_option = running_state.game_timer.create_timer_message();
+            let time_message = running_state.game_timer.create_timer_message();
 
-            if frame_index_option.is_none() {
-                warn!("Failed get FrameIndex");
-                return EventHandleResult::StopThread;
-            }
-
-            //TODO: rename
-            let time_message = frame_index_option.unwrap();
 
             trace!("TimeMessage step_index: {:?}", time_message.get_step());
 
@@ -307,7 +299,7 @@ impl<Game: GameTrait> ClientCore<Game> {
         if let Some(ref mut running_state) = self.running_state {
             running_state
                 .game_timer
-                .on_remote_timer_message(&running_state.timer_service, time_message)
+                .on_remote_timer_message(&running_state.timer_service, FrameIndex::from(time_message.get().get_step()))
                 .unwrap();
         } else {
             warn!("Received a remote timer message while waiting for the hello from the server")
