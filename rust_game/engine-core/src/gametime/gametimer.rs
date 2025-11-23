@@ -33,7 +33,7 @@ pub struct GameTimer {
     time_source: TimeSource,
     //TODO:rename
     game_timer_config: FrameDuration,
-    start: Option<StartTime>,
+    start_time: StartTime,
     
     /// The FrameIndex of the frame occuring most recently in the past.
     /// This can be thought of as the current frame.
@@ -54,29 +54,30 @@ impl GameTimer {
         
         let timer_id = idle_timer_service.create_timer(call_back, Schedule::Never);
 
+        let time_source = factory.get_time_source().clone();
+
+        // start is now, which is the same as the time of occurance of FrameIndex 0
+        let start_time = StartTime::new(time_source.now());
+
         return Self {
-            time_source: factory.get_time_source().clone(),
+            time_source,
             game_timer_config,
-            start: None,
+            start_time,
             current_frame_index: FrameIndex::zero(),
             rolling_average: RollingAverage::new(rolling_average_size),
             timer_id,
         };
     }
 
+    //TODO: push start ticking into new
     pub fn start_ticking<T: TimerCallBack>(&mut self, timer_service: &TimerService<(), T>) -> Result<(StartTime, FrameIndex), ()> {
         info!(
             "Starting timer with duration {:?}",
             self.game_timer_config.get_frame_duration()
         );
 
-        let start = StartTime::new(self.time_source.now());
-
-        // start is now, which is the same as the time of occurance of FrameIndex 0
-        self.start = Some(start);
-
         let next_frame_index = self.current_frame_index.next();
-        let next_frame_time = start.get_frame_time_of_occurence(&self.game_timer_config, &next_frame_index);
+        let next_frame_time = self.start_time.get_frame_time_of_occurence(&self.game_timer_config, &next_frame_index);
         
         //TODO: duplicate code in on_remote_timer_message
         let schedule = Schedule::Repeating(
@@ -95,7 +96,7 @@ impl GameTimer {
 
         //TODO: duplicate between this and create TimerMessage
 
-        return Ok((start, self.current_frame_index));
+        return Ok((self.start_time, self.current_frame_index));
     }
 
     //TODO: calculate ping and use that instead
@@ -116,16 +117,12 @@ impl GameTimer {
         let start = StartTime::new(TimeValue::from_secs_f64(average));
 
         //TODO: update logging
-        if self.start.is_none() {
-            info!("Start client clock from signal from server clock.");
-        } else {
-            let error = self.start.unwrap().get_time_value().as_secs_f64() - average;
-            if error > CLIENT_ERROR_WARN_DURATION.as_secs_f64() {
-                warn!("High client error (millis): {:?}", error);
-            }
+        let error = self.start_time.get_time_value().as_secs_f64() - average;
+        if error > CLIENT_ERROR_WARN_DURATION.as_secs_f64() {
+            warn!("High client error (millis): {:?}", error);
         }
 
-        self.start = Some(start);
+        self.start_time = start;
 
         let next_frame_index = self.current_frame_index.next();
         let next_frame_time = start.get_frame_time_of_occurence(&self.game_timer_config, &next_frame_index);
@@ -148,14 +145,9 @@ impl GameTimer {
 
     pub fn create_timer_message(&mut self) -> Option<TimeMessage> {
 
-        let start = match &self.start {
-            Some(start) => start,
-            None => return None,
-        };
-
         let now = self.time_source.now();
 
-        let frame_index = start.get_frame_index(&self.game_timer_config, &now);
+        let frame_index = self.start_time.get_frame_index(&self.game_timer_config, &now);
 
         //TODO: maybe these logs should be trace since they can occur with timer service race conditions
         if self.current_frame_index >= frame_index {
@@ -168,7 +160,7 @@ impl GameTimer {
 
         self.current_frame_index = frame_index;
 
-        let current_frame_index_time_value = start.get_frame_time_of_occurence(&self.game_timer_config, &self.current_frame_index);
+        let current_frame_index_time_value = self.start_time.get_frame_time_of_occurence(&self.game_timer_config, &self.current_frame_index);
 
         let lateness = current_frame_index_time_value.duration_since(&now);
 
@@ -178,7 +170,7 @@ impl GameTimer {
 
         //TODO: return Frame index
         return Some(TimeMessage::new(
-            *start, 
+            self.start_time, 
             *self.game_timer_config.get_frame_duration(), 
             now));
     }
