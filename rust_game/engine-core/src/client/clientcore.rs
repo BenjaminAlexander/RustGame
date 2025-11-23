@@ -206,9 +206,12 @@ impl<Game: GameTrait> ClientCore<Game> {
     }
 
     fn on_game_timer_tick(&mut self) -> EventHandleResult {
-        if let Some(ref mut running_state) = self.running_state {
-            let time_message = running_state.game_timer.create_timer_message();
 
+        if let Some(ref mut running_state) = self.running_state {
+            let time_message = match running_state.game_timer.create_timer_message() {
+                Some(time_message) => time_message,
+                None => return EventHandleResult::TryForNextEvent,
+            };
 
             trace!("TimeMessage step_index: {:?}", time_message.get_step());
 

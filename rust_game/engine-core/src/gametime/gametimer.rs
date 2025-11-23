@@ -146,13 +146,11 @@ impl GameTimer {
         return Ok(start);
     }
 
-    pub fn create_timer_message(&mut self) -> TimeMessage {
+    pub fn create_timer_message(&mut self) -> Option<TimeMessage> {
 
         let start = match &self.start {
             Some(start) => start,
-
-            //TODO: fix
-            None => panic!("TimerNotSetUp"),
+            None => return None,
         };
 
         let now = self.time_source.now();
@@ -162,12 +160,7 @@ impl GameTimer {
         //TODO: maybe these logs should be trace since they can occur with timer service race conditions
         if self.current_frame_index >= frame_index {
             warn!{"Game Timer did not advance a FrameIndex since the current FrameIndex is ahead of the index calculated from the current time.  Current: {:?}, Calculated: {:?}", self.current_frame_index, frame_index};
-            
-            //TODO: return NONE
-            return TimeMessage::new(
-                *start.get_time_value(), 
-                *self.game_timer_config.get_frame_duration(), 
-                now);
+            return None;
 
         } else if frame_index > self.current_frame_index.next() {
             warn!{"Game Timer advanced more than a single FrameIndex.  Current: {:?}, Advanced To: {:?}", self.current_frame_index, frame_index};
@@ -184,9 +177,9 @@ impl GameTimer {
         }
 
         //TODO: return Frame index
-        return TimeMessage::new(
+        return Some(TimeMessage::new(
             *start.get_time_value(), 
             *self.game_timer_config.get_frame_duration(), 
-            now);
+            now));
     }
 }

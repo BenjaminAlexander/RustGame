@@ -422,7 +422,10 @@ impl<Game: GameTrait> ServerCore<Game> {
     }
 
     fn on_game_timer_tick(&mut self) -> EventHandleResult {
-        let time_message = self.game_timer.create_timer_message();
+        let time_message = match self.game_timer.create_timer_message() {
+            Some(time_message) => time_message,
+            None => return EventHandleResult::TryForNextEvent,
+        };
 
         /*
         TODO: time is also sent directly fomr gametime observer, seems like this is a bug
