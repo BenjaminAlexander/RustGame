@@ -4,6 +4,7 @@ use self::ServerCoreEvent::{
     StartListenerEvent,
     TcpConnectionEvent,
 };
+use crate::FrameIndex;
 use crate::gamemanager::{
     Manager,
     ManagerEvent,
@@ -368,6 +369,7 @@ impl<Game: GameTrait> ServerCore<Game> {
                 "ServerUdpOutput".to_string(),
                 UdpOutput::<Game>::new(
                     self.factory.get_time_source().clone(),
+                    *self.server_config.get_game_timer_config(),
                     player_index,
                     self.udp_socket.as_ref().unwrap(),
                 )
@@ -464,7 +466,7 @@ impl<Game: GameTrait> ServerCore<Game> {
 
         for udp_output in self.udp_outputs.iter() {
             let send_result =
-                udp_output.send_event(UdpOutputEvent::SendTimeMessage(time_message.clone()));
+                udp_output.send_event(UdpOutputEvent::SendTimeMessage(FrameIndex::from(time_message.get_step())));
 
             if send_result.is_err() {
                 warn!("Failed to send TimeMessage to UdpOutput");

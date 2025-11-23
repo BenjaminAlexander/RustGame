@@ -12,7 +12,7 @@ use crate::gamemanager::{
     ManagerEvent,
 };
 use crate::gametime::{
-    FrameIndex, GameTimer, TimeMessage, TimeReceived
+    FrameIndex, GameTimer, TimeMessage,
 };
 use crate::interface::{
     GameTrait,
@@ -48,7 +48,8 @@ pub enum ClientCoreEvent<Game: GameTrait> {
     OnInitialInformation(InitialInformation<Game>),
     OnInputEvent(Game::ClientInputEvent),
     GameTimerTick,
-    RemoteTimeMessageEvent(TimeReceived<TimeMessage>),
+    //TODO: rename
+    RemoteTimeMessageEvent(FrameIndex),
 }
 
 pub struct ClientCore<Game: GameTrait> {
@@ -297,12 +298,12 @@ impl<Game: GameTrait> ClientCore<Game> {
 
     fn on_remote_timer_message(
         &mut self,
-        time_message: TimeReceived<TimeMessage>,
+        frame_index: FrameIndex,
     ) -> EventHandleResult {
         if let Some(ref mut running_state) = self.running_state {
             running_state
                 .game_timer
-                .on_remote_timer_message(&running_state.timer_service, FrameIndex::from(time_message.get().get_step()))
+                .on_remote_timer_message(&running_state.timer_service, frame_index)
                 .unwrap();
         } else {
             warn!("Received a remote timer message while waiting for the hello from the server")
@@ -325,8 +326,8 @@ impl<Game: GameTrait> HandleEvent for ClientCore<Game> {
                 self.on_input_event(client_input_event)
             }
             ClientCoreEvent::GameTimerTick => self.on_game_timer_tick(),
-            ClientCoreEvent::RemoteTimeMessageEvent(time_message) => {
-                self.on_remote_timer_message(time_message)
+            ClientCoreEvent::RemoteTimeMessageEvent(frame_index) => {
+                self.on_remote_timer_message(frame_index)
             }
         };
     }

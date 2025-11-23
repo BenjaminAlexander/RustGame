@@ -1,6 +1,5 @@
 use crate::client::ClientCoreEvent;
 use crate::gamemanager::ManagerEvent;
-use crate::gametime::TimeReceived;
 use crate::messaging::{
     FragmentAssembler,
     MessageFragment,
@@ -88,14 +87,11 @@ impl<Game: GameTrait> UdpInput<Game> {
         let time_received = self.time_source.now();
 
         match value {
-            ToClientMessageUDP::TimeMessage(time_message) => {
+            ToClientMessageUDP::TimeMessage(frame_index) => {
                 //info!("Time message: {:?}", time_message.get_step());
                 let send_result =
                     self.core_sender
-                        .send_event(ClientCoreEvent::RemoteTimeMessageEvent(TimeReceived::new(
-                            time_received,
-                            time_message,
-                        )));
+                        .send_event(ClientCoreEvent::RemoteTimeMessageEvent(frame_index));
 
                 if send_result.is_err() {
                     warn!("Failed to send TimeMessage to Core");

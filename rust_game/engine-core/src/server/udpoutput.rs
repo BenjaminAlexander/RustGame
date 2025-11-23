@@ -1,4 +1,4 @@
-use crate::gametime::{FrameIndex, TimeMessage};
+use crate::gametime::{FrameDuration, FrameIndex};
 use crate::interface::GameTrait;
 use crate::messaging::{
     Fragmenter,
@@ -36,11 +36,11 @@ use log::{
 };
 use std::io;
 use std::marker::PhantomData;
-use std::ops::Add;
 
 pub enum UdpOutputEvent<Game: GameTrait> {
     RemotePeer(RemoteUdpPeer),
-    SendTimeMessage(TimeMessage),
+    //TODO:rename
+    SendTimeMessage(FrameIndex),
     SendInputMessage(InputMessage<Game>),
     SendServerInputMessage(ServerInputMessage<Game>),
     SendCompletedStep(StateMessage<Game>),
@@ -48,11 +48,13 @@ pub enum UdpOutputEvent<Game: GameTrait> {
 
 pub struct UdpOutput<Game: GameTrait> {
     time_source: TimeSource,
+    //TODO: rename to ping period
+    time_sync_period: usize,
     player_index: usize,
     socket: UdpSocket,
     remote_peer: Option<RemoteUdpPeer>,
     fragmenter: Fragmenter,
-    last_time_message: Option<TimeMessage>,
+    last_time_sync_frame_index: Option<FrameIndex>,
     last_state_sequence: Option<FrameIndex>,
     phantom: PhantomData<Game>,
 
@@ -66,6 +68,7 @@ pub struct UdpOutput<Game: GameTrait> {
 impl<Game: GameTrait> UdpOutput<Game> {
     pub fn new(
         time_source: TimeSource,
+        frame_duration: FrameDuration,
         player_index: usize,
         socket: &UdpSocket,
     ) -> io::Result<Self> {
@@ -73,12 +76,13 @@ impl<Game: GameTrait> UdpOutput<Game> {
 
         Ok(UdpOutput {
             player_index,
+            time_sync_period: frame_duration.to_frame_count(&Game::TIME_SYNC_MESSAGE_PERIOD) as usize,
             remote_peer: None,
             //TODO: move clone outside
             socket: socket.try_clone()?,
             //TODO: make max datagram size more configurable
             fragmenter: Fragmenter::new(MAX_UDP_DATAGRAM_SIZE),
-            last_time_message: None,
+            last_time_sync_frame_index: None,
             last_state_sequence: None,
             phantom: PhantomData,
 
@@ -128,18 +132,14 @@ impl<Game: GameTrait> UdpOutput<Game> {
     pub fn on_time_message(
         &mut self,
         receive_meta_data: ReceiveMetaData,
-        time_message: TimeMessage,
+        frame_index: FrameIndex,
     ) -> EventHandleResult {
         let time_in_queue = receive_meta_data.get_send_meta_data().get_time_sent();
 
         let mut send_it = false;
 
-        if let Some(last_time_message) = &self.last_time_message {
-            if time_message.get_scheduled_time().is_after(
-                &last_time_message
-                    .get_scheduled_time()
-                    .add(&Game::TIME_SYNC_MESSAGE_PERIOD),
-            ) {
+        if let Some(last_time_message) = &self.last_time_sync_frame_index {
+            if frame_index >= last_time_message + self.time_sync_period {
                 send_it = true;
             }
         } else {
@@ -147,10 +147,10 @@ impl<Game: GameTrait> UdpOutput<Game> {
         }
 
         if send_it {
-            self.last_time_message = Some(time_message.clone());
+            self.last_time_sync_frame_index = Some(frame_index.clone());
 
             //TODO: timestamp when the time message is set, then use that info in client side time calc
-            let message = ToClientMessageUDP::<Game>::TimeMessage(time_message);
+            let message = ToClientMessageUDP::<Game>::TimeMessage(frame_index);
 
             self.send_message(message);
 
@@ -276,7 +276,7 @@ impl<Game: GameTrait> HandleEvent for UdpOutput<Game> {
 
         match event {
             RemotePeer(remote_udp_peer) => self.on_remote_peer(remote_udp_peer),
-            SendTimeMessage(time_message) => self.on_time_message(receive_meta_data, time_message),
+            SendTimeMessage(frame_index) => self.on_time_message(receive_meta_data, frame_index),
             SendInputMessage(input_message) => {
                 self.on_input_message(receive_meta_data, input_message)
             }

@@ -3,7 +3,7 @@ use serde::{
     Serialize,
 };
 
-use crate::gametime::TimeMessage;
+use crate::FrameIndex;
 use crate::interface::GameTrait;
 use crate::messaging::{
     InputMessage,
@@ -15,7 +15,8 @@ use crate::messaging::{
 #[serde(bound = "")]
 pub enum ToClientMessageUDP<Game: GameTrait> {
     //TODO: see if these can be borrowed
-    TimeMessage(TimeMessage),
+    //TODO: rename
+    TimeMessage(FrameIndex),
     InputMessage(InputMessage<Game>),
     ServerInputMessage(ServerInputMessage<Game>),
     StateMessage(StateMessage<Game>),
