@@ -90,11 +90,8 @@ pub enum ServerCoreEvent<Game: GameTrait> {
 pub struct ServerCore<Game: GameTrait> {
     factory: Factory,
     sender: EventSender<ServerCoreEvent<Game>>,
-    game_is_started: bool,
     server_config: ServerConfig,
     tcp_listener_sender_option: Option<EventHandlerStopper>,
-    timer_service: TimerService<(), ServerGameTimerObserver<Game>>,
-    game_timer: GameTimer,
     tcp_inputs: Vec<EventHandlerStopper>,
     tcp_outputs: Vec<EventSender<TcpOutputEvent<Game>>>,
     udp_socket: Option<UdpSocket>,
@@ -104,6 +101,12 @@ pub struct ServerCore<Game: GameTrait> {
     manager_sender_option: Option<EventSender<ManagerEvent<Game>>>,
     render_receiver_sender: Option<Sender<RenderReceiverMessage<Game>>>,
     drop_steps_before: usize,
+    running_core: Option<RunningCore<Game>>
+}
+
+struct RunningCore<Game: GameTrait> {
+    timer_service: TimerService<(), ServerGameTimerObserver<Game>>,
+    game_timer: GameTimer,
 }
 
 impl<Game: GameTrait> HandleEvent for ServerCore<Game> {
@@ -134,26 +137,11 @@ impl<Game: GameTrait> ServerCore<Game> {
 
         let udp_handler = UdpHandler::<Game>::new(factory.get_time_source().clone());
 
-        let mut idle_timer_service = IdleTimerService::new();
-
-        let game_timer = GameTimer::new(
-            &factory,
-            &mut idle_timer_service,
-            *server_config.get_game_timer_config(),
-            0,
-            ServerGameTimerObserver::new(sender.clone()),
-        );
-
-        let timer_service = idle_timer_service.start(&factory)?;
-
         Ok(Self {
             factory,
             sender,
-            game_is_started: false,
             server_config,
             tcp_listener_sender_option: None,
-            timer_service,
-            game_timer,
             tcp_inputs: Vec::new(),
             tcp_outputs: Vec::new(),
             udp_outputs: Vec::new(),
@@ -163,6 +151,7 @@ impl<Game: GameTrait> ServerCore<Game> {
             udp_handler,
             manager_sender_option: None,
             render_receiver_sender: None,
+            running_core: None
         })
     }
 
@@ -248,90 +237,113 @@ impl<Game: GameTrait> ServerCore<Game> {
         &mut self,
         render_receiver_sender: Sender<RenderReceiverMessage<Game>>,
     ) -> EventHandleResult {
-        //TODO: remove this line
-        //let (render_receiver_sender, render_receiver) = RenderReceiver::<Game>::new();
 
-        if !self.game_is_started {
-            self.game_is_started = true;
+        if self.running_core.is_some() {
+            warn!("The ServerCore has already been started");
+            return EventHandleResult::TryForNextEvent;
+        }
 
-            let initial_state = Game::get_initial_state(self.tcp_outputs.len());
+        let initial_state = Game::get_initial_state(self.tcp_outputs.len());
 
-            let mut udp_output_senders = Vec::<EventSender<UdpOutputEvent<Game>>>::new();
+        let mut udp_output_senders = Vec::<EventSender<UdpOutputEvent<Game>>>::new();
 
-            for udp_output_sender in self.udp_outputs.iter() {
-                udp_output_senders.push(udp_output_sender.clone());
-            }
+        for udp_output_sender in self.udp_outputs.iter() {
+            udp_output_senders.push(udp_output_sender.clone());
+        }
 
-            let server_manager_observer = ServerManagerObserver::<Game>::new(
-                udp_output_senders.clone(),
-                render_receiver_sender.clone(),
-            );
+        let server_manager_observer = ServerManagerObserver::<Game>::new(
+            udp_output_senders.clone(),
+            render_receiver_sender.clone(),
+        );
 
-            let manager_builder =
-                EventHandlerBuilder::<Manager<ServerManagerObserver<Game>>>::new(&self.factory);
+        let manager_builder =
+            EventHandlerBuilder::<Manager<ServerManagerObserver<Game>>>::new(&self.factory);
 
-            let send_result = manager_builder
-                .get_sender()
-                .send_event(ManagerEvent::DropStepsBeforeEvent(self.drop_steps_before));
+        let send_result = manager_builder
+            .get_sender()
+            .send_event(ManagerEvent::DropStepsBeforeEvent(self.drop_steps_before));
 
-            if send_result.is_err() {
-                warn!("Failed to send DropSteps to Game Manager");
-                return EventHandleResult::StopThread;
-            }
+        if send_result.is_err() {
+            warn!("Failed to send DropSteps to Game Manager");
+            return EventHandleResult::StopThread;
+        }
 
-            let server_initial_information = InitialInformation::<Game>::new(
+        let server_initial_information = InitialInformation::<Game>::new(
+            self.server_config.clone(),
+            self.tcp_outputs.len(),
+            usize::MAX,
+            initial_state.clone(),
+        );
+
+        if send_result.is_err() {
+            warn!("Failed to send InitialInformation to Game Manager");
+            return EventHandleResult::StopThread;
+        }
+
+        let send_result = render_receiver_sender.send(
+            RenderReceiverMessage::InitialInformation(server_initial_information.clone()),
+        );
+
+        if send_result.is_err() {
+            warn!("Failed to send InitialInformation to Render Receiver");
+            return EventHandleResult::StopThread;
+        }
+
+        for tcp_output in self.tcp_outputs.iter() {
+            let send_result = tcp_output.send_event(SendInitialInformation(
                 self.server_config.clone(),
                 self.tcp_outputs.len(),
-                usize::MAX,
                 initial_state.clone(),
-            );
+            ));
 
             if send_result.is_err() {
-                warn!("Failed to send InitialInformation to Game Manager");
+                warn!("Failed to send InitialInformation to TcpOutput");
                 return EventHandleResult::StopThread;
             }
-
-            let send_result = render_receiver_sender.send(
-                RenderReceiverMessage::InitialInformation(server_initial_information.clone()),
-            );
-
-            if send_result.is_err() {
-                warn!("Failed to send InitialInformation to Render Receiver");
-                return EventHandleResult::StopThread;
-            }
-
-            for tcp_output in self.tcp_outputs.iter() {
-                let send_result = tcp_output.send_event(SendInitialInformation(
-                    self.server_config.clone(),
-                    self.tcp_outputs.len(),
-                    initial_state.clone(),
-                ));
-
-                if send_result.is_err() {
-                    warn!("Failed to send InitialInformation to TcpOutput");
-                    return EventHandleResult::StopThread;
-                }
-            }
-
-            if self.game_timer.start_ticking(&self.timer_service).is_err() {
-                warn!("Failed to Start the GameTimer");
-                return EventHandleResult::StopThread;
-            };
-
-            self.manager_sender_option = Some(
-                manager_builder
-                    .spawn_thread(
-                        "ServerManager".to_string(),
-                        Manager::new(
-                            self.factory.get_time_source().clone(),
-                            server_manager_observer,
-                            server_initial_information.clone(),
-                        ),
-                    )
-                    .unwrap(),
-            );
-            self.render_receiver_sender = Some(render_receiver_sender);
         }
+
+        let mut idle_timer_service = IdleTimerService::new();
+
+        let mut game_timer = GameTimer::new(
+            &self.factory,
+            &mut idle_timer_service,
+            *self.server_config.get_game_timer_config(),
+            0,
+            ServerGameTimerObserver::new(self.sender.clone()),
+        );
+
+        let timer_service = match idle_timer_service.start(&self.factory) {
+            Ok(timer_service) => timer_service,
+            Err(err) => {
+                warn!("Failed to Start the TimerService: {:?}", err);
+                return EventHandleResult::StopThread;
+            },
+        };
+
+
+        if game_timer.start_ticking(&timer_service).is_err() {
+            warn!("Failed to Start the GameTimer");
+            return EventHandleResult::StopThread;
+        };
+
+        self.manager_sender_option = Some(
+            manager_builder
+                .spawn_thread(
+                    "ServerManager".to_string(),
+                    Manager::new(
+                        self.factory.get_time_source().clone(),
+                        server_manager_observer,
+                        server_initial_information.clone(),
+                    ),
+                )
+                .unwrap(),
+        );
+        self.render_receiver_sender = Some(render_receiver_sender);
+
+        self.running_core = Some(RunningCore { 
+            timer_service, 
+            game_timer 
+        });
 
         return EventHandleResult::TryForNextEvent;
     }
@@ -347,7 +359,7 @@ impl<Game: GameTrait> ServerCore<Game> {
         tcp_stream: TcpStream,
         tcp_receiver: TcpReader,
     ) -> EventHandleResult {
-        if !self.game_is_started {
+        if self.running_core.is_none() {
             info!("TcpStream accepted: {:?}", tcp_stream.get_peer_addr());
 
             let player_index = self.tcp_inputs.len();
@@ -424,7 +436,16 @@ impl<Game: GameTrait> ServerCore<Game> {
     }
 
     fn on_game_timer_tick(&mut self) -> EventHandleResult {
-        let time_message = match self.game_timer.create_timer_message() {
+
+        let running_core = match &mut self.running_core {
+            Some(running_core) => running_core,
+            None => {
+                warn!("ServerCore is not running");
+                return EventHandleResult::TryForNextEvent;
+            },
+        };
+
+        let time_message = match running_core.game_timer.create_timer_message() {
             Some(time_message) => time_message,
             None => return EventHandleResult::TryForNextEvent,
         };
