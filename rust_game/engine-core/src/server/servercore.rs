@@ -474,14 +474,23 @@ impl<Game: GameTrait> ServerCore<Game> {
             }
         }
 
-        let send_result = self
-            .render_receiver_sender
-            .as_ref()
-            .unwrap()
-            .send(RenderReceiverMessage::TimeMessage(time_message.clone()));
+        if self
+                .render_receiver_sender
+                .as_ref()
+                .unwrap()
+                .send(RenderReceiverMessage::StartTime(time_message.start_time))
+                .is_err() {
+            warn!("Failed to send StartTime to Render Receiver");
+            return EventHandleResult::StopThread;
+        }
 
-        if send_result.is_err() {
-            warn!("Failed to send TimeMessage to Render Receiver");
+        if self
+                .render_receiver_sender
+                .as_ref()
+                .unwrap()
+                .send(RenderReceiverMessage::FrameIndex(FrameIndex::from(time_message.get_step())))
+                .is_err() {
+            warn!("Failed to send FrameIndex to Render Receiver");
             return EventHandleResult::StopThread;
         }
 

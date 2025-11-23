@@ -1,7 +1,7 @@
 use std::sync::mpsc::TryRecvError;
 
 use crate::gamemanager::StepMessage;
-use crate::gametime::{FrameIndex, TimeMessage};
+use crate::gametime::{FrameIndex, StartTime};
 use crate::interface::{
     GameTrait,
     InitialInformation,
@@ -22,7 +22,9 @@ use log::{
 pub enum RenderReceiverMessage<Game: GameTrait> {
     InitialInformation(InitialInformation<Game>),
     StepMessage(StepMessage<Game>),
-    TimeMessage(TimeMessage),
+    //TODO: rename and document these
+    StartTime(StartTime),
+    FrameIndex(FrameIndex),
     StopThread,
 }
 
@@ -35,9 +37,10 @@ pub struct RenderReceiver<Game: GameTrait> {
 
 struct Data<Game: GameTrait> {
     time_source: TimeSource,
+    start_time: Option<StartTime>,
     //TODO: use vec deque so that this is more efficient
     step_queue: Vec<StepMessage<Game>>,
-    latest_time_message: Option<TimeMessage>,
+    latest_frame_index: Option<FrameIndex>,
     initial_information: Option<InitialInformation<Game>>,
 }
 
@@ -47,8 +50,9 @@ impl<Game: GameTrait> RenderReceiver<Game> {
 
         let data = Data::<Game> {
             time_source: factory.get_time_source().clone(),
+            start_time: None,
             step_queue: Vec::new(),
-            latest_time_message: None,
+            latest_frame_index: None,
             initial_information: None,
         };
 
@@ -74,8 +78,12 @@ impl<Game: GameTrait> RenderReceiver<Game> {
                     self.data.on_step_message(step_message)
                 }
 
-                Ok(RenderReceiverMessage::TimeMessage(time_message)) => {
-                    self.data.on_time_message(time_message)
+                Ok(RenderReceiverMessage::StartTime(start_time)) => {
+                    self.data.on_start_time(start_time)
+                }
+
+                Ok(RenderReceiverMessage::FrameIndex(frame_index)) => {
+                    self.data.on_frame_index(frame_index)
                 }
 
                 Ok(RenderReceiverMessage::StopThread) => {
@@ -94,69 +102,78 @@ impl<Game: GameTrait> RenderReceiver<Game> {
             }
         }
 
-        if self.data.initial_information.is_none() {
-            return None;
-        } else if self.data.step_queue.is_empty() {
-            return None;
-        } else if self.data.latest_time_message.is_some() {
-            let now = self.time_source.now();
-            let latest_time_message = self.data.latest_time_message.as_ref().unwrap();
-            let mut duration_since_start = latest_time_message.get_duration_since_start(now);
-            //used to be floor
-            let now_as_fractional_step_index = latest_time_message.get_step_from_actual_time(now);
-            let desired_first_step_index = now_as_fractional_step_index.floor() as usize;
-
-            let first_step = &self.data.step_queue[self.data.step_queue.len() - 1];
-            let second_step = if self.data.step_queue.len() >= 2 {
-                &self.data.step_queue[self.data.step_queue.len() - 2]
-            } else {
-                first_step
-            };
-
-            if first_step.get_step_index() + 1 != second_step.get_step_index() {
-                warn!(
-                    "Interpolating from non-sequential steps: {:?}, {:?}",
-                    first_step.get_step_index(),
-                    second_step.get_step_index()
-                );
-            }
-
-            if (desired_first_step_index as i64 - first_step.get_step_index().usize() as i64).abs() > 1 {
-                warn!(
-                    "Needed step: {:?}, Gotten step: {:?}",
-                    desired_first_step_index,
-                    first_step.get_step_index()
-                );
-            }
-
-            let mut weight = if second_step.get_step_index() == first_step.get_step_index() {
-                1 as f64
-            } else {
-                (now_as_fractional_step_index - first_step.get_step_index().usize() as f64)
-                    / ((second_step.get_step_index().usize() - first_step.get_step_index().usize()) as f64)
-            };
-
-            let interpolate = true;
-            if !interpolate {
-                weight = 1 as f64;
-                duration_since_start = (latest_time_message
-                    .get_step_duration()
-                    .mul_f64(second_step.get_step_index().usize() as f64))
-                .clone();
-            }
-
-            let arg = InterpolationArg::new(weight, duration_since_start);
-            let interpolation_result = Game::interpolate(
-                self.data.initial_information.as_ref().unwrap(),
-                first_step.get_state(),
-                second_step.get_state(),
-                &arg,
-            );
-
-            return Some((duration_since_start, interpolation_result));
-        } else {
+        if self.data.step_queue.is_empty() {
             return None;
         }
+
+        let start_time = match &self.data.start_time {
+            Some(start_time) => start_time,
+            None => return None,
+        };
+
+        let initial_information = match &self.data.initial_information {
+            Some(initial_information) => initial_information,
+            None => return None,
+        };
+
+        let now = self.time_source.now();
+        //let latest_time_message = self.data.latest_time_message.as_ref().unwrap();
+        //let mut duration_since_start = latest_time_message.get_duration_since_start(now);
+        //used to be floor
+        //let now_as_fractional_step_index = latest_time_message.get_step_from_actual_time(now);
+
+        //TODO: should probably be interpolating between the current frame (nearest past), to next (nearest future)
+        let desired_first_step_index = start_time.get_frame_index(initial_information.get_server_config().get_game_timer_config(), &now);
+
+        let first_step = &self.data.step_queue[self.data.step_queue.len() - 1];
+        let second_step = if self.data.step_queue.len() >= 2 {
+            &self.data.step_queue[self.data.step_queue.len() - 2]
+        } else {
+            first_step
+        };
+
+        if first_step.get_step_index() + 1 != second_step.get_step_index() {
+            warn!(
+                "Interpolating from non-sequential steps: {:?}, {:?}",
+                first_step.get_step_index(),
+                second_step.get_step_index()
+            );
+        }
+
+        if (desired_first_step_index.usize() as i64 - first_step.get_step_index().usize() as i64 ).abs() > 1 {
+            warn!(
+                "Needed step: {:?}, Gotten step: {:?}",
+                desired_first_step_index,
+                first_step.get_step_index()
+            );
+        }
+
+        let mut weight = if second_step.get_step_index() == first_step.get_step_index() {
+            1 as f64
+        } else {
+            let fractional_frame_index = start_time.get_fractional_frame_index(initial_information.get_server_config().get_game_timer_config(), &now);
+            (fractional_frame_index - first_step.get_step_index().usize() as f64)
+                / ((second_step.get_step_index().usize() - first_step.get_step_index().usize()) as f64)
+        };
+
+        let interpolate = true;
+        if !interpolate {
+            weight = 1 as f64;
+        }
+
+        //TODO: this duration since start thing seems strange
+        // The render receiver should probably just expose the start time
+        let duration_since_start = now.duration_since(start_time.get_time_value());
+
+        let arg = InterpolationArg::new(weight, duration_since_start);
+        let interpolation_result = Game::interpolate(
+            self.data.initial_information.as_ref().unwrap(),
+            first_step.get_state(),
+            second_step.get_state(),
+            &arg,
+        );
+
+        return Some((duration_since_start, interpolation_result));
     }
 
     pub fn get_initial_information(&self) -> &Option<InitialInformation<Game>> {
@@ -165,9 +182,9 @@ impl<Game: GameTrait> RenderReceiver<Game> {
 }
 
 impl<Game: GameTrait> Data<Game> {
-    fn drop_steps_before(&mut self, drop_before: usize) {
+    fn drop_steps_before(&mut self, drop_before: FrameIndex) {
         while self.step_queue.len() > 2
-            && self.step_queue[self.step_queue.len() - 1].get_step_index() < FrameIndex::from(drop_before)
+            && self.step_queue[self.step_queue.len() - 1].get_step_index() < drop_before
         {
             let _dropped = self.step_queue.pop().unwrap();
             //info!("Dropped step: {:?}", dropped.get_step_index());
@@ -199,23 +216,18 @@ impl<Game: GameTrait> Data<Game> {
             Err(pos) => self.step_queue.insert(pos, step_message),
         }
 
-        if let Some(time_message) = self.latest_time_message {
-            let now = self.time_source.now();
-
-            //TODO: put this in a method
-            let latest_step = time_message.get_step_from_actual_time(now).floor() as usize;
-
-            self.drop_steps_before(latest_step);
+        //TODO: this while block seems strange
+        if let Some(latest_frame_index) = self.latest_frame_index {
+            self.drop_steps_before(latest_frame_index);
         }
     }
 
-    fn on_time_message(&mut self, time_message: TimeMessage) {
-        //TODO: put this in a method
-        let now = self.time_source.now();
-        let latest_step = time_message.get_step_from_actual_time(now).floor() as usize;
+    fn on_start_time(&mut self, start_time: StartTime) {
+        self.start_time = Some(start_time);
+    }
 
-        self.latest_time_message = Some(time_message);
-
-        self.drop_steps_before(latest_step);
+    fn on_frame_index(&mut self, frame_index: FrameIndex) {
+        self.latest_frame_index = Some(frame_index);
+        self.drop_steps_before(frame_index);
     }
 }

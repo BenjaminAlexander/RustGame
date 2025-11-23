@@ -178,7 +178,7 @@ impl GameTimer {
 
         //TODO: return Frame index
         return Some(TimeMessage::new(
-            *start.get_time_value(), 
+            *start, 
             *self.game_timer_config.get_frame_duration(), 
             now));
     }
