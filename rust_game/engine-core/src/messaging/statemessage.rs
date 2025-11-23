@@ -1,4 +1,4 @@
-use crate::interface::GameTrait;
+use crate::{gametime::FrameIndex, interface::GameTrait};
 use serde::{
     Deserialize,
     Serialize,
@@ -6,12 +6,13 @@ use serde::{
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct StateMessage<Game: GameTrait> {
-    sequence: usize,
+    //TODO: rename
+    sequence: FrameIndex,
     state: Game::State,
 }
 
 impl<Game: GameTrait> StateMessage<Game> {
-    pub fn new(sequence: usize, state: Game::State) -> Self {
+    pub fn new(sequence: FrameIndex, state: Game::State) -> Self {
         Self { sequence, state }
     }
 
@@ -19,7 +20,8 @@ impl<Game: GameTrait> StateMessage<Game> {
         self.state
     }
 
-    pub fn get_sequence(&self) -> usize {
+    //TODO: rename
+    pub fn get_sequence(&self) -> FrameIndex {
         self.sequence
     }
 }

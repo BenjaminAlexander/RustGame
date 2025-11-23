@@ -1,7 +1,7 @@
 use std::sync::mpsc::TryRecvError;
 
 use crate::gamemanager::StepMessage;
-use crate::gametime::TimeMessage;
+use crate::gametime::{FrameIndex, TimeMessage};
 use crate::interface::{
     GameTrait,
     InitialInformation,
@@ -121,7 +121,7 @@ impl<Game: GameTrait> RenderReceiver<Game> {
                 );
             }
 
-            if (desired_first_step_index as i64 - first_step.get_step_index() as i64).abs() > 1 {
+            if (desired_first_step_index as i64 - first_step.get_step_index().usize() as i64).abs() > 1 {
                 warn!(
                     "Needed step: {:?}, Gotten step: {:?}",
                     desired_first_step_index,
@@ -132,8 +132,8 @@ impl<Game: GameTrait> RenderReceiver<Game> {
             let mut weight = if second_step.get_step_index() == first_step.get_step_index() {
                 1 as f64
             } else {
-                (now_as_fractional_step_index - first_step.get_step_index() as f64)
-                    / ((second_step.get_step_index() - first_step.get_step_index()) as f64)
+                (now_as_fractional_step_index - first_step.get_step_index().usize() as f64)
+                    / ((second_step.get_step_index().usize() - first_step.get_step_index().usize()) as f64)
             };
 
             let interpolate = true;
@@ -141,7 +141,7 @@ impl<Game: GameTrait> RenderReceiver<Game> {
                 weight = 1 as f64;
                 duration_since_start = (latest_time_message
                     .get_step_duration()
-                    .mul_f64(second_step.get_step_index() as f64))
+                    .mul_f64(second_step.get_step_index().usize() as f64))
                 .clone();
             }
 
@@ -167,7 +167,7 @@ impl<Game: GameTrait> RenderReceiver<Game> {
 impl<Game: GameTrait> Data<Game> {
     fn drop_steps_before(&mut self, drop_before: usize) {
         while self.step_queue.len() > 2
-            && self.step_queue[self.step_queue.len() - 1].get_step_index() < drop_before
+            && self.step_queue[self.step_queue.len() - 1].get_step_index() < FrameIndex::from(drop_before)
         {
             let _dropped = self.step_queue.pop().unwrap();
             //info!("Dropped step: {:?}", dropped.get_step_index());

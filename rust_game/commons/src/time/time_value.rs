@@ -14,7 +14,7 @@ use std::time::{
     UNIX_EPOCH,
 };
 
-#[derive(Serialize, Deserialize, Clone, Copy, Debug)]
+#[derive(Serialize, Deserialize, Clone, Copy, Debug, Hash)]
 pub struct TimeValue {
     seconds_since_epoch: u64,
     nanos: u32, // Always 0 <= nanos < NANOS_PER_SEC

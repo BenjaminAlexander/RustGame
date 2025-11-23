@@ -486,7 +486,7 @@ impl<Game: GameTrait> ServerCore<Game> {
     pub(super) fn on_input_message(&self, input_message: InputMessage<Game>) -> Result<(), ()> {
         //TODO: is game started?
 
-        if self.drop_steps_before <= input_message.get_step()
+        if self.drop_steps_before <= input_message.get_step().usize()
             && self.manager_sender_option.is_some()
         {
             let send_result = self

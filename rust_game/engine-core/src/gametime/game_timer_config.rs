@@ -7,7 +7,7 @@ use std::ops::{Add, Sub};
 
 // TODO: rename file
 
-#[derive(Serialize, Deserialize, Clone, Debug, Copy, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Serialize, Deserialize, Clone, Debug, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct FrameIndex(usize);
 
 impl FrameIndex {

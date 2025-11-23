@@ -1,4 +1,4 @@
-use crate::interface::GameTrait;
+use crate::{gametime::FrameIndex, interface::GameTrait};
 use serde::{
     Deserialize,
     Serialize,
@@ -6,12 +6,13 @@ use serde::{
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct ServerInputMessage<Game: GameTrait> {
-    step: usize,
+    //TODO: rename
+    step: FrameIndex,
     server_input: Game::ServerInput,
 }
 
 impl<Game: GameTrait> ServerInputMessage<Game> {
-    pub fn new(step: usize, server_input: Game::ServerInput) -> Self {
+    pub fn new(step: FrameIndex, server_input: Game::ServerInput) -> Self {
         Self { step, server_input }
     }
 
@@ -19,7 +20,8 @@ impl<Game: GameTrait> ServerInputMessage<Game> {
         self.server_input
     }
 
-    pub fn get_step(&self) -> usize {
+    //TODO: rename
+    pub fn get_step(&self) -> FrameIndex {
         self.step
     }
 }

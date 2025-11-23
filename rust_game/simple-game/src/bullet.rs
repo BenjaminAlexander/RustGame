@@ -1,7 +1,7 @@
 use crate::SimpleGameImpl;
 use commons::geometry::twod::Vector2;
 use commons::time::TimeDuration;
-use engine_core::GameTrait;
+use engine_core::{FrameIndex, GameTrait};
 use graphics::rectangle;
 use graphics::*;
 use opengl_graphics::GlGraphics;
@@ -14,25 +14,27 @@ const MAX_RANGE: f64 = 5000 as f64;
 
 #[derive(Serialize, Deserialize, Debug, Clone, Hash)]
 pub struct Bullet {
-    start_step: usize,
+    start_frame_index: FrameIndex,
     start_position: Vector2,
     velocity: Vector2,
 }
 
 impl Bullet {
-    pub fn new(start_step: usize, start_position: Vector2, aim_point: Vector2) -> Self {
+    pub fn new(start_frame_index: FrameIndex, start_position: Vector2, aim_point: Vector2) -> Self {
         let velocity = (aim_point - start_position).normalize();
 
         return Self {
-            start_step,
+            start_frame_index,
             start_position,
             velocity,
         };
     }
 
     pub fn get_position(&self, duration_since_game_start: TimeDuration) -> Option<Vector2> {
+        //TODO: refactor this time calculation
         let duration_since_bullet_start = duration_since_game_start
-            - &SimpleGameImpl::STEP_PERIOD.mul_f64(self.start_step as f64);
+            - &SimpleGameImpl::STEP_PERIOD.mul_f64(self.start_frame_index.usize() as f64);
+            
         if duration_since_bullet_start.as_secs_f64() >= 0.0 {
             //TODO: move div by 1000
             return Some(

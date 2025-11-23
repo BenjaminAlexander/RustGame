@@ -221,7 +221,7 @@ impl<Game: GameTrait> ClientCore<Game> {
                     let message = InputMessage::<Game>::new(
                         //TODO: message or last message?
                         //TODO: define strict and consistent rules for how real time relates to ticks, input deadlines and display states
-                        time_message.get_step(),
+                        FrameIndex::from(time_message.get_step()),
                         running_state.initial_information.get_player_index(),
                         Game::get_input(&mut running_state.input_event_handler),
                     );

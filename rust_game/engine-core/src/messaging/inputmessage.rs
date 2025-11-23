@@ -1,4 +1,4 @@
-use crate::interface::GameTrait;
+use crate::{gametime::FrameIndex, interface::GameTrait};
 use serde::{
     Deserialize,
     Serialize,
@@ -7,14 +7,15 @@ use std::cmp::Ordering;
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct InputMessage<Game: GameTrait> {
-    sequence: usize,
+    //TODO: rename
+    sequence: FrameIndex,
     player_index: usize,
     input: Game::ClientInput,
 }
 
 impl<Game: GameTrait> InputMessage<Game> {
     pub fn new(
-        sequence: usize,
+        sequence: FrameIndex,
         player_index: usize,
         input: Game::ClientInput,
     ) -> InputMessage<Game> {
@@ -25,7 +26,8 @@ impl<Game: GameTrait> InputMessage<Game> {
         }
     }
 
-    pub fn get_step(&self) -> usize {
+    //TODO: rename
+    pub fn get_step(&self) -> FrameIndex {
         self.sequence
     }
 

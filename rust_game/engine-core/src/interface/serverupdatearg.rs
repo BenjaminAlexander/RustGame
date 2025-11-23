@@ -1,4 +1,5 @@
 use crate::gamemanager::Input;
+use crate::gametime::FrameIndex;
 use crate::interface::game::GameTrait;
 use crate::interface::InitialInformation;
 use commons::time::TimeDuration;
@@ -6,7 +7,8 @@ use commons::time::TimeDuration;
 #[derive(Debug)]
 pub struct ServerUpdateArg<'a, Game: GameTrait> {
     initial_information: &'a InitialInformation<Game>,
-    step: usize,
+    //TODO: rename
+    step: FrameIndex,
     state: &'a Game::State,
     inputs: &'a Vec<Input<Game::ClientInput>>,
 }
@@ -14,7 +16,7 @@ pub struct ServerUpdateArg<'a, Game: GameTrait> {
 impl<'a, 'b, Game: GameTrait> ServerUpdateArg<'a, Game> {
     pub fn new(
         initial_information: &'a InitialInformation<Game>,
-        step: usize,
+        step: FrameIndex,
         state: &'a Game::State,
         inputs: &'a Vec<Input<Game::ClientInput>>,
     ) -> Self {
@@ -30,7 +32,7 @@ impl<'a, 'b, Game: GameTrait> ServerUpdateArg<'a, Game> {
         return &self.inputs[player_index];
     }
 
-    pub fn get_current_step(&self) -> usize {
+    pub fn get_current_step(&self) -> FrameIndex {
         return self.step;
     }
 
@@ -38,25 +40,27 @@ impl<'a, 'b, Game: GameTrait> ServerUpdateArg<'a, Game> {
         return self.state;
     }
 
-    pub fn get_next_step(&self) -> usize {
+    pub fn get_next_step(&self) -> FrameIndex {
         return self.get_current_step() + 1;
     }
 
+    //TODO: refactor to not use usize
     pub fn get_current_duration_since_start(&self) -> TimeDuration {
         return self
             .initial_information
             .get_server_config()
             .get_game_timer_config()
             .get_frame_duration()
-            .mul_f64(self.step as f64);
+            .mul_f64(self.step.usize() as f64);
     }
 
+    //TODO: refactor to not use usize
     pub fn get_next_step_duration_since_start(&self) -> TimeDuration {
         return self
             .initial_information
             .get_server_config()
             .get_game_timer_config()
             .get_frame_duration()
-            .mul_f64(self.get_next_step() as f64);
+            .mul_f64(self.get_next_step().usize() as f64);
     }
 }

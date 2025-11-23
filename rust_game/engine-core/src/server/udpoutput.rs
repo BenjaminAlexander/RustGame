@@ -1,4 +1,4 @@
-use crate::gametime::TimeMessage;
+use crate::gametime::{FrameIndex, TimeMessage};
 use crate::interface::GameTrait;
 use crate::messaging::{
     Fragmenter,
@@ -53,7 +53,7 @@ pub struct UdpOutput<Game: GameTrait> {
     remote_peer: Option<RemoteUdpPeer>,
     fragmenter: Fragmenter,
     last_time_message: Option<TimeMessage>,
-    last_state_sequence: Option<usize>,
+    last_state_sequence: Option<FrameIndex>,
     phantom: PhantomData<Game>,
 
     //metrics

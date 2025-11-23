@@ -1,4 +1,5 @@
 use crate::gamemanager::Input;
+use crate::gametime::FrameIndex;
 use crate::interface::game::GameTrait;
 use crate::interface::ServerUpdateArg;
 
@@ -23,7 +24,7 @@ impl<'a, Game: GameTrait> ClientUpdateArg<'a, Game> {
         return self.server_update_arg.get_input(player_index);
     }
 
-    pub fn get_current_step(&self) -> usize {
+    pub fn get_current_step(&self) -> FrameIndex {
         return self.server_update_arg.get_current_step();
     }
 

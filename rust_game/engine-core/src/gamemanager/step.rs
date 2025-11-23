@@ -1,6 +1,7 @@
 use log::warn;
 
 use crate::gamemanager::stepmessage::StepMessage;
+use crate::gametime::FrameIndex;
 use crate::interface::{
     ClientUpdateArg,
     GameTrait,
@@ -14,7 +15,8 @@ use crate::messaging::{
 use crate::InitialInformation;
 
 pub struct Step<Game: GameTrait> {
-    step: usize,
+    //TODO: rename
+    step: FrameIndex,
     state: StateHolder<Game>,
     server_input: ServerInputHolder<Game>,
     inputs: Vec<Input<Game::ClientInput>>,
@@ -65,7 +67,7 @@ pub enum ServerInputHolder<Game: GameTrait> {
 }
 
 impl<Game: GameTrait> Step<Game> {
-    pub fn blank(step_index: usize, player_count: usize) -> Self {
+    pub fn blank(step_index: FrameIndex, player_count: usize) -> Self {
 
         let inputs = vec![Input::Pending; player_count];
 
@@ -275,7 +277,8 @@ impl<Game: GameTrait> Step<Game> {
         }
     }
 
-    pub fn get_step_index(&self) -> usize {
+    //TODO: rename
+    pub fn get_step_index(&self) -> FrameIndex {
         return self.step;
     }
 

@@ -7,6 +7,8 @@ mod server;
 
 pub use self::gamemanager::Input;
 
+pub use self::gametime::FrameIndex;
+
 pub use interface::Client;
 pub use interface::ClientUpdateArg;
 pub use interface::GameTrait;

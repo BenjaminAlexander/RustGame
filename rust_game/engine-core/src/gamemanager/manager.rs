@@ -7,6 +7,7 @@ use crate::gamemanager::manager::ManagerEvent::{
 };
 use crate::gamemanager::step::Step;
 use crate::gamemanager::ManagerObserverTrait;
+use crate::gametime::FrameIndex;
 use crate::interface::{
     GameTrait,
     InitialInformation,
@@ -43,9 +44,11 @@ pub enum ManagerEvent<Game: GameTrait> {
 
 pub struct Manager<ManagerObserver: ManagerObserverTrait> {
     time_source: TimeSource,
-    drop_steps_before: usize,
+    //TODO: rename
+    drop_steps_before: FrameIndex,
     //TODO: send requested state immediately if available
-    requested_step: usize,
+    //TODO: rename
+    requested_step: FrameIndex,
     initial_information: InitialInformation<ManagerObserver::Game>,
     //New states at the back, old at the front (index 0)
     steps: VecDeque<Step<ManagerObserver::Game>>,
@@ -67,8 +70,8 @@ impl<ManagerObserver: ManagerObserverTrait> Manager<ManagerObserver> {
         let mut manager = Self {
             initial_information,
             steps: VecDeque::new(),
-            requested_step: 0,
-            drop_steps_before: 0,
+            requested_step: FrameIndex::zero(),
+            drop_steps_before: FrameIndex::zero(),
             manager_observer,
 
             //metrics
@@ -78,12 +81,13 @@ impl<ManagerObserver: ManagerObserverTrait> Manager<ManagerObserver> {
             time_source,
         };
 
-        manager.handle_state_message(StateMessage::new(0, state));
+        manager.handle_state_message(StateMessage::new(FrameIndex::zero(), state));
 
         return manager;
     }
 
-    fn get_state(&mut self, step_index: usize) -> Option<&mut Step<ManagerObserver::Game>> {
+    //TODO: rename step
+    fn get_state(&mut self, step_index: FrameIndex) -> Option<&mut Step<ManagerObserver::Game>> {
         if self.steps.is_empty() {
             let step = Step::blank(step_index, self.initial_information.get_player_count());
             self.steps.push_back(step);
@@ -98,7 +102,7 @@ impl<ManagerObserver: ManagerObserverTrait> Manager<ManagerObserver> {
                 }
             }
         } else {
-            let index_to_get = step_index - self.steps[0].get_step_index();
+            let index_to_get = step_index.usize() - self.steps[0].get_step_index().usize();
             while self.steps.len() <= index_to_get {
                 self.steps.push_back(Step::blank(
                     self.steps[self.steps.len() - 1].get_step_index() + 1,
@@ -115,7 +119,8 @@ impl<ManagerObserver: ManagerObserverTrait> Manager<ManagerObserver> {
         }
     }
 
-    fn drop_steps_before(&mut self, step: usize) -> EventHandleResult {
+    //TODO: rename step
+    fn drop_steps_before(&mut self, step: FrameIndex) -> EventHandleResult {
         trace!("Setting drop_steps_before: {:?}", step);
         self.drop_steps_before = step;
         if self.requested_step < self.drop_steps_before {
@@ -129,7 +134,8 @@ impl<ManagerObserver: ManagerObserverTrait> Manager<ManagerObserver> {
         return EventHandleResult::TryForNextEvent;
     }
 
-    fn set_requested_step(&mut self, step: usize) -> EventHandleResult {
+    //TODO: rename step
+    fn set_requested_step(&mut self, step: FrameIndex) -> EventHandleResult {
         trace!("Setting requested_step: {:?}", step);
         self.requested_step = step;
         return EventHandleResult::TryForNextEvent;
@@ -263,8 +269,9 @@ impl<ManagerObserver: ManagerObserverTrait> HandleEvent for Manager<ManagerObser
 
     fn on_event(&mut self, _: ReceiveMetaData, event: Self::Event) -> EventHandleResult {
         match event {
-            DropStepsBeforeEvent(step) => self.drop_steps_before(step),
-            SetRequestedStepEvent(step) => self.set_requested_step(step),
+            //TODO: rename step
+            DropStepsBeforeEvent(step) => self.drop_steps_before(FrameIndex::from(step)),
+            SetRequestedStepEvent(step) => self.set_requested_step(FrameIndex::from(step)),
             InputEvent(input_message) => self.on_input_message(input_message),
             ServerInputEvent(server_input_message) => {
                 self.on_server_input_message(server_input_message)
