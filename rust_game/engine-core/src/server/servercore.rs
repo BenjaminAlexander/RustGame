@@ -99,14 +99,14 @@ pub struct ServerCore<Game: GameTrait> {
     udp_input_sender_option: Option<EventHandlerStopper>,
     udp_handler: UdpHandler<Game>,
     manager_sender_option: Option<EventSender<ManagerEvent<Game>>>,
-    render_receiver_sender: Option<Sender<RenderReceiverMessage<Game>>>,
-    drop_steps_before: usize,
+    input_grace_period_frames: usize,
     running_core: Option<RunningCore<Game>>
 }
 
 struct RunningCore<Game: GameTrait> {
-    timer_service: TimerService<(), ServerGameTimerObserver<Game>>,
+    _timer_service: TimerService<(), ServerGameTimerObserver<Game>>,
     game_timer: GameTimer,
+    render_receiver_sender: Sender<RenderReceiverMessage<Game>>,
 }
 
 impl<Game: GameTrait> HandleEvent for ServerCore<Game> {
@@ -132,10 +132,12 @@ impl<Game: GameTrait> HandleEvent for ServerCore<Game> {
 
 impl<Game: GameTrait> ServerCore<Game> {
     pub fn new(factory: Factory, sender: EventSender<ServerCoreEvent<Game>>) -> Result<Self, Error> {
-        let game_timer_config = FrameDuration::new(Game::STEP_PERIOD);
-        let server_config = ServerConfig::new(game_timer_config);
+        let frame_duration = FrameDuration::new(Game::STEP_PERIOD);
+        let server_config = ServerConfig::new(frame_duration);
 
         let udp_handler = UdpHandler::<Game>::new(factory.get_time_source().clone());
+
+        let input_grace_period_frames = frame_duration.to_frame_count(&Game::GRACE_PERIOD) as usize;
 
         Ok(Self {
             factory,
@@ -145,12 +147,11 @@ impl<Game: GameTrait> ServerCore<Game> {
             tcp_inputs: Vec::new(),
             tcp_outputs: Vec::new(),
             udp_outputs: Vec::new(),
-            drop_steps_before: 0,
+            input_grace_period_frames,
             udp_socket: None,
             udp_input_sender_option: None,
             udp_handler,
             manager_sender_option: None,
-            render_receiver_sender: None,
             running_core: None
         })
     }
@@ -259,26 +260,12 @@ impl<Game: GameTrait> ServerCore<Game> {
         let manager_builder =
             EventHandlerBuilder::<Manager<ServerManagerObserver<Game>>>::new(&self.factory);
 
-        let send_result = manager_builder
-            .get_sender()
-            .send_event(ManagerEvent::DropStepsBeforeEvent(self.drop_steps_before));
-
-        if send_result.is_err() {
-            warn!("Failed to send DropSteps to Game Manager");
-            return EventHandleResult::StopThread;
-        }
-
         let server_initial_information = InitialInformation::<Game>::new(
             self.server_config.clone(),
             self.tcp_outputs.len(),
             usize::MAX,
             initial_state.clone(),
         );
-
-        if send_result.is_err() {
-            warn!("Failed to send InitialInformation to Game Manager");
-            return EventHandleResult::StopThread;
-        }
 
         let send_result = render_receiver_sender.send(
             RenderReceiverMessage::InitialInformation(server_initial_information.clone()),
@@ -320,11 +307,25 @@ impl<Game: GameTrait> ServerCore<Game> {
             },
         };
 
-
         if game_timer.start_ticking(&timer_service).is_err() {
             warn!("Failed to Start the GameTimer");
             return EventHandleResult::StopThread;
         };
+
+        if render_receiver_sender
+                .send(RenderReceiverMessage::StartTime(game_timer.get_start_time()))
+                .is_err() {
+            warn!("Failed to send StartTime to Render Receiver");
+            return EventHandleResult::StopThread;
+        }
+
+        if manager_builder
+                .get_sender()
+                .send_event(ManagerEvent::DropStepsBeforeEvent(game_timer.get_current_frame_index().usize()))
+                .is_err() {
+            warn!("Failed to send DropSteps to Game Manager");
+            return EventHandleResult::StopThread;
+        }
 
         self.manager_sender_option = Some(
             manager_builder
@@ -338,11 +339,11 @@ impl<Game: GameTrait> ServerCore<Game> {
                 )
                 .unwrap(),
         );
-        self.render_receiver_sender = Some(render_receiver_sender);
 
         self.running_core = Some(RunningCore { 
-            timer_service, 
-            game_timer 
+            _timer_service: timer_service, 
+            game_timer,
+            render_receiver_sender
         });
 
         return EventHandleResult::TryForNextEvent;
@@ -450,6 +451,8 @@ impl<Game: GameTrait> ServerCore<Game> {
             None => return EventHandleResult::TryForNextEvent,
         };
 
+        warn!("FRAME INDEX: {:?}", time_message);
+
         /*
         TODO: time is also sent directly fomr gametime observer, seems like this is a bug
 
@@ -458,15 +461,18 @@ impl<Game: GameTrait> ServerCore<Game> {
         }
         */
 
-        self.drop_steps_before = time_message
-            .get_step_from_actual_time(time_message.get_scheduled_time().sub(&Game::GRACE_PERIOD))
-            .ceil() as usize;
+        let drop_steps_before = if time_message.usize() > self.input_grace_period_frames {
+            time_message - self.input_grace_period_frames
+        } else {
+            FrameIndex::zero()
+        };
+        
 
         if let Some(manager_sender) = self.manager_sender_option.as_ref() {
             //the manager needs its lowest step to not have any new inputs
-            if self.drop_steps_before > 1 {
+            if drop_steps_before.usize() > 1 {
                 let send_result = manager_sender.send_event(ManagerEvent::DropStepsBeforeEvent(
-                    self.drop_steps_before - 1,
+                    drop_steps_before.usize() - 1,
                 ));
 
                 if send_result.is_err() {
@@ -476,7 +482,7 @@ impl<Game: GameTrait> ServerCore<Game> {
             }
 
             let send_result = manager_sender.send_event(ManagerEvent::SetRequestedStepEvent(
-                time_message.get_step() + 1,
+                time_message.usize() + 1,
             ));
 
             if send_result.is_err() {
@@ -487,7 +493,7 @@ impl<Game: GameTrait> ServerCore<Game> {
 
         for udp_output in self.udp_outputs.iter() {
             let send_result =
-                udp_output.send_event(UdpOutputEvent::SendTimeMessage(FrameIndex::from(time_message.get_step())));
+                udp_output.send_event(UdpOutputEvent::SendTimeMessage(time_message));
 
             if send_result.is_err() {
                 warn!("Failed to send TimeMessage to UdpOutput");
@@ -495,21 +501,9 @@ impl<Game: GameTrait> ServerCore<Game> {
             }
         }
 
-        if self
+        if running_core
                 .render_receiver_sender
-                .as_ref()
-                .unwrap()
-                .send(RenderReceiverMessage::StartTime(time_message.start_time))
-                .is_err() {
-            warn!("Failed to send StartTime to Render Receiver");
-            return EventHandleResult::StopThread;
-        }
-
-        if self
-                .render_receiver_sender
-                .as_ref()
-                .unwrap()
-                .send(RenderReceiverMessage::FrameIndex(FrameIndex::from(time_message.get_step())))
+                .send(RenderReceiverMessage::FrameIndex(time_message))
                 .is_err() {
             warn!("Failed to send FrameIndex to Render Receiver");
             return EventHandleResult::StopThread;
@@ -518,10 +512,26 @@ impl<Game: GameTrait> ServerCore<Game> {
         return EventHandleResult::TryForNextEvent;
     }
 
+    //TODO: maybe change return type
     pub(super) fn on_input_message(&self, input_message: InputMessage<Game>) -> Result<(), ()> {
         //TODO: is game started?
 
-        if self.drop_steps_before <= input_message.get_step().usize()
+        let running_core = match &self.running_core {
+            Some(running_core) => running_core,
+            None => {
+                warn!("ServerCore is not running");
+                return Err(());
+            },
+        };
+
+        let current_frame_index = running_core.game_timer.get_current_frame_index();
+        let drop_steps_before = if current_frame_index.usize() > self.input_grace_period_frames {
+            current_frame_index - self.input_grace_period_frames
+        } else {
+            FrameIndex::zero()
+        };
+
+        if drop_steps_before <= input_message.get_step()
             && self.manager_sender_option.is_some()
         {
             let send_result = self

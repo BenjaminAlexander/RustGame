@@ -1,5 +1,4 @@
 use crate::gametime::game_timer_config::{FrameIndex, StartTime};
-use crate::gametime::timemessage::TimeMessage;
 use crate::gametime::{
     FrameDuration,
 };
@@ -21,7 +20,6 @@ use log::{
     warn,
 };
 use std::ops::{
-    Add,
     Sub,
 };
 
@@ -143,7 +141,7 @@ impl GameTimer {
         return Ok(start);
     }
 
-    pub fn create_timer_message(&mut self) -> Option<TimeMessage> {
+    pub fn create_timer_message(&mut self) -> Option<FrameIndex> {
 
         let now = self.time_source.now();
 
@@ -168,10 +166,14 @@ impl GameTimer {
             warn!("High tick Lateness: {:?}", lateness);
         }
 
-        //TODO: return Frame index
-        return Some(TimeMessage::new(
-            self.start_time, 
-            *self.game_timer_config.get_frame_duration(), 
-            now));
+        return Some(self.current_frame_index);
+    }
+
+    pub fn get_start_time(&self) -> StartTime {
+        self.start_time
+    }
+
+    pub fn get_current_frame_index(&self) -> FrameIndex {
+        self.current_frame_index
     }
 }

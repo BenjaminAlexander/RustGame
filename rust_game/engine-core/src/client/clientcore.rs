@@ -71,7 +71,7 @@ struct RunningState<Game: GameTrait> {
     udp_input_sender: EventHandlerStopper,
     udp_output_sender: EventSender<UdpOutputEvent<Game>>,
     initial_information: InitialInformation<Game>,
-    last_time_message: Option<TimeMessage>,
+    input_grace_period_frames: usize
 }
 
 impl<Game: GameTrait> ClientCore<Game> {
@@ -181,6 +181,8 @@ impl<Game: GameTrait> ClientCore<Game> {
         )
         .unwrap();
 
+        let input_grace_period_frames = initial_information.get_server_config().get_game_timer_config().to_frame_count(&Game::GRACE_PERIOD.mul_f64(2.0)) as usize;
+
         self.running_state = Some(RunningState {
             manager_sender,
             input_event_handler: Game::new_input_event_handler(),
@@ -189,7 +191,7 @@ impl<Game: GameTrait> ClientCore<Game> {
             udp_input_sender,
             udp_output_sender,
             initial_information,
-            last_time_message: None,
+            input_grace_period_frames,
         });
 
         return EventHandleResult::TryForNextEvent;
@@ -197,9 +199,7 @@ impl<Game: GameTrait> ClientCore<Game> {
 
     fn on_input_event(&mut self, input_event: Game::ClientInputEvent) -> EventHandleResult {
         if let Some(ref mut running_state) = self.running_state {
-            if running_state.last_time_message.is_some() {
-                Game::handle_input_event(&mut running_state.input_event_handler, input_event);
-            }
+            Game::handle_input_event(&mut running_state.input_event_handler, input_event);
         }
         //Else: No-op, just discard the input
 
@@ -209,93 +209,74 @@ impl<Game: GameTrait> ClientCore<Game> {
     fn on_game_timer_tick(&mut self) -> EventHandleResult {
 
         if let Some(ref mut running_state) = self.running_state {
+
+            //TODO: rename
             let time_message = match running_state.game_timer.create_timer_message() {
                 Some(time_message) => time_message,
                 None => return EventHandleResult::TryForNextEvent,
             };
 
-            trace!("TimeMessage step_index: {:?}", time_message.get_step());
+            trace!("TimeMessage step_index: {:?}", time_message);
 
-            //TODO: check if this tick is really the next tick?
-            //TODO: log a warn if a tick is missed or out of order
-            if running_state.last_time_message.is_some() {
-                let last_time_message = running_state.last_time_message.as_ref().unwrap();
+            let message = InputMessage::<Game>::new(
+                //TODO: message or last message?
+                //TODO: define strict and consistent rules for how real time relates to ticks, input deadlines and display states
+                time_message,
+                running_state.initial_information.get_player_index(),
+                Game::get_input(&mut running_state.input_event_handler),
+            );
 
-                if time_message.get_step() > last_time_message.get_step() {
-                    let message = InputMessage::<Game>::new(
-                        //TODO: message or last message?
-                        //TODO: define strict and consistent rules for how real time relates to ticks, input deadlines and display states
-                        FrameIndex::from(time_message.get_step()),
-                        running_state.initial_information.get_player_index(),
-                        Game::get_input(&mut running_state.input_event_handler),
-                    );
+            let send_result = running_state
+                .manager_sender
+                .send_event(ManagerEvent::InputEvent(message.clone()));
 
-                    let send_result = running_state
-                        .manager_sender
-                        .send_event(ManagerEvent::InputEvent(message.clone()));
-
-                    if send_result.is_err() {
-                        warn!("Failed to send InputMessage to Game Manager");
-                        return EventHandleResult::StopThread;
-                    }
-
-                    let send_result = running_state
-                        .udp_output_sender
-                        .send_event(UdpOutputEvent::InputMessageEvent(message));
-
-                    if send_result.is_err() {
-                        warn!("Failed to send InputMessage to Udp Output");
-                        return EventHandleResult::StopThread;
-                    }
-
-                    //TODO: don't calculate this every time
-                    let client_drop_time = time_message
-                        .get_scheduled_time()
-                        .sub(&Game::GRACE_PERIOD.mul_f64(2.0));
-
-                    let drop_step = time_message
-                        .get_step_from_actual_time(client_drop_time)
-                        .ceil() as usize;
-
-                    let send_result = running_state
-                        .manager_sender
-                        .send_event(ManagerEvent::DropStepsBeforeEvent(drop_step));
-
-                    if send_result.is_err() {
-                        warn!("Failed to send Drop Steps to Game Manager");
-                        return EventHandleResult::StopThread;
-                    }
-
-                    //TODO: message or last message or next?
-                    //TODO: define strict and consistent rules for how real time relates to ticks, input deadlines and display states
-                    let send_result = running_state.manager_sender.send_event(
-                        ManagerEvent::SetRequestedStepEvent(time_message.get_step() + 1),
-                    );
-
-                    if send_result.is_err() {
-                        warn!("Failed to send Request Step to Game Manager");
-                        return EventHandleResult::StopThread;
-                    }
-                }
+            if send_result.is_err() {
+                warn!("Failed to send InputMessage to Game Manager");
+                return EventHandleResult::StopThread;
             }
 
-            if self
-                    .render_receiver_sender
-                    .send(RenderReceiverMessage::StartTime(time_message.start_time))
-                    .is_err() {
-                warn!("Failed to send StartTime to Render Receiver");
+            let send_result = running_state
+                .udp_output_sender
+                .send_event(UdpOutputEvent::InputMessageEvent(message));
+
+            if send_result.is_err() {
+                warn!("Failed to send InputMessage to Udp Output");
+                return EventHandleResult::StopThread;
+            }
+
+            let drop_step = if time_message.usize() > running_state.input_grace_period_frames {
+                time_message - running_state.input_grace_period_frames
+            } else {
+                FrameIndex::zero()
+            };
+
+            let send_result = running_state
+                .manager_sender
+                .send_event(ManagerEvent::DropStepsBeforeEvent(drop_step.usize()));
+
+            if send_result.is_err() {
+                warn!("Failed to send Drop Steps to Game Manager");
+                return EventHandleResult::StopThread;
+            }
+
+            //TODO: message or last message or next?
+            //TODO: define strict and consistent rules for how real time relates to ticks, input deadlines and display states
+            let send_result = running_state.manager_sender.send_event(
+                ManagerEvent::SetRequestedStepEvent(time_message.usize() + 1),
+            );
+
+            if send_result.is_err() {
+                warn!("Failed to send Request Step to Game Manager");
                 return EventHandleResult::StopThread;
             }
 
             if self
                     .render_receiver_sender
-                    .send(RenderReceiverMessage::FrameIndex(FrameIndex::from(time_message.get_step())))
+                    .send(RenderReceiverMessage::FrameIndex(FrameIndex::from(time_message)))
                     .is_err() {
                 warn!("Failed to send FrameIndex to Render Receiver");
                 return EventHandleResult::StopThread;
             }
-
-            running_state.last_time_message = Some(time_message);
         } else {
             warn!("Received a game timer tick while waiting for the hello from the server")
         }
@@ -308,10 +289,26 @@ impl<Game: GameTrait> ClientCore<Game> {
         frame_index: FrameIndex,
     ) -> EventHandleResult {
         if let Some(ref mut running_state) = self.running_state {
-            running_state
+            
+            
+            let start_time = match running_state
                 .game_timer
-                .on_remote_timer_message(&running_state.timer_service, frame_index)
-                .unwrap();
+                .on_remote_timer_message(&running_state.timer_service, frame_index) {
+                    Ok(start_time) => start_time,
+                    Err(err) => {
+                        warn!("Failed to update GameTime start time: {:?}", err);
+                        return EventHandleResult::StopThread;
+                    },
+                };
+
+            if self
+                    .render_receiver_sender
+                    .send(RenderReceiverMessage::StartTime(start_time))
+                    .is_err() {
+                warn!("Failed to send StartTime to Render Receiver");
+                return EventHandleResult::StopThread;
+            }
+
         } else {
             warn!("Received a remote timer message while waiting for the hello from the server")
         }

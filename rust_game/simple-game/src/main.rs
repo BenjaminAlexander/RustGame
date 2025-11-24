@@ -13,12 +13,12 @@ use engine_core::{
     Server,
 };
 use log::{
-    info,
-    LevelFilter,
+    LevelFilter, error, info
 };
+use std::backtrace::Backtrace;
 use std::io::stdin;
 use std::path::PathBuf;
-use std::process;
+use std::{panic, process};
 
 mod bullet;
 mod character;
@@ -73,6 +73,16 @@ pub fn main() {
         .add_console_appender()
         .add_file_appender(log_file_path)
         .init(LevelFilter::Info);
+
+    //TODO: move panic hook into util function
+    let orig_hook = panic::take_hook();
+    panic::set_hook(Box::new(move |panic_info| {
+        error!(
+            "panic occurred: {panic_info}\n{}",
+            Backtrace::force_capture()
+        );
+        orig_hook(panic_info);
+    }));
 
     info!("args: {:?}", args);
 
