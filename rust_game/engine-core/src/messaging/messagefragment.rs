@@ -51,6 +51,10 @@ impl MessageFragment {
         return self.buf[FRAGMENT_HEADER_SIZE..self.buf.len()].to_vec();
     }
 
+    pub fn move_whole_buf(self) -> Vec<u8> {
+        return self.buf;
+    }
+
     pub fn get_whole_buf(&self) -> &Vec<u8> {
         return &self.buf;
     }

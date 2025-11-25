@@ -3,9 +3,7 @@ use crate::interface::{
     InitialInformation,
 };
 use crate::messaging::{
-    Fragmenter,
-    InputMessage,
-    ToServerMessageUDP,
+    FragmentableUdpToServerMessage, Fragmenter, InputMessage, UdpToServerMessage
 };
 use commons::real_time::net::udp::UdpSocket;
 use commons::real_time::net::MAX_UDP_DATAGRAM_SIZE;
@@ -50,7 +48,7 @@ impl<Game: GameTrait> UdpOutput<Game> {
             initial_information,
         };
 
-        let message = ToServerMessageUDP::<Game>::Hello {
+        let message = FragmentableUdpToServerMessage::<Game>::Hello {
             player_index: udp_output.initial_information.get_player_index(),
         };
         udp_output.send_message(message);
@@ -83,14 +81,15 @@ impl<Game: GameTrait> UdpOutput<Game> {
             match self.input_queue.pop() {
                 None => send_another_message = false,
                 Some(input_to_send) => {
-                    let message = ToServerMessageUDP::<Game>::Input(input_to_send);
+                    let message = FragmentableUdpToServerMessage::<Game>::Input(input_to_send);
                     self.send_message(message);
                 }
             }
         }
     }
 
-    fn send_message(&mut self, message: ToServerMessageUDP<Game>) {
+    fn send_message(&mut self, message: FragmentableUdpToServerMessage<Game>) {
+        //TODO: use write instead of to_vec
         let buf = rmp_serde::to_vec(&message).unwrap();
         let fragments = self.fragmenter.make_fragments(buf);
 
@@ -102,8 +101,16 @@ impl<Game: GameTrait> UdpOutput<Game> {
                 );
             }
 
+            info!("Making UDP fragment");
+
+            let fragment = UdpToServerMessage::Fragment(fragment.move_whole_buf());
+            //TODO: use write instead of to_vec
+            let buf = rmp_serde::to_vec(&fragment).unwrap();
+
+            info!("Sending UDP fragment");
+
             self.socket
-                .send_to(fragment.get_whole_buf(), &self.server_address)
+                .send_to(&buf, &self.server_address)
                 .unwrap();
         }
     }

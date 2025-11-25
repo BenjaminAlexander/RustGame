@@ -2,7 +2,7 @@ use crate::messaging::{
     FragmentAssembler,
     InputMessage,
     MessageFragment,
-    ToServerMessageUDP,
+    FragmentableUdpToServerMessage,
 };
 use crate::server::clientaddress::ClientAddress;
 use crate::server::remoteudppeer::RemoteUdpPeer;
@@ -107,7 +107,7 @@ impl<Game: GameTrait> UdpHandler<Game> {
 
     fn handle_message(
         &mut self,
-        message: ToServerMessageUDP<Game>,
+        message: FragmentableUdpToServerMessage<Game>,
         source: SocketAddr,
     ) -> (Option<RemoteUdpPeer>, Option<InputMessage<Game>>) {
         let player_index = message.get_player_index();
@@ -131,10 +131,10 @@ impl<Game: GameTrait> UdpHandler<Game> {
         let remote_peer = self.handle_remote_peer(message.get_player_index(), source);
 
         match message {
-            ToServerMessageUDP::Hello { player_index: _ } => {
+            FragmentableUdpToServerMessage::Hello { player_index: _ } => {
                 return (remote_peer, None);
             }
-            ToServerMessageUDP::Input(input_message) => {
+            FragmentableUdpToServerMessage::Input(input_message) => {
                 return (remote_peer, Some(input_message));
             }
         }

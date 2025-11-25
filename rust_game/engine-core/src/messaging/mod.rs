@@ -7,7 +7,8 @@ pub use self::statemessage::StateMessage;
 pub use self::toclientmessagetcp::ToClientMessageTCP;
 pub use self::toclientmessageudp::ToClientMessageUDP;
 pub use self::toservermessagetcp::ToServerMessageTCP;
-pub use self::toservermessageudp::ToServerMessageUDP;
+pub use self::toservermessageudp::FragmentableUdpToServerMessage;
+pub use self::toservermessageudp::UdpToServerMessage;
 
 mod fragmentassembler;
 mod fragmenter;
