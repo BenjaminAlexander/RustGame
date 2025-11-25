@@ -1,7 +1,7 @@
 use log::warn;
 
 use crate::gamemanager::stepmessage::StepMessage;
-use crate::gametime::FrameIndex;
+use crate::game_time::FrameIndex;
 use crate::interface::{
     ClientUpdateArg,
     GameTrait,

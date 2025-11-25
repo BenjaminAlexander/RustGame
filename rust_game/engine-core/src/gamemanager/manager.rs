@@ -7,7 +7,7 @@ use crate::gamemanager::manager::ManagerEvent::{
 };
 use crate::gamemanager::step::Step;
 use crate::gamemanager::ManagerObserverTrait;
-use crate::gametime::FrameIndex;
+use crate::game_time::FrameIndex;
 use crate::interface::{
     GameTrait,
     InitialInformation,

@@ -1,4 +1,4 @@
-use crate::gametime::{
+use crate::game_time::{
     FrameDuration,
     FrameIndex,
 };

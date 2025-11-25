@@ -1,5 +1,5 @@
 use crate::{
-    gametime::FrameIndex,
+    game_time::FrameIndex,
     interface::GameTrait,
 };
 use serde::{

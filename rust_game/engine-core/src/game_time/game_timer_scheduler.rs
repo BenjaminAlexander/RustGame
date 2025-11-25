@@ -1,5 +1,5 @@
-use crate::gametime::frame_index::FrameIndex;
-use crate::gametime::{
+use crate::game_time::frame_index::FrameIndex;
+use crate::game_time::{
     FrameDuration,
     StartTime,
 };
@@ -147,7 +147,7 @@ impl GameTimerScheduler {
         if self.current_frame_index == frame_index {
             // It seems common for the clock to be slightly early on clients, probably
             // due to race conditions with rescheduling the timer and adjusting the
-            // clients start time.  It may be good enough to advance the frame if the
+            // client's start time.  It may be good enough to advance the frame if the
             // calculated frame index is the same as the current one.
             frame_index = frame_index.next();
         } else if self.current_frame_index > frame_index {

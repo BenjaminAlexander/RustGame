@@ -1,13 +1,13 @@
 mod client;
 mod gamemanager;
-mod gametime;
+mod game_time;
 mod interface;
 mod messaging;
 mod server;
 
 pub use self::gamemanager::Input;
 
-pub use self::gametime::FrameIndex;
+pub use self::game_time::FrameIndex;
 
 pub use interface::Client;
 pub use interface::ClientUpdateArg;

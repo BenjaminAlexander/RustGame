@@ -1,7 +1,7 @@
 use std::sync::mpsc::TryRecvError;
 
 use crate::gamemanager::StepMessage;
-use crate::gametime::{
+use crate::game_time::{
     FrameIndex,
     StartTime,
 };

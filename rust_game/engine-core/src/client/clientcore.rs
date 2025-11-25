@@ -11,7 +11,7 @@ use crate::gamemanager::{
     Manager,
     ManagerEvent,
 };
-use crate::gametime::{
+use crate::game_time::{
     FrameIndex,
     GameTimerScheduler,
 };

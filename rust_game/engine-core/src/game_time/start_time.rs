@@ -5,7 +5,7 @@ use serde::{
 };
 
 use crate::{
-    gametime::FrameDuration,
+    game_time::FrameDuration,
     FrameIndex,
 };
 

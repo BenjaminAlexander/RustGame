@@ -28,6 +28,7 @@ pub trait GameTrait: 'static + Send + Sized {
     const UDP_PORT: u16;
     const STEP_PERIOD: TimeDuration;
     const GRACE_PERIOD: TimeDuration;
+    //TODO: rename ping period
     const TIME_SYNC_MESSAGE_PERIOD: TimeDuration;
     const CLOCK_AVERAGE_SIZE: usize;
 

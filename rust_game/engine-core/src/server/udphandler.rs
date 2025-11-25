@@ -4,7 +4,7 @@ use crate::messaging::{
     MessageFragment,
     ToServerMessageUDP,
 };
-use crate::server::clientaddress::ClientAddress;
+use crate::server::clientaddress::{self, ClientAddress};
 use crate::server::remoteudppeer::RemoteUdpPeer;
 use crate::GameTrait;
 use commons::real_time::net::MAX_UDP_DATAGRAM_SIZE;
@@ -115,20 +115,16 @@ impl<Game: GameTrait> UdpHandler<Game> {
     ) -> (Option<RemoteUdpPeer>, Option<InputMessage<Game>>) {
         let player_index = message.get_player_index();
 
-        if self.client_addresses.len() <= player_index
-            || self.client_addresses[player_index].is_none()
-            || !self.client_addresses[player_index]
-                .as_ref()
-                .unwrap()
-                .get_ip_address()
-                .eq(&source.ip())
-        {
-            warn!(
-                "Received a message from an unexpected source. player_index: {:?}, source: {:?}",
-                player_index,
-                source.ip()
-            );
-            return (None, None);
+
+        if let Some(Some(expected_source)) = self.client_addresses.get(player_index) {
+            if expected_source.get_ip_address().eq(&source.ip()) {
+                warn!(
+                    "Received a message from an unexpected source. player_index: {:?}, source: {:?}",
+                    player_index,
+                    source.ip()
+                );
+                return (None, None);
+            }
         }
 
         let remote_peer = self.handle_remote_peer(message.get_player_index(), source);

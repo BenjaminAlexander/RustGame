@@ -3,7 +3,7 @@ use serde::{
     Serialize,
 };
 
-use crate::gametime::FrameDuration;
+use crate::game_time::FrameDuration;
 
 #[derive(Serialize, Deserialize, Clone, Debug, Copy)]
 pub struct ServerConfig {
