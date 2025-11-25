@@ -98,7 +98,10 @@ impl<ManagerObserver: ManagerObserverTrait> Manager<ManagerObserver> {
                 if zero_index == step_index {
                     return Some(&mut self.steps[0]);
                 } else {
-                    self.steps.push_front(Step::blank(zero_index - 1, self.initial_information.get_player_count()))
+                    self.steps.push_front(Step::blank(
+                        zero_index - 1,
+                        self.initial_information.get_player_count(),
+                    ))
                 }
             }
         } else {
@@ -106,7 +109,7 @@ impl<ManagerObserver: ManagerObserverTrait> Manager<ManagerObserver> {
             while self.steps.len() <= index_to_get {
                 self.steps.push_back(Step::blank(
                     self.steps[self.steps.len() - 1].get_step_index() + 1,
-                    self.initial_information.get_player_count()
+                    self.initial_information.get_player_count(),
                 ));
             }
             return Some(&mut self.steps[index_to_get]);

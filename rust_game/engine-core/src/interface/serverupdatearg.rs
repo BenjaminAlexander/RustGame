@@ -49,7 +49,7 @@ impl<'a, 'b, Game: GameTrait> ServerUpdateArg<'a, Game> {
         return self
             .initial_information
             .get_server_config()
-            .get_game_timer_config()
+            .get_frame_duration()
             .get_frame_duration()
             .mul_f64(self.step.usize() as f64);
     }
@@ -59,7 +59,7 @@ impl<'a, 'b, Game: GameTrait> ServerUpdateArg<'a, Game> {
         return self
             .initial_information
             .get_server_config()
-            .get_game_timer_config()
+            .get_frame_duration()
             .get_frame_duration()
             .mul_f64(self.get_next_step().usize() as f64);
     }

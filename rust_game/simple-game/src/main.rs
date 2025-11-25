@@ -13,12 +13,17 @@ use engine_core::{
     Server,
 };
 use log::{
-    LevelFilter, error, info
+    error,
+    info,
+    LevelFilter,
 };
 use std::backtrace::Backtrace;
 use std::io::stdin;
 use std::path::PathBuf;
-use std::{panic, process};
+use std::{
+    panic,
+    process,
+};
 
 mod bullet;
 mod character;

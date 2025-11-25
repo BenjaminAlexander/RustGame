@@ -15,7 +15,7 @@ impl ServerConfig {
         return Self { game_timer_config };
     }
 
-    pub fn get_game_timer_config(&self) -> &FrameDuration {
+    pub fn get_frame_duration(&self) -> &FrameDuration {
         return &self.game_timer_config;
     }
 }

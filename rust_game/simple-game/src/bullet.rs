@@ -1,7 +1,10 @@
 use crate::SimpleGameImpl;
 use commons::geometry::twod::Vector2;
 use commons::time::TimeDuration;
-use engine_core::{FrameIndex, GameTrait};
+use engine_core::{
+    FrameIndex,
+    GameTrait,
+};
 use graphics::rectangle;
 use graphics::*;
 use opengl_graphics::GlGraphics;
@@ -34,7 +37,7 @@ impl Bullet {
         //TODO: refactor this time calculation
         let duration_since_bullet_start = duration_since_game_start
             - &SimpleGameImpl::STEP_PERIOD.mul_f64(self.start_frame_index.usize() as f64);
-            
+
         if duration_since_bullet_start.as_secs_f64() >= 0.0 {
             //TODO: move div by 1000
             return Some(

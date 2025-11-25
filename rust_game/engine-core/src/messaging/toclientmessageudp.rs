@@ -3,13 +3,13 @@ use serde::{
     Serialize,
 };
 
-use crate::FrameIndex;
 use crate::interface::GameTrait;
 use crate::messaging::{
     InputMessage,
     ServerInputMessage,
     StateMessage,
 };
+use crate::FrameIndex;
 
 #[derive(Serialize, Deserialize, Debug)]
 #[serde(bound = "")]

@@ -12,7 +12,8 @@ use crate::gamemanager::{
     ManagerEvent,
 };
 use crate::gametime::{
-    FrameIndex, GameTimer, TimeMessage,
+    FrameIndex,
+    GameTimerScheduler,
 };
 use crate::interface::{
     GameTrait,
@@ -22,7 +23,10 @@ use crate::interface::{
 use crate::messaging::InputMessage;
 use commons::real_time::net::tcp::TcpReadHandlerBuilder;
 use commons::real_time::net::udp::UdpReadHandlerBuilder;
-use commons::real_time::timer_service::{IdleTimerService, TimerService};
+use commons::real_time::timer_service::{
+    IdleTimerService,
+    TimerService,
+};
 use commons::real_time::{
     EventHandleResult,
     EventHandlerBuilder,
@@ -67,11 +71,11 @@ struct RunningState<Game: GameTrait> {
     manager_sender: EventSender<ManagerEvent<Game>>,
     input_event_handler: Game::ClientInputEventHandler,
     timer_service: TimerService<(), ClientGameTimerObserver<Game>>,
-    game_timer: GameTimer,
+    game_timer: GameTimerScheduler,
     udp_input_sender: EventHandlerStopper,
     udp_output_sender: EventSender<UdpOutputEvent<Game>>,
     initial_information: InitialInformation<Game>,
-    input_grace_period_frames: usize
+    input_grace_period_frames: usize,
 }
 
 impl<Game: GameTrait> ClientCore<Game> {
@@ -139,12 +143,10 @@ impl<Game: GameTrait> ClientCore<Game> {
 
         let mut idle_timer_service = IdleTimerService::new();
 
-        let game_timer = GameTimer::new(
+        let game_timer = GameTimerScheduler::new(
             &self.factory,
             &mut idle_timer_service,
-            *initial_information
-                .get_server_config()
-                .get_game_timer_config(),
+            *initial_information.get_server_config().get_frame_duration(),
             Game::CLOCK_AVERAGE_SIZE,
             ClientGameTimerObserver::new(self.sender.clone()),
         );
@@ -181,7 +183,11 @@ impl<Game: GameTrait> ClientCore<Game> {
         )
         .unwrap();
 
-        let input_grace_period_frames = initial_information.get_server_config().get_game_timer_config().to_frame_count(&Game::GRACE_PERIOD.mul_f64(2.0)) as usize;
+        let input_grace_period_frames = initial_information
+            .get_server_config()
+            .get_frame_duration()
+            .to_frame_count(&Game::GRACE_PERIOD.mul_f64(2.0))
+            as usize;
 
         self.running_state = Some(RunningState {
             manager_sender,
@@ -207,11 +213,9 @@ impl<Game: GameTrait> ClientCore<Game> {
     }
 
     fn on_game_timer_tick(&mut self) -> EventHandleResult {
-
         if let Some(ref mut running_state) = self.running_state {
-
             //TODO: rename
-            let time_message = match running_state.game_timer.create_timer_message() {
+            let time_message = match running_state.game_timer.try_advance_frame_index() {
                 Some(time_message) => time_message,
                 None => return EventHandleResult::TryForNextEvent,
             };
@@ -261,9 +265,12 @@ impl<Game: GameTrait> ClientCore<Game> {
 
             //TODO: message or last message or next?
             //TODO: define strict and consistent rules for how real time relates to ticks, input deadlines and display states
-            let send_result = running_state.manager_sender.send_event(
-                ManagerEvent::SetRequestedStepEvent(time_message.usize() + 1),
-            );
+            let send_result =
+                running_state
+                    .manager_sender
+                    .send_event(ManagerEvent::SetRequestedStepEvent(
+                        time_message.usize() + 1,
+                    ));
 
             if send_result.is_err() {
                 warn!("Failed to send Request Step to Game Manager");
@@ -271,9 +278,12 @@ impl<Game: GameTrait> ClientCore<Game> {
             }
 
             if self
-                    .render_receiver_sender
-                    .send(RenderReceiverMessage::FrameIndex(FrameIndex::from(time_message)))
-                    .is_err() {
+                .render_receiver_sender
+                .send(RenderReceiverMessage::FrameIndex(FrameIndex::from(
+                    time_message,
+                )))
+                .is_err()
+            {
                 warn!("Failed to send FrameIndex to Render Receiver");
                 return EventHandleResult::StopThread;
             }
@@ -284,31 +294,27 @@ impl<Game: GameTrait> ClientCore<Game> {
         return EventHandleResult::TryForNextEvent;
     }
 
-    fn on_remote_timer_message(
-        &mut self,
-        frame_index: FrameIndex,
-    ) -> EventHandleResult {
+    fn on_remote_timer_message(&mut self, frame_index: FrameIndex) -> EventHandleResult {
         if let Some(ref mut running_state) = self.running_state {
-            
-            
             let start_time = match running_state
                 .game_timer
-                .on_remote_timer_message(&running_state.timer_service, frame_index) {
-                    Ok(start_time) => start_time,
-                    Err(err) => {
-                        warn!("Failed to update GameTime start time: {:?}", err);
-                        return EventHandleResult::StopThread;
-                    },
-                };
+                .adjust_client_timer(&running_state.timer_service, frame_index)
+            {
+                Ok(start_time) => start_time,
+                Err(err) => {
+                    warn!("Failed to update GameTime start time: {:?}", err);
+                    return EventHandleResult::StopThread;
+                }
+            };
 
             if self
-                    .render_receiver_sender
-                    .send(RenderReceiverMessage::StartTime(start_time))
-                    .is_err() {
+                .render_receiver_sender
+                .send(RenderReceiverMessage::StartTime(start_time))
+                .is_err()
+            {
                 warn!("Failed to send StartTime to Render Receiver");
                 return EventHandleResult::StopThread;
             }
-
         } else {
             warn!("Received a remote timer message while waiting for the hello from the server")
         }

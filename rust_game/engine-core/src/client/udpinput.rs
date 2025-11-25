@@ -89,9 +89,9 @@ impl<Game: GameTrait> UdpInput<Game> {
         match value {
             ToClientMessageUDP::TimeMessage(frame_index) => {
                 //info!("Time message: {:?}", time_message.get_step());
-                let send_result =
-                    self.core_sender
-                        .send_event(ClientCoreEvent::RemoteTimeMessageEvent(frame_index));
+                let send_result = self
+                    .core_sender
+                    .send_event(ClientCoreEvent::RemoteTimeMessageEvent(frame_index));
 
                 if send_result.is_err() {
                     warn!("Failed to send TimeMessage to Core");

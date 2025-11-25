@@ -1,7 +1,10 @@
 use std::sync::mpsc::TryRecvError;
 
 use crate::gamemanager::StepMessage;
-use crate::gametime::{FrameIndex, StartTime};
+use crate::gametime::{
+    FrameIndex,
+    StartTime,
+};
 use crate::interface::{
     GameTrait,
     InitialInformation,
@@ -123,7 +126,10 @@ impl<Game: GameTrait> RenderReceiver<Game> {
         //let now_as_fractional_step_index = latest_time_message.get_step_from_actual_time(now);
 
         //TODO: should probably be interpolating between the current frame (nearest past), to next (nearest future)
-        let desired_first_step_index = start_time.get_frame_index(initial_information.get_server_config().get_game_timer_config(), &now);
+        let desired_first_step_index = start_time.get_frame_index(
+            initial_information.get_server_config().get_frame_duration(),
+            &now,
+        );
 
         let first_step = &self.data.step_queue[self.data.step_queue.len() - 1];
         let second_step = if self.data.step_queue.len() >= 2 {
@@ -140,7 +146,10 @@ impl<Game: GameTrait> RenderReceiver<Game> {
             );
         }
 
-        if (desired_first_step_index.usize() as i64 - first_step.get_step_index().usize() as i64 ).abs() > 1 {
+        if (desired_first_step_index.usize() as i64 - first_step.get_step_index().usize() as i64)
+            .abs()
+            > 1
+        {
             warn!(
                 "Needed step: {:?}, Gotten step: {:?}",
                 desired_first_step_index,
@@ -151,9 +160,13 @@ impl<Game: GameTrait> RenderReceiver<Game> {
         let mut weight = if second_step.get_step_index() == first_step.get_step_index() {
             1 as f64
         } else {
-            let fractional_frame_index = start_time.get_fractional_frame_index(initial_information.get_server_config().get_game_timer_config(), &now);
+            let fractional_frame_index = start_time.get_fractional_frame_index(
+                initial_information.get_server_config().get_frame_duration(),
+                &now,
+            );
             (fractional_frame_index - first_step.get_step_index().usize() as f64)
-                / ((second_step.get_step_index().usize() - first_step.get_step_index().usize()) as f64)
+                / ((second_step.get_step_index().usize() - first_step.get_step_index().usize())
+                    as f64)
         };
 
         let interpolate = true;

@@ -3,8 +3,8 @@ pub use self::manager::{
     ManagerEvent,
 };
 pub use self::managerobservertrait::ManagerObserverTrait;
-pub use self::stepmessage::StepMessage;
 pub use self::step::Input;
+pub use self::stepmessage::StepMessage;
 
 mod manager;
 mod managerobservertrait;

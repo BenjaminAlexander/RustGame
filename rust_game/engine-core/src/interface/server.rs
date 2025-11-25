@@ -9,12 +9,15 @@ use crate::{
     },
     GameTrait,
 };
-use commons::{real_time::{
-    EventHandlerBuilder,
-    EventSender,
-    Factory,
-    Sender,
-}, utils::log_error};
+use commons::{
+    real_time::{
+        EventHandlerBuilder,
+        EventSender,
+        Factory,
+        Sender,
+    },
+    utils::log_error,
+};
 use log::{
     error,
     warn,
@@ -41,7 +44,8 @@ impl<Game: GameTrait> Server<Game> {
             return Err(());
         }
 
-        let server_core = ServerCore::new(factory, server_core_thread_builder.get_sender().clone()).map_err(log_error)?;
+        let server_core = ServerCore::new(factory, server_core_thread_builder.get_sender().clone())
+            .map_err(log_error)?;
 
         let core_sender = server_core_thread_builder
             .spawn_thread("ServerCore".to_string(), server_core)

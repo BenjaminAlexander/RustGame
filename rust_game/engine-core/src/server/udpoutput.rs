@@ -1,4 +1,7 @@
-use crate::gametime::{FrameDuration, FrameIndex};
+use crate::gametime::{
+    FrameDuration,
+    FrameIndex,
+};
 use crate::interface::GameTrait;
 use crate::messaging::{
     Fragmenter,
@@ -76,7 +79,8 @@ impl<Game: GameTrait> UdpOutput<Game> {
 
         Ok(UdpOutput {
             player_index,
-            time_sync_period: frame_duration.to_frame_count(&Game::TIME_SYNC_MESSAGE_PERIOD) as usize,
+            time_sync_period: frame_duration.to_frame_count(&Game::TIME_SYNC_MESSAGE_PERIOD)
+                as usize,
             remote_peer: None,
             //TODO: move clone outside
             socket: socket.try_clone()?,

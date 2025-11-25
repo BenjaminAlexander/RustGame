@@ -4,14 +4,13 @@ use self::ServerCoreEvent::{
     StartListenerEvent,
     TcpConnectionEvent,
 };
-use crate::FrameIndex;
 use crate::gamemanager::{
     Manager,
     ManagerEvent,
 };
 use crate::gametime::{
-    GameTimer,
     FrameDuration,
+    GameTimerScheduler,
 };
 use crate::interface::{
     GameTrait,
@@ -40,6 +39,7 @@ use crate::server::{
     ServerConfig,
     TcpConnectionHandler,
 };
+use crate::FrameIndex;
 use commons::real_time::net::tcp::{
     TcpListenerBuilder,
     TcpReadHandlerBuilder,
@@ -51,7 +51,10 @@ use commons::real_time::net::udp::{
     UdpSocket,
 };
 use commons::real_time::net::MAX_UDP_DATAGRAM_SIZE;
-use commons::real_time::timer_service::{IdleTimerService, TimerService};
+use commons::real_time::timer_service::{
+    IdleTimerService,
+    TimerService,
+};
 use commons::real_time::{
     EventHandleResult,
     EventHandlerBuilder,
@@ -73,7 +76,6 @@ use std::net::{
     SocketAddr,
     SocketAddrV4,
 };
-use std::ops::Sub;
 use std::str::FromStr;
 
 pub enum ServerCoreEvent<Game: GameTrait> {
@@ -100,12 +102,12 @@ pub struct ServerCore<Game: GameTrait> {
     udp_handler: UdpHandler<Game>,
     manager_sender_option: Option<EventSender<ManagerEvent<Game>>>,
     input_grace_period_frames: usize,
-    running_core: Option<RunningCore<Game>>
+    running_core: Option<RunningCore<Game>>,
 }
 
 struct RunningCore<Game: GameTrait> {
     _timer_service: TimerService<(), ServerGameTimerObserver<Game>>,
-    game_timer: GameTimer,
+    game_timer: GameTimerScheduler,
     render_receiver_sender: Sender<RenderReceiverMessage<Game>>,
 }
 
@@ -131,7 +133,10 @@ impl<Game: GameTrait> HandleEvent for ServerCore<Game> {
 }
 
 impl<Game: GameTrait> ServerCore<Game> {
-    pub fn new(factory: Factory, sender: EventSender<ServerCoreEvent<Game>>) -> Result<Self, Error> {
+    pub fn new(
+        factory: Factory,
+        sender: EventSender<ServerCoreEvent<Game>>,
+    ) -> Result<Self, Error> {
         let frame_duration = FrameDuration::new(Game::STEP_PERIOD);
         let server_config = ServerConfig::new(frame_duration);
 
@@ -152,7 +157,7 @@ impl<Game: GameTrait> ServerCore<Game> {
             udp_input_sender_option: None,
             udp_handler,
             manager_sender_option: None,
-            running_core: None
+            running_core: None,
         })
     }
 
@@ -238,7 +243,6 @@ impl<Game: GameTrait> ServerCore<Game> {
         &mut self,
         render_receiver_sender: Sender<RenderReceiverMessage<Game>>,
     ) -> EventHandleResult {
-
         if self.running_core.is_some() {
             warn!("The ServerCore has already been started");
             return EventHandleResult::TryForNextEvent;
@@ -267,9 +271,9 @@ impl<Game: GameTrait> ServerCore<Game> {
             initial_state.clone(),
         );
 
-        let send_result = render_receiver_sender.send(
-            RenderReceiverMessage::InitialInformation(server_initial_information.clone()),
-        );
+        let send_result = render_receiver_sender.send(RenderReceiverMessage::InitialInformation(
+            server_initial_information.clone(),
+        ));
 
         if send_result.is_err() {
             warn!("Failed to send InitialInformation to Render Receiver");
@@ -291,11 +295,11 @@ impl<Game: GameTrait> ServerCore<Game> {
 
         let mut idle_timer_service = IdleTimerService::new();
 
-        let mut game_timer = GameTimer::new(
+        let mut game_timer = GameTimerScheduler::new(
             &self.factory,
             &mut idle_timer_service,
-            *self.server_config.get_game_timer_config(),
-            0,
+            *self.server_config.get_frame_duration(),
+            1,
             ServerGameTimerObserver::new(self.sender.clone()),
         );
 
@@ -304,25 +308,30 @@ impl<Game: GameTrait> ServerCore<Game> {
             Err(err) => {
                 warn!("Failed to Start the TimerService: {:?}", err);
                 return EventHandleResult::StopThread;
-            },
+            }
         };
 
-        if game_timer.start_ticking(&timer_service).is_err() {
-            warn!("Failed to Start the GameTimer");
-            return EventHandleResult::StopThread;
+        let (start_time, frame_index) = match game_timer.start_server_timer(&timer_service) {
+            Ok(result) => result,
+            Err(err) => {
+                warn!("Failed to Start the GameTimer: {:?}", err);
+                return EventHandleResult::StopThread;
+            }
         };
 
         if render_receiver_sender
-                .send(RenderReceiverMessage::StartTime(game_timer.get_start_time()))
-                .is_err() {
+            .send(RenderReceiverMessage::StartTime(start_time))
+            .is_err()
+        {
             warn!("Failed to send StartTime to Render Receiver");
             return EventHandleResult::StopThread;
         }
 
         if manager_builder
-                .get_sender()
-                .send_event(ManagerEvent::DropStepsBeforeEvent(game_timer.get_current_frame_index().usize()))
-                .is_err() {
+            .get_sender()
+            .send_event(ManagerEvent::DropStepsBeforeEvent(frame_index.usize()))
+            .is_err()
+        {
             warn!("Failed to send DropSteps to Game Manager");
             return EventHandleResult::StopThread;
         }
@@ -340,10 +349,10 @@ impl<Game: GameTrait> ServerCore<Game> {
                 .unwrap(),
         );
 
-        self.running_core = Some(RunningCore { 
-            _timer_service: timer_service, 
+        self.running_core = Some(RunningCore {
+            _timer_service: timer_service,
             game_timer,
-            render_receiver_sender
+            render_receiver_sender,
         });
 
         return EventHandleResult::TryForNextEvent;
@@ -382,7 +391,7 @@ impl<Game: GameTrait> ServerCore<Game> {
                 "ServerUdpOutput".to_string(),
                 UdpOutput::<Game>::new(
                     self.factory.get_time_source().clone(),
-                    *self.server_config.get_game_timer_config(),
+                    *self.server_config.get_frame_duration(),
                     player_index,
                     self.udp_socket.as_ref().unwrap(),
                 )
@@ -437,21 +446,18 @@ impl<Game: GameTrait> ServerCore<Game> {
     }
 
     fn on_game_timer_tick(&mut self) -> EventHandleResult {
-
         let running_core = match &mut self.running_core {
             Some(running_core) => running_core,
             None => {
                 warn!("ServerCore is not running");
                 return EventHandleResult::TryForNextEvent;
-            },
+            }
         };
 
-        let time_message = match running_core.game_timer.create_timer_message() {
+        let time_message = match running_core.game_timer.try_advance_frame_index() {
             Some(time_message) => time_message,
             None => return EventHandleResult::TryForNextEvent,
         };
-
-        warn!("FRAME INDEX: {:?}", time_message);
 
         /*
         TODO: time is also sent directly fomr gametime observer, seems like this is a bug
@@ -466,7 +472,6 @@ impl<Game: GameTrait> ServerCore<Game> {
         } else {
             FrameIndex::zero()
         };
-        
 
         if let Some(manager_sender) = self.manager_sender_option.as_ref() {
             //the manager needs its lowest step to not have any new inputs
@@ -492,8 +497,7 @@ impl<Game: GameTrait> ServerCore<Game> {
         }
 
         for udp_output in self.udp_outputs.iter() {
-            let send_result =
-                udp_output.send_event(UdpOutputEvent::SendTimeMessage(time_message));
+            let send_result = udp_output.send_event(UdpOutputEvent::SendTimeMessage(time_message));
 
             if send_result.is_err() {
                 warn!("Failed to send TimeMessage to UdpOutput");
@@ -502,9 +506,10 @@ impl<Game: GameTrait> ServerCore<Game> {
         }
 
         if running_core
-                .render_receiver_sender
-                .send(RenderReceiverMessage::FrameIndex(time_message))
-                .is_err() {
+            .render_receiver_sender
+            .send(RenderReceiverMessage::FrameIndex(time_message))
+            .is_err()
+        {
             warn!("Failed to send FrameIndex to Render Receiver");
             return EventHandleResult::StopThread;
         }
@@ -521,7 +526,7 @@ impl<Game: GameTrait> ServerCore<Game> {
             None => {
                 warn!("ServerCore is not running");
                 return Err(());
-            },
+            }
         };
 
         let current_frame_index = running_core.game_timer.get_current_frame_index();
@@ -531,9 +536,7 @@ impl<Game: GameTrait> ServerCore<Game> {
             FrameIndex::zero()
         };
 
-        if drop_steps_before <= input_message.get_step()
-            && self.manager_sender_option.is_some()
-        {
+        if drop_steps_before <= input_message.get_step() && self.manager_sender_option.is_some() {
             let send_result = self
                 .manager_sender_option
                 .as_ref()

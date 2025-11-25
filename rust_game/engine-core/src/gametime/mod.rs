@@ -1,11 +1,9 @@
-mod game_timer_config;
-mod gametimer;
-mod timereceived;
-mod timemessage;
+mod frame_duration;
+mod frame_index;
+mod game_timer_scheduler;
+mod start_time;
 
-pub use self::game_timer_config::FrameDuration;
-pub use self::game_timer_config::FrameIndex;
-pub use self::gametimer::GameTimer;
-pub use self::timereceived::TimeReceived;
-pub use self::game_timer_config::StartTime;
-pub use self::timemessage::TimeMessage;
+pub use self::frame_duration::FrameDuration;
+pub use self::frame_index::FrameIndex;
+pub use self::game_timer_scheduler::GameTimerScheduler;
+pub use self::start_time::StartTime;

@@ -1,4 +1,7 @@
-use crate::{gametime::FrameIndex, interface::GameTrait};
+use crate::{
+    gametime::FrameIndex,
+    interface::GameTrait,
+};
 use serde::{
     Deserialize,
     Serialize,

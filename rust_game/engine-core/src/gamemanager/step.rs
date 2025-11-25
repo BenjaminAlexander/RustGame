@@ -26,15 +26,14 @@ pub struct Step<Game: GameTrait> {
 
 #[derive(Clone, Debug)]
 pub enum Input<T> {
-
-    /// Pending signifies that an input from a client isn't yet known but may 
+    /// Pending signifies that an input from a client isn't yet known but may
     /// become known in the future.
     Pending,
 
     /// The Input has been received from the client which is the authoritative source
     Authoritative(T),
 
-    /// The client never submitted an input in a timely manner and the server 
+    /// The client never submitted an input in a timely manner and the server
     /// has authoritatively decided that the client cannot submit an input in the future
     AuthoritativeMissing,
 }
@@ -68,7 +67,6 @@ pub enum ServerInputHolder<Game: GameTrait> {
 
 impl<Game: GameTrait> Step<Game> {
     pub fn blank(step_index: FrameIndex, player_count: usize) -> Self {
-
         let inputs = vec![Input::Pending; player_count];
 
         return Self {
@@ -91,13 +89,13 @@ impl<Game: GameTrait> Step<Game> {
                 self.input_count = self.input_count + 1;
                 self.inputs[index] = Input::Authoritative(input_message.get_input());
                 self.need_to_compute_next_state = true;
-            },
+            }
             Input::Authoritative(_) => {
                 warn!("Received a duplicate input, ignorning it")
-            },
+            }
             Input::AuthoritativeMissing => {
                 warn!("Received a input where one has athoritatively been declared missing")
-            },
+            }
         }
 
         //TODO: is this logic necessary if the input is authoritatively know to be missing?
