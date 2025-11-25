@@ -3,6 +3,7 @@ const ID_INDEX: usize = 0;
 const INDEX_INDEX: usize = 4;
 const COUNT_INDEX: usize = 6;
 
+//TODO: maybe re-implement this with serdes
 pub struct MessageFragment {
     buf: Vec<u8>,
 }

@@ -1,9 +1,12 @@
 use commons::time::TimeValue;
-use serde::{Deserialize, Serialize};
+use serde::{
+    Deserialize,
+    Serialize,
+};
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct PingRequest {
-    client_send_time: TimeValue
+    client_send_time: TimeValue,
 }
 
 pub struct PingResponse {

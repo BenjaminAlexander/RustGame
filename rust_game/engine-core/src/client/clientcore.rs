@@ -7,13 +7,13 @@ use crate::client::udpoutput::{
     UdpOutput,
     UdpOutputEvent,
 };
-use crate::gamemanager::{
-    Manager,
-    ManagerEvent,
-};
 use crate::game_time::{
     FrameIndex,
     GameTimerScheduler,
+};
+use crate::gamemanager::{
+    Manager,
+    ManagerEvent,
 };
 use crate::interface::{
     GameTrait,

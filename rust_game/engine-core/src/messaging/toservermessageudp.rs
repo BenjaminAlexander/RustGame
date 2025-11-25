@@ -1,4 +1,7 @@
-use crate::{game_time::PingRequest, interface::GameTrait};
+use crate::{
+    game_time::PingRequest,
+    interface::GameTrait,
+};
 use serde::{
     Deserialize,
     Serialize,
@@ -13,8 +16,8 @@ pub enum ToServerMessageUDP<Game: GameTrait> {
     //TODO: remove hello
     Hello { player_index: usize },
     Input(InputMessage<Game>),
-    /* 
-    PingRequest{ 
+    /*
+    PingRequest{
         player_index: usize,
         ping_request: PingRequest
     }

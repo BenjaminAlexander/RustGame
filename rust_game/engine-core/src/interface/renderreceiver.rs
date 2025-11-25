@@ -1,10 +1,10 @@
 use std::sync::mpsc::TryRecvError;
 
-use crate::gamemanager::StepMessage;
 use crate::game_time::{
     FrameIndex,
     StartTime,
 };
+use crate::gamemanager::StepMessage;
 use crate::interface::{
     GameTrait,
     InitialInformation,

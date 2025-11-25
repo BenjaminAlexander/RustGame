@@ -1,3 +1,4 @@
+use crate::game_time::FrameIndex;
 use crate::gamemanager::manager::ManagerEvent::{
     DropStepsBeforeEvent,
     InputEvent,
@@ -7,7 +8,6 @@ use crate::gamemanager::manager::ManagerEvent::{
 };
 use crate::gamemanager::step::Step;
 use crate::gamemanager::ManagerObserverTrait;
-use crate::game_time::FrameIndex;
 use crate::interface::{
     GameTrait,
     InitialInformation,

@@ -4,10 +4,9 @@ use crate::messaging::{
     MessageFragment,
     ToServerMessageUDP,
 };
-use crate::server::clientaddress::{self, ClientAddress};
+use crate::server::clientaddress::ClientAddress;
 use crate::server::remoteudppeer::RemoteUdpPeer;
 use crate::GameTrait;
-use commons::real_time::net::MAX_UDP_DATAGRAM_SIZE;
 use commons::real_time::TimeSource;
 use log::{
     info,
@@ -65,19 +64,17 @@ impl<Game: GameTrait> UdpHandler<Game> {
 
     pub fn on_udp_packet(
         &mut self,
-        number_of_bytes: usize,
-        mut buf: [u8; MAX_UDP_DATAGRAM_SIZE],
+        buf: &[u8],
         source: SocketAddr,
     ) -> (Option<RemoteUdpPeer>, Option<InputMessage<Game>>) {
         //TODO: check source against valid sources
-        let mut filled_buf = &mut buf[..number_of_bytes];
 
         if !self.client_ip_set.contains(&source.ip()) {
             warn!("Unexpected UDP packet received from {:?}", source);
             return (None, None);
         }
 
-        if let Some(assembled) = self.handle_fragment(source, &mut filled_buf) {
+        if let Some(assembled) = self.handle_fragment(source, &buf) {
             match rmp_serde::from_slice(assembled.as_slice()) {
                 Ok(message) => {
                     return self.handle_message(message, source);
@@ -94,7 +91,7 @@ impl<Game: GameTrait> UdpHandler<Game> {
         }
     }
 
-    fn handle_fragment(&mut self, source: SocketAddr, fragment: &mut [u8]) -> Option<Vec<u8>> {
+    fn handle_fragment(&mut self, source: SocketAddr, fragment: &[u8]) -> Option<Vec<u8>> {
         let assembler = match self.fragment_assemblers.get_mut(&source) {
             None => {
                 //TODO: make max_messages more configurable
@@ -115,16 +112,20 @@ impl<Game: GameTrait> UdpHandler<Game> {
     ) -> (Option<RemoteUdpPeer>, Option<InputMessage<Game>>) {
         let player_index = message.get_player_index();
 
-
-        if let Some(Some(expected_source)) = self.client_addresses.get(player_index) {
-            if expected_source.get_ip_address().eq(&source.ip()) {
-                warn!(
-                    "Received a message from an unexpected source. player_index: {:?}, source: {:?}",
-                    player_index,
-                    source.ip()
-                );
-                return (None, None);
+        let source_is_valid = match self.client_addresses.get(player_index) {
+            Some(Some(expected_source)) if expected_source.get_ip_address().eq(&source.ip()) => {
+                true
             }
+            _ => false,
+        };
+
+        if !source_is_valid {
+            warn!(
+                "Received a message from an unexpected source. player_index: {:?}, source: {:?}",
+                player_index,
+                source.ip()
+            );
+            return (None, None);
         }
 
         let remote_peer = self.handle_remote_peer(message.get_player_index(), source);
