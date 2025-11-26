@@ -288,9 +288,9 @@ impl<Game: GameTrait> ServerCore<Game> {
 
         let udp_input = UdpInput::<Game>::new(
             self.factory.get_time_source().clone(),
-            self.sender.clone(), 
-            listening_core.udp_handler, 
-            udp_outputs.clone()
+            self.sender.clone(),
+            listening_core.udp_handler,
+            udp_outputs.clone(),
         );
 
         let udp_input_spawn_result = UdpReadHandlerBuilder::new_thread(
@@ -465,13 +465,12 @@ impl<Game: GameTrait> ServerCore<Game> {
     }
 
     fn on_game_timer_tick(&mut self) -> EventHandleResult {
-
         let frame_index = match &mut self.state {
-            State::Running(running_core) => 
-                match running_core.game_timer.try_advance_frame_index() {
-                    Some(time_message) => time_message,
-                    None => return EventHandleResult::TryForNextEvent,
-                },
+            State::Running(running_core) => match running_core.game_timer.try_advance_frame_index()
+            {
+                Some(time_message) => time_message,
+                None => return EventHandleResult::TryForNextEvent,
+            },
             _ => {
                 warn!("ServerCore is not running");
                 return EventHandleResult::TryForNextEvent;
@@ -511,12 +510,9 @@ impl<Game: GameTrait> ServerCore<Game> {
             }
         }
 
-        let send_result =
-            running_core
-                .manager_sender
-                .send_event(ManagerEvent::SetRequestedStepEvent(
-                    frame_index.usize() + 1,
-                ));
+        let send_result = running_core
+            .manager_sender
+            .send_event(ManagerEvent::SetRequestedStepEvent(frame_index.usize() + 1));
 
         if send_result.is_err() {
             warn!("Failed to send RequestedStep to Game Manager");

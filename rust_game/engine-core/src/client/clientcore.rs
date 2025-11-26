@@ -8,7 +8,9 @@ use crate::client::udpoutput::{
     UdpOutputEvent,
 };
 use crate::game_time::{
-    CompletedPing, FrameIndex, GameTimerScheduler,
+    CompletedPing,
+    FrameIndex,
+    GameTimerScheduler,
 };
 use crate::gamemanager::{
     Manager,
@@ -50,7 +52,7 @@ pub enum ClientCoreEvent<Game: GameTrait> {
     OnInitialInformation(InitialInformation<Game>),
     OnInputEvent(Game::ClientInputEvent),
     GameTimerTick,
-    CompletedPing(CompletedPing)
+    CompletedPing(CompletedPing),
 }
 
 pub struct ClientCore<Game: GameTrait> {
@@ -213,15 +215,15 @@ impl<Game: GameTrait> ClientCore<Game> {
 
     fn on_game_timer_tick(&mut self) -> EventHandleResult {
         let frame_index = match self.running_state {
-            Some(ref mut running_state) => 
-                match running_state.game_timer.try_advance_frame_index() {
-                    Some(time_message) => time_message,
-                    None => return EventHandleResult::TryForNextEvent,
-                },
+            Some(ref mut running_state) => match running_state.game_timer.try_advance_frame_index()
+            {
+                Some(time_message) => time_message,
+                None => return EventHandleResult::TryForNextEvent,
+            },
             None => {
                 warn!("Received a game timer tick while waiting for the hello from the server");
                 return EventHandleResult::TryForNextEvent;
-            },
+            }
         };
 
         return self.send_new_frame_index(frame_index);
@@ -283,12 +285,9 @@ impl<Game: GameTrait> ClientCore<Game> {
 
             //TODO: message or last message or next?
             //TODO: define strict and consistent rules for how real time relates to ticks, input deadlines and display states
-            let send_result =
-                running_state
-                    .manager_sender
-                    .send_event(ManagerEvent::SetRequestedStepEvent(
-                        frame_index.usize() + 1,
-                    ));
+            let send_result = running_state
+                .manager_sender
+                .send_event(ManagerEvent::SetRequestedStepEvent(frame_index.usize() + 1));
 
             if send_result.is_err() {
                 warn!("Failed to send Request Step to Game Manager");
@@ -352,7 +351,9 @@ impl<Game: GameTrait> HandleEvent for ClientCore<Game> {
                 self.on_input_event(client_input_event)
             }
             ClientCoreEvent::GameTimerTick => self.on_game_timer_tick(),
-            ClientCoreEvent::CompletedPing(completed_ping) => self.on_completed_ping(completed_ping),
+            ClientCoreEvent::CompletedPing(completed_ping) => {
+                self.on_completed_ping(completed_ping)
+            }
         };
     }
 

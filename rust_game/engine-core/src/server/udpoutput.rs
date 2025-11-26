@@ -1,11 +1,16 @@
-use crate::game_time::{FrameIndex, PingRequest, PingResponse};
+use crate::game_time::{
+    FrameIndex,
+    PingRequest,
+    PingResponse,
+};
 use crate::interface::GameTrait;
 use crate::messaging::{
     Fragmenter,
     InputMessage,
     ServerInputMessage,
     StateMessage,
-    ToClientMessageUDP, UdpToClientMessage,
+    ToClientMessageUDP,
+    UdpToClientMessage,
 };
 use crate::server::remoteudppeer::RemoteUdpPeer;
 use commons::real_time::net::udp::UdpSocket;
@@ -33,7 +38,10 @@ use std::ops::ControlFlow;
 
 pub enum UdpOutputEvent<Game: GameTrait> {
     RemotePeer(RemoteUdpPeer),
-    PingRequest{time_received: TimeValue, ping_request: PingRequest},
+    PingRequest {
+        time_received: TimeValue,
+        ping_request: PingRequest,
+    },
     SendInputMessage(InputMessage<Game>),
     SendServerInputMessage(ServerInputMessage<Game>),
     SendCompletedStep(StateMessage<Game>),
@@ -165,7 +173,11 @@ impl<Game: GameTrait> UdpOutput<Game> {
         return EventHandleResult::TryForNextEvent;
     }
 
-    fn send_ping_response(&mut self, time_received: TimeValue, ping_request: PingRequest) -> EventHandleResult {
+    fn send_ping_response(
+        &mut self,
+        time_received: TimeValue,
+        ping_request: PingRequest,
+    ) -> EventHandleResult {
         let ping_response = PingResponse::new(ping_request, time_received, self.time_source.now());
         let ping_response = UdpToClientMessage::PingResponse(ping_response);
         match self.send_message(&ping_response) {
@@ -217,9 +229,9 @@ impl<Game: GameTrait> UdpOutput<Game> {
             None => {
                 warn!("Attempting to send without a peer address");
                 return ControlFlow::Continue(());
-            },
+            }
         };
-        
+
         //TODO: use write instead of to_vec
         let buf = rmp_serde::to_vec(&message).unwrap();
 
@@ -228,7 +240,7 @@ impl<Game: GameTrait> UdpOutput<Game> {
             Err(err) => {
                 warn!("Error while sending: {:?}", err);
                 ControlFlow::Break(())
-            },
+            }
         }
     }
 }
@@ -270,7 +282,10 @@ impl<Game: GameTrait> HandleEvent for UdpOutput<Game> {
             UdpOutputEvent::SendCompletedStep(state_message) => {
                 self.on_completed_step(receive_meta_data, state_message)
             }
-            UdpOutputEvent::PingRequest { time_received, ping_request } => self.send_ping_response(time_received, ping_request),
+            UdpOutputEvent::PingRequest {
+                time_received,
+                ping_request,
+            } => self.send_ping_response(time_received, ping_request),
         }
     }
 

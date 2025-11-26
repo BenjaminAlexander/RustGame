@@ -19,7 +19,7 @@ pub enum UdpToClientMessage {
 
     //TODO: maybe add variant for an unfragmented message?
     //TODO: can this vec be borrowed?
-    Fragment(Vec<u8>)
+    Fragment(Vec<u8>),
 }
 
 #[derive(Serialize, Deserialize, Debug)]

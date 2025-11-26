@@ -1,6 +1,8 @@
 use crate::game_time::frame_index::FrameIndex;
 use crate::game_time::{
-    CompletedPing, FrameDuration, StartTime
+    CompletedPing,
+    FrameDuration,
+    StartTime,
 };
 use commons::real_time::timer_service::{
     IdleTimerService,
@@ -27,8 +29,6 @@ const CLIENT_ERROR_WARN_DURATION: TimeDuration = TimeDuration::new(0, 20_000_000
 pub struct GameTimerScheduler {
     time_source: TimeSource,
     frame_duration: FrameDuration,
-
-    //TODO: add remote start time and make rolling average a measure of clock offset
     remote_start_time: StartTime,
     start_time: StartTime,
 
@@ -50,7 +50,14 @@ impl GameTimerScheduler {
         call_back: T,
     ) -> Self {
         let start_time = StartTime::new(time_source.now());
-        Self::client_new(time_source, idle_timer_service, start_time, frame_duration, 1, call_back)
+        Self::client_new(
+            time_source,
+            idle_timer_service,
+            start_time,
+            frame_duration,
+            1,
+            call_back,
+        )
     }
     /// Creates a [`GameTimerScheduler`] and a [`TimerId`] using the synchronous
     ///  functions on a [`IdleTimerService`] for the client.
@@ -110,7 +117,9 @@ impl GameTimerScheduler {
 
         let start = CompletedPing::get_local_start_time(average_offset, &self.remote_start_time);
 
-        let error = (self.start_time.get_time_value().as_secs_f64() - start.get_time_value().as_secs_f64()).abs();
+        let error = (self.start_time.get_time_value().as_secs_f64()
+            - start.get_time_value().as_secs_f64())
+        .abs();
         if error > CLIENT_ERROR_WARN_DURATION.as_secs_f64() {
             warn!("High client error (sec f64): {:?}", error);
         }

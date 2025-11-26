@@ -1,10 +1,14 @@
 use crate::client::ClientCoreEvent;
-use crate::game_time::{CompletedPing, PingResponse};
+use crate::game_time::{
+    CompletedPing,
+    PingResponse,
+};
 use crate::gamemanager::ManagerEvent;
 use crate::messaging::{
     FragmentAssembler,
     MessageFragment,
-    ToClientMessageUDP, UdpToClientMessage,
+    ToClientMessageUDP,
+    UdpToClientMessage,
 };
 use crate::GameTrait;
 use commons::real_time::net::udp::HandleUdpRead;
@@ -82,12 +86,15 @@ impl<Game: GameTrait> UdpInput<Game> {
 
     fn on_ping_response(&mut self, ping_response: PingResponse) -> ControlFlow<()> {
         let completed_ping = CompletedPing::new(ping_response, self.time_source.now());
-        match self.core_sender.send_event(ClientCoreEvent::CompletedPing(completed_ping)) {
+        match self
+            .core_sender
+            .send_event(ClientCoreEvent::CompletedPing(completed_ping))
+        {
             Ok(()) => ControlFlow::Continue(()),
             Err(_) => {
                 error!("Error sending completed ping");
                 ControlFlow::Break(())
-            },
+            }
         }
     }
 
@@ -149,13 +156,12 @@ impl<Game: GameTrait> UdpInput<Game> {
 
 impl<Game: GameTrait> HandleUdpRead for UdpInput<Game> {
     fn on_read(&mut self, peer_addr: SocketAddr, buf: &[u8]) -> ControlFlow<()> {
-
         let message: UdpToClientMessage = match rmp_serde::from_slice(&buf) {
             Ok(message) => message,
             Err(err) => {
                 error!("Error deserializing: {:?}", err);
                 return ControlFlow::Break(());
-            },
+            }
         };
 
         match message {
