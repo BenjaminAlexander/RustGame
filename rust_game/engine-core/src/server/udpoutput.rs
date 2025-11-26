@@ -1,11 +1,11 @@
-use crate::game_time::{FrameIndex, PingRequest};
+use crate::game_time::{FrameIndex, PingRequest, PingResponse};
 use crate::interface::GameTrait;
 use crate::messaging::{
     Fragmenter,
     InputMessage,
     ServerInputMessage,
     StateMessage,
-    ToClientMessageUDP,
+    ToClientMessageUDP, UdpToClientMessage,
 };
 use crate::server::remoteudppeer::RemoteUdpPeer;
 use commons::real_time::net::udp::UdpSocket;
@@ -27,8 +27,9 @@ use log::{
     info,
     warn,
 };
-use std::io;
+use std::io::Error;
 use std::marker::PhantomData;
+use std::ops::ControlFlow;
 
 pub enum UdpOutputEvent<Game: GameTrait> {
     RemotePeer(RemoteUdpPeer),
@@ -62,7 +63,7 @@ impl<Game: GameTrait> UdpOutput<Game> {
         time_source: TimeSource,
         player_index: usize,
         socket: &UdpSocket,
-    ) -> io::Result<Self> {
+    ) -> Result<Self, Error> {
         let now = time_source.now();
 
         Ok(UdpOutput {
@@ -110,7 +111,7 @@ impl<Game: GameTrait> UdpOutput<Game> {
             self.time_of_last_state_send = self.time_source.now();
 
             let message = ToClientMessageUDP::<Game>::StateMessage(state_message);
-            self.send_message(message);
+            self.send_fragmentable_message(message);
 
             //info!("state_message");
             self.log_time_in_queue(*time_in_queue);
@@ -119,7 +120,7 @@ impl<Game: GameTrait> UdpOutput<Game> {
         return EventHandleResult::TryForNextEvent;
     }
 
-    pub fn on_time_message(
+    fn on_time_message(
         &mut self,
         receive_meta_data: ReceiveMetaData,
         frame_index: FrameIndex,
@@ -131,7 +132,7 @@ impl<Game: GameTrait> UdpOutput<Game> {
         //TODO: timestamp when the time message is set, then use that info in client side time calc
         let message = ToClientMessageUDP::<Game>::TimeMessage(frame_index);
 
-        self.send_message(message);
+        self.send_fragmentable_message(message);
 
         //info!("time_message");
         self.log_time_in_queue(*time_in_queue);
@@ -153,7 +154,7 @@ impl<Game: GameTrait> UdpOutput<Game> {
             self.time_of_last_input_send = self.time_source.now();
 
             let message = ToClientMessageUDP::<Game>::InputMessage(input_message);
-            self.send_message(message);
+            self.send_fragmentable_message(message);
 
             //info!("input_message");
             self.log_time_in_queue(*time_in_queue);
@@ -164,7 +165,7 @@ impl<Game: GameTrait> UdpOutput<Game> {
         return EventHandleResult::TryForNextEvent;
     }
 
-    pub fn on_server_input_message(
+    fn on_server_input_message(
         &mut self,
         receive_meta_data: ReceiveMetaData,
         server_input_message: ServerInputMessage<Game>,
@@ -177,7 +178,7 @@ impl<Game: GameTrait> UdpOutput<Game> {
             self.time_of_last_server_input_send = self.time_source.now();
 
             let message = ToClientMessageUDP::<Game>::ServerInputMessage(server_input_message);
-            self.send_message(message);
+            self.send_fragmentable_message(message);
 
             //info!("server_input_message");
             self.log_time_in_queue(*time_in_queue);
@@ -186,6 +187,15 @@ impl<Game: GameTrait> UdpOutput<Game> {
         }
 
         return EventHandleResult::TryForNextEvent;
+    }
+
+    fn send_ping_response(&mut self, time_received: TimeValue, ping_request: PingRequest) -> EventHandleResult {
+        let ping_response = PingResponse::new(ping_request, time_received, self.time_source.now());
+        let ping_response = UdpToClientMessage::PingResponse(ping_response);
+        match self.send_message(&ping_response) {
+            ControlFlow::Continue(()) => EventHandleResult::TryForNextEvent,
+            ControlFlow::Break(()) => EventHandleResult::StopThread,
+        }
     }
 
     //TODO: generalize this for all channels
@@ -205,23 +215,44 @@ impl<Game: GameTrait> UdpOutput<Game> {
         }
     }
 
-    fn send_message(&mut self, message: ToClientMessageUDP<Game>) {
-        if let Some(remote_peer) = &self.remote_peer {
-            let buf = rmp_serde::to_vec(&message).unwrap();
-            let fragments = self.fragmenter.make_fragments(buf);
+    fn send_fragmentable_message(&mut self, message: ToClientMessageUDP<Game>) {
+        //TODO: see if this can be write
+        let buf = rmp_serde::to_vec(&message).unwrap();
+        let fragments = self.fragmenter.make_fragments(buf);
 
-            for fragment in fragments {
-                if fragment.get_whole_buf().len() > MAX_UDP_DATAGRAM_SIZE {
-                    error!(
-                        "Datagram is larger than MAX_UDP_DATAGRAM_SIZE: {:?}",
-                        fragment.get_whole_buf().len()
-                    );
-                }
-
-                self.socket
-                    .send_to(fragment.get_whole_buf(), &remote_peer.get_socket_addr())
-                    .unwrap();
+        for fragment in fragments {
+            if fragment.get_whole_buf().len() > MAX_UDP_DATAGRAM_SIZE {
+                error!(
+                    "Datagram is larger than MAX_UDP_DATAGRAM_SIZE: {:?}",
+                    fragment.get_whole_buf().len()
+                );
             }
+
+            let message = UdpToClientMessage::Fragment(fragment.move_whole_buf());
+
+            //TODO: use the return from this send
+            self.send_message(&message);
+        }
+    }
+
+    fn send_message(&mut self, message: &UdpToClientMessage) -> ControlFlow<()> {
+        let remote_peer = match &self.remote_peer {
+            Some(remote_peer) => remote_peer,
+            None => {
+                warn!("Attempting to send without a peer address");
+                return ControlFlow::Continue(());
+            },
+        };
+        
+        //TODO: use write instead of to_vec
+        let buf = rmp_serde::to_vec(&message).unwrap();
+
+        match self.socket.send_to(&buf, &remote_peer.get_socket_addr()) {
+            Ok(_) => ControlFlow::Continue(()),
+            Err(err) => {
+                warn!("Error while sending: {:?}", err);
+                ControlFlow::Break(())
+            },
         }
     }
 }
@@ -264,7 +295,7 @@ impl<Game: GameTrait> HandleEvent for UdpOutput<Game> {
             UdpOutputEvent::SendCompletedStep(state_message) => {
                 self.on_completed_step(receive_meta_data, state_message)
             }
-            UdpOutputEvent::PingRequest { time_received, ping_request } => todo!(),
+            UdpOutputEvent::PingRequest { time_received, ping_request } => self.send_ping_response(time_received, ping_request),
         }
     }
 

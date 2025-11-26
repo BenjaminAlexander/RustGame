@@ -3,7 +3,7 @@ use crate::gamemanager::ManagerEvent;
 use crate::messaging::{
     FragmentAssembler,
     MessageFragment,
-    ToClientMessageUDP,
+    ToClientMessageUDP, UdpToClientMessage,
 };
 use crate::GameTrait;
 use commons::real_time::net::udp::HandleUdpRead;
@@ -58,11 +58,9 @@ impl<Game: GameTrait> UdpInput<Game> {
             time_source,
         });
     }
-}
 
-impl<Game: GameTrait> HandleUdpRead for UdpInput<Game> {
-    fn on_read(&mut self, peer_addr: SocketAddr, buff: &[u8]) -> ControlFlow<()> {
-        let fragment = MessageFragment::from_vec(buff.to_vec());
+    fn on_fragment(&mut self, buf: &[u8]) -> ControlFlow<()> {
+        let fragment = MessageFragment::from_vec(buf.to_vec());
 
         if let Some(message_buf) = self.fragment_assembler.add_fragment(fragment) {
             match rmp_serde::from_slice(&message_buf) {
@@ -80,9 +78,7 @@ impl<Game: GameTrait> HandleUdpRead for UdpInput<Game> {
 
         return ControlFlow::Continue(());
     }
-}
 
-impl<Game: GameTrait> UdpInput<Game> {
     fn handle_received_message(&mut self, value: ToClientMessageUDP<Game>) -> ControlFlow<()> {
         let time_received = self.time_source.now();
 
@@ -147,5 +143,23 @@ impl<Game: GameTrait> UdpInput<Game> {
         };
 
         return ControlFlow::Continue(());
+    }
+}
+
+impl<Game: GameTrait> HandleUdpRead for UdpInput<Game> {
+    fn on_read(&mut self, peer_addr: SocketAddr, buf: &[u8]) -> ControlFlow<()> {
+
+        let message: UdpToClientMessage = match rmp_serde::from_slice(&buf) {
+            Ok(message) => message,
+            Err(err) => {
+                error!("Error deserializing: {:?}", err);
+                return ControlFlow::Break(());
+            },
+        };
+
+        match message {
+            UdpToClientMessage::PingResponse(ping_response) => todo!(),
+            UdpToClientMessage::Fragment(buf) => self.on_fragment(&buf),
+        }
     }
 }

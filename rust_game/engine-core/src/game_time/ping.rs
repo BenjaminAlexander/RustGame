@@ -23,8 +23,19 @@ impl PingRequest {
     }
 }
 
+#[derive(Serialize, Deserialize, Debug)]
 pub struct PingResponse {
     request: PingRequest,
-    server_receive_time: TimeValue,
-    server_send_time: TimeValue,
+    server_time_received: TimeValue,
+    server_time_sent: TimeValue,
+}
+
+impl PingResponse {
+    pub fn new (request: PingRequest, server_time_received: TimeValue, server_time_sent: TimeValue) -> Self {
+        Self {
+            request, 
+            server_time_received,
+            server_time_sent
+        }
+    }
 }

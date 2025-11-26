@@ -6,6 +6,7 @@ pub use self::serverinputmessage::ServerInputMessage;
 pub use self::statemessage::StateMessage;
 pub use self::toclientmessagetcp::ToClientMessageTCP;
 pub use self::toclientmessageudp::ToClientMessageUDP;
+pub use self::toclientmessageudp::UdpToClientMessage;
 pub use self::toservermessagetcp::ToServerMessageTCP;
 pub use self::toservermessageudp::FragmentableUdpToServerMessage;
 pub use self::toservermessageudp::UdpToServerMessage;
