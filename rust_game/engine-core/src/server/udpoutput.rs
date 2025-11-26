@@ -1,4 +1,4 @@
-use crate::game_time::FrameIndex;
+use crate::game_time::{FrameIndex, PingRequest};
 use crate::interface::GameTrait;
 use crate::messaging::{
     Fragmenter,
@@ -8,13 +8,6 @@ use crate::messaging::{
     ToClientMessageUDP,
 };
 use crate::server::remoteudppeer::RemoteUdpPeer;
-use crate::server::udpoutput::UdpOutputEvent::{
-    RemotePeer,
-    SendCompletedStep,
-    SendInputMessage,
-    SendServerInputMessage,
-    SendTimeMessage,
-};
 use commons::real_time::net::udp::UdpSocket;
 use commons::real_time::net::MAX_UDP_DATAGRAM_SIZE;
 use commons::real_time::{
@@ -39,6 +32,7 @@ use std::marker::PhantomData;
 
 pub enum UdpOutputEvent<Game: GameTrait> {
     RemotePeer(RemoteUdpPeer),
+    PingRequest{time_received: TimeValue, ping_request: PingRequest},
     //TODO:rename
     SendTimeMessage(FrameIndex),
     SendInputMessage(InputMessage<Game>),
@@ -259,17 +253,18 @@ impl<Game: GameTrait> HandleEvent for UdpOutput<Game> {
         }
 
         match event {
-            RemotePeer(remote_udp_peer) => self.on_remote_peer(remote_udp_peer),
-            SendTimeMessage(frame_index) => self.on_time_message(receive_meta_data, frame_index),
-            SendInputMessage(input_message) => {
+            UdpOutputEvent::RemotePeer(remote_udp_peer) => self.on_remote_peer(remote_udp_peer),
+            UdpOutputEvent::SendTimeMessage(frame_index) => self.on_time_message(receive_meta_data, frame_index),
+            UdpOutputEvent::SendInputMessage(input_message) => {
                 self.on_input_message(receive_meta_data, input_message)
             }
-            SendServerInputMessage(server_input_message) => {
+            UdpOutputEvent::SendServerInputMessage(server_input_message) => {
                 self.on_server_input_message(receive_meta_data, server_input_message)
             }
-            SendCompletedStep(state_message) => {
+            UdpOutputEvent::SendCompletedStep(state_message) => {
                 self.on_completed_step(receive_meta_data, state_message)
             }
+            UdpOutputEvent::PingRequest { time_received, ping_request } => todo!(),
         }
     }
 

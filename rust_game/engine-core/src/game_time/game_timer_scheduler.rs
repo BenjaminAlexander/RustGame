@@ -35,6 +35,8 @@ const CLIENT_ERROR_WARN_DURATION: TimeDuration = TimeDuration::new(0, 20_000_000
 pub struct GameTimerScheduler {
     time_source: TimeSource,
     frame_duration: FrameDuration,
+
+    //TODO: add remote start time and make rolling average a measure of clock offset
     start_time: StartTime,
 
     /// The FrameIndex of the frame occuring most recently in the past.

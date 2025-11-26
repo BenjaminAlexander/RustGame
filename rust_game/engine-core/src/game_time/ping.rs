@@ -17,6 +17,10 @@ impl PingRequest {
             client_send_time
         }
     }
+
+    pub fn get_player_index(&self) -> usize {
+        self.player_index
+    }
 }
 
 pub struct PingResponse {

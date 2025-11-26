@@ -254,23 +254,6 @@ impl<Game: GameTrait> ServerCore<Game> {
             }
         };
 
-        let udp_input = UdpInput::<Game>::new(self.sender.clone(), listening_core.udp_handler);
-
-        let udp_input_spawn_result = UdpReadHandlerBuilder::new_thread(
-            &self.factory,
-            "ServerUdpInput".to_string(),
-            udp_socket.try_clone().unwrap(),
-            udp_input,
-        );
-
-        let udp_input_sender = match udp_input_spawn_result {
-            Ok(udp_input_sender) => udp_input_sender,
-            Err(error) => {
-                error!("{:?}", error);
-                return EventHandleResult::StopThread;
-            }
-        };
-
         let mut udp_outputs = Vec::new();
         for player_index in 0..self.tcp_inputs.len() {
             let result = UdpOutput::<Game>::new(
@@ -303,6 +286,28 @@ impl<Game: GameTrait> ServerCore<Game> {
 
             udp_outputs.push(udp_output_sender);
         }
+
+        let udp_input = UdpInput::<Game>::new(
+            self.factory.get_time_source().clone(),
+            self.sender.clone(), 
+            listening_core.udp_handler, 
+            udp_outputs.clone()
+        );
+
+        let udp_input_spawn_result = UdpReadHandlerBuilder::new_thread(
+            &self.factory,
+            "ServerUdpInput".to_string(),
+            udp_socket.try_clone().unwrap(),
+            udp_input,
+        );
+
+        let udp_input_sender = match udp_input_spawn_result {
+            Ok(udp_input_sender) => udp_input_sender,
+            Err(error) => {
+                error!("{:?}", error);
+                return EventHandleResult::StopThread;
+            }
+        };
 
         let initial_state = Game::get_initial_state(self.tcp_outputs.len());
 
