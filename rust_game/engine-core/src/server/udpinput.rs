@@ -75,7 +75,7 @@ impl<Game: GameTrait> HandleUdpRead for UdpInput<Game> {
         info!("Deserialized UDP packet");
 
         match message {
-            UdpToServerMessage::PingRequest { player_index, ping_request } => todo!(),
+            UdpToServerMessage::PingRequest(ping_request) => todo!(),
             UdpToServerMessage::Fragment(buf) => self.on_fragment(peer_addr, &buf),
         }
     }

@@ -12,10 +12,7 @@ use super::InputMessage;
 #[derive(Serialize, Deserialize, Debug)]
 #[serde(bound = "")]
 pub enum UdpToServerMessage {
-    PingRequest{
-        player_index: usize,
-        ping_request: PingRequest
-    },
+    PingRequest(PingRequest),
 
     //TODO: maybe add variant for an unfragmented message?
     //TODO: can this vec be borrowed?
@@ -38,6 +35,7 @@ pub enum FragmentableUdpToServerMessage<Game: GameTrait> {
 }
 
 impl<Game: GameTrait> FragmentableUdpToServerMessage<Game> {
+
     pub fn get_player_index(&self) -> usize {
         return match self {
             FragmentableUdpToServerMessage::Hello { player_index } => *player_index,

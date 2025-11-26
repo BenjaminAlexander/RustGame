@@ -275,7 +275,6 @@ impl<Game: GameTrait> ServerCore<Game> {
         for player_index in 0..self.tcp_inputs.len() {
             let result = UdpOutput::<Game>::new(
                 self.factory.get_time_source().clone(),
-                *self.server_config.get_frame_duration(),
                 player_index,
                 &udp_socket,
             );

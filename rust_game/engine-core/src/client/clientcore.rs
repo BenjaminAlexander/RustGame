@@ -46,7 +46,6 @@ use std::net::{
     SocketAddr,
     SocketAddrV4,
 };
-use std::ops::Sub;
 
 pub enum ClientCoreEvent<Game: GameTrait> {
     OnInitialInformation(InitialInformation<Game>),
@@ -176,6 +175,7 @@ impl<Game: GameTrait> ClientCore<Game> {
             &self.factory,
             "ClientUdpOutput".to_string(),
             UdpOutput::<Game>::new(
+                self.factory.get_time_source().clone(),
                 server_udp_socket_addr,
                 udp_socket.try_clone().unwrap(),
                 initial_information.clone(),
@@ -236,6 +236,15 @@ impl<Game: GameTrait> ClientCore<Game> {
 
             if send_result.is_err() {
                 warn!("Failed to send InputMessage to Game Manager");
+                return EventHandleResult::StopThread;
+            }
+
+            let send_result = running_state
+                .udp_output_sender
+                .send_event(UdpOutputEvent::FrameIndex(time_message));
+
+            if send_result.is_err() {
+                warn!("Failed to send InputMessage to Udp Output");
                 return EventHandleResult::StopThread;
             }
 

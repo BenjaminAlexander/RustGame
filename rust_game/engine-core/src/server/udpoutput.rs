@@ -1,7 +1,4 @@
-use crate::game_time::{
-    FrameDuration,
-    FrameIndex,
-};
+use crate::game_time::FrameIndex;
 use crate::interface::GameTrait;
 use crate::messaging::{
     Fragmenter,
@@ -51,8 +48,6 @@ pub enum UdpOutputEvent<Game: GameTrait> {
 
 pub struct UdpOutput<Game: GameTrait> {
     time_source: TimeSource,
-    //TODO: rename to ping period
-    time_sync_period: usize,
     player_index: usize,
     socket: UdpSocket,
     remote_peer: Option<RemoteUdpPeer>,
@@ -71,7 +66,6 @@ pub struct UdpOutput<Game: GameTrait> {
 impl<Game: GameTrait> UdpOutput<Game> {
     pub fn new(
         time_source: TimeSource,
-        frame_duration: FrameDuration,
         player_index: usize,
         socket: &UdpSocket,
     ) -> io::Result<Self> {
@@ -79,8 +73,6 @@ impl<Game: GameTrait> UdpOutput<Game> {
 
         Ok(UdpOutput {
             player_index,
-            time_sync_period: frame_duration.to_frame_count(&Game::TIME_SYNC_MESSAGE_PERIOD)
-                as usize,
             remote_peer: None,
             //TODO: move clone outside
             socket: socket.try_clone()?,
@@ -140,27 +132,15 @@ impl<Game: GameTrait> UdpOutput<Game> {
     ) -> EventHandleResult {
         let time_in_queue = receive_meta_data.get_send_meta_data().get_time_sent();
 
-        let mut send_it = false;
+        self.last_time_sync_frame_index = Some(frame_index.clone());
 
-        if let Some(last_time_message) = &self.last_time_sync_frame_index {
-            if frame_index >= last_time_message + self.time_sync_period {
-                send_it = true;
-            }
-        } else {
-            send_it = true;
-        }
+        //TODO: timestamp when the time message is set, then use that info in client side time calc
+        let message = ToClientMessageUDP::<Game>::TimeMessage(frame_index);
 
-        if send_it {
-            self.last_time_sync_frame_index = Some(frame_index.clone());
+        self.send_message(message);
 
-            //TODO: timestamp when the time message is set, then use that info in client side time calc
-            let message = ToClientMessageUDP::<Game>::TimeMessage(frame_index);
-
-            self.send_message(message);
-
-            //info!("time_message");
-            self.log_time_in_queue(*time_in_queue);
-        }
+        //info!("time_message");
+        self.log_time_in_queue(*time_in_queue);
 
         return EventHandleResult::TryForNextEvent;
     }

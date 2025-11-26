@@ -15,7 +15,7 @@ use crate::FrameIndex;
 #[serde(bound = "")]
 pub enum ToClientMessageUDP<Game: GameTrait> {
     //TODO: see if these can be borrowed
-    //TODO: rename
+    //TODO: remove TimeMessage
     TimeMessage(FrameIndex),
     InputMessage(InputMessage<Game>),
     ServerInputMessage(ServerInputMessage<Game>),
