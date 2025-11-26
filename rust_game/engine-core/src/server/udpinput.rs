@@ -51,9 +51,6 @@ impl<Game: GameTrait> UdpInput<Game> {
         }
 
         if let Some(input_message) = input_message_option {
-
-            info!("Received UDP input_message");
-
             let result = self
                 .core_sender
                 .send_event(ServerCoreEvent::InputMessage(input_message));

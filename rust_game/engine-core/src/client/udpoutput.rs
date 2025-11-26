@@ -32,7 +32,7 @@ pub struct UdpOutput<Game: GameTrait> {
     server_address: SocketAddr,
     socket: UdpSocket,
     ping_period_frames: usize,
-    last_ping: FrameIndex,
+    next_ping: FrameIndex,
     fragmenter: Fragmenter,
     input_queue: Vec<InputMessage<Game>>,
     max_observed_input_queue: usize,
@@ -54,7 +54,7 @@ impl<Game: GameTrait> UdpOutput<Game> {
             server_address,
             socket,
             ping_period_frames,
-            last_ping: FrameIndex::zero(),
+            next_ping: FrameIndex::zero(),
             //TODO: make max datagram size more configurable
             fragmenter: Fragmenter::new(MAX_UDP_DATAGRAM_SIZE),
             input_queue: Vec::new(),
@@ -133,11 +133,11 @@ impl<Game: GameTrait> UdpOutput<Game> {
 
     fn on_frame_index(&mut self, frame_index: FrameIndex) -> EventHandleResult {
 
-        if frame_index < self.last_ping + self.ping_period_frames {
+        if frame_index < self.next_ping {
             return EventHandleResult::TryForNextEvent;
         }
 
-        self.last_ping = frame_index;
+        self.next_ping = frame_index + self.ping_period_frames;
 
         let ping_request = PingRequest::new(self.initial_information.get_player_index(), self.time_source.now());
         let ping_request = UdpToServerMessage::PingRequest(ping_request);

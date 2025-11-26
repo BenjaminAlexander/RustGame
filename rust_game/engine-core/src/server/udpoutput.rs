@@ -34,8 +34,6 @@ use std::ops::ControlFlow;
 pub enum UdpOutputEvent<Game: GameTrait> {
     RemotePeer(RemoteUdpPeer),
     PingRequest{time_received: TimeValue, ping_request: PingRequest},
-    //TODO:rename
-    SendTimeMessage(FrameIndex),
     SendInputMessage(InputMessage<Game>),
     SendServerInputMessage(ServerInputMessage<Game>),
     SendCompletedStep(StateMessage<Game>),
@@ -47,7 +45,6 @@ pub struct UdpOutput<Game: GameTrait> {
     socket: UdpSocket,
     remote_peer: Option<RemoteUdpPeer>,
     fragmenter: Fragmenter,
-    last_time_sync_frame_index: Option<FrameIndex>,
     last_state_sequence: Option<FrameIndex>,
     phantom: PhantomData<Game>,
 
@@ -73,7 +70,6 @@ impl<Game: GameTrait> UdpOutput<Game> {
             socket: socket.try_clone()?,
             //TODO: make max datagram size more configurable
             fragmenter: Fragmenter::new(MAX_UDP_DATAGRAM_SIZE),
-            last_time_sync_frame_index: None,
             last_state_sequence: None,
             phantom: PhantomData,
 
@@ -116,26 +112,6 @@ impl<Game: GameTrait> UdpOutput<Game> {
             //info!("state_message");
             self.log_time_in_queue(*time_in_queue);
         }
-
-        return EventHandleResult::TryForNextEvent;
-    }
-
-    fn on_time_message(
-        &mut self,
-        receive_meta_data: ReceiveMetaData,
-        frame_index: FrameIndex,
-    ) -> EventHandleResult {
-        let time_in_queue = receive_meta_data.get_send_meta_data().get_time_sent();
-
-        self.last_time_sync_frame_index = Some(frame_index.clone());
-
-        //TODO: timestamp when the time message is set, then use that info in client side time calc
-        let message = ToClientMessageUDP::<Game>::TimeMessage(frame_index);
-
-        self.send_fragmentable_message(message);
-
-        //info!("time_message");
-        self.log_time_in_queue(*time_in_queue);
 
         return EventHandleResult::TryForNextEvent;
     }
@@ -285,7 +261,6 @@ impl<Game: GameTrait> HandleEvent for UdpOutput<Game> {
 
         match event {
             UdpOutputEvent::RemotePeer(remote_udp_peer) => self.on_remote_peer(remote_udp_peer),
-            UdpOutputEvent::SendTimeMessage(frame_index) => self.on_time_message(receive_meta_data, frame_index),
             UdpOutputEvent::SendInputMessage(input_message) => {
                 self.on_input_message(receive_meta_data, input_message)
             }

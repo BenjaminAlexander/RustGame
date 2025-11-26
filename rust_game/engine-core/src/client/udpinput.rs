@@ -95,17 +95,6 @@ impl<Game: GameTrait> UdpInput<Game> {
         let time_received = self.time_source.now();
 
         match value {
-            ToClientMessageUDP::TimeMessage(frame_index) => {
-                //info!("Time message: {:?}", time_message.get_step());
-                let send_result = self
-                    .core_sender
-                    .send_event(ClientCoreEvent::RemoteTimeMessageEvent(frame_index));
-
-                if send_result.is_err() {
-                    warn!("Failed to send TimeMessage to Core");
-                    return ControlFlow::Break(());
-                }
-            }
             ToClientMessageUDP::InputMessage(input_message) => {
                 //TODO: ignore input messages from this player
                 //info!("Input message: {:?}", input_message.get_step());

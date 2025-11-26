@@ -1,7 +1,6 @@
 use crate::game_time::frame_index::FrameIndex;
 use crate::game_time::{
-    FrameDuration,
-    StartTime,
+    CompletedPing, FrameDuration, StartTime
 };
 use commons::real_time::timer_service::{
     IdleTimerService,
@@ -10,20 +9,13 @@ use commons::real_time::timer_service::{
     TimerId,
     TimerService,
 };
-use commons::real_time::{
-    Factory,
-    TimeSource,
-};
+use commons::real_time::TimeSource;
 use commons::stats::RollingAverage;
-use commons::time::{
-    TimeDuration,
-    TimeValue,
-};
+use commons::time::TimeDuration;
 use log::{
     info,
     warn,
 };
-use std::ops::Sub;
 
 const TICK_LATENESS_WARN_DURATION: TimeDuration = TimeDuration::new(0, 20_000_000);
 const CLIENT_ERROR_WARN_DURATION: TimeDuration = TimeDuration::new(0, 20_000_000);
@@ -37,6 +29,7 @@ pub struct GameTimerScheduler {
     frame_duration: FrameDuration,
 
     //TODO: add remote start time and make rolling average a measure of clock offset
+    remote_start_time: StartTime,
     start_time: StartTime,
 
     /// The FrameIndex of the frame occuring most recently in the past.
@@ -49,11 +42,27 @@ pub struct GameTimerScheduler {
 
 impl GameTimerScheduler {
     /// Creates a [`GameTimerScheduler`] and a [`TimerId`] using the synchronous
-    ///  functions on a [`IdleTimerService`].
-    pub fn new<T: TimerCallBack>(
-        factory: &Factory,
+    ///  functions on a [`IdleTimerService`] for the server.
+    pub fn server_new<T: TimerCallBack>(
+        time_source: TimeSource,
         idle_timer_service: &mut IdleTimerService<(), T>,
-        game_timer_config: FrameDuration,
+        frame_duration: FrameDuration,
+
+        // The size of the rolling average used when adjusting the server-client
+        // clock offset.  On servers, this should be 1.
+        rolling_average_size: usize,
+        call_back: T,
+    ) -> Self {
+        let start_time = StartTime::new(time_source.now());
+        Self::client_new(time_source, idle_timer_service, start_time, frame_duration, rolling_average_size, call_back)
+    }
+    /// Creates a [`GameTimerScheduler`] and a [`TimerId`] using the synchronous
+    ///  functions on a [`IdleTimerService`] for the client.
+    pub fn client_new<T: TimerCallBack>(
+        time_source: TimeSource,
+        idle_timer_service: &mut IdleTimerService<(), T>,
+        remote_start_time: StartTime,
+        frame_duration: FrameDuration,
 
         // The size of the rolling average used when adjusting the server-client
         // clock offset.  On servers, this should be 1.
@@ -62,14 +71,13 @@ impl GameTimerScheduler {
     ) -> Self {
         let timer_id = idle_timer_service.create_timer(call_back, Schedule::Never);
 
-        let time_source = factory.get_time_source().clone();
-
         // start is now, which is the same as the time of occurance of FrameIndex 0
         let start_time = StartTime::new(time_source.now());
 
         return Self {
             time_source,
-            frame_duration: game_timer_config,
+            frame_duration,
+            remote_start_time,
             start_time,
             current_frame_index: FrameIndex::zero(),
             rolling_average: RollingAverage::new(rolling_average_size),
@@ -77,8 +85,8 @@ impl GameTimerScheduler {
         };
     }
 
-    /// Starts the server's game timer
-    pub fn start_server_timer<T: TimerCallBack>(
+    /// Starts the game timer
+    pub fn start_timer<T: TimerCallBack>(
         &mut self,
         timer_service: &TimerService<(), T>,
     ) -> Result<(StartTime, FrameIndex), ()> {
@@ -87,7 +95,8 @@ impl GameTimerScheduler {
             self.frame_duration.get_frame_duration()
         );
 
-        self.adjust_client_timer(timer_service, FrameIndex::zero())?;
+        let zero_time_ping = CompletedPing::zero_time_ping(&self.start_time, &self.remote_start_time);
+        self.adjust_client_timer(timer_service, zero_time_ping)?;
 
         return Ok((self.start_time, self.current_frame_index));
     }
@@ -96,23 +105,19 @@ impl GameTimerScheduler {
     pub fn adjust_client_timer<T: TimerCallBack>(
         &mut self,
         timer_service: &TimerService<(), T>,
-        remote_frame_index: FrameIndex,
+        completed_ping: CompletedPing,
     ) -> Result<StartTime, ()> {
         //Calculate the start time of the remote clock in local time and add it to the rolling average
-        let remote_start = StartTime::new(
-            self.time_source
-                .now()
-                .sub(&self.frame_duration.duration_from_start(&remote_frame_index)),
-        );
 
-        self.rolling_average
-            .add_value(remote_start.get_time_value().as_secs_f64());
+        let offset = completed_ping.get_remote_to_local_clock_offset();
 
-        let average = self.rolling_average.get_average();
+        self.rolling_average.add_value(offset);
 
-        let start = StartTime::new(TimeValue::from_secs_f64(average));
+        let average_offset = self.rolling_average.get_average();
 
-        let error = (self.start_time.get_time_value().as_secs_f64() - average).abs();
+        let start = CompletedPing::get_local_start_time(average_offset, &self.remote_start_time);
+
+        let error = (self.start_time.get_time_value().as_secs_f64() - start.get_time_value().as_secs_f64()).abs();
         if error > CLIENT_ERROR_WARN_DURATION.as_secs_f64() {
             warn!("High client error (sec f64): {:?}", error);
         }
@@ -180,5 +185,9 @@ impl GameTimerScheduler {
 
     pub fn get_current_frame_index(&self) -> FrameIndex {
         self.current_frame_index
+    }
+
+    pub fn get_start_time(&self) -> StartTime {
+        self.start_time
     }
 }

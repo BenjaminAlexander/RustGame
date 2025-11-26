@@ -8,7 +8,7 @@ use crate::client::udpoutput::{
     UdpOutputEvent,
 };
 use crate::game_time::{
-    CompletedPing, FrameIndex, GameTimerScheduler, PingResponse
+    CompletedPing, FrameIndex, GameTimerScheduler,
 };
 use crate::gamemanager::{
     Manager,
@@ -50,8 +50,6 @@ pub enum ClientCoreEvent<Game: GameTrait> {
     OnInitialInformation(InitialInformation<Game>),
     OnInputEvent(Game::ClientInputEvent),
     GameTimerTick,
-    //TODO: remove
-    RemoteTimeMessageEvent(FrameIndex),
     CompletedPing(CompletedPing)
 }
 
@@ -142,15 +140,18 @@ impl<Game: GameTrait> ClientCore<Game> {
 
         let mut idle_timer_service = IdleTimerService::new();
 
-        let game_timer = GameTimerScheduler::new(
-            &self.factory,
+        let mut game_timer = GameTimerScheduler::client_new(
+            self.factory.get_time_source().clone(),
             &mut idle_timer_service,
+            *initial_information.get_server_config().get_start_time(),
             *initial_information.get_server_config().get_frame_duration(),
             Game::CLOCK_AVERAGE_SIZE,
             ClientGameTimerObserver::new(self.sender.clone()),
         );
 
         let timer_service = idle_timer_service.start(&self.factory).unwrap();
+
+        game_timer.start_timer(&timer_service);
 
         let server_udp_socket_addr =
             SocketAddr::V4(SocketAddrV4::new(self.server_ip, Game::UDP_PORT));
@@ -303,11 +304,11 @@ impl<Game: GameTrait> ClientCore<Game> {
         return EventHandleResult::TryForNextEvent;
     }
 
-    fn on_remote_timer_message(&mut self, frame_index: FrameIndex) -> EventHandleResult {
+    fn on_completed_ping(&mut self, completed_ping: CompletedPing) -> EventHandleResult {
         if let Some(ref mut running_state) = self.running_state {
             let start_time = match running_state
                 .game_timer
-                .adjust_client_timer(&running_state.timer_service, frame_index)
+                .adjust_client_timer(&running_state.timer_service, completed_ping)
             {
                 Ok(start_time) => start_time,
                 Err(err) => {
@@ -345,10 +346,7 @@ impl<Game: GameTrait> HandleEvent for ClientCore<Game> {
                 self.on_input_event(client_input_event)
             }
             ClientCoreEvent::GameTimerTick => self.on_game_timer_tick(),
-            ClientCoreEvent::RemoteTimeMessageEvent(frame_index) => {
-                self.on_remote_timer_message(frame_index)
-            }
-            ClientCoreEvent::CompletedPing(completed_ping) => todo!(),
+            ClientCoreEvent::CompletedPing(completed_ping) => self.on_completed_ping(completed_ping),
         };
     }
 

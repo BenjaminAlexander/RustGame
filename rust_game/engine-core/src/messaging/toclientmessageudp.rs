@@ -26,9 +26,6 @@ pub enum UdpToClientMessage {
 #[serde(bound = "")]
 pub enum ToClientMessageUDP<Game: GameTrait> {
     //TODO: see if these can be borrowed
-    
-    //TODO: remove TimeMessage
-    TimeMessage(FrameIndex),
     InputMessage(InputMessage<Game>),
     ServerInputMessage(ServerInputMessage<Game>),
     StateMessage(StateMessage<Game>),

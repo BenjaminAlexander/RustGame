@@ -89,7 +89,7 @@ pub enum ServerCoreEvent<Game: GameTrait> {
 pub struct ServerCore<Game: GameTrait> {
     factory: Factory,
     sender: EventSender<ServerCoreEvent<Game>>,
-    server_config: ServerConfig,
+    frame_duration: FrameDuration,
     tcp_listener_sender_option: Option<EventHandlerStopper>,
     tcp_inputs: Vec<EventHandlerStopper>,
     tcp_outputs: Vec<EventSender<TcpOutputEvent<Game>>>,
@@ -148,7 +148,6 @@ impl<Game: GameTrait> ServerCore<Game> {
         sender: EventSender<ServerCoreEvent<Game>>,
     ) -> Result<Self, Error> {
         let frame_duration = FrameDuration::new(Game::STEP_PERIOD);
-        let server_config = ServerConfig::new(frame_duration);
 
         let udp_handler = UdpHandler::<Game>::new(factory.get_time_source().clone());
 
@@ -159,7 +158,7 @@ impl<Game: GameTrait> ServerCore<Game> {
         Ok(Self {
             factory,
             sender,
-            server_config,
+            frame_duration,
             tcp_listener_sender_option: None,
             tcp_inputs: Vec::new(),
             tcp_outputs: Vec::new(),
@@ -311,20 +310,42 @@ impl<Game: GameTrait> ServerCore<Game> {
 
         let initial_state = Game::get_initial_state(self.tcp_outputs.len());
 
-        //let mut udp_output_senders = Vec::<EventSender<UdpOutputEvent<Game>>>::new();
-
-        //for udp_output_sender in self.udp_outputs.iter() {
-        //    udp_output_senders.push(udp_output_sender.clone());
-        //}
-
         let server_manager_observer =
             ServerManagerObserver::<Game>::new(udp_outputs.clone(), render_receiver_sender.clone());
 
         let manager_builder =
             EventHandlerBuilder::<Manager<ServerManagerObserver<Game>>>::new(&self.factory);
 
+        let mut idle_timer_service = IdleTimerService::new();
+
+        let mut game_timer = GameTimerScheduler::server_new(
+            self.factory.get_time_source().clone(),
+            &mut idle_timer_service,
+            self.frame_duration,
+            1,
+            ServerGameTimerObserver::new(self.sender.clone()),
+        );
+
+        let timer_service = match idle_timer_service.start(&self.factory) {
+            Ok(timer_service) => timer_service,
+            Err(err) => {
+                warn!("Failed to Start the TimerService: {:?}", err);
+                return EventHandleResult::StopThread;
+            }
+        };
+
+        let (start_time, frame_index) = match game_timer.start_timer(&timer_service) {
+            Ok(result) => result,
+            Err(err) => {
+                warn!("Failed to Start the GameTimer: {:?}", err);
+                return EventHandleResult::StopThread;
+            }
+        };
+
+        let server_config = ServerConfig::new(game_timer.get_start_time(), self.frame_duration);
+
         let server_initial_information = InitialInformation::<Game>::new(
-            self.server_config.clone(),
+            server_config.clone(),
             self.tcp_outputs.len(),
             usize::MAX,
             initial_state.clone(),
@@ -339,9 +360,17 @@ impl<Game: GameTrait> ServerCore<Game> {
             return EventHandleResult::StopThread;
         }
 
+        if render_receiver_sender
+            .send(RenderReceiverMessage::StartTime(start_time))
+            .is_err()
+        {
+            warn!("Failed to send StartTime to Render Receiver");
+            return EventHandleResult::StopThread;
+        }
+
         for tcp_output in self.tcp_outputs.iter() {
             let send_result = tcp_output.send_event(SendInitialInformation(
-                self.server_config.clone(),
+                server_config.clone(),
                 self.tcp_outputs.len(),
                 initial_state.clone(),
             ));
@@ -350,40 +379,6 @@ impl<Game: GameTrait> ServerCore<Game> {
                 warn!("Failed to send InitialInformation to TcpOutput");
                 return EventHandleResult::StopThread;
             }
-        }
-
-        let mut idle_timer_service = IdleTimerService::new();
-
-        let mut game_timer = GameTimerScheduler::new(
-            &self.factory,
-            &mut idle_timer_service,
-            *self.server_config.get_frame_duration(),
-            1,
-            ServerGameTimerObserver::new(self.sender.clone()),
-        );
-
-        let timer_service = match idle_timer_service.start(&self.factory) {
-            Ok(timer_service) => timer_service,
-            Err(err) => {
-                warn!("Failed to Start the TimerService: {:?}", err);
-                return EventHandleResult::StopThread;
-            }
-        };
-
-        let (start_time, frame_index) = match game_timer.start_server_timer(&timer_service) {
-            Ok(result) => result,
-            Err(err) => {
-                warn!("Failed to Start the GameTimer: {:?}", err);
-                return EventHandleResult::StopThread;
-            }
-        };
-
-        if render_receiver_sender
-            .send(RenderReceiverMessage::StartTime(start_time))
-            .is_err()
-        {
-            warn!("Failed to send StartTime to Render Receiver");
-            return EventHandleResult::StopThread;
         }
 
         if manager_builder
@@ -484,14 +479,6 @@ impl<Game: GameTrait> ServerCore<Game> {
             None => return EventHandleResult::TryForNextEvent,
         };
 
-        /*
-        TODO: time is also sent directly fomr gametime observer, seems like this is a bug
-
-        for udp_output in self.udp_outputs.iter() {
-            udp_output.send_event(UdpOutputEvent::SendTimeMessage(time_message.clone()));
-        }
-        */
-
         let drop_steps_before = if time_message.usize() > self.input_grace_period_frames {
             time_message - self.input_grace_period_frames
         } else {
@@ -523,15 +510,6 @@ impl<Game: GameTrait> ServerCore<Game> {
         if send_result.is_err() {
             warn!("Failed to send RequestedStep to Game Manager");
             return EventHandleResult::StopThread;
-        }
-
-        for udp_output in running_core.udp_output_senders.iter() {
-            let send_result = udp_output.send_event(UdpOutputEvent::SendTimeMessage(time_message));
-
-            if send_result.is_err() {
-                warn!("Failed to send TimeMessage to UdpOutput");
-                return EventHandleResult::StopThread;
-            }
         }
 
         if running_core

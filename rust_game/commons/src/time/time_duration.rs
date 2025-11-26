@@ -119,11 +119,27 @@ impl Sub<&Self> for TimeDuration {
     }
 }
 
+impl Sub<Self> for &TimeDuration {
+    type Output = TimeDuration;
+
+    fn sub(self, rhs: Self) -> Self::Output {
+        return TimeDuration::new(self.seconds - rhs.seconds, self.nanos - rhs.nanos);
+    }
+}
+
 impl Add<&Self> for TimeDuration {
     type Output = Self;
 
     fn add(self, rhs: &Self) -> Self::Output {
         return Self::new(self.seconds + rhs.seconds, self.nanos + rhs.nanos);
+    }
+}
+
+impl Add<Self> for &TimeDuration {
+    type Output = TimeDuration;
+
+    fn add(self, rhs: Self) -> Self::Output {
+        return TimeDuration::new(self.seconds + rhs.seconds, self.nanos + rhs.nanos);
     }
 }
 
