@@ -48,6 +48,8 @@ pub struct CompletedPing {
 }
 
 impl CompletedPing {
+
+    /// Creates a new [`CompletedPing`]
     pub fn new(response: PingResponse, client_time_received: TimeValue) -> Self {
         Self {
             response, 
@@ -55,17 +57,19 @@ impl CompletedPing {
         }
     }
 
-    pub fn zero_time_ping(local_start: &StartTime, remote_start: &StartTime) -> Self {
+    /// Creates a CompletedPing with zero duration round trip.  This is used for starting
+    pub fn zero_time_ping() -> Self {
+        let zero = TimeValue::from_secs_f64(0.0);
         Self {
             response: PingResponse { 
                 request: PingRequest { 
                     player_index: 0, 
-                    client_time_sent: *local_start.get_time_value() 
+                    client_time_sent: zero 
                 }, 
-                server_time_received: *remote_start.get_time_value(), 
-                server_time_sent: *remote_start.get_time_value() 
+                server_time_received: zero, 
+                server_time_sent: zero 
             },
-            client_time_received: *local_start.get_time_value() 
+            client_time_received: zero 
         }
     }
 

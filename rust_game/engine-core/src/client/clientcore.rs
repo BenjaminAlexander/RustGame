@@ -140,7 +140,7 @@ impl<Game: GameTrait> ClientCore<Game> {
 
         let mut idle_timer_service = IdleTimerService::new();
 
-        let mut game_timer = GameTimerScheduler::client_new(
+        let game_timer = GameTimerScheduler::client_new(
             self.factory.get_time_source().clone(),
             &mut idle_timer_service,
             *initial_information.get_server_config().get_start_time(),
@@ -150,8 +150,6 @@ impl<Game: GameTrait> ClientCore<Game> {
         );
 
         let timer_service = idle_timer_service.start(&self.factory).unwrap();
-
-        game_timer.start_timer(&timer_service);
 
         let server_udp_socket_addr =
             SocketAddr::V4(SocketAddrV4::new(self.server_ip, Game::UDP_PORT));
@@ -201,7 +199,7 @@ impl<Game: GameTrait> ClientCore<Game> {
             input_grace_period_frames,
         });
 
-        return EventHandleResult::TryForNextEvent;
+        return self.send_new_frame_index(FrameIndex::zero());
     }
 
     fn on_input_event(&mut self, input_event: Game::ClientInputEvent) -> EventHandleResult {
@@ -214,19 +212,29 @@ impl<Game: GameTrait> ClientCore<Game> {
     }
 
     fn on_game_timer_tick(&mut self) -> EventHandleResult {
-        if let Some(ref mut running_state) = self.running_state {
-            //TODO: rename
-            let time_message = match running_state.game_timer.try_advance_frame_index() {
-                Some(time_message) => time_message,
-                None => return EventHandleResult::TryForNextEvent,
-            };
+        let frame_index = match self.running_state {
+            Some(ref mut running_state) => 
+                match running_state.game_timer.try_advance_frame_index() {
+                    Some(time_message) => time_message,
+                    None => return EventHandleResult::TryForNextEvent,
+                },
+            None => {
+                warn!("Received a game timer tick while waiting for the hello from the server");
+                return EventHandleResult::TryForNextEvent;
+            },
+        };
 
-            trace!("TimeMessage step_index: {:?}", time_message);
+        return self.send_new_frame_index(frame_index);
+    }
+
+    fn send_new_frame_index(&mut self, frame_index: FrameIndex) -> EventHandleResult {
+        if let Some(ref mut running_state) = self.running_state {
+            trace!("TimeMessage step_index: {:?}", frame_index);
 
             let message = InputMessage::<Game>::new(
                 //TODO: message or last message?
                 //TODO: define strict and consistent rules for how real time relates to ticks, input deadlines and display states
-                time_message,
+                frame_index,
                 running_state.initial_information.get_player_index(),
                 Game::get_input(&mut running_state.input_event_handler),
             );
@@ -242,7 +250,7 @@ impl<Game: GameTrait> ClientCore<Game> {
 
             let send_result = running_state
                 .udp_output_sender
-                .send_event(UdpOutputEvent::FrameIndex(time_message));
+                .send_event(UdpOutputEvent::FrameIndex(frame_index));
 
             if send_result.is_err() {
                 warn!("Failed to send InputMessage to Udp Output");
@@ -258,8 +266,8 @@ impl<Game: GameTrait> ClientCore<Game> {
                 return EventHandleResult::StopThread;
             }
 
-            let drop_step = if time_message.usize() > running_state.input_grace_period_frames {
-                time_message - running_state.input_grace_period_frames
+            let drop_step = if frame_index.usize() > running_state.input_grace_period_frames {
+                frame_index - running_state.input_grace_period_frames
             } else {
                 FrameIndex::zero()
             };
@@ -279,7 +287,7 @@ impl<Game: GameTrait> ClientCore<Game> {
                 running_state
                     .manager_sender
                     .send_event(ManagerEvent::SetRequestedStepEvent(
-                        time_message.usize() + 1,
+                        frame_index.usize() + 1,
                     ));
 
             if send_result.is_err() {
@@ -289,16 +297,14 @@ impl<Game: GameTrait> ClientCore<Game> {
 
             if self
                 .render_receiver_sender
-                .send(RenderReceiverMessage::FrameIndex(FrameIndex::from(
-                    time_message,
-                )))
+                .send(RenderReceiverMessage::FrameIndex(frame_index))
                 .is_err()
             {
                 warn!("Failed to send FrameIndex to Render Receiver");
                 return EventHandleResult::StopThread;
             }
         } else {
-            warn!("Received a game timer tick while waiting for the hello from the server")
+            warn!("Tried to send next frame when the core wasn't running")
         }
 
         return EventHandleResult::TryForNextEvent;

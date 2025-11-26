@@ -322,7 +322,6 @@ impl<Game: GameTrait> ServerCore<Game> {
             self.factory.get_time_source().clone(),
             &mut idle_timer_service,
             self.frame_duration,
-            1,
             ServerGameTimerObserver::new(self.sender.clone()),
         );
 
@@ -334,7 +333,7 @@ impl<Game: GameTrait> ServerCore<Game> {
             }
         };
 
-        let (start_time, frame_index) = match game_timer.start_timer(&timer_service) {
+        let (start_time, frame_index) = match game_timer.start_server_timer(&timer_service) {
             Ok(result) => result,
             Err(err) => {
                 warn!("Failed to Start the GameTimer: {:?}", err);
@@ -410,7 +409,7 @@ impl<Game: GameTrait> ServerCore<Game> {
             manager_sender,
         });
 
-        return EventHandleResult::TryForNextEvent;
+        return self.send_new_frame_index(FrameIndex::zero());
     }
 
     /*
@@ -466,6 +465,23 @@ impl<Game: GameTrait> ServerCore<Game> {
     }
 
     fn on_game_timer_tick(&mut self) -> EventHandleResult {
+
+        let frame_index = match &mut self.state {
+            State::Running(running_core) => 
+                match running_core.game_timer.try_advance_frame_index() {
+                    Some(time_message) => time_message,
+                    None => return EventHandleResult::TryForNextEvent,
+                },
+            _ => {
+                warn!("ServerCore is not running");
+                return EventHandleResult::TryForNextEvent;
+            }
+        };
+
+        return self.send_new_frame_index(frame_index);
+    }
+
+    fn send_new_frame_index(&mut self, frame_index: FrameIndex) -> EventHandleResult {
         let running_core = match &mut self.state {
             State::Running(running_core) => running_core,
             _ => {
@@ -474,13 +490,8 @@ impl<Game: GameTrait> ServerCore<Game> {
             }
         };
 
-        let time_message = match running_core.game_timer.try_advance_frame_index() {
-            Some(time_message) => time_message,
-            None => return EventHandleResult::TryForNextEvent,
-        };
-
-        let drop_steps_before = if time_message.usize() > self.input_grace_period_frames {
-            time_message - self.input_grace_period_frames
+        let drop_steps_before = if frame_index.usize() > self.input_grace_period_frames {
+            frame_index - self.input_grace_period_frames
         } else {
             FrameIndex::zero()
         };
@@ -504,7 +515,7 @@ impl<Game: GameTrait> ServerCore<Game> {
             running_core
                 .manager_sender
                 .send_event(ManagerEvent::SetRequestedStepEvent(
-                    time_message.usize() + 1,
+                    frame_index.usize() + 1,
                 ));
 
         if send_result.is_err() {
@@ -514,7 +525,7 @@ impl<Game: GameTrait> ServerCore<Game> {
 
         if running_core
             .render_receiver_sender
-            .send(RenderReceiverMessage::FrameIndex(time_message))
+            .send(RenderReceiverMessage::FrameIndex(frame_index))
             .is_err()
         {
             warn!("Failed to send FrameIndex to Render Receiver");
