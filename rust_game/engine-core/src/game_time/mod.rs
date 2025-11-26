@@ -9,4 +9,5 @@ pub use self::frame_index::FrameIndex;
 pub use self::game_timer_scheduler::GameTimerScheduler;
 pub use self::ping::PingRequest;
 pub use self::ping::PingResponse;
+pub use self::ping::CompletedPing;
 pub use self::start_time::StartTime;

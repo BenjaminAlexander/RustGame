@@ -8,8 +8,7 @@ use crate::client::udpoutput::{
     UdpOutputEvent,
 };
 use crate::game_time::{
-    FrameIndex,
-    GameTimerScheduler,
+    CompletedPing, FrameIndex, GameTimerScheduler, PingResponse
 };
 use crate::gamemanager::{
     Manager,
@@ -51,8 +50,9 @@ pub enum ClientCoreEvent<Game: GameTrait> {
     OnInitialInformation(InitialInformation<Game>),
     OnInputEvent(Game::ClientInputEvent),
     GameTimerTick,
-    //TODO: rename
+    //TODO: remove
     RemoteTimeMessageEvent(FrameIndex),
+    CompletedPing(CompletedPing)
 }
 
 pub struct ClientCore<Game: GameTrait> {
@@ -348,6 +348,7 @@ impl<Game: GameTrait> HandleEvent for ClientCore<Game> {
             ClientCoreEvent::RemoteTimeMessageEvent(frame_index) => {
                 self.on_remote_timer_message(frame_index)
             }
+            ClientCoreEvent::CompletedPing(completed_ping) => todo!(),
         };
     }
 

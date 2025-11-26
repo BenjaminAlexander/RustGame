@@ -39,3 +39,17 @@ impl PingResponse {
         }
     }
 }
+
+pub struct CompletedPing {
+    response: PingResponse,
+    client_time_received: TimeValue
+}
+
+impl CompletedPing {
+    pub fn new (response: PingResponse, client_time_received: TimeValue) -> Self {
+        Self {
+            response, 
+            client_time_received
+        }
+    }
+}

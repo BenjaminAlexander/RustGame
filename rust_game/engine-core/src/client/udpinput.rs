@@ -1,4 +1,5 @@
 use crate::client::ClientCoreEvent;
+use crate::game_time::{CompletedPing, PingResponse};
 use crate::gamemanager::ManagerEvent;
 use crate::messaging::{
     FragmentAssembler,
@@ -77,6 +78,17 @@ impl<Game: GameTrait> UdpInput<Game> {
         }
 
         return ControlFlow::Continue(());
+    }
+
+    fn on_ping_response(&mut self, ping_response: PingResponse) -> ControlFlow<()> {
+        let completed_ping = CompletedPing::new(ping_response, self.time_source.now());
+        match self.core_sender.send_event(ClientCoreEvent::CompletedPing(completed_ping)) {
+            Ok(()) => ControlFlow::Continue(()),
+            Err(_) => {
+                error!("Error sending completed ping");
+                ControlFlow::Break(())
+            },
+        }
     }
 
     fn handle_received_message(&mut self, value: ToClientMessageUDP<Game>) -> ControlFlow<()> {
@@ -158,7 +170,7 @@ impl<Game: GameTrait> HandleUdpRead for UdpInput<Game> {
         };
 
         match message {
-            UdpToClientMessage::PingResponse(ping_response) => todo!(),
+            UdpToClientMessage::PingResponse(ping_response) => self.on_ping_response(ping_response),
             UdpToClientMessage::Fragment(buf) => self.on_fragment(&buf),
         }
     }
