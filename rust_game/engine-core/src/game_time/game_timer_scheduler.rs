@@ -108,11 +108,8 @@ impl GameTimerScheduler {
         completed_ping: CompletedPing,
     ) -> Result<StartTime, ()> {
         //Calculate the start time of the remote clock in local time and add it to the rolling average
-
         let offset = completed_ping.get_remote_to_local_clock_offset();
-
         self.rolling_average.add_value(offset);
-
         let average_offset = self.rolling_average.get_average();
 
         let start = CompletedPing::get_local_start_time(average_offset, &self.remote_start_time);

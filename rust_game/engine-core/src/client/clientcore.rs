@@ -201,6 +201,9 @@ impl<Game: GameTrait> ClientCore<Game> {
             input_grace_period_frames,
         });
 
+        // TODO: this causes the first client ping to be requested.  If the first 
+        // ping is dropped (its udp), then the client clock will never start.  
+        // There should probably be some retry logic for this.
         return self.send_new_frame_index(FrameIndex::zero());
     }
 

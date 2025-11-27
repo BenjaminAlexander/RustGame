@@ -1,7 +1,6 @@
 use crate::messaging::{
     FragmentAssembler,
     FragmentableUdpToServerMessage,
-    InputMessage,
     MessageFragment,
 };
 use crate::server::clientaddress::ClientAddress;
@@ -22,6 +21,7 @@ use std::net::{
     SocketAddr,
 };
 
+//TODO: This struct could be combined with server udp input
 pub struct UdpHandler<Game: GameTrait> {
     time_source: TimeSource,
     remote_peers: Vec<Option<RemoteUdpPeer>>,
@@ -66,7 +66,7 @@ impl<Game: GameTrait> UdpHandler<Game> {
         &mut self,
         buf: &[u8],
         source: SocketAddr,
-    ) -> (Option<RemoteUdpPeer>, Option<InputMessage<Game>>) {
+    ) -> (Option<RemoteUdpPeer>, Option<FragmentableUdpToServerMessage<Game>>) {
         //TODO: check source against valid sources
 
         if !self.client_ip_set.contains(&source.ip()) {
@@ -77,7 +77,7 @@ impl<Game: GameTrait> UdpHandler<Game> {
         if let Some(assembled) = self.handle_fragment(source, &buf) {
             match rmp_serde::from_slice(assembled.as_slice()) {
                 Ok(message) => {
-                    return self.handle_message(message, source);
+                    return (self.handle_message(&message, source), Some(message));
                 }
                 Err(error) => {
                     //TODO: is removing the fragement assembler on error right?
@@ -107,9 +107,9 @@ impl<Game: GameTrait> UdpHandler<Game> {
 
     fn handle_message(
         &mut self,
-        message: FragmentableUdpToServerMessage<Game>,
+        message: &FragmentableUdpToServerMessage<Game>,
         source: SocketAddr,
-    ) -> (Option<RemoteUdpPeer>, Option<InputMessage<Game>>) {
+    ) -> Option<RemoteUdpPeer> {
         let player_index = message.get_player_index();
 
         let source_is_valid = match self.client_addresses.get(player_index) {
@@ -125,19 +125,10 @@ impl<Game: GameTrait> UdpHandler<Game> {
                 player_index,
                 source.ip()
             );
-            return (None, None);
+            return None;
         }
 
-        let remote_peer = self.handle_remote_peer(message.get_player_index(), source);
-
-        match message {
-            FragmentableUdpToServerMessage::Hello { player_index: _ } => {
-                return (remote_peer, None);
-            }
-            FragmentableUdpToServerMessage::Input(input_message) => {
-                return (remote_peer, Some(input_message));
-            }
-        }
+        return self.handle_remote_peer(message.get_player_index(), source);
     }
 
     fn handle_remote_peer(

@@ -1,9 +1,3 @@
-use self::ServerCoreEvent::{
-    GameTimerTick,
-    StartGameEvent,
-    StartListenerEvent,
-    TcpConnectionEvent,
-};
 use crate::game_time::{
     FrameDuration,
     GameTimerScheduler,
@@ -19,7 +13,6 @@ use crate::interface::{
 };
 use crate::messaging::InputMessage;
 use crate::server::clientaddress::ClientAddress;
-use crate::server::remoteudppeer::RemoteUdpPeer;
 use crate::server::servergametimerobserver::ServerGameTimerObserver;
 use crate::server::servermanagerobserver::ServerManagerObserver;
 use crate::server::tcpinput::TcpInput;
@@ -82,7 +75,6 @@ pub enum ServerCoreEvent<Game: GameTrait> {
     StartGameEvent(Sender<RenderReceiverMessage<Game>>),
     TcpConnectionEvent(TcpStream, TcpReader),
     GameTimerTick,
-    RemoteUdpPeer(RemoteUdpPeer),
     InputMessage(InputMessage<Game>),
 }
 
@@ -124,15 +116,12 @@ impl<Game: GameTrait> HandleEvent for ServerCore<Game> {
 
     fn on_event(&mut self, _: ReceiveMetaData, event: Self::Event) -> EventHandleResult {
         match event {
-            StartListenerEvent => self.start_listener(),
-            StartGameEvent(render_receiver_sender) => self.start_game(render_receiver_sender),
-            TcpConnectionEvent(tcp_stream, tcp_reader) => {
+            ServerCoreEvent::StartListenerEvent => self.start_listener(),
+            ServerCoreEvent::StartGameEvent(render_receiver_sender) => self.start_game(render_receiver_sender),
+            ServerCoreEvent::TcpConnectionEvent(tcp_stream, tcp_reader) => {
                 self.on_tcp_connection(tcp_stream, tcp_reader)
             }
-            GameTimerTick => self.on_game_timer_tick(),
-            ServerCoreEvent::RemoteUdpPeer(remote_udp_peer) => {
-                self.on_remote_udp_peer(remote_udp_peer)
-            }
+            ServerCoreEvent::GameTimerTick => self.on_game_timer_tick(),
             ServerCoreEvent::InputMessage(input_message) => self.on_input_message(input_message),
         }
     }
@@ -192,34 +181,6 @@ impl<Game: GameTrait> ServerCore<Game> {
                 return EventHandleResult::StopThread;
             }
         }
-    }
-
-    //TODO: maybe have this go directly from UDP input to UDP output instead of being routed through the core
-    fn on_remote_udp_peer(&self, remote_udp_peer: RemoteUdpPeer) -> EventHandleResult {
-        let running_core = match &self.state {
-            State::Running(running_core) => running_core,
-            _ => {
-                warn!("ServerCore is not running");
-                return EventHandleResult::TryForNextEvent;
-            }
-        };
-
-        //TODO: does this happen too often?  Should the core keep a list of known peers and check against that?
-        //TODO: validate that inputs are coming from the right peers
-        if let Some(udp_output_sender) = running_core
-            .udp_output_senders
-            .get(remote_udp_peer.get_player_index())
-        {
-            let send_result =
-                udp_output_sender.send_event(UdpOutputEvent::RemotePeer(remote_udp_peer));
-
-            if send_result.is_err() {
-                warn!("Failed to send RemotePeer to UdpOutput");
-                return EventHandleResult::StopThread;
-            }
-        }
-
-        return EventHandleResult::TryForNextEvent;
     }
 
     fn start_game(

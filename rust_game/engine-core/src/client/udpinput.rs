@@ -160,7 +160,7 @@ impl<Game: GameTrait> HandleUdpRead for UdpInput<Game> {
             Ok(message) => message,
             Err(err) => {
                 error!("Error deserializing: {:?}", err);
-                return ControlFlow::Break(());
+                return ControlFlow::Continue(());
             }
         };
 

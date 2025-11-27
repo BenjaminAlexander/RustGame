@@ -7,7 +7,6 @@ use crate::messaging::{
     FragmentableUdpToServerMessage,
     Fragmenter,
     InputMessage,
-    UdpToServerMessage,
 };
 use crate::FrameIndex;
 use commons::real_time::net::udp::UdpSocket;
@@ -22,7 +21,6 @@ use log::{
     error,
     info,
 };
-use std::io::Error;
 use std::net::SocketAddr;
 
 //TODO: combine server/client and tcp/udp inputs/outputs to shared listener/eventhandler types
@@ -56,7 +54,7 @@ impl<Game: GameTrait> UdpOutput<Game> {
             .to_frame_count(&Game::TIME_SYNC_MESSAGE_PERIOD)
             as usize;
 
-        let mut udp_output = Self {
+        Self {
             time_source,
             server_address,
             socket,
@@ -67,14 +65,7 @@ impl<Game: GameTrait> UdpOutput<Game> {
             input_queue: Vec::new(),
             max_observed_input_queue: 0,
             initial_information,
-        };
-
-        let message = FragmentableUdpToServerMessage::<Game>::Hello {
-            player_index: udp_output.initial_information.get_player_index(),
-        };
-        udp_output.send_fragmentable_message(message);
-
-        return udp_output;
+        }
     }
 
     fn on_input_message(&mut self, input_message: InputMessage<Game>) -> EventHandleResult {
@@ -105,13 +96,14 @@ impl<Game: GameTrait> UdpOutput<Game> {
                 None => send_another_message = false,
                 Some(input_to_send) => {
                     let message = FragmentableUdpToServerMessage::<Game>::Input(input_to_send);
-                    self.send_fragmentable_message(message);
+                    self.send_fragmentable_message(&message);
                 }
             }
         }
     }
 
-    fn send_fragmentable_message(&mut self, message: FragmentableUdpToServerMessage<Game>) {
+    //TODO: rename
+    fn send_fragmentable_message(&mut self, message: &FragmentableUdpToServerMessage<Game>) {
         //TODO: use write instead of to_vec
         let buf = rmp_serde::to_vec(&message).unwrap();
         let fragments = self.fragmenter.make_fragments(buf);
@@ -124,16 +116,8 @@ impl<Game: GameTrait> UdpOutput<Game> {
                 );
             }
 
-            let fragment = UdpToServerMessage::Fragment(fragment.move_whole_buf());
-            self.send_message(&fragment).unwrap();
+            self.socket.send_to(fragment.get_whole_buf(), &self.server_address).unwrap();
         }
-    }
-
-    fn send_message(&mut self, message: &UdpToServerMessage) -> Result<usize, Error> {
-        //TODO: use write instead of to_vec
-        let buf = rmp_serde::to_vec(&message).unwrap();
-
-        self.socket.send_to(&buf, &self.server_address)
     }
 
     fn on_frame_index(&mut self, frame_index: FrameIndex) -> EventHandleResult {
@@ -147,14 +131,9 @@ impl<Game: GameTrait> UdpOutput<Game> {
             self.initial_information.get_player_index(),
             self.time_source.now(),
         );
-        let ping_request = UdpToServerMessage::PingRequest(ping_request);
-        match self.send_message(&ping_request) {
-            Ok(_) => EventHandleResult::TryForNextEvent,
-            Err(err) => {
-                error!("Failed to send ping request: {:?}", err);
-                EventHandleResult::StopThread
-            }
-        }
+        let ping_request = FragmentableUdpToServerMessage::PingRequest(ping_request);
+        self.send_fragmentable_message(&ping_request);
+        return EventHandleResult::TryForNextEvent;
     }
 }
 
