@@ -117,7 +117,7 @@ impl<ManagerObserver: ManagerObserverTrait> Manager<ManagerObserver> {
     }
 
     fn handle_state_message(&mut self, state_message: StateMessage<ManagerObserver::Game>) {
-        if let Some(step) = self.get_state(state_message.get_sequence()) {
+        if let Some(step) = self.get_state(state_message.get_frame_index()) {
             step.set_final_state(state_message);
         }
     }
@@ -236,7 +236,7 @@ impl<ManagerObserver: ManagerObserverTrait> Manager<ManagerObserver> {
         &mut self,
         input_message: InputMessage<ManagerObserver::Game>,
     ) -> EventHandleResult {
-        if let Some(step) = self.get_state(input_message.get_step()) {
+        if let Some(step) = self.get_state(input_message.get_frame_index()) {
             step.set_input(input_message);
             self.time_of_last_input_receive = self.time_source.now();
         }
@@ -248,7 +248,7 @@ impl<ManagerObserver: ManagerObserverTrait> Manager<ManagerObserver> {
         server_input_message: ServerInputMessage<ManagerObserver::Game>,
     ) -> EventHandleResult {
         //info!("Server Input received: {:?}", server_input_message.get_step());
-        if let Some(step) = self.get_state(server_input_message.get_step()) {
+        if let Some(step) = self.get_state(server_input_message.get_frame_index()) {
             step.set_server_input(server_input_message.get_server_input());
         }
         return EventHandleResult::TryForNextEvent;

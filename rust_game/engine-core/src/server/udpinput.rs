@@ -1,5 +1,8 @@
 use crate::game_time::PingRequest;
-use crate::messaging::{UdpToServerMessage, InputMessage};
+use crate::messaging::{
+    InputMessage,
+    UdpToServerMessage,
+};
 use crate::server::servercore::ServerCoreEvent;
 use crate::server::udphandler::UdpHandler;
 use crate::server::udpoutput::UdpOutputEvent;
@@ -40,18 +43,17 @@ impl<Game: GameTrait> UdpInput<Game> {
     }
 
     fn on_input_message(&mut self, input_message: InputMessage<Game>) -> ControlFlow<()> {
+        let result = self
+            .core_sender
+            .send_event(ServerCoreEvent::InputMessage(input_message));
 
-            let result = self
-                .core_sender
-                .send_event(ServerCoreEvent::InputMessage(input_message));
-
-            match result {
-                Ok(()) => ControlFlow::Continue(()),
-                Err(_) => {
-                    warn!("Error sending InputMessage");
-                    ControlFlow::Break(())
-                }
+        match result {
+            Ok(()) => ControlFlow::Continue(()),
+            Err(_) => {
+                warn!("Error sending InputMessage");
+                ControlFlow::Break(())
             }
+        }
     }
 
     fn on_ping_request(&mut self, ping_request: PingRequest) -> ControlFlow<()> {
@@ -86,26 +88,22 @@ impl<Game: GameTrait> HandleUdpRead for UdpInput<Game> {
         let (remote_udp_peer_option, message_option) =
             self.udp_handler.on_udp_packet(buf, peer_addr);
 
-
-
         if let Some(message) = message_option {
-
             //TODO: clean up this nested if let.  If we got a message, we definitly have a remote peer
             if let Some(remote_udp_peer) = remote_udp_peer_option {
                 info!("Received UDP remote peer");
 
-                let udp_output_sender = match self.udp_output_senders.get(message.get_player_index()) {
-                    Some(udp_output_sender) => udp_output_sender,
-                    None => {
-                        warn!(
-                            "Invalid player index: {:?}",
-                            message.get_player_index()
-                        );
-                        return ControlFlow::Continue(());
-                    }
-                };
+                let udp_output_sender =
+                    match self.udp_output_senders.get(message.get_player_index()) {
+                        Some(udp_output_sender) => udp_output_sender,
+                        None => {
+                            warn!("Invalid player index: {:?}", message.get_player_index());
+                            return ControlFlow::Continue(());
+                        }
+                    };
 
-                let result = udp_output_sender.send_event(UdpOutputEvent::RemotePeer(remote_udp_peer));
+                let result =
+                    udp_output_sender.send_event(UdpOutputEvent::RemotePeer(remote_udp_peer));
                 if result.is_err() {
                     warn!("Error sending RemoteUdpPeer");
                     return ControlFlow::Break(());

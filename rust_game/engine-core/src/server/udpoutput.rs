@@ -108,9 +108,9 @@ impl<Game: GameTrait> UdpOutput<Game> {
         let time_in_queue = receive_meta_data.get_send_meta_data().get_time_sent();
 
         if self.last_state_sequence.is_none()
-            || self.last_state_sequence.as_ref().unwrap() <= &state_message.get_sequence()
+            || self.last_state_sequence.as_ref().unwrap() <= &state_message.get_frame_index()
         {
-            self.last_state_sequence = Some(state_message.get_sequence());
+            self.last_state_sequence = Some(state_message.get_frame_index());
             self.time_of_last_state_send = self.time_source.now();
 
             let message = UdpToClientMessage::<Game>::StateMessage(state_message);
@@ -132,7 +132,7 @@ impl<Game: GameTrait> UdpOutput<Game> {
 
         if self.player_index != input_message.get_player_index()
             && (self.last_state_sequence.is_none()
-                || self.last_state_sequence.as_ref().unwrap() <= &input_message.get_step())
+                || self.last_state_sequence.as_ref().unwrap() <= &input_message.get_frame_index())
         {
             self.time_of_last_input_send = self.time_source.now();
 
@@ -156,7 +156,7 @@ impl<Game: GameTrait> UdpOutput<Game> {
         let time_in_queue = receive_meta_data.get_send_meta_data().get_time_sent();
 
         if self.last_state_sequence.is_none()
-            || self.last_state_sequence.as_ref().unwrap() <= &server_input_message.get_step()
+            || self.last_state_sequence.as_ref().unwrap() <= &server_input_message.get_frame_index()
         {
             self.time_of_last_server_input_send = self.time_source.now();
 
@@ -202,8 +202,7 @@ impl<Game: GameTrait> UdpOutput<Game> {
         }
     }
 
-    fn send_message(&mut self, message: &UdpToClientMessage<Game>) -> ControlFlow<()>  {
-
+    fn send_message(&mut self, message: &UdpToClientMessage<Game>) -> ControlFlow<()> {
         let remote_peer = match &self.remote_peer {
             Some(remote_peer) => remote_peer,
             None => {
@@ -224,7 +223,10 @@ impl<Game: GameTrait> UdpOutput<Game> {
                 );
             }
 
-            if let Err(err) = self.socket.send_to(&fragment.get_whole_buf(), &remote_peer.get_socket_addr()) {
+            if let Err(err) = self
+                .socket
+                .send_to(&fragment.get_whole_buf(), &remote_peer.get_socket_addr())
+            {
                 warn!("Error while sending: {:?}", err);
                 return ControlFlow::Break(());
             }
@@ -232,7 +234,6 @@ impl<Game: GameTrait> UdpOutput<Game> {
 
         return ControlFlow::Continue(());
     }
-
 }
 
 impl<Game: GameTrait> HandleEvent for UdpOutput<Game> {

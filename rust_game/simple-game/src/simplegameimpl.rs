@@ -33,7 +33,7 @@ impl GameTrait for SimpleGameImpl {
     const UDP_PORT: u16 = 3457;
     const STEP_PERIOD: TimeDuration = TimeDuration::new(0, 100_000_000);
     const GRACE_PERIOD: TimeDuration = TimeDuration::new(1, 0);
-    const TIME_SYNC_MESSAGE_PERIOD: TimeDuration = TimeDuration::new(1, 0);
+    const PING_PERIOD: TimeDuration = TimeDuration::new(1, 0);
     const CLOCK_AVERAGE_SIZE: usize = 100;
 
     fn get_initial_state(player_count: usize) -> Self::State {

@@ -129,7 +129,7 @@ impl<Game: GameTrait> UdpInput<Game> {
             }
             UdpToClientMessage::PingResponse(ping_response) => {
                 return self.on_ping_response(ping_response);
-            },
+            }
         };
 
         return ControlFlow::Continue(());

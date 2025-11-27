@@ -1,7 +1,7 @@
 use crate::messaging::{
     FragmentAssembler,
-    UdpToServerMessage,
     MessageFragment,
+    UdpToServerMessage,
 };
 use crate::server::clientaddress::ClientAddress;
 use crate::server::remoteudppeer::RemoteUdpPeer;

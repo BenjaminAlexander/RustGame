@@ -9,30 +9,31 @@ use serde::{
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct ServerInputMessage<Game: GameTrait> {
-    //TODO: rename
-    step: FrameIndex,
+    frame_index: FrameIndex,
     server_input: Game::ServerInput,
 }
 
 impl<Game: GameTrait> ServerInputMessage<Game> {
     pub fn new(step: FrameIndex, server_input: Game::ServerInput) -> Self {
-        Self { step, server_input }
+        Self {
+            frame_index: step,
+            server_input,
+        }
     }
 
     pub fn get_server_input(self) -> Game::ServerInput {
         self.server_input
     }
 
-    //TODO: rename
-    pub fn get_step(&self) -> FrameIndex {
-        self.step
+    pub fn get_frame_index(&self) -> FrameIndex {
+        self.frame_index
     }
 }
 
 impl<Game: GameTrait> Clone for ServerInputMessage<Game> {
     fn clone(&self) -> Self {
         Self {
-            step: self.step,
+            frame_index: self.frame_index,
             server_input: self.server_input.clone(),
         }
     }

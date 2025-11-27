@@ -5,8 +5,8 @@ pub use self::messagefragment::MessageFragment;
 pub use self::serverinputmessage::ServerInputMessage;
 pub use self::statemessage::StateMessage;
 pub use self::toclientmessagetcp::ToClientMessageTCP;
-pub use self::udp_to_client_message::UdpToClientMessage;
 pub use self::toservermessagetcp::ToServerMessageTCP;
+pub use self::udp_to_client_message::UdpToClientMessage;
 pub use self::udp_to_server_message::UdpToServerMessage;
 
 mod fragmentassembler;
@@ -16,6 +16,6 @@ mod messagefragment;
 mod serverinputmessage;
 mod statemessage;
 mod toclientmessagetcp;
-mod udp_to_client_message;
 mod toservermessagetcp;
+mod udp_to_client_message;
 mod udp_to_server_message;

@@ -117,7 +117,9 @@ impl<Game: GameTrait> HandleEvent for ServerCore<Game> {
     fn on_event(&mut self, _: ReceiveMetaData, event: Self::Event) -> EventHandleResult {
         match event {
             ServerCoreEvent::StartListenerEvent => self.start_listener(),
-            ServerCoreEvent::StartGameEvent(render_receiver_sender) => self.start_game(render_receiver_sender),
+            ServerCoreEvent::StartGameEvent(render_receiver_sender) => {
+                self.start_game(render_receiver_sender)
+            }
             ServerCoreEvent::TcpConnectionEvent(tcp_stream, tcp_reader) => {
                 self.on_tcp_connection(tcp_stream, tcp_reader)
             }
@@ -511,7 +513,7 @@ impl<Game: GameTrait> ServerCore<Game> {
             FrameIndex::zero()
         };
 
-        if drop_steps_before <= input_message.get_step() {
+        if drop_steps_before <= input_message.get_frame_index() {
             let send_result = running_core
                 .manager_sender
                 .send_event(ManagerEvent::InputEvent(input_message.clone()));

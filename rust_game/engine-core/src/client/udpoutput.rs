@@ -4,9 +4,9 @@ use crate::interface::{
     InitialInformation,
 };
 use crate::messaging::{
-    UdpToServerMessage,
     Fragmenter,
     InputMessage,
+    UdpToServerMessage,
 };
 use crate::FrameIndex;
 use commons::real_time::net::udp::UdpSocket;
@@ -51,8 +51,7 @@ impl<Game: GameTrait> UdpOutput<Game> {
         let ping_period_frames = initial_information
             .get_server_config()
             .get_frame_duration()
-            .to_frame_count(&Game::TIME_SYNC_MESSAGE_PERIOD)
-            as usize;
+            .to_frame_count(&Game::PING_PERIOD) as usize;
 
         Self {
             time_source,
@@ -115,7 +114,9 @@ impl<Game: GameTrait> UdpOutput<Game> {
                 );
             }
 
-            self.socket.send_to(fragment.get_whole_buf(), &self.server_address).unwrap();
+            self.socket
+                .send_to(fragment.get_whole_buf(), &self.server_address)
+                .unwrap();
         }
     }
 

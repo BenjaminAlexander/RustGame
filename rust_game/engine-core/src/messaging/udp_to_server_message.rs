@@ -20,9 +20,7 @@ pub enum UdpToServerMessage<Game: GameTrait> {
 impl<Game: GameTrait> UdpToServerMessage<Game> {
     pub fn get_player_index(&self) -> usize {
         return match self {
-            UdpToServerMessage::Input(input_message) => {
-                input_message.get_player_index()
-            }
+            UdpToServerMessage::Input(input_message) => input_message.get_player_index(),
             UdpToServerMessage::PingRequest(ping_request) => ping_request.get_player_index(),
         };
     }
