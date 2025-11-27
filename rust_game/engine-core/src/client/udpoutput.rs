@@ -4,7 +4,7 @@ use crate::interface::{
     InitialInformation,
 };
 use crate::messaging::{
-    FragmentableUdpToServerMessage,
+    UdpToServerMessage,
     Fragmenter,
     InputMessage,
 };
@@ -95,15 +95,14 @@ impl<Game: GameTrait> UdpOutput<Game> {
             match self.input_queue.pop() {
                 None => send_another_message = false,
                 Some(input_to_send) => {
-                    let message = FragmentableUdpToServerMessage::<Game>::Input(input_to_send);
-                    self.send_fragmentable_message(&message);
+                    let message = UdpToServerMessage::<Game>::Input(input_to_send);
+                    self.send_message(&message);
                 }
             }
         }
     }
 
-    //TODO: rename
-    fn send_fragmentable_message(&mut self, message: &FragmentableUdpToServerMessage<Game>) {
+    fn send_message(&mut self, message: &UdpToServerMessage<Game>) {
         //TODO: use write instead of to_vec
         let buf = rmp_serde::to_vec(&message).unwrap();
         let fragments = self.fragmenter.make_fragments(buf);
@@ -131,8 +130,8 @@ impl<Game: GameTrait> UdpOutput<Game> {
             self.initial_information.get_player_index(),
             self.time_source.now(),
         );
-        let ping_request = FragmentableUdpToServerMessage::PingRequest(ping_request);
-        self.send_fragmentable_message(&ping_request);
+        let ping_request = UdpToServerMessage::PingRequest(ping_request);
+        self.send_message(&ping_request);
         return EventHandleResult::TryForNextEvent;
     }
 }

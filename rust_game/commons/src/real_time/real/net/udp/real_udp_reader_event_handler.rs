@@ -55,10 +55,6 @@ impl<T: HandleUdpRead> RealUdpReaderEventHandler<T> {
     ) -> EventHandleResult {
         match result {
             Ok((len, peer_addr)) => {
-                if len == MAX_UDP_DATAGRAM_SIZE {
-                    warn!("len is max datagram size!");
-                }
-
                 return match self.udp_read_handler.on_read(peer_addr, &buf[..len]) {
                     Continue(()) => EventHandleResult::TryForNextEvent,
                     Break(()) => EventHandleResult::StopThread,

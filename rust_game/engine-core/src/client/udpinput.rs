@@ -7,7 +7,6 @@ use crate::gamemanager::ManagerEvent;
 use crate::messaging::{
     FragmentAssembler,
     MessageFragment,
-    ToClientMessageUDP,
     UdpToClientMessage,
 };
 use crate::GameTrait;
@@ -64,26 +63,6 @@ impl<Game: GameTrait> UdpInput<Game> {
         });
     }
 
-    fn on_fragment(&mut self, buf: &[u8]) -> ControlFlow<()> {
-        let fragment = MessageFragment::from_vec(buf.to_vec());
-
-        if let Some(message_buf) = self.fragment_assembler.add_fragment(fragment) {
-            match rmp_serde::from_slice(&message_buf) {
-                Ok(message) => {
-                    //Why does this crash the client?
-                    //info!("{:?}", message);
-
-                    return self.handle_received_message(message);
-                }
-                Err(error) => {
-                    error!("Error: {:?}", error);
-                }
-            }
-        }
-
-        return ControlFlow::Continue(());
-    }
-
     fn on_ping_response(&mut self, ping_response: PingResponse) -> ControlFlow<()> {
         let completed_ping = CompletedPing::new(ping_response, self.time_source.now());
         match self
@@ -98,11 +77,11 @@ impl<Game: GameTrait> UdpInput<Game> {
         }
     }
 
-    fn handle_received_message(&mut self, value: ToClientMessageUDP<Game>) -> ControlFlow<()> {
+    fn handle_received_message(&mut self, value: UdpToClientMessage<Game>) -> ControlFlow<()> {
         let time_received = self.time_source.now();
 
         match value {
-            ToClientMessageUDP::InputMessage(input_message) => {
+            UdpToClientMessage::InputMessage(input_message) => {
                 //TODO: ignore input messages from this player
                 //info!("Input message: {:?}", input_message.get_step());
                 self.time_of_last_input_receive = time_received;
@@ -115,7 +94,7 @@ impl<Game: GameTrait> UdpInput<Game> {
                     return ControlFlow::Break(());
                 }
             }
-            ToClientMessageUDP::ServerInputMessage(server_input_message) => {
+            UdpToClientMessage::ServerInputMessage(server_input_message) => {
                 //info!("Server Input message: {:?}", server_input_message.get_step());
                 self.time_of_last_server_input_receive = time_received;
                 let send_result = self
@@ -127,7 +106,7 @@ impl<Game: GameTrait> UdpInput<Game> {
                     return ControlFlow::Break(());
                 }
             }
-            ToClientMessageUDP::StateMessage(state_message) => {
+            UdpToClientMessage::StateMessage(state_message) => {
                 //info!("State message: {:?}", state_message.get_sequence());
 
                 let duration_since_last_state =
@@ -148,6 +127,9 @@ impl<Game: GameTrait> UdpInput<Game> {
                     return ControlFlow::Break(());
                 }
             }
+            UdpToClientMessage::PingResponse(ping_response) => {
+                return self.on_ping_response(ping_response);
+            },
         };
 
         return ControlFlow::Continue(());
@@ -156,17 +138,22 @@ impl<Game: GameTrait> UdpInput<Game> {
 
 impl<Game: GameTrait> HandleUdpRead for UdpInput<Game> {
     fn on_read(&mut self, peer_addr: SocketAddr, buf: &[u8]) -> ControlFlow<()> {
-        let message: UdpToClientMessage = match rmp_serde::from_slice(&buf) {
-            Ok(message) => message,
-            Err(err) => {
-                error!("Error deserializing: {:?}", err);
-                return ControlFlow::Continue(());
-            }
-        };
+        let fragment = MessageFragment::from_vec(buf.to_vec());
 
-        match message {
-            UdpToClientMessage::PingResponse(ping_response) => self.on_ping_response(ping_response),
-            UdpToClientMessage::Fragment(buf) => self.on_fragment(&buf),
+        if let Some(message_buf) = self.fragment_assembler.add_fragment(fragment) {
+            match rmp_serde::from_slice(&message_buf) {
+                Ok(message) => {
+                    //Why does this crash the client?
+                    //info!("{:?}", message);
+
+                    return self.handle_received_message(message);
+                }
+                Err(error) => {
+                    error!("Error: {:?}", error);
+                }
+            }
         }
+
+        return ControlFlow::Continue(());
     }
 }

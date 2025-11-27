@@ -1,5 +1,5 @@
 use crate::game_time::PingRequest;
-use crate::messaging::{FragmentableUdpToServerMessage, InputMessage};
+use crate::messaging::{UdpToServerMessage, InputMessage};
 use crate::server::servercore::ServerCoreEvent;
 use crate::server::udphandler::UdpHandler;
 use crate::server::udpoutput::UdpOutputEvent;
@@ -113,8 +113,8 @@ impl<Game: GameTrait> HandleUdpRead for UdpInput<Game> {
             }
 
             return match message {
-                FragmentableUdpToServerMessage::PingRequest(ping_request) => self.on_ping_request(ping_request),
-                FragmentableUdpToServerMessage::Input(input_message) => self.on_input_message(input_message),
+                UdpToServerMessage::PingRequest(ping_request) => self.on_ping_request(ping_request),
+                UdpToServerMessage::Input(input_message) => self.on_input_message(input_message),
             };
         }
 

@@ -1,6 +1,6 @@
 use crate::messaging::{
     FragmentAssembler,
-    FragmentableUdpToServerMessage,
+    UdpToServerMessage,
     MessageFragment,
 };
 use crate::server::clientaddress::ClientAddress;
@@ -66,7 +66,7 @@ impl<Game: GameTrait> UdpHandler<Game> {
         &mut self,
         buf: &[u8],
         source: SocketAddr,
-    ) -> (Option<RemoteUdpPeer>, Option<FragmentableUdpToServerMessage<Game>>) {
+    ) -> (Option<RemoteUdpPeer>, Option<UdpToServerMessage<Game>>) {
         //TODO: check source against valid sources
 
         if !self.client_ip_set.contains(&source.ip()) {
@@ -107,7 +107,7 @@ impl<Game: GameTrait> UdpHandler<Game> {
 
     fn handle_message(
         &mut self,
-        message: &FragmentableUdpToServerMessage<Game>,
+        message: &UdpToServerMessage<Game>,
         source: SocketAddr,
     ) -> Option<RemoteUdpPeer> {
         let player_index = message.get_player_index();

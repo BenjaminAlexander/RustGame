@@ -9,7 +9,6 @@ use crate::messaging::{
     InputMessage,
     ServerInputMessage,
     StateMessage,
-    ToClientMessageUDP,
     UdpToClientMessage,
 };
 use crate::server::remoteudppeer::RemoteUdpPeer;
@@ -114,8 +113,8 @@ impl<Game: GameTrait> UdpOutput<Game> {
             self.last_state_sequence = Some(state_message.get_sequence());
             self.time_of_last_state_send = self.time_source.now();
 
-            let message = ToClientMessageUDP::<Game>::StateMessage(state_message);
-            self.send_fragmentable_message(message);
+            let message = UdpToClientMessage::<Game>::StateMessage(state_message);
+            self.send_message(&message);
 
             //info!("state_message");
             self.log_time_in_queue(*time_in_queue);
@@ -137,8 +136,8 @@ impl<Game: GameTrait> UdpOutput<Game> {
         {
             self.time_of_last_input_send = self.time_source.now();
 
-            let message = ToClientMessageUDP::<Game>::InputMessage(input_message);
-            self.send_fragmentable_message(message);
+            let message = UdpToClientMessage::<Game>::InputMessage(input_message);
+            self.send_message(&message);
 
             //info!("input_message");
             self.log_time_in_queue(*time_in_queue);
@@ -161,8 +160,8 @@ impl<Game: GameTrait> UdpOutput<Game> {
         {
             self.time_of_last_server_input_send = self.time_source.now();
 
-            let message = ToClientMessageUDP::<Game>::ServerInputMessage(server_input_message);
-            self.send_fragmentable_message(message);
+            let message = UdpToClientMessage::<Game>::ServerInputMessage(server_input_message);
+            self.send_message(&message);
 
             //info!("server_input_message");
             self.log_time_in_queue(*time_in_queue);
@@ -203,7 +202,16 @@ impl<Game: GameTrait> UdpOutput<Game> {
         }
     }
 
-    fn send_fragmentable_message(&mut self, message: ToClientMessageUDP<Game>) {
+    fn send_message(&mut self, message: &UdpToClientMessage<Game>) -> ControlFlow<()>  {
+
+        let remote_peer = match &self.remote_peer {
+            Some(remote_peer) => remote_peer,
+            None => {
+                warn!("Attempting to send without a peer address");
+                return ControlFlow::Continue(());
+            }
+        };
+
         //TODO: see if this can be write
         let buf = rmp_serde::to_vec(&message).unwrap();
         let fragments = self.fragmenter.make_fragments(buf);
@@ -216,33 +224,15 @@ impl<Game: GameTrait> UdpOutput<Game> {
                 );
             }
 
-            let message = UdpToClientMessage::Fragment(fragment.move_whole_buf());
-
-            //TODO: use the return from this send
-            self.send_message(&message);
-        }
-    }
-
-    fn send_message(&mut self, message: &UdpToClientMessage) -> ControlFlow<()> {
-        let remote_peer = match &self.remote_peer {
-            Some(remote_peer) => remote_peer,
-            None => {
-                warn!("Attempting to send without a peer address");
-                return ControlFlow::Continue(());
-            }
-        };
-
-        //TODO: use write instead of to_vec
-        let buf = rmp_serde::to_vec(&message).unwrap();
-
-        match self.socket.send_to(&buf, &remote_peer.get_socket_addr()) {
-            Ok(_) => ControlFlow::Continue(()),
-            Err(err) => {
+            if let Err(err) = self.socket.send_to(&fragment.get_whole_buf(), &remote_peer.get_socket_addr()) {
                 warn!("Error while sending: {:?}", err);
-                ControlFlow::Break(())
+                return ControlFlow::Break(());
             }
         }
+
+        return ControlFlow::Continue(());
     }
+
 }
 
 impl<Game: GameTrait> HandleEvent for UdpOutput<Game> {

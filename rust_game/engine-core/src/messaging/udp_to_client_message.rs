@@ -10,22 +10,12 @@ use crate::messaging::{
     ServerInputMessage,
     StateMessage,
 };
-use crate::FrameIndex;
 
 #[derive(Serialize, Deserialize, Debug)]
 #[serde(bound = "")]
-pub enum UdpToClientMessage {
-    PingResponse(PingResponse),
-
-    //TODO: maybe add variant for an unfragmented message?
-    //TODO: can this vec be borrowed?
-    Fragment(Vec<u8>),
-}
-
-#[derive(Serialize, Deserialize, Debug)]
-#[serde(bound = "")]
-pub enum ToClientMessageUDP<Game: GameTrait> {
+pub enum UdpToClientMessage<Game: GameTrait> {
     //TODO: see if these can be borrowed
+    PingResponse(PingResponse),
     InputMessage(InputMessage<Game>),
     ServerInputMessage(ServerInputMessage<Game>),
     StateMessage(StateMessage<Game>),
