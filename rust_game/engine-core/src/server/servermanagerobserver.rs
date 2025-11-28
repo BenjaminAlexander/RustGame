@@ -7,21 +7,18 @@ use crate::messaging::{
     ServerInputMessage,
     StateMessage,
 };
-use crate::server::udpoutput::UdpOutputEvent;
+use crate::server::udpoutput::UdpOutput;
 use crate::GameTrait;
-use commons::real_time::{
-    EventSender,
-    Sender,
-};
+use commons::real_time::Sender;
 
 pub struct ServerManagerObserver<Game: GameTrait> {
-    udp_outputs: Vec<EventSender<UdpOutputEvent<Game>>>,
+    udp_outputs: Vec<UdpOutput<Game>>,
     render_receiver_sender: Sender<RenderReceiverMessage<Game>>,
 }
 
 impl<Game: GameTrait> ServerManagerObserver<Game> {
     pub fn new(
-        udp_outputs: Vec<EventSender<UdpOutputEvent<Game>>>,
+        udp_outputs: Vec<UdpOutput<Game>>,
         render_receiver_sender: Sender<RenderReceiverMessage<Game>>,
     ) -> Self {
         return Self {
@@ -49,8 +46,7 @@ impl<Game: GameTrait> ManagerObserverTrait for ServerManagerObserver<Game> {
 
     fn on_completed_step(&self, state_message: StateMessage<Game>) {
         for udp_output in self.udp_outputs.iter() {
-            let send_result =
-                udp_output.send_event(UdpOutputEvent::SendCompletedStep(state_message.clone()));
+            let send_result = udp_output.send_completed_step(state_message.clone());
 
             //TODO: handle without panic
             if send_result.is_err() {
@@ -61,9 +57,7 @@ impl<Game: GameTrait> ManagerObserverTrait for ServerManagerObserver<Game> {
 
     fn on_server_input_message(&self, server_input_message: ServerInputMessage<Game>) {
         for udp_output in self.udp_outputs.iter() {
-            let send_result = udp_output.send_event(UdpOutputEvent::SendServerInputMessage(
-                server_input_message.clone(),
-            ));
+            let send_result = udp_output.send_server_input_message(server_input_message.clone());
 
             //TODO: handle without panic
             if send_result.is_err() {

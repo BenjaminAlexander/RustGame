@@ -4,14 +4,11 @@ use crate::messaging::{
     UdpToServerMessage,
 };
 use crate::server::udphandler::UdpHandler;
-use crate::server::udpoutput::UdpOutputEvent;
+use crate::server::udpoutput::UdpOutput;
 use crate::server::ServerCore;
 use crate::GameTrait;
 use commons::real_time::net::udp::HandleUdpRead;
-use commons::real_time::{
-    EventSender,
-    TimeSource,
-};
+use commons::real_time::TimeSource;
 use log::{
     error,
     info,
@@ -24,7 +21,7 @@ pub struct UdpInput<Game: GameTrait> {
     time_source: TimeSource,
     server_core: ServerCore<Game>,
     udp_handler: UdpHandler<Game>,
-    udp_output_senders: Vec<EventSender<UdpOutputEvent<Game>>>,
+    udp_output_senders: Vec<UdpOutput<Game>>,
 }
 
 impl<Game: GameTrait> UdpInput<Game> {
@@ -32,7 +29,7 @@ impl<Game: GameTrait> UdpInput<Game> {
         time_source: TimeSource,
         server_core: ServerCore<Game>,
         udp_handler: UdpHandler<Game>,
-        udp_output_senders: Vec<EventSender<UdpOutputEvent<Game>>>,
+        udp_output_senders: Vec<UdpOutput<Game>>,
     ) -> Self {
         return Self {
             time_source,
@@ -64,14 +61,14 @@ impl<Game: GameTrait> UdpInput<Game> {
             }
         };
 
-        let result = udp_output_sender.send_event(UdpOutputEvent::PingRequest {
-            time_received: self.time_source.now(),
+        let result = udp_output_sender.send_ping_response(
+            self.time_source.now(),
             ping_request,
-        });
+        );
 
         match result {
             Ok(()) => ControlFlow::Continue(()),
-            Err(_) => {
+            Err(()) => {
                 error!("Failed to send PingRequest to Udp Output");
                 ControlFlow::Break(())
             }
@@ -98,8 +95,7 @@ impl<Game: GameTrait> HandleUdpRead for UdpInput<Game> {
                         }
                     };
 
-                let result =
-                    udp_output_sender.send_event(UdpOutputEvent::RemotePeer(remote_udp_peer));
+                let result = udp_output_sender.set_remote_peer(remote_udp_peer);
                 if result.is_err() {
                     warn!("Error sending RemoteUdpPeer");
                     return ControlFlow::Break(());

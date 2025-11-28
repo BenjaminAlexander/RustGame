@@ -20,7 +20,6 @@ use crate::server::udphandler::UdpHandler;
 use crate::server::udpinput::UdpInput;
 use crate::server::udpoutput::{
     UdpOutput,
-    UdpOutputEvent,
 };
 use crate::server::{
     ServerConfig,
@@ -161,7 +160,7 @@ struct RunningCore<Game: GameTrait> {
     _timer_service: TimerService<(), ServerCore<Game>>,
     game_timer: GameTimerScheduler,
     _udp_input_sender: EventHandlerStopper,
-    udp_output_senders: Vec<EventSender<UdpOutputEvent<Game>>>,
+    udp_output_senders: Vec<UdpOutput<Game>>,
     manager_sender: EventSender<ManagerEvent<Game>>,
 }
 
@@ -255,35 +254,19 @@ impl<Game: GameTrait> ServerCoreEventHandler<Game> {
 
         let mut udp_outputs = Vec::new();
         for player_index in 0..self.tcp_inputs.len() {
-            let result = UdpOutput::<Game>::new(
-                self.factory.get_time_source().clone(),
-                player_index,
-                &udp_socket,
+            let result = UdpOutput::new(
+                self.factory.clone(), 
+                player_index, 
+                &udp_socket
             );
 
-            let udp_output = match result {
-                Ok(udp_output) => udp_output,
+            match result {
+                Ok(udp_output) => udp_outputs.push(udp_output),
                 Err(err) => {
                     error!("Failed to create UdpOutput: {:?}", err);
                     return EventHandleResult::StopThread;
-                }
-            };
-
-            let result = EventHandlerBuilder::new_thread(
-                &self.factory,
-                "ServerUdpOutput".to_string(),
-                udp_output,
-            );
-
-            let udp_output_sender = match result {
-                Ok(udp_output_sender) => udp_output_sender,
-                Err(err) => {
-                    error!("Failed to spawn UdpOutput thread: {:?}", err);
-                    return EventHandleResult::StopThread;
-                }
-            };
-
-            udp_outputs.push(udp_output_sender);
+                },
+            }
         }
 
         let udp_input = UdpInput::<Game>::new(
@@ -563,8 +546,7 @@ impl<Game: GameTrait> ServerCoreEventHandler<Game> {
             }
 
             for udp_output in running_core.udp_output_senders.iter() {
-                let send_result =
-                    udp_output.send_event(UdpOutputEvent::SendInputMessage(input_message.clone()));
+                let send_result = udp_output.send_input_message(input_message.clone());
 
                 if send_result.is_err() {
                     warn!("Failed to send InputEvent to UdpOutput");

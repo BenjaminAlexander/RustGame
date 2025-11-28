@@ -15,16 +15,14 @@ use crate::server::remoteudppeer::RemoteUdpPeer;
 use commons::real_time::net::udp::UdpSocket;
 use commons::real_time::net::MAX_UDP_DATAGRAM_SIZE;
 use commons::real_time::{
-    EventHandleResult,
-    HandleEvent,
-    ReceiveMetaData,
-    TimeSource,
+    EventHandleResult, EventHandlerBuilder, EventSender, Factory, HandleEvent, ReceiveMetaData, TimeSource
 };
 use commons::stats::RollingAverage;
 use commons::time::{
     TimeDuration,
     TimeValue,
 };
+use commons::utils::unit_error;
 use log::{
     debug,
     error,
@@ -35,6 +33,60 @@ use std::io::Error;
 use std::marker::PhantomData;
 use std::ops::ControlFlow;
 
+#[derive(Clone)]
+pub struct UdpOutput<Game: GameTrait> {
+    sender: EventSender<UdpOutputEvent<Game>>
+}
+
+impl<Game: GameTrait> UdpOutput<Game> {
+    pub fn new(factory: Factory, player_index: usize, udp_socket: &UdpSocket) -> Result<Self, Error> {
+        let event_handler = UdpOutputEventHandler::<Game>::new(
+            factory.get_time_source().clone(),
+            player_index,
+            &udp_socket,
+        )?;
+
+        let sender = EventHandlerBuilder::new_thread(
+            &factory,
+            format!("ServerUdpOutput-Player-{}", player_index),
+            event_handler,
+        )?;
+
+        Ok(Self{sender})
+    }
+
+    pub fn send_ping_response(&self, time_received: TimeValue, ping_request: PingRequest) -> Result<(), ()> {
+        let event = UdpOutputEvent::PingRequest { 
+            time_received, 
+            ping_request 
+        };
+
+        self.sender.send_event(event).map_err(unit_error)
+    }
+
+    pub fn set_remote_peer(&self, remote_udp_peer: RemoteUdpPeer) -> Result<(), ()> {
+        let event = UdpOutputEvent::RemotePeer(remote_udp_peer);
+        self.sender.send_event(event).map_err(unit_error)
+    }
+
+    pub fn send_input_message(&self, input_message: InputMessage<Game>) -> Result<(), ()> {
+        let event = UdpOutputEvent::SendInputMessage(input_message);
+        self.sender.send_event(event).map_err(unit_error)
+    }
+
+    pub fn send_server_input_message(&self, server_input_message: ServerInputMessage<Game>) -> Result<(), ()> {
+        let event = UdpOutputEvent::SendServerInputMessage(server_input_message);
+        self.sender.send_event(event).map_err(unit_error)
+    }
+
+    pub fn send_completed_step(&self, step_message: StateMessage<Game>) -> Result<(), ()> {
+        let event = UdpOutputEvent::SendCompletedStep(step_message);
+        self.sender.send_event(event).map_err(unit_error)
+    }
+}
+
+
+// TODO: make private
 pub enum UdpOutputEvent<Game: GameTrait> {
     RemotePeer(RemoteUdpPeer),
     PingRequest {
@@ -46,7 +98,8 @@ pub enum UdpOutputEvent<Game: GameTrait> {
     SendCompletedStep(StateMessage<Game>),
 }
 
-pub struct UdpOutput<Game: GameTrait> {
+// TODO: make private
+pub struct UdpOutputEventHandler<Game: GameTrait> {
     time_source: TimeSource,
     player_index: usize,
     socket: UdpSocket,
@@ -62,7 +115,7 @@ pub struct UdpOutput<Game: GameTrait> {
     time_of_last_server_input_send: TimeValue,
 }
 
-impl<Game: GameTrait> UdpOutput<Game> {
+impl<Game: GameTrait> UdpOutputEventHandler<Game> {
     pub fn new(
         time_source: TimeSource,
         player_index: usize,
@@ -70,7 +123,7 @@ impl<Game: GameTrait> UdpOutput<Game> {
     ) -> Result<Self, Error> {
         let now = time_source.now();
 
-        Ok(UdpOutput {
+        Ok(UdpOutputEventHandler {
             player_index,
             remote_peer: None,
             //TODO: move clone outside
@@ -236,7 +289,7 @@ impl<Game: GameTrait> UdpOutput<Game> {
     }
 }
 
-impl<Game: GameTrait> HandleEvent for UdpOutput<Game> {
+impl<Game: GameTrait> HandleEvent for UdpOutputEventHandler<Game> {
     type Event = UdpOutputEvent<Game>;
     type ThreadReturn = ();
 
