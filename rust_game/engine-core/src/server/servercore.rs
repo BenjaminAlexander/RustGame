@@ -67,6 +67,53 @@ use std::net::{
 };
 use std::str::FromStr;
 
+pub struct ServerCoreBuilder<Game: GameTrait> {
+    factory: Factory,
+    builder: EventHandlerBuilder<ServerCoreEventHandler<Game>>,
+    server_core: ServerCore<Game>
+}
+
+impl<Game: GameTrait> ServerCoreBuilder<Game> {
+    pub fn new(factory: Factory) -> Self {
+        let builder = EventHandlerBuilder::new(&factory);
+        let sender = builder.get_sender().clone();
+
+        Self {
+            factory,
+            builder,
+            server_core: ServerCore { 
+                sender
+            }
+        }
+    }
+
+    pub fn spawn_thread(self, render_receiver_sender: Sender<RenderReceiverMessage<Game>>) -> Result<ServerCore<Game>, Error> {
+        let event_handler = ServerCoreEventHandler::new(
+                self.factory, 
+                self.builder.get_sender().clone(),
+                render_receiver_sender.clone()
+            )?;
+
+        self.builder.spawn_thread("ServerCore".to_string(), event_handler)?;
+
+        Ok(self.server_core)
+    }
+}
+
+pub struct ServerCore<Game: GameTrait> {
+    sender: EventSender<ServerCoreEvent<Game>>
+}
+
+impl<Game: GameTrait> ServerCore<Game> {
+    pub fn start_game(&self) -> Result<(), ()>{
+        self.sender.send_event(ServerCoreEvent::StartGameEvent).map_err(|_|{
+            warn!("Failed to send event StartGameEvent");
+            ()
+        })
+    }
+}
+
+//TODO: make this private
 pub enum ServerCoreEvent<Game: GameTrait> {
     //TODO: create render receiver sender before spawning event handler
     StartGameEvent,
@@ -75,8 +122,10 @@ pub enum ServerCoreEvent<Game: GameTrait> {
     InputMessage(InputMessage<Game>),
 }
 
-pub struct ServerCore<Game: GameTrait> {
+//TODO: make this private
+pub struct ServerCoreEventHandler<Game: GameTrait> {
     factory: Factory,
+    //TODO: change to server core
     sender: EventSender<ServerCoreEvent<Game>>,
     render_receiver_sender: Sender<RenderReceiverMessage<Game>>,
     frame_duration: FrameDuration,
@@ -107,7 +156,7 @@ struct RunningCore<Game: GameTrait> {
     manager_sender: EventSender<ManagerEvent<Game>>,
 }
 
-impl<Game: GameTrait> HandleEvent for ServerCore<Game> {
+impl<Game: GameTrait> HandleEvent for ServerCoreEventHandler<Game> {
     type Event = ServerCoreEvent<Game>;
     type ThreadReturn = ();
 
@@ -129,7 +178,7 @@ impl<Game: GameTrait> HandleEvent for ServerCore<Game> {
     }
 }
 
-impl<Game: GameTrait> ServerCore<Game> {
+impl<Game: GameTrait> ServerCoreEventHandler<Game> {
     pub fn new(
         factory: Factory,
         sender: EventSender<ServerCoreEvent<Game>>,

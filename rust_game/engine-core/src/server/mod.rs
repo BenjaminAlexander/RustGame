@@ -1,7 +1,10 @@
 pub use self::serverconfig::ServerConfig;
 pub use self::servercore::{
-    ServerCore,
+    //TODO: make private
+    ServerCoreEventHandler,
     ServerCoreEvent,
+    ServerCore,
+    ServerCoreBuilder,
 };
 pub use crate::server::tcpconnectionhandler::TcpConnectionHandler;
 
