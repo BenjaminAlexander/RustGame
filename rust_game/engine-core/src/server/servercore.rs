@@ -64,47 +64,31 @@ use std::net::{
 };
 use std::str::FromStr;
 
-pub struct ServerCoreBuilder<Game: GameTrait> {
-    factory: Factory,
-    builder: EventHandlerBuilder<ServerCoreEventHandler<Game>>,
-    server_core: ServerCore<Game>,
-}
-
-impl<Game: GameTrait> ServerCoreBuilder<Game> {
-    pub fn new(factory: Factory) -> Self {
-        let builder = EventHandlerBuilder::new(&factory);
-        let sender = builder.get_sender().clone();
-
-        Self {
-            factory,
-            builder,
-            server_core: ServerCore { sender },
-        }
-    }
-
-    pub fn spawn_thread(
-        self,
-        render_receiver_sender: Sender<RenderReceiverMessage<Game>>,
-    ) -> Result<ServerCore<Game>, Error> {
-        let event_handler = ServerCoreEventHandler::new(
-            self.factory,
-            self.server_core.clone(),
-            render_receiver_sender.clone(),
-        )?;
-
-        self.builder
-            .spawn_thread("ServerCore".to_string(), event_handler)?;
-
-        Ok(self.server_core)
-    }
-}
-
 #[derive(Clone)]
 pub struct ServerCore<Game: GameTrait> {
     sender: EventSender<ServerCoreEvent<Game>>,
 }
 
 impl<Game: GameTrait> ServerCore<Game> {
+
+    pub fn new(factory: Factory, render_receiver_sender: Sender<RenderReceiverMessage<Game>>) -> Result<Self, Error> {
+        let builder = EventHandlerBuilder::new(&factory);
+
+        let server_core = Self{
+            sender: builder.get_sender().clone()
+        };
+
+        let event_handler = ServerCoreEventHandler::new(
+            factory,
+            server_core.clone(),
+            render_receiver_sender.clone(),
+        )?;
+
+        builder.spawn_thread("ServerCore".to_string(), event_handler)?;
+
+        Ok(server_core)
+    }
+
     pub fn start_game(&self) -> Result<(), ()> {
         self.sender
             .send_event(ServerCoreEvent::StartGameEvent)

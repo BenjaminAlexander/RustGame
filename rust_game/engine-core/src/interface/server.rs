@@ -1,9 +1,6 @@
 use crate::{
     interface::RenderReceiver,
-    server::{
-        ServerCore,
-        ServerCoreBuilder,
-    },
+    server::ServerCore,
     GameTrait,
 };
 use commons::real_time::Factory;
@@ -17,9 +14,10 @@ impl<Game: GameTrait> Server<Game> {
     pub fn new(factory: Factory) -> Result<Self, ()> {
         let (render_receiver_sender, render_receiver) = RenderReceiver::new(&factory);
 
-        let server_core = ServerCoreBuilder::new(factory.clone())
-            .spawn_thread(render_receiver_sender.clone())
-            .unwrap();
+        let server_core = ServerCore::new(
+            factory.clone(), 
+            render_receiver_sender.clone()
+        ).unwrap();
 
         return Ok(Self {
             server_core,
