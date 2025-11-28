@@ -13,14 +13,9 @@ use crate::interface::{
 };
 use crate::messaging::InputMessage;
 use crate::server::clientaddress::ClientAddress;
-use crate::server::servergametimerobserver::ServerGameTimerObserver;
 use crate::server::servermanagerobserver::ServerManagerObserver;
 use crate::server::tcpinput::TcpInput;
-use crate::server::tcpoutput::TcpOutputEvent::SendInitialInformation;
-use crate::server::tcpoutput::{
-    TcpOutput,
-    TcpOutputEvent,
-};
+use crate::server::tcpoutput::TcpOutput;
 use crate::server::udphandler::UdpHandler;
 use crate::server::udpinput::UdpInput;
 use crate::server::udpoutput::{
@@ -41,6 +36,7 @@ use commons::real_time::net::tcp::{
 use commons::real_time::net::udp::UdpReadHandlerBuilder;
 use commons::real_time::timer_service::{
     IdleTimerService,
+    TimerCallBack,
     TimerService,
 };
 use commons::real_time::{
@@ -53,6 +49,7 @@ use commons::real_time::{
     ReceiveMetaData,
     Sender,
 };
+use commons::utils::unit_error;
 use log::{
     error,
     info,
@@ -70,7 +67,7 @@ use std::str::FromStr;
 pub struct ServerCoreBuilder<Game: GameTrait> {
     factory: Factory,
     builder: EventHandlerBuilder<ServerCoreEventHandler<Game>>,
-    server_core: ServerCore<Game>
+    server_core: ServerCore<Game>,
 }
 
 impl<Game: GameTrait> ServerCoreBuilder<Game> {
@@ -81,40 +78,70 @@ impl<Game: GameTrait> ServerCoreBuilder<Game> {
         Self {
             factory,
             builder,
-            server_core: ServerCore { 
-                sender
-            }
+            server_core: ServerCore { sender },
         }
     }
 
-    pub fn spawn_thread(self, render_receiver_sender: Sender<RenderReceiverMessage<Game>>) -> Result<ServerCore<Game>, Error> {
+    pub fn spawn_thread(
+        self,
+        render_receiver_sender: Sender<RenderReceiverMessage<Game>>,
+    ) -> Result<ServerCore<Game>, Error> {
         let event_handler = ServerCoreEventHandler::new(
-                self.factory, 
-                self.builder.get_sender().clone(),
-                render_receiver_sender.clone()
-            )?;
+            self.factory,
+            self.server_core.clone(),
+            render_receiver_sender.clone(),
+        )?;
 
-        self.builder.spawn_thread("ServerCore".to_string(), event_handler)?;
+        self.builder
+            .spawn_thread("ServerCore".to_string(), event_handler)?;
 
         Ok(self.server_core)
     }
 }
 
+#[derive(Clone)]
 pub struct ServerCore<Game: GameTrait> {
-    sender: EventSender<ServerCoreEvent<Game>>
+    sender: EventSender<ServerCoreEvent<Game>>,
 }
 
 impl<Game: GameTrait> ServerCore<Game> {
-    pub fn start_game(&self) -> Result<(), ()>{
-        self.sender.send_event(ServerCoreEvent::StartGameEvent).map_err(|_|{
-            warn!("Failed to send event StartGameEvent");
-            ()
-        })
+    pub fn start_game(&self) -> Result<(), ()> {
+        self.sender
+            .send_event(ServerCoreEvent::StartGameEvent)
+            .map_err(unit_error)
+    }
+
+    pub fn handle_tcp_connection(
+        &self,
+        tcp_stream: TcpStream,
+        tcp_reader: TcpReader,
+    ) -> Result<(), ()> {
+        self.sender
+            .send_event(ServerCoreEvent::TcpConnectionEvent(tcp_stream, tcp_reader))
+            .map_err(unit_error)
+    }
+
+    pub fn handle_input_message(&self, input_message: InputMessage<Game>) -> Result<(), ()> {
+        self.sender
+            .send_event(ServerCoreEvent::InputMessage(input_message))
+            .map_err(unit_error)
     }
 }
 
-//TODO: make this private
-pub enum ServerCoreEvent<Game: GameTrait> {
+impl<Game: GameTrait> TimerCallBack for ServerCore<Game> {
+    fn tick(&mut self) {
+        let send_result = self.sender.send_event(ServerCoreEvent::GameTimerTick);
+
+        //TODO: handle without panic
+        //This will probably allow changes
+        //to the timer service to allow timers to reschedule or cancel themselves
+        if send_result.is_err() {
+            panic!("Failed to send GameTimerTick to Core");
+        }
+    }
+}
+
+enum ServerCoreEvent<Game: GameTrait> {
     //TODO: create render receiver sender before spawning event handler
     StartGameEvent,
     TcpConnectionEvent(TcpStream, TcpReader),
@@ -122,16 +149,14 @@ pub enum ServerCoreEvent<Game: GameTrait> {
     InputMessage(InputMessage<Game>),
 }
 
-//TODO: make this private
-pub struct ServerCoreEventHandler<Game: GameTrait> {
+struct ServerCoreEventHandler<Game: GameTrait> {
     factory: Factory,
-    //TODO: change to server core
-    sender: EventSender<ServerCoreEvent<Game>>,
+    server_core: ServerCore<Game>,
     render_receiver_sender: Sender<RenderReceiverMessage<Game>>,
     frame_duration: FrameDuration,
     tcp_listener_sender: EventHandlerStopper,
     tcp_inputs: Vec<EventHandlerStopper>,
-    tcp_outputs: Vec<EventSender<TcpOutputEvent<Game>>>,
+    tcp_outputs: Vec<TcpOutput<Game>>,
     input_grace_period_frames: usize,
     state: State<Game>,
 }
@@ -149,7 +174,7 @@ struct ListeningCore<Game: GameTrait> {
 }
 
 struct RunningCore<Game: GameTrait> {
-    _timer_service: TimerService<(), ServerGameTimerObserver<Game>>,
+    _timer_service: TimerService<(), ServerCore<Game>>,
     game_timer: GameTimerScheduler,
     _udp_input_sender: EventHandlerStopper,
     udp_output_senders: Vec<EventSender<UdpOutputEvent<Game>>>,
@@ -162,9 +187,7 @@ impl<Game: GameTrait> HandleEvent for ServerCoreEventHandler<Game> {
 
     fn on_event(&mut self, _: ReceiveMetaData, event: Self::Event) -> EventHandleResult {
         match event {
-            ServerCoreEvent::StartGameEvent => {
-                self.start_game()
-            }
+            ServerCoreEvent::StartGameEvent => self.start_game(),
             ServerCoreEvent::TcpConnectionEvent(tcp_stream, tcp_reader) => {
                 self.on_tcp_connection(tcp_stream, tcp_reader)
             }
@@ -181,7 +204,7 @@ impl<Game: GameTrait> HandleEvent for ServerCoreEventHandler<Game> {
 impl<Game: GameTrait> ServerCoreEventHandler<Game> {
     pub fn new(
         factory: Factory,
-        sender: EventSender<ServerCoreEvent<Game>>,
+        server_core: ServerCore<Game>,
         render_receiver_sender: Sender<RenderReceiverMessage<Game>>,
     ) -> Result<Self, Error> {
         let frame_duration = FrameDuration::new(Game::STEP_PERIOD);
@@ -202,12 +225,12 @@ impl<Game: GameTrait> ServerCoreEventHandler<Game> {
             &factory,
             "ServerTcpListener".to_string(),
             socket_addr,
-            TcpConnectionHandler::<Game>::new(sender.clone()),
+            TcpConnectionHandler::<Game>::new(server_core.clone()),
         )?;
 
         Ok(Self {
             factory,
-            sender,
+            server_core,
             render_receiver_sender,
             frame_duration,
             tcp_listener_sender,
@@ -281,7 +304,7 @@ impl<Game: GameTrait> ServerCoreEventHandler<Game> {
 
         let udp_input = UdpInput::<Game>::new(
             self.factory.get_time_source().clone(),
-            self.sender.clone(),
+            self.server_core.clone(),
             listening_core.udp_handler,
             udp_outputs.clone(),
         );
@@ -303,8 +326,10 @@ impl<Game: GameTrait> ServerCoreEventHandler<Game> {
 
         let initial_state = Game::get_initial_state(self.tcp_outputs.len());
 
-        let server_manager_observer =
-            ServerManagerObserver::<Game>::new(udp_outputs.clone(), self.render_receiver_sender.clone());
+        let server_manager_observer = ServerManagerObserver::<Game>::new(
+            udp_outputs.clone(),
+            self.render_receiver_sender.clone(),
+        );
 
         let manager_builder =
             EventHandlerBuilder::<Manager<ServerManagerObserver<Game>>>::new(&self.factory);
@@ -315,7 +340,7 @@ impl<Game: GameTrait> ServerCoreEventHandler<Game> {
             self.factory.get_time_source().clone(),
             &mut idle_timer_service,
             self.frame_duration,
-            ServerGameTimerObserver::new(self.sender.clone()),
+            self.server_core.clone(),
         );
 
         let timer_service = match idle_timer_service.start(&self.factory) {
@@ -343,16 +368,19 @@ impl<Game: GameTrait> ServerCoreEventHandler<Game> {
             initial_state.clone(),
         );
 
-        let send_result = self.render_receiver_sender.send(RenderReceiverMessage::InitialInformation(
-            server_initial_information.clone(),
-        ));
+        let send_result =
+            self.render_receiver_sender
+                .send(RenderReceiverMessage::InitialInformation(
+                    server_initial_information.clone(),
+                ));
 
         if send_result.is_err() {
             warn!("Failed to send InitialInformation to Render Receiver");
             return EventHandleResult::StopThread;
         }
 
-        if self.render_receiver_sender
+        if self
+            .render_receiver_sender
             .send(RenderReceiverMessage::StartTime(start_time))
             .is_err()
         {
@@ -361,11 +389,11 @@ impl<Game: GameTrait> ServerCoreEventHandler<Game> {
         }
 
         for tcp_output in self.tcp_outputs.iter() {
-            let send_result = tcp_output.send_event(SendInitialInformation(
+            let send_result = tcp_output.send_initial_information(
                 server_config.clone(),
                 self.tcp_outputs.len(),
                 initial_state.clone(),
-            ));
+            );
 
             if send_result.is_err() {
                 warn!("Failed to send InitialInformation to TcpOutput");
@@ -444,14 +472,12 @@ impl<Game: GameTrait> ServerCoreEventHandler<Game> {
 
         listening_core.udp_handler.on_client_address(client_address);
 
-        let tcp_output_sender = EventHandlerBuilder::new_thread(
-            &self.factory,
-            "ServerTcpOutput".to_string(),
-            TcpOutput::<Game>::new(player_index, tcp_stream),
-        )
-        .unwrap();
-
-        self.tcp_outputs.push(tcp_output_sender);
+        match TcpOutput::new(&self.factory, player_index, tcp_stream) {
+            Ok(tcp_output) => self.tcp_outputs.push(tcp_output),
+            Err(err) => {
+                error!("Failed to start TCP output thread: {:?}", err);
+            }
+        };
 
         return EventHandleResult::TryForNextEvent;
     }

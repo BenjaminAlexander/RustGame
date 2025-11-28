@@ -3,9 +3,9 @@ use crate::messaging::{
     InputMessage,
     UdpToServerMessage,
 };
-use crate::server::servercore::ServerCoreEvent;
 use crate::server::udphandler::UdpHandler;
 use crate::server::udpoutput::UdpOutputEvent;
+use crate::server::ServerCore;
 use crate::GameTrait;
 use commons::real_time::net::udp::HandleUdpRead;
 use commons::real_time::{
@@ -22,7 +22,7 @@ use std::ops::ControlFlow;
 
 pub struct UdpInput<Game: GameTrait> {
     time_source: TimeSource,
-    core_sender: EventSender<ServerCoreEvent<Game>>,
+    server_core: ServerCore<Game>,
     udp_handler: UdpHandler<Game>,
     udp_output_senders: Vec<EventSender<UdpOutputEvent<Game>>>,
 }
@@ -30,26 +30,22 @@ pub struct UdpInput<Game: GameTrait> {
 impl<Game: GameTrait> UdpInput<Game> {
     pub fn new(
         time_source: TimeSource,
-        core_sender: EventSender<ServerCoreEvent<Game>>,
+        server_core: ServerCore<Game>,
         udp_handler: UdpHandler<Game>,
         udp_output_senders: Vec<EventSender<UdpOutputEvent<Game>>>,
     ) -> Self {
         return Self {
             time_source,
-            core_sender,
+            server_core,
             udp_handler,
             udp_output_senders,
         };
     }
 
     fn on_input_message(&mut self, input_message: InputMessage<Game>) -> ControlFlow<()> {
-        let result = self
-            .core_sender
-            .send_event(ServerCoreEvent::InputMessage(input_message));
-
-        match result {
+        match self.server_core.handle_input_message(input_message) {
             Ok(()) => ControlFlow::Continue(()),
-            Err(_) => {
+            Err(()) => {
                 warn!("Error sending InputMessage");
                 ControlFlow::Break(())
             }

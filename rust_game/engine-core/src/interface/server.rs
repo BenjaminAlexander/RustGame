@@ -1,13 +1,12 @@
 use crate::{
-    GameTrait, interface::RenderReceiver, server::{
-        ServerCore, ServerCoreBuilder,
-    }
-};
-use commons::{
-    real_time::{
-        Factory,
+    interface::RenderReceiver,
+    server::{
+        ServerCore,
+        ServerCoreBuilder,
     },
+    GameTrait,
 };
+use commons::real_time::Factory;
 
 pub struct Server<Game: GameTrait> {
     server_core: ServerCore<Game>,

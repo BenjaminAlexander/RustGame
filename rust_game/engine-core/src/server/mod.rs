@@ -1,8 +1,5 @@
 pub use self::serverconfig::ServerConfig;
 pub use self::servercore::{
-    //TODO: make private
-    ServerCoreEventHandler,
-    ServerCoreEvent,
     ServerCore,
     ServerCoreBuilder,
 };
@@ -12,7 +9,6 @@ mod clientaddress;
 mod remoteudppeer;
 mod serverconfig;
 mod servercore;
-mod servergametimerobserver;
 mod servermanagerobserver;
 mod tcpconnectionhandler;
 mod tcpinput;

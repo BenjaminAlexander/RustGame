@@ -10,7 +10,7 @@ use serde::Serialize;
 use std::fmt::Debug;
 
 //TODO: can Serialize + DeserializeOwned be removed
-pub trait GameTrait: 'static + Send + Sized {
+pub trait GameTrait: 'static + Send + Sized + Clone {
     type State: Serialize + DeserializeOwned + Clone + Debug + Send + Sync + 'static;
 
     type ClientInput: Serialize + DeserializeOwned + Clone + Debug + Send + 'static;

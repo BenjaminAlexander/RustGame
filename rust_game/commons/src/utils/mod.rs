@@ -13,3 +13,7 @@ pub fn log_error<T: Debug>(err: T) -> () {
     error!("Result is error: {:?}", err);
     ()
 }
+
+pub fn unit_error<T>(_: T) -> () {
+    ()
+}
