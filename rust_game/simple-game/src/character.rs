@@ -3,9 +3,8 @@ use crate::simplegameimpl::SimpleGameImpl;
 use commons::geometry::twod::Vector2;
 use commons::time::TimeDuration;
 use engine_core::{
-    ClientUpdateArg,
     GameTrait,
-    Input,
+    Input, UpdateArg,
 };
 use graphics::rectangle;
 use graphics::*;
@@ -60,7 +59,7 @@ impl Character {
         }
     }
 
-    pub fn move_character(&mut self, arg: &ClientUpdateArg<SimpleGameImpl>) {
+    pub fn move_character(&mut self, arg: &UpdateArg<SimpleGameImpl>) {
         if let Input::Authoritative(input) = arg.get_input(self.player_index) {
             self.velocity = input.get_velocity();
         }
@@ -69,7 +68,7 @@ impl Character {
             self.position + self.velocity * SimpleGameImpl::STEP_PERIOD.as_secs_f64() * 500.0;
     }
 
-    pub fn get_fired_bullet(&self, arg: &ClientUpdateArg<SimpleGameImpl>) -> Option<Bullet> {
+    pub fn get_fired_bullet(&self, arg: &UpdateArg<SimpleGameImpl>) -> Option<Bullet> {
         if let Input::Authoritative(input) = arg.get_input(self.player_index) {
             if input.should_fire() {
                 return Some(Bullet::new(

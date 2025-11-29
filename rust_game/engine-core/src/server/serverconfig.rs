@@ -41,6 +41,7 @@ impl ServerConfig {
         self.input_grace_period_frames
     }
 
+    /// Returns the last frame index which is still open for clients to submit inputs
     pub fn get_last_open_frame_index(&self, current_frame_index: FrameIndex) -> FrameIndex {
         if current_frame_index.usize() > self.input_grace_period_frames {
             current_frame_index - self.input_grace_period_frames

@@ -6,11 +6,10 @@ use crate::SimpleGameImpl;
 use commons::geometry::twod::Vector2;
 use commons::time::TimeDuration;
 use engine_core::{
-    ClientUpdateArg,
     GameTrait,
     InitialInformation,
     InterpolationArg,
-    ServerUpdateArg,
+    UpdateArg,
 };
 use graphics::Context;
 use opengl_graphics::GlGraphics;
@@ -41,7 +40,7 @@ impl SimpleState {
         return new;
     }
 
-    pub fn get_server_input(arg: &ServerUpdateArg<SimpleGameImpl>) -> SimpleServerInput {
+    pub fn get_server_input(arg: &UpdateArg<SimpleGameImpl>) -> SimpleServerInput {
         let mut server_input = SimpleServerInput::new();
 
         for character in &arg.get_state().player_characters {
@@ -57,16 +56,16 @@ impl SimpleState {
         return server_input;
     }
 
-    pub fn get_next_state(arg: &ClientUpdateArg<SimpleGameImpl>) -> SimpleState {
+    pub fn get_next_state(arg: &UpdateArg<SimpleGameImpl>) -> SimpleState {
         let mut new = arg.get_state().clone();
         new.update(arg);
         return new;
     }
 
-    fn update(&mut self, arg: &ClientUpdateArg<SimpleGameImpl>) {
+    fn update(&mut self, arg: &UpdateArg<SimpleGameImpl>) {
 
         //TODO: This should probably check the authoritativeness of the input to do server-only logic
-        let server_input = Self::get_server_input(arg.get_server_update_arg());
+        let server_input = Self::get_server_input(arg);
         server_input.apply_to_state(self);
 
         //TODO: refactor this time calculation

@@ -1,8 +1,6 @@
+use crate::UpdateArg;
 use crate::interface::InitialInformation;
-use crate::interface::{
-    ClientUpdateArg,
-    InterpolationArg,
-};
+use crate::interface::InterpolationArg;
 use commons::time::TimeDuration;
 use serde::de::DeserializeOwned;
 use serde::Serialize;
@@ -31,7 +29,7 @@ pub trait GameTrait: 'static + Send + Sized + Clone {
 
     fn get_initial_state(player_count: usize) -> Self::State;
 
-    fn get_next_state(arg: &ClientUpdateArg<Self>) -> Self::State;
+    fn get_next_state(arg: &UpdateArg<Self>) -> Self::State;
 
     //TODO: this method needs to include the last interpolation result
     fn interpolate(

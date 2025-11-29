@@ -3,9 +3,8 @@ use log::warn;
 use crate::game_time::FrameIndex;
 use crate::gamemanager::stepmessage::StepMessage;
 use crate::interface::{
-    ClientUpdateArg,
     GameTrait,
-    ServerUpdateArg,
+    UpdateArg,
 };
 use crate::messaging::{
     InputMessage,
@@ -143,9 +142,7 @@ impl<Game: GameTrait> Step<Game> {
             StateHolder::ComputedIncomplete { state, .. } => Some(state),
             StateHolder::ComputedComplete { state, .. } => Some(state),
         } {
-            let arg = ClientUpdateArg::new(
-                self.get_server_update_arg(initial_information, state),
-            );
+            let arg = UpdateArg::new(initial_information, self.frame_index, state, &self.inputs);
 
             let next_state = Game::get_next_state(&arg);
 
@@ -212,14 +209,6 @@ impl<Game: GameTrait> Step<Game> {
         } else {
             return false;
         }
-    }
-
-    pub fn get_server_update_arg<'a>(
-        &'a self,
-        initial_information: &'a InitialInformation<Game>,
-        state: &'a Game::State,
-    ) -> ServerUpdateArg<'a, Game> {
-        return ServerUpdateArg::new(initial_information, self.frame_index, state, &self.inputs);
     }
 
     pub fn get_changed_message(&mut self) -> Option<StepMessage<Game>> {

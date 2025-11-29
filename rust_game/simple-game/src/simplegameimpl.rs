@@ -6,10 +6,9 @@ use crate::{
     TimeDuration,
 };
 use engine_core::{
-    ClientUpdateArg,
     GameTrait,
     InitialInformation,
-    InterpolationArg,
+    InterpolationArg, UpdateArg,
 };
 use serde::{
     Deserialize,
@@ -37,7 +36,7 @@ impl GameTrait for SimpleGameImpl {
         Self::State::new(player_count)
     }
 
-    fn get_next_state(arg: &ClientUpdateArg<Self>) -> Self::State {
+    fn get_next_state(arg: &UpdateArg<Self>) -> Self::State {
         return SimpleState::get_next_state(arg);
     }
 
