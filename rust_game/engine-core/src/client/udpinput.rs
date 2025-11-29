@@ -94,18 +94,6 @@ impl<Game: GameTrait> UdpInput<Game> {
                     return ControlFlow::Break(());
                 }
             }
-            UdpToClientMessage::ServerInputMessage(server_input_message) => {
-                //info!("Server Input message: {:?}", server_input_message.get_step());
-                self.time_of_last_server_input_receive = time_received;
-                let send_result = self
-                    .manager_sender
-                    .send_event(ManagerEvent::ServerInputEvent(server_input_message));
-
-                if send_result.is_err() {
-                    warn!("Failed to send ServerInputEvent to Game Manager");
-                    return ControlFlow::Break(());
-                }
-            }
             UdpToClientMessage::StateMessage(state_message) => {
                 //info!("State message: {:?}", state_message.get_sequence());
 

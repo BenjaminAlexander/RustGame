@@ -4,6 +4,7 @@ use crate::{
 };
 use std::cmp::Ordering;
 
+//TODO: this is similar to StateMessage
 #[derive(Debug)]
 pub struct StepMessage<Game: GameTrait> {
     //TODO: rename

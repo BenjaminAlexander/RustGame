@@ -9,16 +9,13 @@ use crate::interface::{
 };
 use crate::messaging::{
     InputMessage,
-    ServerInputMessage,
     StateMessage,
 };
 use crate::InitialInformation;
 
 pub struct Step<Game: GameTrait> {
-    //TODO: rename
-    step: FrameIndex,
+    frame_index: FrameIndex,
     state: StateHolder<Game>,
-    server_input: ServerInputHolder<Game>,
     inputs: Vec<Input<Game::ClientInput>>,
     input_count: usize,
     need_to_compute_next_state: bool,
@@ -55,24 +52,13 @@ pub enum StateHolder<Game: GameTrait> {
     },
 }
 
-pub enum ServerInputHolder<Game: GameTrait> {
-    None,
-    Deserialized(Game::ServerInput),
-    ComputedIncomplete(Game::ServerInput),
-    ComputedComplete {
-        server_input: Game::ServerInput,
-        need_to_send_as_complete: bool,
-    },
-}
-
 impl<Game: GameTrait> Step<Game> {
     pub fn blank(step_index: FrameIndex, player_count: usize) -> Self {
         let inputs = vec![Input::Pending; player_count];
 
         return Self {
-            step: step_index,
+            frame_index: step_index,
             state: StateHolder::None,
-            server_input: ServerInputHolder::None,
             inputs,
             input_count: 0,
             need_to_compute_next_state: false,
@@ -97,27 +83,11 @@ impl<Game: GameTrait> Step<Game> {
                 warn!("Received a input where one has athoritatively been declared missing")
             }
         }
-
-        //TODO: is this logic necessary if the input is authoritatively know to be missing?
-        if let ServerInputHolder::Deserialized(_) = self.server_input {
-            //No-Op
-        } else {
-            self.server_input = ServerInputHolder::None;
-        }
-    }
-
-    pub fn set_server_input(&mut self, server_input: Game::ServerInput) {
-        self.server_input = ServerInputHolder::Deserialized(server_input);
-        self.need_to_compute_next_state = true;
     }
 
     //TODO: smells like this method should be somewhere else
     pub fn are_inputs_complete(&self, initial_information: &InitialInformation<Game>) -> bool {
-        return match self.server_input {
-            ServerInputHolder::Deserialized(_) => true,
-            ServerInputHolder::ComputedComplete { .. } => true,
-            _ => false,
-        } && match self.state {
+        return match self.state {
             StateHolder::Deserialized { .. } => true,
             StateHolder::ComputedComplete { .. } => true,
             _ => false,
@@ -158,37 +128,9 @@ impl<Game: GameTrait> Step<Game> {
 
         if has_changed {
             self.need_to_compute_next_state = true;
-            self.server_input = ServerInputHolder::None;
         }
 
         //info!("Set final Step: {:?}", self.step_index);
-    }
-
-    pub fn calculate_server_input(&mut self, initial_information: &InitialInformation<Game>) {
-        //TODO: won't this stop the next state from being computed multiple times?
-        //what if we need to recompute it?
-        if let ServerInputHolder::None = self.server_input {
-            if let Some(state) = match &self.state {
-                StateHolder::None => None,
-                StateHolder::Deserialized { state, .. } => Some(state),
-                StateHolder::ComputedIncomplete { state, .. } => Some(state),
-                StateHolder::ComputedComplete { state, .. } => Some(state),
-            } {
-                let server_input =
-                    Game::get_server_input(&self.get_server_update_arg(initial_information, state));
-
-                if self.are_inputs_complete(initial_information) {
-                    self.server_input = ServerInputHolder::ComputedComplete {
-                        server_input,
-                        need_to_send_as_complete: true,
-                    };
-                } else {
-                    self.server_input = ServerInputHolder::ComputedIncomplete(server_input);
-                }
-
-                self.need_to_compute_next_state = true;
-            }
-        }
     }
 
     pub fn calculate_next_state(
@@ -201,16 +143,8 @@ impl<Game: GameTrait> Step<Game> {
             StateHolder::ComputedIncomplete { state, .. } => Some(state),
             StateHolder::ComputedComplete { state, .. } => Some(state),
         } {
-            let server_input = match &self.server_input {
-                ServerInputHolder::None => None,
-                ServerInputHolder::Deserialized(server_input) => Some(server_input),
-                ServerInputHolder::ComputedIncomplete(server_input) => Some(server_input),
-                ServerInputHolder::ComputedComplete { server_input, .. } => Some(server_input),
-            };
-
             let arg = ClientUpdateArg::new(
                 self.get_server_update_arg(initial_information, state),
-                server_input,
             );
 
             let next_state = Game::get_next_state(&arg);
@@ -245,7 +179,7 @@ impl<Game: GameTrait> Step<Game> {
         self.state = state_holder;
     }
 
-    pub fn mark_as_complete(&mut self, initial_information: &InitialInformation<Game>) {
+    pub fn mark_as_complete(&mut self) {
         if let StateHolder::ComputedIncomplete {
             state,
             need_to_send_as_changed,
@@ -257,27 +191,11 @@ impl<Game: GameTrait> Step<Game> {
                 need_to_send_as_complete: true,
             };
         }
-
-        if self.are_inputs_complete(initial_information) {
-            let new_server_input = match &self.server_input {
-                ServerInputHolder::ComputedIncomplete(server_input) => {
-                    Some(ServerInputHolder::ComputedComplete {
-                        server_input: server_input.clone(),
-                        need_to_send_as_complete: true,
-                    })
-                }
-                _ => None,
-            };
-
-            if let Some(server_input_holder) = new_server_input {
-                self.server_input = server_input_holder;
-            }
-        }
     }
 
     //TODO: rename
     pub fn get_step_index(&self) -> FrameIndex {
-        return self.step;
+        return self.frame_index;
     }
 
     pub fn is_state_deserialized(&self) -> bool {
@@ -301,7 +219,7 @@ impl<Game: GameTrait> Step<Game> {
         initial_information: &'a InitialInformation<Game>,
         state: &'a Game::State,
     ) -> ServerUpdateArg<'a, Game> {
-        return ServerUpdateArg::new(initial_information, self.step, state, &self.inputs);
+        return ServerUpdateArg::new(initial_information, self.frame_index, state, &self.inputs);
     }
 
     pub fn get_changed_message(&mut self) -> Option<StepMessage<Game>> {
@@ -324,7 +242,7 @@ impl<Game: GameTrait> Step<Game> {
             if *need_to_send_as_changed {
                 *need_to_send_as_changed = false;
 
-                return Some(StepMessage::new(self.step, state.clone()));
+                return Some(StepMessage::new(self.frame_index, state.clone()));
             }
         }
 
@@ -341,23 +259,7 @@ impl<Game: GameTrait> Step<Game> {
             if *need_to_send_as_complete {
                 *need_to_send_as_complete = false;
 
-                return Some(StateMessage::new(self.step, state.clone()));
-            }
-        }
-        return None;
-    }
-
-    //TODO: return a borrowed value?
-    pub fn get_server_input_message(&mut self) -> Option<ServerInputMessage<Game>> {
-        if let ServerInputHolder::ComputedComplete {
-            server_input,
-            need_to_send_as_complete,
-        } = &mut self.server_input
-        {
-            if *need_to_send_as_complete {
-                *need_to_send_as_complete = false;
-
-                return Some(ServerInputMessage::new(self.step, server_input.clone()));
+                return Some(StateMessage::new(self.frame_index, state.clone()));
             }
         }
         return None;

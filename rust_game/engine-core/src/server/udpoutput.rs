@@ -7,7 +7,6 @@ use crate::interface::GameTrait;
 use crate::messaging::{
     Fragmenter,
     InputMessage,
-    ServerInputMessage,
     StateMessage,
     UdpToClientMessage,
 };
@@ -88,14 +87,6 @@ impl<Game: GameTrait> UdpOutput<Game> {
         self.sender.send_event(event).map_err(unit_error)
     }
 
-    pub fn send_server_input_message(
-        &self,
-        server_input_message: ServerInputMessage<Game>,
-    ) -> Result<(), ()> {
-        let event = Event::SendServerInputMessage(server_input_message);
-        self.sender.send_event(event).map_err(unit_error)
-    }
-
     pub fn send_completed_step(&self, step_message: StateMessage<Game>) -> Result<(), ()> {
         let event = Event::SendCompletedStep(step_message);
         self.sender.send_event(event).map_err(unit_error)
@@ -109,7 +100,6 @@ enum Event<Game: GameTrait> {
         ping_request: PingRequest,
     },
     SendInputMessage(InputMessage<Game>),
-    SendServerInputMessage(ServerInputMessage<Game>),
     SendCompletedStep(StateMessage<Game>),
 }
 
@@ -215,30 +205,6 @@ impl<Game: GameTrait> EventHandler<Game> {
         return EventHandleResult::TryForNextEvent;
     }
 
-    fn on_server_input_message(
-        &mut self,
-        receive_meta_data: ReceiveMetaData,
-        server_input_message: ServerInputMessage<Game>,
-    ) -> EventHandleResult {
-        let time_in_queue = receive_meta_data.get_send_meta_data().get_time_sent();
-
-        if self.last_state_sequence.is_none()
-            || self.last_state_sequence.as_ref().unwrap() <= &server_input_message.get_frame_index()
-        {
-            self.time_of_last_server_input_send = self.time_source.now();
-
-            let message = UdpToClientMessage::<Game>::ServerInputMessage(server_input_message);
-            self.send_message(&message);
-
-            //info!("server_input_message");
-            self.log_time_in_queue(*time_in_queue);
-        } else {
-            //info!("ServerInputMessage dropped. Last state: {:?}", tcp_output.last_state_sequence);
-        }
-
-        return EventHandleResult::TryForNextEvent;
-    }
-
     fn send_ping_response(
         &mut self,
         time_received: TimeValue,
@@ -333,9 +299,6 @@ impl<Game: GameTrait> HandleEvent for EventHandler<Game> {
             Event::RemotePeer(remote_udp_peer) => self.on_remote_peer(remote_udp_peer),
             Event::SendInputMessage(input_message) => {
                 self.on_input_message(receive_meta_data, input_message)
-            }
-            Event::SendServerInputMessage(server_input_message) => {
-                self.on_server_input_message(receive_meta_data, server_input_message)
             }
             Event::SendCompletedStep(state_message) => {
                 self.on_completed_step(receive_meta_data, state_message)

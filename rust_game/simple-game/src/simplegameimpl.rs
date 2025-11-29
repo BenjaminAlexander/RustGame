@@ -11,7 +11,6 @@ use engine_core::{
     GameTrait,
     InitialInformation,
     InterpolationArg,
-    ServerUpdateArg,
 };
 use serde::{
     Deserialize,
@@ -24,7 +23,6 @@ pub struct SimpleGameImpl {}
 impl GameTrait for SimpleGameImpl {
     type State = SimpleState;
     type ClientInput = SimpleInput;
-    type ServerInput = SimpleServerInput;
     type InterpolationResult = SimpleState;
     type ClientInputEvent = SimpleInputEvent;
     type ClientInputEventHandler = SimpleInputEventHandler;
@@ -38,10 +36,6 @@ impl GameTrait for SimpleGameImpl {
 
     fn get_initial_state(player_count: usize) -> Self::State {
         Self::State::new(player_count)
-    }
-
-    fn get_server_input(arg: &ServerUpdateArg<Self>) -> Self::ServerInput {
-        return SimpleState::get_server_input(arg);
     }
 
     fn get_next_state(arg: &ClientUpdateArg<Self>) -> Self::State {

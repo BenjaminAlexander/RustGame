@@ -3,20 +3,18 @@ use crate::gamemanager::Input;
 use crate::interface::game::GameTrait;
 use crate::interface::ServerUpdateArg;
 
+//TODO: collapse into a single update arg
 #[derive(Debug)]
 pub struct ClientUpdateArg<'a, Game: GameTrait> {
     server_update_arg: ServerUpdateArg<'a, Game>,
-    server_input: Option<&'a Game::ServerInput>,
 }
 
 impl<'a, Game: GameTrait> ClientUpdateArg<'a, Game> {
     pub fn new(
         server_update_arg: ServerUpdateArg<'a, Game>,
-        server_input: Option<&'a Game::ServerInput>,
     ) -> Self {
         return Self {
             server_update_arg,
-            server_input,
         };
     }
 
@@ -32,7 +30,7 @@ impl<'a, Game: GameTrait> ClientUpdateArg<'a, Game> {
         return self.server_update_arg.get_state();
     }
 
-    pub fn get_server_input(&self) -> Option<&Game::ServerInput> {
-        return self.server_input;
+    pub fn get_server_update_arg(&self) -> &ServerUpdateArg<'a, Game> {
+        &self.server_update_arg
     }
 }

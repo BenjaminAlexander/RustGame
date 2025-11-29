@@ -1,4 +1,3 @@
-use crate::interface::serverupdatearg::ServerUpdateArg;
 use crate::interface::InitialInformation;
 use crate::interface::{
     ClientUpdateArg,
@@ -14,8 +13,6 @@ pub trait GameTrait: 'static + Send + Sized + Clone {
     type State: Serialize + DeserializeOwned + Clone + Debug + Send + Sync + 'static;
 
     type ClientInput: Serialize + DeserializeOwned + Clone + Debug + Send + 'static;
-
-    type ServerInput: Serialize + DeserializeOwned + Clone + Debug + Send + 'static;
 
     type InterpolationResult: Send + 'static;
 
@@ -33,8 +30,6 @@ pub trait GameTrait: 'static + Send + Sized + Clone {
     const CLOCK_AVERAGE_SIZE: usize;
 
     fn get_initial_state(player_count: usize) -> Self::State;
-
-    fn get_server_input(arg: &ServerUpdateArg<Self>) -> Self::ServerInput;
 
     fn get_next_state(arg: &ClientUpdateArg<Self>) -> Self::State;
 

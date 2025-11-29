@@ -1,11 +1,4 @@
 use crate::game_time::FrameIndex;
-use crate::gamemanager::manager::ManagerEvent::{
-    DropStepsBeforeEvent,
-    InputEvent,
-    ServerInputEvent,
-    SetRequestedStepEvent,
-    StateEvent,
-};
 use crate::gamemanager::step::Step;
 use crate::gamemanager::ManagerObserverTrait;
 use crate::interface::{
@@ -14,7 +7,6 @@ use crate::interface::{
 };
 use crate::messaging::{
     InputMessage,
-    ServerInputMessage,
     StateMessage,
 };
 use commons::real_time::{
@@ -38,7 +30,6 @@ pub enum ManagerEvent<Game: GameTrait> {
     DropStepsBeforeEvent(usize),
     SetRequestedStepEvent(usize),
     InputEvent(InputMessage<Game>),
-    ServerInputEvent(ServerInputMessage<Game>),
     StateEvent(StateMessage<Game>),
 }
 
@@ -156,12 +147,6 @@ impl<ManagerObserver: ManagerObserverTrait> Manager<ManagerObserver> {
             self.manager_observer
                 .on_completed_step(complete_message_option.as_ref().unwrap().clone());
         }
-
-        if ManagerObserver::IS_SERVER {
-            if let Some(message) = self.steps[step_index].get_server_input_message() {
-                self.manager_observer.on_server_input_message(message);
-            }
-        }
     }
 
     fn on_none_pending(&mut self) -> EventHandleResult {
@@ -200,10 +185,6 @@ impl<ManagerObserver: ManagerObserverTrait> Manager<ManagerObserver> {
                 && (self.steps[current].need_to_compute_next_state()
                     || (should_drop_current && self.steps[next].is_state_none()))
             {
-                if ManagerObserver::IS_SERVER {
-                    self.steps[current].calculate_server_input(&self.initial_information);
-                }
-
                 let next_state =
                     self.steps[current].calculate_next_state(&self.initial_information);
                 self.steps[next].set_calculated_state(next_state);
@@ -212,13 +193,13 @@ impl<ManagerObserver: ManagerObserverTrait> Manager<ManagerObserver> {
             self.steps[current].mark_as_calculation_not_needed();
 
             if self.steps[current].are_inputs_complete(&self.initial_information) {
-                self.steps[next].mark_as_complete(&self.initial_information);
+                self.steps[next].mark_as_complete();
             }
 
             self.send_messages(current);
 
             if should_drop_current {
-                self.steps[next].mark_as_complete(&self.initial_information);
+                self.steps[next].mark_as_complete();
 
                 let dropped = self.steps.pop_front().unwrap();
                 trace!("Dropped step: {:?}", dropped.get_step_index());
@@ -243,17 +224,6 @@ impl<ManagerObserver: ManagerObserverTrait> Manager<ManagerObserver> {
         return EventHandleResult::TryForNextEvent;
     }
 
-    fn on_server_input_message(
-        &mut self,
-        server_input_message: ServerInputMessage<ManagerObserver::Game>,
-    ) -> EventHandleResult {
-        //info!("Server Input received: {:?}", server_input_message.get_step());
-        if let Some(step) = self.get_state(server_input_message.get_frame_index()) {
-            step.set_server_input(server_input_message.get_server_input());
-        }
-        return EventHandleResult::TryForNextEvent;
-    }
-
     fn on_state_message(
         &mut self,
         state_message: StateMessage<ManagerObserver::Game>,
@@ -273,13 +243,10 @@ impl<ManagerObserver: ManagerObserverTrait> HandleEvent for Manager<ManagerObser
     fn on_event(&mut self, _: ReceiveMetaData, event: Self::Event) -> EventHandleResult {
         match event {
             //TODO: rename step
-            DropStepsBeforeEvent(step) => self.drop_steps_before(FrameIndex::from(step)),
-            SetRequestedStepEvent(step) => self.set_requested_step(FrameIndex::from(step)),
-            InputEvent(input_message) => self.on_input_message(input_message),
-            ServerInputEvent(server_input_message) => {
-                self.on_server_input_message(server_input_message)
-            }
-            StateEvent(state_message) => self.on_state_message(state_message),
+            ManagerEvent::DropStepsBeforeEvent(step) => self.drop_steps_before(FrameIndex::from(step)),
+            ManagerEvent::SetRequestedStepEvent(step) => self.set_requested_step(FrameIndex::from(step)),
+            ManagerEvent::InputEvent(input_message) => self.on_input_message(input_message),
+            ManagerEvent::StateEvent(state_message) => self.on_state_message(state_message),
         }
     }
 

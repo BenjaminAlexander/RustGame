@@ -5,10 +5,7 @@ use crate::gamemanager::{
     StepMessage,
 };
 use crate::interface::RenderReceiverMessage;
-use crate::messaging::{
-    ServerInputMessage,
-    StateMessage,
-};
+use crate::messaging::StateMessage;
 use crate::GameTrait;
 
 pub struct ClientManagerObserver<Game: GameTrait> {
@@ -40,6 +37,4 @@ impl<Game: GameTrait> ManagerObserverTrait for ClientManagerObserver<Game> {
     }
 
     fn on_completed_step(&self, _state_message: StateMessage<Game>) {}
-
-    fn on_server_input_message(&self, _server_input_message: ServerInputMessage<Self::Game>) {}
 }

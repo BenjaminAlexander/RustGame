@@ -22,7 +22,7 @@ use serde::{
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct SimpleState {
     player_characters: Vec<Character>,
-    bullets: Vec<Bullet>,
+    bullets: Vec<Bullet>
 }
 
 impl SimpleState {
@@ -64,9 +64,10 @@ impl SimpleState {
     }
 
     fn update(&mut self, arg: &ClientUpdateArg<SimpleGameImpl>) {
-        if let Some(server_input) = arg.get_server_input() {
-            server_input.apply_to_state(self);
-        }
+
+        //TODO: This should probably check the authoritativeness of the input to do server-only logic
+        let server_input = Self::get_server_input(arg.get_server_update_arg());
+        server_input.apply_to_state(self);
 
         //TODO: refactor this time calculation
         let duration_of_start_to_current =

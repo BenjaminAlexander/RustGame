@@ -3,10 +3,7 @@ use crate::gamemanager::{
     StepMessage,
 };
 use crate::interface::RenderReceiverMessage;
-use crate::messaging::{
-    ServerInputMessage,
-    StateMessage,
-};
+use crate::messaging::StateMessage;
 use crate::server::udpoutput::UdpOutput;
 use crate::GameTrait;
 use commons::real_time::Sender;
@@ -51,17 +48,6 @@ impl<Game: GameTrait> ManagerObserverTrait for ServerManagerObserver<Game> {
             //TODO: handle without panic
             if send_result.is_err() {
                 panic!("Failed to send CompletedStep to UdpOutput");
-            }
-        }
-    }
-
-    fn on_server_input_message(&self, server_input_message: ServerInputMessage<Game>) {
-        for udp_output in self.udp_outputs.iter() {
-            let send_result = udp_output.send_server_input_message(server_input_message.clone());
-
-            //TODO: handle without panic
-            if send_result.is_err() {
-                panic!("Failed to send ServerInput to UdpOutput");
             }
         }
     }
