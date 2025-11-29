@@ -1,18 +1,22 @@
-use crate::interface::GameTrait;
+use crate::{
+    game_time::FrameIndex,
+    interface::GameTrait,
+};
 use std::cmp::Ordering;
 
 #[derive(Debug)]
 pub struct StepMessage<Game: GameTrait> {
-    step_index: usize,
+    //TODO: rename
+    step_index: FrameIndex,
     state: Game::State,
 }
 
 impl<Game: GameTrait> StepMessage<Game> {
-    pub fn new(step_index: usize, state: Game::State) -> Self {
+    pub fn new(step_index: FrameIndex, state: Game::State) -> Self {
         Self { step_index, state }
     }
 
-    pub fn get_step_index(&self) -> usize {
+    pub fn get_step_index(&self) -> FrameIndex {
         self.step_index
     }
 

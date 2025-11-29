@@ -1,79 +1,110 @@
 use crate::interface::{
-    GameFactoryTrait,
     GameTrait,
     InitialInformation,
-    TcpWriter,
 };
 use crate::messaging::ToClientMessageTCP;
-use crate::server::tcpoutput::TcpOutputEvent::SendInitialInformation;
+use crate::server::tcpoutput::Event::SendInitialInformation;
 use crate::server::ServerConfig;
-use commons::net::TcpWriterTrait;
-use commons::threading::channel::ReceiveMetaData;
-use commons::threading::eventhandling::{
-    ChannelEvent,
+use commons::real_time::net::tcp::TcpStream;
+use commons::real_time::{
     EventHandleResult,
-    EventHandlerTrait,
+    EventHandlerBuilder,
+    EventSender,
+    Factory,
+    HandleEvent,
+    ReceiveMetaData,
 };
+use commons::utils::unit_error;
 use log::debug;
+use std::io::Error;
+use std::marker::PhantomData;
 
-pub enum TcpOutputEvent<Game: GameTrait> {
+pub struct TcpOutput<Game: GameTrait> {
+    sender: EventSender<Event<Game>>,
+}
+
+impl<Game: GameTrait> TcpOutput<Game> {
+    pub fn new(
+        factory: &Factory,
+        player_index: usize,
+        tcp_stream: TcpStream,
+    ) -> Result<Self, Error> {
+        let sender = EventHandlerBuilder::new_thread(
+            factory,
+            format!("ServerTcpOutput-Player-{}", player_index),
+            EventHandler::<Game>::new(player_index, tcp_stream),
+        )?;
+
+        Ok(Self { sender })
+    }
+
+    pub fn send_initial_information(
+        &self,
+        server_config: ServerConfig,
+        player_count: usize,
+        initial_state: Game::State,
+    ) -> Result<(), ()> {
+        let event = Event::SendInitialInformation(server_config, player_count, initial_state);
+
+        self.sender.send_event(event).map_err(unit_error)
+    }
+}
+
+enum Event<Game: GameTrait> {
     SendInitialInformation(ServerConfig, usize, Game::State),
 }
 
-pub struct TcpOutput<GameFactory: GameFactoryTrait> {
+struct EventHandler<Game: GameTrait> {
     player_index: usize,
-    tcp_sender: TcpWriter<GameFactory>,
+    tcp_stream: TcpStream,
+    phantom: PhantomData<Game>,
 }
 
-impl<GameFactory: GameFactoryTrait> TcpOutput<GameFactory> {
-    pub fn new(player_index: usize, tcp_sender: TcpWriter<GameFactory>) -> Self {
-        return TcpOutput {
+impl<Game: GameTrait> EventHandler<Game> {
+    pub fn new(player_index: usize, tcp_stream: TcpStream) -> Self {
+        return EventHandler {
             player_index,
-            tcp_sender,
+            tcp_stream,
+            phantom: PhantomData,
         };
     }
 
     fn send_initial_information(
-        mut self,
+        &mut self,
         server_config: ServerConfig,
         player_count: usize,
-        initial_state: <GameFactory::Game as GameTrait>::State,
-    ) -> EventHandleResult<Self> {
-        let initial_information = InitialInformation::<GameFactory::Game>::new(
+        initial_state: Game::State,
+    ) -> EventHandleResult {
+        let initial_information = InitialInformation::<Game>::new(
             server_config,
             player_count,
             self.player_index,
             initial_state,
         );
 
-        let message =
-            ToClientMessageTCP::<GameFactory::Game>::InitialInformation(initial_information);
-        self.tcp_sender.write(&message).unwrap();
-        self.tcp_sender.flush().unwrap();
+        let message = ToClientMessageTCP::<Game>::InitialInformation(initial_information);
+        self.tcp_stream.write(&message).unwrap();
+        self.tcp_stream.flush().unwrap();
 
         debug!("Sent InitialInformation");
 
-        return EventHandleResult::TryForNextEvent(self);
+        return EventHandleResult::TryForNextEvent;
     }
 }
 
-impl<GameFactory: GameFactoryTrait> EventHandlerTrait for TcpOutput<GameFactory> {
-    type Event = TcpOutputEvent<GameFactory::Game>;
+impl<Game: GameTrait> HandleEvent for EventHandler<Game> {
+    type Event = Event<Game>;
     type ThreadReturn = ();
 
-    fn on_channel_event(self, channel_event: ChannelEvent<Self::Event>) -> EventHandleResult<Self> {
-        match channel_event {
-            ChannelEvent::ReceivedEvent(
-                _,
-                SendInitialInformation(server_config, player_count, initial_state),
-            ) => self.send_initial_information(server_config, player_count, initial_state),
-            ChannelEvent::Timeout => EventHandleResult::WaitForNextEvent(self),
-            ChannelEvent::ChannelEmpty => EventHandleResult::WaitForNextEvent(self),
-            ChannelEvent::ChannelDisconnected => EventHandleResult::StopThread(()),
+    fn on_event(&mut self, _: ReceiveMetaData, event: Self::Event) -> EventHandleResult {
+        match event {
+            SendInitialInformation(server_config, player_count, initial_state) => {
+                self.send_initial_information(server_config, player_count, initial_state)
+            }
         }
     }
 
-    fn on_stop(self, _receive_meta_data: ReceiveMetaData) -> Self::ThreadReturn {
+    fn on_stop_self(self) -> Self::ThreadReturn {
         ()
     }
 }

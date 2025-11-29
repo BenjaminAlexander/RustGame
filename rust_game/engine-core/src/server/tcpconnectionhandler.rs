@@ -1,16 +1,10 @@
-use crate::interface::{
-    EventSender,
-    GameFactoryTrait,
+use crate::server::ServerCore;
+use crate::GameTrait;
+use commons::real_time::net::tcp::{
+    HandleTcpConnection,
     TcpReader,
-    TcpWriter,
+    TcpStream,
 };
-use crate::server::servercore::ServerCoreEvent;
-use crate::server::servercore::ServerCoreEvent::TcpConnectionEvent;
-use commons::net::{
-    TcpConnectionHandlerTrait,
-    TcpWriterTrait,
-};
-use commons::threading::eventhandling::EventSenderTrait;
 use log::{
     info,
     warn,
@@ -18,36 +12,29 @@ use log::{
 use std::ops::ControlFlow;
 use std::ops::ControlFlow::*;
 
-pub struct TcpConnectionHandler<GameFactory: GameFactoryTrait> {
-    server_core_sender: EventSender<GameFactory, ServerCoreEvent<GameFactory>>,
+pub struct TcpConnectionHandler<Game: GameTrait> {
+    server_core: ServerCore<Game>,
 }
 
-impl<GameFactory: GameFactoryTrait> TcpConnectionHandler<GameFactory> {
-    pub fn new(server_core_sender: EventSender<GameFactory, ServerCoreEvent<GameFactory>>) -> Self {
-        return Self { server_core_sender };
+impl<Game: GameTrait> TcpConnectionHandler<Game> {
+    pub fn new(server_core: ServerCore<Game>) -> Self {
+        return Self { server_core };
     }
 }
 
-impl<GameFactory: GameFactoryTrait> TcpConnectionHandlerTrait<GameFactory::Factory>
-    for TcpConnectionHandler<GameFactory>
-{
-    fn on_connection(
-        &mut self,
-        tcp_sender: TcpWriter<GameFactory>,
-        tcp_receiver: TcpReader<GameFactory>,
-    ) -> ControlFlow<()> {
-        info!("New TCP connection from {:?}", tcp_sender.get_peer_addr());
+impl<Game: GameTrait> HandleTcpConnection for TcpConnectionHandler<Game> {
+    fn on_connection(&mut self, tcp_stream: TcpStream, tcp_reader: TcpReader) -> ControlFlow<()> {
+        info!("New TCP connection from {:?}", tcp_stream.get_peer_addr());
 
-        let send_result = self
-            .server_core_sender
-            .send_event(TcpConnectionEvent(tcp_sender, tcp_receiver));
-
-        return match send_result {
+        match self
+            .server_core
+            .handle_tcp_connection(tcp_stream, tcp_reader)
+        {
             Ok(_) => Continue(()),
             Err(_) => {
                 warn!("Error sending TcpConnectionEvent to the Core");
                 Break(())
             }
-        };
+        }
     }
 }

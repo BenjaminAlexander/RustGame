@@ -5,21 +5,25 @@ use crate::simpleinputeventhandler::SimpleInputEventHandler;
 use crate::simpleserverinput::SimpleServerInput;
 use crate::simplestate::*;
 use crate::simplewindow::SimpleWindow;
-use commons::factory::RealFactory;
 use commons::logging::LoggingConfigBuilder;
+use commons::real_time::Factory;
 use commons::time::TimeDuration;
 use engine_core::{
     Client,
-    RealGameFactory,
     Server,
 };
 use log::{
+    error,
     info,
     LevelFilter,
 };
+use std::backtrace::Backtrace;
 use std::io::stdin;
 use std::path::PathBuf;
-use std::process;
+use std::{
+    panic,
+    process,
+};
 
 mod bullet;
 mod character;
@@ -75,20 +79,28 @@ pub fn main() {
         .add_file_appender(log_file_path)
         .init(LevelFilter::Info);
 
+    //TODO: move panic hook into util function
+    let orig_hook = panic::take_hook();
+    panic::set_hook(Box::new(move |panic_info| {
+        error!(
+            "panic occurred: {panic_info}\n{}",
+            Backtrace::force_capture()
+        );
+        orig_hook(panic_info);
+    }));
+
     info!("args: {:?}", args);
 
-    let factory = RealFactory::new();
+    let factory = Factory::new();
 
     if let Some(true) = run_client {
-        let (client, render_receiver) =
-            Client::<RealGameFactory<SimpleGameImpl>>::new(factory.clone());
+        let (client, render_receiver) = Client::<SimpleGameImpl>::new(factory.clone());
 
-        let client_window =
-            SimpleWindow::new(factory.clone(), window_name, render_receiver, Some(client));
+        let client_window = SimpleWindow::new(window_name, render_receiver, Some(client));
 
         client_window.run();
     } else {
-        let mut server = Server::<RealGameFactory<SimpleGameImpl>>::new(factory.clone()).unwrap();
+        let mut server = Server::<SimpleGameImpl>::new(factory.clone()).unwrap();
 
         info!("Hit enter to start the game.");
         let stdin = stdin();
@@ -99,12 +111,8 @@ pub fn main() {
 
         server.start_game().unwrap();
 
-        let server_window = SimpleWindow::new(
-            factory.clone(),
-            window_name,
-            server.take_render_receiver().unwrap(),
-            None,
-        );
+        let server_window =
+            SimpleWindow::new(window_name, server.take_render_receiver().unwrap(), None);
 
         server_window.run();
     }

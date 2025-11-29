@@ -1,94 +1,32 @@
-use super::GameFactoryTrait;
 use crate::{
-    interface::{
-        RenderReceiver,
-        RenderReceiverMessage,
-    },
-    server::{
-        ServerCore,
-        ServerCoreEvent,
-    },
+    interface::RenderReceiver,
+    server::ServerCore,
+    GameTrait,
 };
-use commons::{
-    factory::FactoryTrait,
-    threading::{
-        eventhandling::{
-            EventHandlerSender,
-            EventSenderTrait,
-        },
-        AsyncJoin,
-    },
-};
-use log::{
-    error,
-    warn,
-};
+use commons::real_time::Factory;
 
-pub struct Server<GameFactory: GameFactoryTrait> {
-    core_sender: EventHandlerSender<GameFactory::Factory, ServerCoreEvent<GameFactory>>,
-    render_receiver_sender_option: Option<
-        <GameFactory::Factory as FactoryTrait>::Sender<RenderReceiverMessage<GameFactory::Game>>,
-    >,
-    render_receiver_option: Option<RenderReceiver<GameFactory>>,
+pub struct Server<Game: GameTrait> {
+    server_core: ServerCore<Game>,
+    render_receiver_option: Option<RenderReceiver<Game>>,
 }
 
-impl<GameFactory: GameFactoryTrait> Server<GameFactory> {
-    pub fn new(factory: GameFactory::Factory) -> Result<Self, ()> {
-        let server_core_thread_builder = factory
-            .new_thread_builder()
-            .name("ServerCore")
-            .build_channel_for_event_handler::<ServerCore<GameFactory>>();
+impl<Game: GameTrait> Server<Game> {
+    pub fn new(factory: Factory) -> Result<Self, ()> {
+        let (render_receiver_sender, render_receiver) = RenderReceiver::new(&factory);
 
-        let server_core = ServerCore::<GameFactory>::new(
-            factory.clone(),
-            server_core_thread_builder.get_sender().clone(),
-        );
-
-        let send_result = server_core_thread_builder
-            .get_sender()
-            .send_event(ServerCoreEvent::StartListenerEvent);
-
-        if send_result.is_err() {
-            warn!("Failed to send StartListenerEvent to Core");
-            return Err(());
-        }
-
-        let core_sender = server_core_thread_builder
-            .spawn_event_handler(server_core, AsyncJoin::log_async_join)
-            .unwrap();
-
-        let (render_receiver_sender, render_receiver) =
-            RenderReceiver::<GameFactory>::new(factory.clone());
+        let server_core = ServerCore::new(factory.clone(), render_receiver_sender.clone()).unwrap();
 
         return Ok(Self {
-            core_sender,
-            render_receiver_sender_option: Some(render_receiver_sender),
+            server_core,
             render_receiver_option: Some(render_receiver),
         });
     }
 
-    pub fn start_game(&mut self) -> Result<(), ()> {
-        match self.render_receiver_sender_option.take() {
-            Some(render_receiver_sender) => {
-                let send_result = self
-                    .core_sender
-                    .send_event(ServerCoreEvent::StartGameEvent(render_receiver_sender));
-
-                if send_result.is_err() {
-                    warn!("Failed to send ServerCoreEvent to Core");
-                    return Err(());
-                }
-
-                return Ok(());
-            }
-            None => {
-                error!("The server has already been started");
-                return Err(());
-            }
-        }
+    pub fn start_game(&self) -> Result<(), ()> {
+        self.server_core.start_game()
     }
 
-    pub fn take_render_receiver(&mut self) -> Option<RenderReceiver<GameFactory>> {
+    pub fn take_render_receiver(&mut self) -> Option<RenderReceiver<Game>> {
         return self.render_receiver_option.take();
     }
 }

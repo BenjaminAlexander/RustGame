@@ -1,56 +1,66 @@
+use crate::game_time::FrameIndex;
+use crate::gamemanager::Input;
 use crate::interface::game::GameTrait;
 use crate::interface::InitialInformation;
 use commons::time::TimeDuration;
 
 #[derive(Debug)]
-pub struct ServerUpdateArg<'a, 'b, Game: GameTrait> {
+pub struct ServerUpdateArg<'a, Game: GameTrait> {
     initial_information: &'a InitialInformation<Game>,
-    step: usize,
-    inputs: &'b Vec<Option<Game::ClientInput>>,
+    //TODO: rename
+    step: FrameIndex,
+    state: &'a Game::State,
+    inputs: &'a Vec<Input<Game::ClientInput>>,
 }
 
-impl<'a, 'b, Game: GameTrait> ServerUpdateArg<'a, 'b, Game> {
+impl<'a, 'b, Game: GameTrait> ServerUpdateArg<'a, Game> {
     pub fn new(
         initial_information: &'a InitialInformation<Game>,
-        step: usize,
-        inputs: &'b Vec<Option<Game::ClientInput>>,
+        step: FrameIndex,
+        state: &'a Game::State,
+        inputs: &'a Vec<Input<Game::ClientInput>>,
     ) -> Self {
         return Self {
             initial_information,
             step,
+            state,
             inputs,
         };
     }
 
-    pub fn get_input(&self, player_index: usize) -> Option<&Game::ClientInput> {
-        if let Some(option) = self.inputs.get(player_index) {
-            return option.as_ref();
-        } else {
-            return None;
-        }
+    pub fn get_input(&self, player_index: usize) -> &Input<Game::ClientInput> {
+        return &self.inputs[player_index];
     }
 
-    pub fn get_current_step(&self) -> usize {
+    pub fn get_current_step(&self) -> FrameIndex {
         return self.step;
     }
 
-    pub fn get_next_step(&self) -> usize {
+    pub fn get_state(&self) -> &'a Game::State {
+        return self.state;
+    }
+
+    pub fn get_next_step(&self) -> FrameIndex {
         return self.get_current_step() + 1;
     }
 
+    //TODO: refactor to not use usize
     pub fn get_current_duration_since_start(&self) -> TimeDuration {
         return self
             .initial_information
             .get_server_config()
-            .get_step_duration()
-            .mul_f64(self.step as f64);
+            .get_frame_duration()
+            .get_frame_duration()
+            .mul_f64(self.step.usize() as f64);
     }
 
+    //TODO: refactor to not use usize
     pub fn get_next_step_duration_since_start(&self) -> TimeDuration {
         return self
             .initial_information
             .get_server_config()
-            .get_step_duration()
-            .mul_f64(self.get_next_step() as f64);
+            .get_frame_duration()
+            .get_frame_duration()
+            .mul_f64(self.get_next_step().usize() as f64);
     }
 }

@@ -4,10 +4,8 @@ use crate::messaging::{
     ServerInputMessage,
     StateMessage,
 };
-use commons::factory::FactoryTrait;
 
 pub trait ManagerObserverTrait: 'static + Send {
-    type Factory: FactoryTrait;
     type Game: GameTrait;
 
     const IS_SERVER: bool;

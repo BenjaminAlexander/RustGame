@@ -1,45 +1,30 @@
-use crate::interface::{
-    GameFactoryTrait,
-    TcpWriter,
-};
-use commons::threading::channel::ReceiveMetaData;
-use commons::threading::eventhandling::ChannelEvent::{
-    ChannelDisconnected,
-    ChannelEmpty,
-    ReceivedEvent,
-    Timeout,
-};
-use commons::threading::eventhandling::{
-    ChannelEvent,
+use commons::real_time::{
+    net::tcp::TcpStream,
     EventHandleResult,
-    EventHandlerTrait,
+    HandleEvent,
+    ReceiveMetaData,
 };
 
 //TODO: Send response to time messages to calculate ping
-pub struct TcpOutput<GameFactory: GameFactoryTrait> {
-    tcp_sender: TcpWriter<GameFactory>,
+pub struct TcpOutput {
+    tcp_stream: TcpStream,
 }
 
-impl<GameFactory: GameFactoryTrait> TcpOutput<GameFactory> {
-    pub fn new(tcp_sender: TcpWriter<GameFactory>) -> Self {
-        return Self { tcp_sender };
+impl TcpOutput {
+    pub fn new(tcp_stream: TcpStream) -> Self {
+        return Self { tcp_stream };
     }
 }
 
-impl<GameFactory: GameFactoryTrait> EventHandlerTrait for TcpOutput<GameFactory> {
+impl HandleEvent for TcpOutput {
     type Event = ();
     type ThreadReturn = ();
 
-    fn on_channel_event(self, channel_event: ChannelEvent<Self::Event>) -> EventHandleResult<Self> {
-        match channel_event {
-            ReceivedEvent(_, ()) => EventHandleResult::TryForNextEvent(self),
-            Timeout => EventHandleResult::WaitForNextEvent(self),
-            ChannelEmpty => EventHandleResult::WaitForNextEvent(self),
-            ChannelDisconnected => EventHandleResult::StopThread(()),
-        }
+    fn on_event(&mut self, _: ReceiveMetaData, _: Self::Event) -> EventHandleResult {
+        EventHandleResult::TryForNextEvent
     }
 
-    fn on_stop(self, _receive_meta_data: ReceiveMetaData) -> Self::ThreadReturn {
+    fn on_stop_self(self) -> Self::ThreadReturn {
         ()
     }
 }

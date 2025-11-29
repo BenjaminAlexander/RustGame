@@ -220,6 +220,7 @@ dependencies = [
  "log",
  "log4rs",
  "num",
+ "rand",
  "rmp-serde",
  "serde",
 ]
@@ -1628,18 +1629,6 @@ dependencies = [
  "proc-macro2",
  "quote",
  "unicode-ident",
-]
-
-[[package]]
-name = "test-utils"
-version = "0.1.0"
-dependencies = [
- "commons",
- "log",
- "log4rs",
- "rand",
- "rmp-serde",
- "serde",
 ]
 
 [[package]]

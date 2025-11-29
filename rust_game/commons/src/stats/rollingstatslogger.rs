@@ -1,4 +1,4 @@
-use crate::factory::FactoryTrait;
+use crate::real_time::TimeSource;
 use crate::stats::RollingStats;
 use crate::time::{
     TimeDuration,
@@ -8,8 +8,8 @@ use log::info;
 use std::fmt::Write;
 use std::marker::PhantomData;
 
-pub struct RollingStatsLogger<T: Into<f64>, U: FactoryTrait> {
-    time_source: U,
+pub struct RollingStatsLogger<T: Into<f64>> {
+    time_source: TimeSource,
     min_log_interval: TimeDuration,
     last_log: TimeValue,
     need_to_log: bool,
@@ -17,12 +17,12 @@ pub struct RollingStatsLogger<T: Into<f64>, U: FactoryTrait> {
     phantom: PhantomData<T>,
 }
 
-impl<T: Into<f64>, U: FactoryTrait> RollingStatsLogger<T, U> {
+impl<T: Into<f64>> RollingStatsLogger<T> {
     pub fn new(
         size: usize,
         standard_deviation_ration: f64,
         min_log_interval: TimeDuration,
-        time_source: U,
+        time_source: TimeSource,
     ) -> Self {
         let last_log = time_source.now();
 

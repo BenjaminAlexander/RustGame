@@ -1,6 +1,5 @@
-mod timeduration;
-pub mod timerservice;
-mod timevalue;
+mod time_duration;
+mod time_value;
 
-pub use self::timeduration::TimeDuration;
-pub use self::timevalue::TimeValue;
+pub use self::time_duration::TimeDuration;
+pub use self::time_value::TimeValue;

@@ -1,23 +1,21 @@
+use crate::game_time::PingRequest;
 use crate::interface::{
-    GameFactoryTrait,
     GameTrait,
     InitialInformation,
-    UdpSocket,
 };
 use crate::messaging::{
     Fragmenter,
     InputMessage,
-    ToServerMessageUDP,
+    UdpToServerMessage,
 };
-use commons::net::{
-    UdpSocketTrait,
-    MAX_UDP_DATAGRAM_SIZE,
-};
-use commons::threading::channel::ReceiveMetaData;
-use commons::threading::eventhandling::{
-    ChannelEvent,
+use crate::FrameIndex;
+use commons::real_time::net::udp::UdpSocket;
+use commons::real_time::net::MAX_UDP_DATAGRAM_SIZE;
+use commons::real_time::{
     EventHandleResult,
-    EventHandlerTrait,
+    HandleEvent,
+    ReceiveMetaData,
+    TimeSource,
 };
 use log::{
     error,
@@ -28,42 +26,48 @@ use std::net::SocketAddr;
 //TODO: combine server/client and tcp/udp inputs/outputs to shared listener/eventhandler types
 pub enum UdpOutputEvent<Game: GameTrait> {
     InputMessageEvent(InputMessage<Game>),
+    FrameIndex(FrameIndex),
 }
 
-pub struct UdpOutput<GameFactory: GameFactoryTrait> {
+pub struct UdpOutput<Game: GameTrait> {
+    time_source: TimeSource,
     server_address: SocketAddr,
-    socket: UdpSocket<GameFactory>,
+    socket: UdpSocket,
+    ping_period_frames: usize,
+    next_ping: FrameIndex,
     fragmenter: Fragmenter,
-    input_queue: Vec<InputMessage<GameFactory::Game>>,
+    input_queue: Vec<InputMessage<Game>>,
     max_observed_input_queue: usize,
-    initial_information: InitialInformation<GameFactory::Game>,
+    initial_information: InitialInformation<Game>,
 }
 
-impl<GameFactory: GameFactoryTrait> UdpOutput<GameFactory> {
+impl<Game: GameTrait> UdpOutput<Game> {
     pub fn new(
+        time_source: TimeSource,
         server_address: SocketAddr,
-        socket: UdpSocket<GameFactory>,
-        initial_information: InitialInformation<GameFactory::Game>,
+        socket: UdpSocket,
+        initial_information: InitialInformation<Game>,
     ) -> Self {
-        let mut udp_output = Self {
+        let ping_period_frames = initial_information
+            .get_server_config()
+            .get_frame_duration()
+            .to_frame_count(&Game::PING_PERIOD) as usize;
+
+        Self {
+            time_source,
             server_address,
             socket,
+            ping_period_frames,
+            next_ping: FrameIndex::zero(),
             //TODO: make max datagram size more configurable
             fragmenter: Fragmenter::new(MAX_UDP_DATAGRAM_SIZE),
             input_queue: Vec::new(),
             max_observed_input_queue: 0,
             initial_information,
-        };
-
-        let message = ToServerMessageUDP::<GameFactory::Game>::Hello {
-            player_index: udp_output.initial_information.get_player_index(),
-        };
-        udp_output.send_message(message);
-
-        return udp_output;
+        }
     }
 
-    pub fn on_input_message(&mut self, input_message: InputMessage<GameFactory::Game>) {
+    fn on_input_message(&mut self, input_message: InputMessage<Game>) -> EventHandleResult {
         //insert in reverse sorted order
         match self
             .input_queue
@@ -71,7 +75,9 @@ impl<GameFactory: GameFactoryTrait> UdpOutput<GameFactory> {
         {
             Ok(pos) => self.input_queue[pos] = input_message,
             Err(pos) => self.input_queue.insert(pos, input_message),
-        }
+        };
+
+        return EventHandleResult::TryForNextEvent;
     }
 
     fn send_all_messages(&mut self) {
@@ -88,14 +94,15 @@ impl<GameFactory: GameFactoryTrait> UdpOutput<GameFactory> {
             match self.input_queue.pop() {
                 None => send_another_message = false,
                 Some(input_to_send) => {
-                    let message = ToServerMessageUDP::<GameFactory::Game>::Input(input_to_send);
-                    self.send_message(message);
+                    let message = UdpToServerMessage::<Game>::Input(input_to_send);
+                    self.send_message(&message);
                 }
             }
         }
     }
 
-    fn send_message(&mut self, message: ToServerMessageUDP<GameFactory::Game>) {
+    fn send_message(&mut self, message: &UdpToServerMessage<Game>) {
+        //TODO: use write instead of to_vec
         let buf = rmp_serde::to_vec(&message).unwrap();
         let fragments = self.fragmenter.make_fragments(buf);
 
@@ -112,41 +119,48 @@ impl<GameFactory: GameFactoryTrait> UdpOutput<GameFactory> {
                 .unwrap();
         }
     }
+
+    fn on_frame_index(&mut self, frame_index: FrameIndex) -> EventHandleResult {
+        if frame_index < self.next_ping {
+            return EventHandleResult::TryForNextEvent;
+        }
+
+        self.next_ping = frame_index + self.ping_period_frames;
+
+        let ping_request = PingRequest::new(
+            self.initial_information.get_player_index(),
+            self.time_source.now(),
+        );
+        let ping_request = UdpToServerMessage::PingRequest(ping_request);
+        self.send_message(&ping_request);
+        return EventHandleResult::TryForNextEvent;
+    }
 }
 
-impl<GameFactory: GameFactoryTrait> EventHandlerTrait for UdpOutput<GameFactory> {
-    type Event = UdpOutputEvent<GameFactory::Game>;
+impl<Game: GameTrait> HandleEvent for UdpOutput<Game> {
+    type Event = UdpOutputEvent<Game>;
     type ThreadReturn = ();
 
-    fn on_channel_event(
-        mut self,
-        channel_event: ChannelEvent<Self::Event>,
-    ) -> EventHandleResult<Self> {
-        match channel_event {
-            ChannelEvent::ReceivedEvent(_, event) => {
-                match event {
-                    UdpOutputEvent::InputMessageEvent(input_message) => {
-                        self.on_input_message(input_message)
-                    }
-                };
-
-                return EventHandleResult::TryForNextEvent(self);
+    fn on_event(&mut self, _: ReceiveMetaData, event: Self::Event) -> EventHandleResult {
+        match event {
+            UdpOutputEvent::InputMessageEvent(input_message) => {
+                self.on_input_message(input_message)
             }
-            ChannelEvent::Timeout => {
-                self.send_all_messages();
-                return EventHandleResult::WaitForNextEvent(self);
-            }
-            ChannelEvent::ChannelEmpty => {
-                self.send_all_messages();
-                return EventHandleResult::WaitForNextEvent(self);
-            }
-            ChannelEvent::ChannelDisconnected => {
-                return EventHandleResult::StopThread(());
-            }
+            UdpOutputEvent::FrameIndex(frame_index) => self.on_frame_index(frame_index),
         }
     }
 
-    fn on_stop(self, _: ReceiveMetaData) -> Self::ThreadReturn {
+    fn on_channel_empty(&mut self) -> EventHandleResult {
+        self.send_all_messages();
+        return EventHandleResult::WaitForNextEvent;
+    }
+
+    fn on_timeout(&mut self) -> EventHandleResult {
+        self.send_all_messages();
+        return EventHandleResult::WaitForNextEvent;
+    }
+
+    fn on_stop_self(self) -> Self::ThreadReturn {
         ()
     }
 }

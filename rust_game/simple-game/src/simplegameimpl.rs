@@ -33,19 +33,19 @@ impl GameTrait for SimpleGameImpl {
     const UDP_PORT: u16 = 3457;
     const STEP_PERIOD: TimeDuration = TimeDuration::new(0, 100_000_000);
     const GRACE_PERIOD: TimeDuration = TimeDuration::new(1, 0);
-    const TIME_SYNC_MESSAGE_PERIOD: TimeDuration = TimeDuration::new(1, 0);
+    const PING_PERIOD: TimeDuration = TimeDuration::new(1, 0);
     const CLOCK_AVERAGE_SIZE: usize = 100;
 
     fn get_initial_state(player_count: usize) -> Self::State {
         Self::State::new(player_count)
     }
 
-    fn get_server_input(state: &Self::State, arg: &ServerUpdateArg<Self>) -> Self::ServerInput {
-        return SimpleState::get_server_input(state, arg);
+    fn get_server_input(arg: &ServerUpdateArg<Self>) -> Self::ServerInput {
+        return SimpleState::get_server_input(arg);
     }
 
-    fn get_next_state(state: &Self::State, arg: &ClientUpdateArg<Self>) -> Self::State {
-        return SimpleState::get_next_state(state, arg);
+    fn get_next_state(arg: &ClientUpdateArg<Self>) -> Self::State {
+        return SimpleState::get_next_state(arg);
     }
 
     fn interpolate(

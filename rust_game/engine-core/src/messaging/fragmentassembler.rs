@@ -1,26 +1,24 @@
 use crate::messaging::MessageFragment;
-use commons::factory::FactoryTrait;
+use commons::real_time::TimeSource;
 use commons::time::TimeValue;
 use std::collections::HashMap;
 
 pub struct FragmentAssembler {
+    time_source: TimeSource,
     max_messages: usize,
     messages: HashMap<u32, PartiallyAssembledFragment>,
 }
 
 impl FragmentAssembler {
-    pub fn new(max_messages: usize) -> Self {
+    pub fn new(time_source: TimeSource, max_messages: usize) -> Self {
         return Self {
+            time_source,
             max_messages,
             messages: HashMap::new(),
         };
     }
 
-    pub fn add_fragment(
-        &mut self,
-        factory: &impl FactoryTrait,
-        fragment: MessageFragment,
-    ) -> Option<Vec<u8>> {
+    pub fn add_fragment(&mut self, fragment: MessageFragment) -> Option<Vec<u8>> {
         if fragment.get_count() == 1 {
             return Some(fragment.move_buf());
         }
@@ -55,8 +53,10 @@ impl FragmentAssembler {
                     }
                 }
 
-                self.messages
-                    .insert(id, PartiallyAssembledFragment::new(factory, fragment));
+                self.messages.insert(
+                    id,
+                    PartiallyAssembledFragment::new(&self.time_source, fragment),
+                );
                 self.messages.get_mut(&id).unwrap()
             }
             Some(partial) => {
@@ -82,7 +82,7 @@ struct PartiallyAssembledFragment {
 }
 
 impl PartiallyAssembledFragment {
-    pub fn new(factory: &impl FactoryTrait, fragment: MessageFragment) -> Self {
+    pub fn new(time_source: &TimeSource, fragment: MessageFragment) -> Self {
         let mut vec = Vec::with_capacity(fragment.get_count() as usize);
 
         for _i in 0..fragment.get_count() {
@@ -94,7 +94,7 @@ impl PartiallyAssembledFragment {
             count: fragment.get_count(),
             outstanding_fragments: fragment.get_count(),
             fragments: vec,
-            time_of_first_fragment: factory.now(),
+            time_of_first_fragment: time_source.now(),
         };
 
         new.add_fragment(fragment);

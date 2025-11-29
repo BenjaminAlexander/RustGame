@@ -5,14 +5,11 @@ use commons::time::TimeDuration;
 use engine_core::{
     ClientUpdateArg,
     GameTrait,
+    Input,
 };
+use graphics::rectangle;
 use graphics::*;
-use graphics::{
-    rectangle,
-    Context,
-};
 use opengl_graphics::GlGraphics;
-use piston::RenderArgs;
 use serde::{
     Deserialize,
     Serialize,
@@ -64,7 +61,7 @@ impl Character {
     }
 
     pub fn move_character(&mut self, arg: &ClientUpdateArg<SimpleGameImpl>) {
-        if let Some(input) = arg.get_input(self.player_index) {
+        if let Input::Authoritative(input) = arg.get_input(self.player_index) {
             self.velocity = input.get_velocity();
         }
 
@@ -73,7 +70,7 @@ impl Character {
     }
 
     pub fn get_fired_bullet(&self, arg: &ClientUpdateArg<SimpleGameImpl>) -> Option<Bullet> {
-        if let Some(input) = arg.get_input(self.player_index) {
+        if let Input::Authoritative(input) = arg.get_input(self.player_index) {
             if input.should_fire() {
                 return Some(Bullet::new(
                     arg.get_current_step(),
@@ -86,29 +83,47 @@ impl Character {
         return None;
     }
 
-    pub fn draw(&self, args: &RenderArgs, context: Context, gl: &mut GlGraphics) {
+    pub fn draw(&self, context: Context, gl: &mut GlGraphics, local_player_index: usize) {
         const RED: [f32; 4] = [1.0, 0.0, 0.0, 1.0];
+        const GREEN: [f32; 4] = [0.0, 1.0, 0.0, 1.0];
+        const BLUE: [f32; 4] = [0.0, 0.0, 1.0, 1.0];
+
+        const CHARACTER_SIZE: f64 = 50.0;
+        const HEALTH_BAR_HEIGHT: f64 = 10.0;
+        const HEALTH_BAR_TOKEN_WIDTH: f64 = 10.0;
+
+        let is_local_player = local_player_index == self.player_index;
+
+        let color = if self.health > 0 {
+            if is_local_player {
+                BLUE
+            } else {
+                RED
+            }
+        } else {
+            GREEN
+        };
 
         let (x, y) = self.position.get();
-        let x_in_window = (x as f64 / args.draw_size[0] as f64) * args.window_size[0];
-        let y_in_window = (y as f64 / args.draw_size[1] as f64) * args.window_size[1];
 
-        let square = rectangle::square(0.0, 0.0, 50.0);
-        let rotation = 0 as f64;
+        let square = rectangle::square(0.0, 0.0, CHARACTER_SIZE);
 
-        let transform = context
+        let player_transform = context
             .transform
-            .trans(x_in_window, y_in_window)
-            .rot_rad(rotation)
-            .trans(-25.0, -25.0);
+            .trans(x, y)
+            .trans(-0.5 * CHARACTER_SIZE, -0.5 * CHARACTER_SIZE);
 
-        rectangle(RED, square, transform, gl);
+        rectangle(color, square, player_transform, gl);
 
         //draw health bar
-        let base = self.player_index as f64 * 10.0;
-        let health_rectangle =
-            rectangle::rectangle_by_corners(0.0, base, 10.0 * self.health as f64, base + 10.0);
-        let health_trasform = context.transform;
-        rectangle(RED, health_rectangle, health_trasform, gl);
+        if is_local_player {
+            let health_rectangle = rectangle::rectangle_by_corners(
+                0.0,
+                0.0,
+                HEALTH_BAR_TOKEN_WIDTH * self.health as f64,
+                HEALTH_BAR_HEIGHT,
+            );
+            rectangle(RED, health_rectangle, context.transform, gl);
+        }
     }
 }

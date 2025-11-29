@@ -1,8 +1,10 @@
+use log::warn;
+
+use crate::game_time::FrameIndex;
 use crate::gamemanager::stepmessage::StepMessage;
 use crate::interface::{
     ClientUpdateArg,
     GameTrait,
-    InitialInformation,
     ServerUpdateArg,
 };
 use crate::messaging::{
@@ -10,16 +12,30 @@ use crate::messaging::{
     ServerInputMessage,
     StateMessage,
 };
-use std::sync::Arc;
+use crate::InitialInformation;
 
 pub struct Step<Game: GameTrait> {
-    initial_information: Arc<InitialInformation<Game>>,
-    step: usize,
+    //TODO: rename
+    step: FrameIndex,
     state: StateHolder<Game>,
     server_input: ServerInputHolder<Game>,
-    inputs: Vec<Option<Game::ClientInput>>,
+    inputs: Vec<Input<Game::ClientInput>>,
     input_count: usize,
     need_to_compute_next_state: bool,
+}
+
+#[derive(Clone, Debug)]
+pub enum Input<T> {
+    /// Pending signifies that an input from a client isn't yet known but may
+    /// become known in the future.
+    Pending,
+
+    /// The Input has been received from the client which is the authoritative source
+    Authoritative(T),
+
+    /// The client never submitted an input in a timely manner and the server
+    /// has authoritatively decided that the client cannot submit an input in the future
+    AuthoritativeMissing,
 }
 
 pub enum StateHolder<Game: GameTrait> {
@@ -50,13 +66,14 @@ pub enum ServerInputHolder<Game: GameTrait> {
 }
 
 impl<Game: GameTrait> Step<Game> {
-    pub fn blank(step_index: usize, initial_information: Arc<InitialInformation<Game>>) -> Self {
+    pub fn blank(step_index: FrameIndex, player_count: usize) -> Self {
+        let inputs = vec![Input::Pending; player_count];
+
         return Self {
-            initial_information,
             step: step_index,
             state: StateHolder::None,
             server_input: ServerInputHolder::None,
-            inputs: Vec::new(),
+            inputs,
             input_count: 0,
             need_to_compute_next_state: false,
         };
@@ -64,17 +81,24 @@ impl<Game: GameTrait> Step<Game> {
 
     pub fn set_input(&mut self, input_message: InputMessage<Game>) {
         let index = input_message.get_player_index();
-        while self.inputs.len() <= index {
-            self.inputs.push(None);
+
+        //TODO: make a way for the server to say a input is missing
+        //let x = &mut self.inputs[index];
+        match self.inputs[index] {
+            Input::Pending => {
+                self.input_count = self.input_count + 1;
+                self.inputs[index] = Input::Authoritative(input_message.get_input());
+                self.need_to_compute_next_state = true;
+            }
+            Input::Authoritative(_) => {
+                warn!("Received a duplicate input, ignorning it")
+            }
+            Input::AuthoritativeMissing => {
+                warn!("Received a input where one has athoritatively been declared missing")
+            }
         }
 
-        if self.inputs[index].is_none() {
-            self.input_count = self.input_count + 1;
-        }
-
-        self.inputs[index] = Some(input_message.get_input());
-        self.need_to_compute_next_state = true;
-
+        //TODO: is this logic necessary if the input is authoritatively know to be missing?
         if let ServerInputHolder::Deserialized(_) = self.server_input {
             //No-Op
         } else {
@@ -87,7 +111,8 @@ impl<Game: GameTrait> Step<Game> {
         self.need_to_compute_next_state = true;
     }
 
-    pub fn are_inputs_complete(&self) -> bool {
+    //TODO: smells like this method should be somewhere else
+    pub fn are_inputs_complete(&self, initial_information: &InitialInformation<Game>) -> bool {
         return match self.server_input {
             ServerInputHolder::Deserialized(_) => true,
             ServerInputHolder::ComputedComplete { .. } => true,
@@ -96,7 +121,7 @@ impl<Game: GameTrait> Step<Game> {
             StateHolder::Deserialized { .. } => true,
             StateHolder::ComputedComplete { .. } => true,
             _ => false,
-        } && self.input_count == self.initial_information.get_player_count();
+        } && self.input_count == initial_information.get_player_count();
     }
 
     pub fn set_final_state(&mut self, state_message: StateMessage<Game>) {
@@ -139,7 +164,7 @@ impl<Game: GameTrait> Step<Game> {
         //info!("Set final Step: {:?}", self.step_index);
     }
 
-    pub fn calculate_server_input(&mut self) {
+    pub fn calculate_server_input(&mut self, initial_information: &InitialInformation<Game>) {
         //TODO: won't this stop the next state from being computed multiple times?
         //what if we need to recompute it?
         if let ServerInputHolder::None = self.server_input {
@@ -149,9 +174,10 @@ impl<Game: GameTrait> Step<Game> {
                 StateHolder::ComputedIncomplete { state, .. } => Some(state),
                 StateHolder::ComputedComplete { state, .. } => Some(state),
             } {
-                let server_input = Game::get_server_input(state, &self.get_server_update_arg());
+                let server_input =
+                    Game::get_server_input(&self.get_server_update_arg(initial_information, state));
 
-                if self.are_inputs_complete() {
+                if self.are_inputs_complete(initial_information) {
                     self.server_input = ServerInputHolder::ComputedComplete {
                         server_input,
                         need_to_send_as_complete: true,
@@ -165,7 +191,10 @@ impl<Game: GameTrait> Step<Game> {
         }
     }
 
-    pub fn calculate_next_state(&self) -> StateHolder<Game> {
+    pub fn calculate_next_state(
+        &self,
+        initial_information: &InitialInformation<Game>,
+    ) -> StateHolder<Game> {
         if let Some(state) = match &self.state {
             StateHolder::None => None,
             StateHolder::Deserialized { state, .. } => Some(state),
@@ -179,11 +208,14 @@ impl<Game: GameTrait> Step<Game> {
                 ServerInputHolder::ComputedComplete { server_input, .. } => Some(server_input),
             };
 
-            let arg = ClientUpdateArg::new(self.get_server_update_arg(), server_input);
+            let arg = ClientUpdateArg::new(
+                self.get_server_update_arg(initial_information, state),
+                server_input,
+            );
 
-            let next_state = Game::get_next_state(state, &arg);
+            let next_state = Game::get_next_state(&arg);
 
-            if self.are_inputs_complete() {
+            if self.are_inputs_complete(initial_information) {
                 return StateHolder::ComputedComplete {
                     state: next_state,
                     need_to_send_as_changed: true,
@@ -213,7 +245,7 @@ impl<Game: GameTrait> Step<Game> {
         self.state = state_holder;
     }
 
-    pub fn mark_as_complete(&mut self) {
+    pub fn mark_as_complete(&mut self, initial_information: &InitialInformation<Game>) {
         if let StateHolder::ComputedIncomplete {
             state,
             need_to_send_as_changed,
@@ -226,7 +258,7 @@ impl<Game: GameTrait> Step<Game> {
             };
         }
 
-        if self.are_inputs_complete() {
+        if self.are_inputs_complete(initial_information) {
             let new_server_input = match &self.server_input {
                 ServerInputHolder::ComputedIncomplete(server_input) => {
                     Some(ServerInputHolder::ComputedComplete {
@@ -243,7 +275,8 @@ impl<Game: GameTrait> Step<Game> {
         }
     }
 
-    pub fn get_step_index(&self) -> usize {
+    //TODO: rename
+    pub fn get_step_index(&self) -> FrameIndex {
         return self.step;
     }
 
@@ -263,8 +296,12 @@ impl<Game: GameTrait> Step<Game> {
         }
     }
 
-    pub fn get_server_update_arg(&self) -> ServerUpdateArg<Game> {
-        return ServerUpdateArg::new(&*self.initial_information, self.step, &self.inputs);
+    pub fn get_server_update_arg<'a>(
+        &'a self,
+        initial_information: &'a InitialInformation<Game>,
+        state: &'a Game::State,
+    ) -> ServerUpdateArg<'a, Game> {
+        return ServerUpdateArg::new(initial_information, self.step, state, &self.inputs);
     }
 
     pub fn get_changed_message(&mut self) -> Option<StepMessage<Game>> {

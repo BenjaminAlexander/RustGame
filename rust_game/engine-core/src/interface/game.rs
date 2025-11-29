@@ -10,7 +10,7 @@ use serde::Serialize;
 use std::fmt::Debug;
 
 //TODO: can Serialize + DeserializeOwned be removed
-pub trait GameTrait: 'static + Send + Sized {
+pub trait GameTrait: 'static + Send + Sized + Clone {
     type State: Serialize + DeserializeOwned + Clone + Debug + Send + Sync + 'static;
 
     type ClientInput: Serialize + DeserializeOwned + Clone + Debug + Send + 'static;
@@ -28,14 +28,15 @@ pub trait GameTrait: 'static + Send + Sized {
     const UDP_PORT: u16;
     const STEP_PERIOD: TimeDuration;
     const GRACE_PERIOD: TimeDuration;
-    const TIME_SYNC_MESSAGE_PERIOD: TimeDuration;
+    //TODO: rename ping period
+    const PING_PERIOD: TimeDuration;
     const CLOCK_AVERAGE_SIZE: usize;
 
     fn get_initial_state(player_count: usize) -> Self::State;
 
-    fn get_server_input(state: &Self::State, arg: &ServerUpdateArg<Self>) -> Self::ServerInput;
+    fn get_server_input(arg: &ServerUpdateArg<Self>) -> Self::ServerInput;
 
-    fn get_next_state(state: &Self::State, arg: &ClientUpdateArg<Self>) -> Self::State;
+    fn get_next_state(arg: &ClientUpdateArg<Self>) -> Self::State;
 
     //TODO: this method needs to include the last interpolation result
     fn interpolate(

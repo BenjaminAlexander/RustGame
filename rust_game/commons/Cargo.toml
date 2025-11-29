@@ -8,5 +8,6 @@ authors.workspace = true
 log.workspace = true
 log4rs.workspace = true
 num.workspace = true
+rand.workspace = true
 rmp-serde.workspace = true
 serde.workspace = true
