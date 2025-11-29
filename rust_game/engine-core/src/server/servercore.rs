@@ -18,9 +18,7 @@ use crate::server::tcpinput::TcpInput;
 use crate::server::tcpoutput::TcpOutput;
 use crate::server::udphandler::UdpHandler;
 use crate::server::udpinput::UdpInput;
-use crate::server::udpoutput::{
-    UdpOutput,
-};
+use crate::server::udpoutput::UdpOutput;
 use crate::server::{
     ServerConfig,
     TcpConnectionHandler,
@@ -28,11 +26,9 @@ use crate::server::{
 use crate::FrameIndex;
 use commons::real_time::net::tcp::{
     TcpListenerBuilder,
-    TcpReadHandlerBuilder,
     TcpReader,
     TcpStream,
 };
-use commons::real_time::net::udp::UdpReadHandlerBuilder;
 use commons::real_time::timer_service::{
     IdleTimerService,
     TimerCallBack,
@@ -69,12 +65,14 @@ pub struct ServerCore<Game: GameTrait> {
 }
 
 impl<Game: GameTrait> ServerCore<Game> {
-
-    pub fn new(factory: Factory, render_receiver_sender: Sender<RenderReceiverMessage<Game>>) -> Result<Self, Error> {
+    pub fn new(
+        factory: Factory,
+        render_receiver_sender: Sender<RenderReceiverMessage<Game>>,
+    ) -> Result<Self, Error> {
         let builder = EventHandlerBuilder::new(&factory);
 
-        let server_core = Self{
-            sender: builder.get_sender().clone()
+        let server_core = Self {
+            sender: builder.get_sender().clone(),
         };
 
         let event_handler = ServerCoreEventHandler::new(
@@ -125,7 +123,6 @@ impl<Game: GameTrait> TimerCallBack for ServerCore<Game> {
 }
 
 enum ServerCoreEvent<Game: GameTrait> {
-    //TODO: create render receiver sender before spawning event handler
     StartGameEvent,
     TcpConnectionEvent(TcpStream, TcpReader),
     GameTimerTick,
@@ -138,7 +135,7 @@ struct ServerCoreEventHandler<Game: GameTrait> {
     render_receiver_sender: Sender<RenderReceiverMessage<Game>>,
     frame_duration: FrameDuration,
     tcp_listener_sender: EventHandlerStopper,
-    tcp_inputs: Vec<EventHandlerStopper>,
+    tcp_inputs: Vec<TcpInput>,
     tcp_outputs: Vec<TcpOutput<Game>>,
     input_grace_period_frames: usize,
     state: State<Game>,
@@ -159,7 +156,7 @@ struct ListeningCore<Game: GameTrait> {
 struct RunningCore<Game: GameTrait> {
     _timer_service: TimerService<(), ServerCore<Game>>,
     game_timer: GameTimerScheduler,
-    _udp_input_sender: EventHandlerStopper,
+    _udp_input: UdpInput,
     udp_output_senders: Vec<UdpOutput<Game>>,
     manager_sender: EventSender<ManagerEvent<Game>>,
 }
@@ -254,39 +251,29 @@ impl<Game: GameTrait> ServerCoreEventHandler<Game> {
 
         let mut udp_outputs = Vec::new();
         for player_index in 0..self.tcp_inputs.len() {
-            let result = UdpOutput::new(
-                self.factory.clone(), 
-                player_index, 
-                &udp_socket
-            );
+            let result = UdpOutput::new(self.factory.clone(), player_index, &udp_socket);
 
             match result {
                 Ok(udp_output) => udp_outputs.push(udp_output),
                 Err(err) => {
                     error!("Failed to create UdpOutput: {:?}", err);
                     return EventHandleResult::StopThread;
-                },
+                }
             }
         }
 
-        let udp_input = UdpInput::<Game>::new(
-            self.factory.get_time_source().clone(),
+        let result = UdpInput::new(
+            &self.factory,
             self.server_core.clone(),
+            &udp_socket,
             listening_core.udp_handler,
             udp_outputs.clone(),
         );
 
-        let udp_input_spawn_result = UdpReadHandlerBuilder::new_thread(
-            &self.factory,
-            "ServerUdpInput".to_string(),
-            udp_socket.try_clone().unwrap(),
-            udp_input,
-        );
-
-        let udp_input_sender = match udp_input_spawn_result {
-            Ok(udp_input_sender) => udp_input_sender,
+        let udp_input = match result {
+            Ok(udp_input) => udp_input,
             Err(error) => {
-                error!("{:?}", error);
+                error!("Failed to create UdpInput: {:?}", error);
                 return EventHandleResult::StopThread;
             }
         };
@@ -391,7 +378,7 @@ impl<Game: GameTrait> ServerCoreEventHandler<Game> {
         self.state = State::Running(RunningCore {
             _timer_service: timer_service,
             game_timer,
-            _udp_input_sender: udp_input_sender,
+            _udp_input: udp_input,
             udp_output_senders: udp_outputs,
             manager_sender,
         });
@@ -408,7 +395,7 @@ impl<Game: GameTrait> ServerCoreEventHandler<Game> {
     fn on_tcp_connection(
         &mut self,
         tcp_stream: TcpStream,
-        tcp_receiver: TcpReader,
+        tcp_reader: TcpReader,
     ) -> EventHandleResult {
         let listening_core = match &mut self.state {
             State::Listening(listening_core) => listening_core,
@@ -426,23 +413,23 @@ impl<Game: GameTrait> ServerCoreEventHandler<Game> {
         let player_index = self.tcp_inputs.len();
 
         let client_address = ClientAddress::new(player_index, tcp_stream.get_peer_addr().ip());
-
-        let tcp_input_join_handle = TcpReadHandlerBuilder::new_thread(
-            &self.factory,
-            "ServerTcpInput".to_string(),
-            tcp_receiver,
-            TcpInput::new(),
-        )
-        .unwrap();
-
-        self.tcp_inputs.push(tcp_input_join_handle);
-
         listening_core.udp_handler.on_client_address(client_address);
+
+        match TcpInput::new(&self.factory, player_index, tcp_reader) {
+            Ok(tcp_input) => self.tcp_inputs.push(tcp_input),
+            Err(err) => {
+                error!("Failed to start TCP input thread: {:?}", err);
+                return EventHandleResult::StopThread;
+            },
+        };
+
+        
 
         match TcpOutput::new(&self.factory, player_index, tcp_stream) {
             Ok(tcp_output) => self.tcp_outputs.push(tcp_output),
             Err(err) => {
                 error!("Failed to start TCP output thread: {:?}", err);
+                return EventHandleResult::StopThread;
             }
         };
 

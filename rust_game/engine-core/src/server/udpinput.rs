@@ -7,24 +7,63 @@ use crate::server::udphandler::UdpHandler;
 use crate::server::udpoutput::UdpOutput;
 use crate::server::ServerCore;
 use crate::GameTrait;
-use commons::real_time::net::udp::HandleUdpRead;
-use commons::real_time::TimeSource;
+use commons::real_time::net::udp::{
+    HandleUdpRead,
+    UdpReadHandlerBuilder,
+    UdpSocket,
+};
+use commons::real_time::{
+    EventHandlerStopper,
+    Factory,
+    TimeSource,
+};
 use log::{
     error,
     info,
     warn,
 };
+use std::io::Error;
 use std::net::SocketAddr;
 use std::ops::ControlFlow;
 
-pub struct UdpInput<Game: GameTrait> {
+pub struct UdpInput {
+    _stopper: EventHandlerStopper,
+}
+
+impl UdpInput {
+    pub fn new<Game: GameTrait>(
+        factory: &Factory,
+        server_core: ServerCore<Game>,
+        udp_socket: &UdpSocket,
+        udp_handler: UdpHandler<Game>,
+        udp_outputs: Vec<UdpOutput<Game>>,
+    ) -> Result<Self, Error> {
+        let udp_input = ReadHandler::<Game>::new(
+            factory.get_time_source().clone(),
+            server_core,
+            udp_handler,
+            udp_outputs,
+        );
+
+        let stopper = UdpReadHandlerBuilder::new_thread(
+            factory,
+            "ServerUdpInput".to_string(),
+            udp_socket.try_clone()?,
+            udp_input,
+        )?;
+
+        Ok(Self { _stopper: stopper })
+    }
+}
+
+struct ReadHandler<Game: GameTrait> {
     time_source: TimeSource,
     server_core: ServerCore<Game>,
     udp_handler: UdpHandler<Game>,
     udp_output_senders: Vec<UdpOutput<Game>>,
 }
 
-impl<Game: GameTrait> UdpInput<Game> {
+impl<Game: GameTrait> ReadHandler<Game> {
     pub fn new(
         time_source: TimeSource,
         server_core: ServerCore<Game>,
@@ -61,10 +100,7 @@ impl<Game: GameTrait> UdpInput<Game> {
             }
         };
 
-        let result = udp_output_sender.send_ping_response(
-            self.time_source.now(),
-            ping_request,
-        );
+        let result = udp_output_sender.send_ping_response(self.time_source.now(), ping_request);
 
         match result {
             Ok(()) => ControlFlow::Continue(()),
@@ -76,7 +112,7 @@ impl<Game: GameTrait> UdpInput<Game> {
     }
 }
 
-impl<Game: GameTrait> HandleUdpRead for UdpInput<Game> {
+impl<Game: GameTrait> HandleUdpRead for ReadHandler<Game> {
     fn on_read(&mut self, peer_addr: SocketAddr, buf: &[u8]) -> ControlFlow<()> {
         let (remote_udp_peer_option, message_option) =
             self.udp_handler.on_udp_packet(buf, peer_addr);
