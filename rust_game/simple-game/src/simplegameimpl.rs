@@ -2,7 +2,6 @@ use crate::{
     SimpleInput,
     SimpleInputEvent,
     SimpleInputEventHandler,
-    SimpleServerInput,
     SimpleState,
     TimeDuration,
 };

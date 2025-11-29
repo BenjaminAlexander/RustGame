@@ -14,7 +14,7 @@ use crate::{
 pub struct StartTime(TimeValue);
 
 impl StartTime {
-    pub(super) fn new(start_time: TimeValue) -> Self {
+    pub fn new(start_time: TimeValue) -> Self {
         Self(start_time)
     }
 

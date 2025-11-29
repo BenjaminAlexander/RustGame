@@ -131,7 +131,6 @@ impl<Game: GameTrait> ClientCore<Game> {
             ClientManagerObserver::<Game>::new(self.render_receiver_sender.clone());
 
         let manager = Manager::new(
-            self.factory.get_time_source().clone(),
             client_manager_observer,
             initial_information.clone(),
         );
@@ -145,8 +144,7 @@ impl<Game: GameTrait> ClientCore<Game> {
         let game_timer = GameTimerScheduler::client_new(
             self.factory.get_time_source().clone(),
             &mut idle_timer_service,
-            *initial_information.get_server_config().get_start_time(),
-            *initial_information.get_server_config().get_frame_duration(),
+            initial_information.get_server_config(),
             Game::CLOCK_AVERAGE_SIZE,
             ClientGameTimerObserver::new(self.sender.clone()),
         );
@@ -270,30 +268,13 @@ impl<Game: GameTrait> ClientCore<Game> {
                 warn!("Failed to send InputMessage to Udp Output");
                 return EventHandleResult::StopThread;
             }
-
-            let drop_step = if frame_index.usize() > running_state.input_grace_period_frames {
-                frame_index - running_state.input_grace_period_frames
-            } else {
-                FrameIndex::zero()
-            };
-
+            
             let send_result = running_state
                 .manager_sender
-                .send_event(ManagerEvent::DropStepsBeforeEvent(drop_step.usize()));
+                .send_event(ManagerEvent::AdvanceFrameIndex(frame_index));
 
             if send_result.is_err() {
-                warn!("Failed to send Drop Steps to Game Manager");
-                return EventHandleResult::StopThread;
-            }
-
-            //TODO: message or last message or next?
-            //TODO: define strict and consistent rules for how real time relates to ticks, input deadlines and display states
-            let send_result = running_state
-                .manager_sender
-                .send_event(ManagerEvent::SetRequestedStepEvent(frame_index.usize() + 1));
-
-            if send_result.is_err() {
-                warn!("Failed to send Request Step to Game Manager");
+                warn!("Failed to send FrameIndex to Game Manager");
                 return EventHandleResult::StopThread;
             }
 

@@ -13,63 +13,36 @@ use commons::real_time::{
     EventHandleResult,
     HandleEvent,
     ReceiveMetaData,
-    TimeSource,
 };
-use commons::time::{
-    TimeDuration,
-    TimeValue,
-};
-use log::{
-    trace,
-    warn,
-};
+use log::trace;
 use std::collections::vec_deque::VecDeque;
 
 pub enum ManagerEvent<Game: GameTrait> {
-    //TODO: can drop steps and requested Step be combined?
-    DropStepsBeforeEvent(usize),
-    SetRequestedStepEvent(usize),
+    AdvanceFrameIndex(FrameIndex),
     InputEvent(InputMessage<Game>),
     StateEvent(StateMessage<Game>),
 }
 
 pub struct Manager<ManagerObserver: ManagerObserverTrait> {
-    time_source: TimeSource,
-    //TODO: rename
-    drop_steps_before: FrameIndex,
-    //TODO: send requested state immediately if available
-    //TODO: rename
-    requested_step: FrameIndex,
+    current_frame_index: FrameIndex,
     initial_information: InitialInformation<ManagerObserver::Game>,
     //New states at the back, old at the front (index 0)
     steps: VecDeque<Step<ManagerObserver::Game>>,
     manager_observer: ManagerObserver,
-
-    //metrics
-    time_of_last_state_receive: TimeValue,
-    time_of_last_input_receive: TimeValue,
 }
 
 impl<ManagerObserver: ManagerObserverTrait> Manager<ManagerObserver> {
     pub fn new(
-        time_source: TimeSource,
         manager_observer: ManagerObserver,
         initial_information: InitialInformation<ManagerObserver::Game>,
     ) -> Self {
         let state = initial_information.get_state().clone();
 
         let mut manager = Self {
+            current_frame_index: FrameIndex::zero(),
             initial_information,
             steps: VecDeque::new(),
-            requested_step: FrameIndex::zero(),
-            drop_steps_before: FrameIndex::zero(),
             manager_observer,
-
-            //metrics
-            time_of_last_state_receive: time_source.now(),
-            time_of_last_input_receive: time_source.now(),
-
-            time_source,
         };
 
         manager.handle_state_message(StateMessage::new(FrameIndex::zero(), state));
@@ -113,25 +86,9 @@ impl<ManagerObserver: ManagerObserverTrait> Manager<ManagerObserver> {
         }
     }
 
-    //TODO: rename step
-    fn drop_steps_before(&mut self, step: FrameIndex) -> EventHandleResult {
-        trace!("Setting drop_steps_before: {:?}", step);
-        self.drop_steps_before = step;
-        if self.requested_step < self.drop_steps_before {
-            warn!(
-                "Requested step is earlier than drop step: {:?}",
-                self.drop_steps_before
-            );
-            return self.set_requested_step(step);
-        }
-
-        return EventHandleResult::TryForNextEvent;
-    }
-
-    //TODO: rename step
-    fn set_requested_step(&mut self, step: FrameIndex) -> EventHandleResult {
-        trace!("Setting requested_step: {:?}", step);
-        self.requested_step = step;
+    fn advance_frame_index(&mut self, frame_index: FrameIndex) -> EventHandleResult {
+        trace!("Setting current frame index: {:?}", frame_index);
+        self.current_frame_index = frame_index;
         return EventHandleResult::TryForNextEvent;
     }
 
@@ -150,28 +107,25 @@ impl<ManagerObserver: ManagerObserverTrait> Manager<ManagerObserver> {
     }
 
     fn on_none_pending(&mut self) -> EventHandleResult {
-        let now = self.time_source.now();
-        let duration_since_last_state = now.duration_since(&self.time_of_last_state_receive);
-        if duration_since_last_state > TimeDuration::ONE_SECOND {
-            //warn!("It has been {:?} since last state message was received. Now: {:?}, Last: {:?}",
-            //      duration_since_last_state, now, self.time_of_last_state_receive);
-        }
-
         if self.steps.is_empty() {
             trace!("Steps is empty");
             return EventHandleResult::WaitForNextEvent;
         }
+
+        let last_open_frame_index = self.initial_information
+            .get_server_config()
+            .get_last_open_frame_index(self.current_frame_index);
 
         let mut current: usize = 0;
 
         self.send_messages(current);
 
         while self.steps[current].are_inputs_complete(&self.initial_information)
-            || self.steps[current].get_step_index() < self.requested_step
+            || self.steps[current].get_step_index() <= self.current_frame_index
         {
             let next = current + 1;
             let should_drop_current =
-                current == 0 && self.steps[current].get_step_index() < self.drop_steps_before;
+                current == 0 && self.steps[current].get_step_index() < last_open_frame_index;
 
             self.get_state(self.steps[current].get_step_index() + 1);
 
@@ -219,7 +173,6 @@ impl<ManagerObserver: ManagerObserverTrait> Manager<ManagerObserver> {
     ) -> EventHandleResult {
         if let Some(step) = self.get_state(input_message.get_frame_index()) {
             step.set_input(input_message);
-            self.time_of_last_input_receive = self.time_source.now();
         }
         return EventHandleResult::TryForNextEvent;
     }
@@ -229,9 +182,6 @@ impl<ManagerObserver: ManagerObserverTrait> Manager<ManagerObserver> {
         state_message: StateMessage<ManagerObserver::Game>,
     ) -> EventHandleResult {
         self.handle_state_message(state_message);
-
-        self.time_of_last_state_receive = self.time_source.now();
-
         return EventHandleResult::TryForNextEvent;
     }
 }
@@ -242,9 +192,7 @@ impl<ManagerObserver: ManagerObserverTrait> HandleEvent for Manager<ManagerObser
 
     fn on_event(&mut self, _: ReceiveMetaData, event: Self::Event) -> EventHandleResult {
         match event {
-            //TODO: rename step
-            ManagerEvent::DropStepsBeforeEvent(step) => self.drop_steps_before(FrameIndex::from(step)),
-            ManagerEvent::SetRequestedStepEvent(step) => self.set_requested_step(FrameIndex::from(step)),
+            ManagerEvent::AdvanceFrameIndex(frame_index) => self.advance_frame_index(frame_index),
             ManagerEvent::InputEvent(input_message) => self.on_input_message(input_message),
             ManagerEvent::StateEvent(state_message) => self.on_state_message(state_message),
         }
