@@ -1,4 +1,4 @@
-use crate::gamemanager::ManagerObserverTrait;
+use crate::gamemanager::{ManagerObserverTrait, StateMessageType};
 use crate::interface::RenderReceiverMessage;
 use crate::messaging::StateMessage;
 use crate::server::udpoutput::UdpOutput;
@@ -27,24 +27,27 @@ impl<Game: GameTrait> ManagerObserverTrait for ServerManagerObserver<Game> {
 
     const IS_SERVER: bool = true;
 
-    fn on_step_message(&self, step_message: StateMessage<Game>) {
-        let send_result = self
-            .render_receiver_sender
-            .send(RenderReceiverMessage::StepMessage(step_message));
+    fn on_step_message(&self, message_type: StateMessageType, state_message: StateMessage<Game>) {
 
-        //TODO: handle without panic
-        if send_result.is_err() {
-            panic!("Failed to send StepMessage to Render Receiver");
-        }
-    }
-
-    fn on_completed_step(&self, state_message: StateMessage<Game>) {
-        for udp_output in self.udp_outputs.iter() {
-            let send_result = udp_output.send_completed_step(state_message.clone());
+        if message_type.is_changed() {
+            let send_result = self
+                .render_receiver_sender
+                .send(RenderReceiverMessage::StepMessage(state_message.clone()));
 
             //TODO: handle without panic
             if send_result.is_err() {
-                panic!("Failed to send CompletedStep to UdpOutput");
+                panic!("Failed to send StepMessage to Render Receiver");
+            }
+        }
+
+        if message_type.is_authoritative() {
+            for udp_output in self.udp_outputs.iter() {
+                let send_result = udp_output.send_completed_step(state_message.clone());
+
+                //TODO: handle without panic
+                if send_result.is_err() {
+                    panic!("Failed to send CompletedStep to UdpOutput");
+                }
             }
         }
     }

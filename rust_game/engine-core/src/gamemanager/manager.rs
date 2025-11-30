@@ -1,6 +1,6 @@
 use crate::game_time::FrameIndex;
 use crate::gamemanager::step::Step;
-use crate::gamemanager::ManagerObserverTrait;
+use crate::gamemanager::{ManagerObserverTrait, StateMessageType};
 use crate::interface::{
     GameTrait,
     InitialInformation,
@@ -96,13 +96,13 @@ impl<ManagerObserver: ManagerObserverTrait> Manager<ManagerObserver> {
         let changed_message_option = self.steps[step_index].get_changed_message();
         if changed_message_option.is_some() {
             self.manager_observer
-                .on_step_message(changed_message_option.unwrap().clone());
+                .on_step_message(StateMessageType::NonAuthoritativeComputed, changed_message_option.unwrap().clone());
         }
 
         let complete_message_option = self.steps[step_index].get_complete_message();
         if complete_message_option.is_some() {
             self.manager_observer
-                .on_completed_step(complete_message_option.as_ref().unwrap().clone());
+                .on_step_message(StateMessageType::AuthoritativeComputed, complete_message_option.as_ref().unwrap().clone());
         }
     }
 
