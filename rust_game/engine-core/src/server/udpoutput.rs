@@ -164,6 +164,7 @@ impl<Game: GameTrait> EventHandler<Game> {
     ) -> EventHandleResult {
         let time_in_queue = receive_meta_data.get_send_meta_data().get_time_sent();
 
+        //TODO: it might be a good idea to move this into the manager
         if self.last_state_sequence.is_none()
             || self.last_state_sequence.as_ref().unwrap() <= &state_message.get_frame_index()
         {

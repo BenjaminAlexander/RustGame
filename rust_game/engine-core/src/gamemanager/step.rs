@@ -1,7 +1,6 @@
 use log::warn;
 
 use crate::game_time::FrameIndex;
-use crate::gamemanager::stepmessage::StepMessage;
 use crate::interface::{
     GameTrait,
     UpdateArg,
@@ -94,7 +93,7 @@ impl<Game: GameTrait> Step<Game> {
     }
 
     pub fn set_final_state(&mut self, state_message: StateMessage<Game>) {
-        let new_state = state_message.get_state();
+        let new_state = state_message.take_state();
         let mut has_changed = false;
 
         if let Some(old_state) = match &self.state {
@@ -211,7 +210,7 @@ impl<Game: GameTrait> Step<Game> {
         }
     }
 
-    pub fn get_changed_message(&mut self) -> Option<StepMessage<Game>> {
+    pub fn get_changed_message(&mut self) -> Option<StateMessage<Game>> {
         if let Some((state, need_to_send_as_changed)) = match &mut self.state {
             StateHolder::None => None,
             StateHolder::Deserialized {
@@ -231,7 +230,7 @@ impl<Game: GameTrait> Step<Game> {
             if *need_to_send_as_changed {
                 *need_to_send_as_changed = false;
 
-                return Some(StepMessage::new(self.frame_index, state.clone()));
+                return Some(StateMessage::new(self.frame_index, state.clone()));
             }
         }
 

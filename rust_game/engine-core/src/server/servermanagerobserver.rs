@@ -1,7 +1,4 @@
-use crate::gamemanager::{
-    ManagerObserverTrait,
-    StepMessage,
-};
+use crate::gamemanager::ManagerObserverTrait;
 use crate::interface::RenderReceiverMessage;
 use crate::messaging::StateMessage;
 use crate::server::udpoutput::UdpOutput;
@@ -30,7 +27,7 @@ impl<Game: GameTrait> ManagerObserverTrait for ServerManagerObserver<Game> {
 
     const IS_SERVER: bool = true;
 
-    fn on_step_message(&self, step_message: StepMessage<Game>) {
+    fn on_step_message(&self, step_message: StateMessage<Game>) {
         let send_result = self
             .render_receiver_sender
             .send(RenderReceiverMessage::StepMessage(step_message));
