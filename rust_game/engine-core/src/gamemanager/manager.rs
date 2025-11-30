@@ -1,6 +1,6 @@
 use crate::game_time::FrameIndex;
 use crate::gamemanager::step::Step;
-use crate::gamemanager::{ManagerObserverTrait, StateMessageType};
+use crate::gamemanager::ManagerObserverTrait;
 use crate::interface::{
     GameTrait,
     InitialInformation,
@@ -92,20 +92,6 @@ impl<ManagerObserver: ManagerObserverTrait> Manager<ManagerObserver> {
         return EventHandleResult::TryForNextEvent;
     }
 
-    fn send_messages(&mut self, step_index: usize) {
-        let changed_message_option = self.steps[step_index].get_changed_message();
-        if changed_message_option.is_some() {
-            self.manager_observer
-                .on_step_message(StateMessageType::NonAuthoritativeComputed, changed_message_option.unwrap().clone());
-        }
-
-        let complete_message_option = self.steps[step_index].get_complete_message();
-        if complete_message_option.is_some() {
-            self.manager_observer
-                .on_step_message(StateMessageType::AuthoritativeComputed, complete_message_option.as_ref().unwrap().clone());
-        }
-    }
-
     fn on_none_pending(&mut self) -> EventHandleResult {
         if self.steps.is_empty() {
             trace!("Steps is empty");
@@ -118,7 +104,7 @@ impl<ManagerObserver: ManagerObserverTrait> Manager<ManagerObserver> {
 
         let mut current: usize = 0;
 
-        self.send_messages(current);
+        self.steps[current].send_messages(&self.manager_observer);
 
         while self.steps[current].are_inputs_complete(&self.initial_information)
             || self.steps[current].get_step_index() <= self.current_frame_index
@@ -150,7 +136,7 @@ impl<ManagerObserver: ManagerObserverTrait> Manager<ManagerObserver> {
                 self.steps[next].mark_as_complete();
             }
 
-            self.send_messages(current);
+            self.steps[current].send_messages(&self.manager_observer);
 
             if should_drop_current {
                 self.steps[next].mark_as_complete();
@@ -162,7 +148,7 @@ impl<ManagerObserver: ManagerObserverTrait> Manager<ManagerObserver> {
             }
         }
 
-        self.send_messages(current);
+        self.steps[current].send_messages(&self.manager_observer);
 
         return EventHandleResult::WaitForNextEvent;
     }

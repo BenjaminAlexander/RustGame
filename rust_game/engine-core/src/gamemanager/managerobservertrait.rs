@@ -4,6 +4,7 @@ use crate::messaging::{
 };
 
 /// This enum describes the provenance of the state in the [`StateMessage`]
+#[derive(Debug)]
 pub enum StateMessageType {
     /// The state has been computed or re-computed with incomplete information, 
     /// making it non-authoritative
@@ -30,9 +31,9 @@ impl StateMessageType {
 
     pub fn is_changed(&self) -> bool {
         match self {
-            StateMessageType::NonAuthoritativeComputed => false,
-            StateMessageType::AuthoritativeComputed => false,
-            StateMessageType::AuthoritativeTimeout => true,
+            StateMessageType::NonAuthoritativeComputed => true,
+            StateMessageType::AuthoritativeComputed => true,
+            StateMessageType::AuthoritativeTimeout => false,
         }
     }
 }

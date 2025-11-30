@@ -24,7 +24,7 @@ impl<Game: GameTrait> ManagerObserverTrait for ClientManagerObserver<Game> {
 
     fn on_step_message(&self, message_type: StateMessageType, step_message: StateMessage<Game>) {
 
-        if message_type.is_changed() {
+        if !message_type.is_changed() {
             return;
         }
 

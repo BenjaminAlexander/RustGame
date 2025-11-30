@@ -1,6 +1,7 @@
 use log::warn;
 
 use crate::game_time::FrameIndex;
+use crate::gamemanager::{ManagerObserverTrait, StateMessageType};
 use crate::interface::{
     GameTrait,
     UpdateArg,
@@ -251,5 +252,18 @@ impl<Game: GameTrait> Step<Game> {
             }
         }
         return None;
+    }
+        
+    //TODO: get rid of this
+    pub fn send_messages(&mut self, manager_observer: &impl ManagerObserverTrait<Game = Game>) {
+        let changed_message_option = self.get_changed_message();
+        if changed_message_option.is_some() {
+            manager_observer.on_step_message(StateMessageType::NonAuthoritativeComputed, changed_message_option.unwrap().clone());
+        }
+
+        let complete_message_option = self.get_complete_message();
+        if complete_message_option.is_some() {
+            manager_observer.on_step_message(StateMessageType::AuthoritativeComputed, complete_message_option.as_ref().unwrap().clone());
+        }
     }
 }
