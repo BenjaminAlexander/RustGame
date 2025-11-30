@@ -14,7 +14,7 @@ use commons::real_time::{
     HandleEvent,
     ReceiveMetaData,
 };
-use log::trace;
+use log::{trace, warn};
 use std::collections::vec_deque::VecDeque;
 
 pub enum ManagerEvent<Game: GameTrait> {
@@ -93,10 +93,8 @@ impl<ManagerObserver: ManagerObserverTrait> Manager<ManagerObserver> {
     }
 
     fn on_none_pending(&mut self) -> EventHandleResult {
-        if self.steps.is_empty() {
-            trace!("Steps is empty");
-            return EventHandleResult::WaitForNextEvent;
-        }
+        // Expand Frame queue to hold up current + 1
+        self.get_state(self.current_frame_index.next());
 
         let last_open_frame_index = self.initial_information
             .get_server_config()
@@ -106,14 +104,11 @@ impl<ManagerObserver: ManagerObserverTrait> Manager<ManagerObserver> {
 
         self.steps[current].send_messages(&self.manager_observer);
 
-        while self.steps[current].are_inputs_complete(&self.initial_information)
-            || self.steps[current].get_step_index() <= self.current_frame_index
-        {
+        while current < self.steps.len() - 1 {
             let next = current + 1;
+
             let should_drop_current =
                 current == 0 && self.steps[current].get_step_index() < last_open_frame_index;
-
-            self.get_state(self.steps[current].get_step_index() + 1);
 
             trace!(
                 "Trying update current: {:?}, next: {:?}",
