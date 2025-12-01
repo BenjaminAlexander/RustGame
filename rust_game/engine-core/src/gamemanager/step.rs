@@ -1,3 +1,5 @@
+use std::mem::take;
+
 use log::warn;
 
 use crate::game_time::FrameIndex;
@@ -5,24 +7,22 @@ use crate::interface::{
     GameTrait,
     UpdateArg,
 };
-use crate::messaging::{
-    InputMessage,
-    StateMessage,
-};
+use crate::messaging::InputMessage;
 use crate::InitialInformation;
 
 pub struct Step<Game: GameTrait> {
     frame_index: FrameIndex,
-    state: StateHolder<Game>,
+    state: StateHolder<Game::State>,
     inputs: Vec<Input<Game::ClientInput>>,
     input_count: usize,
     need_to_compute_next_state: bool,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Default)]
 pub enum Input<T> {
     /// Pending signifies that an input from a client isn't yet known but may
     /// become known in the future.
+    #[default]
     Pending,
 
     /// The Input has been received from the client which is the authoritative source
@@ -33,17 +33,12 @@ pub enum Input<T> {
     AuthoritativeMissing,
 }
 
-pub enum StateHolder<Game: GameTrait> {
+#[derive(Default)]
+pub enum StateHolder<T> {
+    #[default]
     None,
-    Deserialized {
-        state: Game::State,
-    },
-    ComputedIncomplete {
-        state: Game::State,
-    },
-    ComputedComplete {
-        state: Game::State,
-    },
+    Authoritative(T),
+    NonAuthoritative(T),
 }
 
 impl<Game: GameTrait> Step<Game> {
@@ -83,108 +78,66 @@ impl<Game: GameTrait> Step<Game> {
         self.input_count == self.inputs.len()
     }
 
-    pub fn set_final_state(&mut self, state_message: StateMessage<Game>) {
-        let new_state = state_message.take_state();
-        let mut has_changed = false;
-
-        if let Some(old_state) = match &self.state {
-            StateHolder::None => None,
-            StateHolder::Deserialized { state, .. } => Some(state),
-            StateHolder::ComputedIncomplete { state, .. } => Some(state),
-            StateHolder::ComputedComplete { state, .. } => Some(state),
-        } {
-            let old_buf = rmp_serde::to_vec(old_state).unwrap();
-            let new_buf = rmp_serde::to_vec(&new_state).unwrap();
-
-            if old_buf.len() != new_buf.len() {
-                has_changed = true;
-            } else {
-                for i in 0..old_buf.len() {
-                    if !old_buf[i].eq(&new_buf[i]) {
-                        has_changed = true;
-                        break;
-                    }
-                }
-            }
-        } else {
-            has_changed = true;
+    pub fn set_state(&mut self, state: Game::State, is_authoritative: bool) {
+        match self.state {
+            StateHolder::None | StateHolder::NonAuthoritative(_) => {
+                self.state = if is_authoritative {
+                    StateHolder::Authoritative(state)
+                } else {
+                    StateHolder::NonAuthoritative(state)
+                };
+                
+                self.need_to_compute_next_state = true;
+            },
+            StateHolder::Authoritative(_) => { 
+                // No-op, ignore the new state if this one is already authoritative
+            },
         }
-
-        self.state = StateHolder::Deserialized {
-            state: new_state,
-        };
-
-        if has_changed {
-            self.need_to_compute_next_state = true;
-        }
-
-        //info!("Set final Step: {:?}", self.step_index);
     }
 
     pub fn calculate_next_state(
-        &self,
+        &mut self,
         initial_information: &InitialInformation<Game>,
-    ) -> (Game::State, StateHolder<Game>) {
-        if let Some(state) = match &self.state {
-            StateHolder::None => None,
-            StateHolder::Deserialized { state, .. } => Some(state),
-            StateHolder::ComputedIncomplete { state, .. } => Some(state),
-            StateHolder::ComputedComplete { state, .. } => Some(state),
-        } {
-            let arg = UpdateArg::new(initial_information, self.frame_index, state, &self.inputs);
-
-            let next_state = Game::get_next_state(&arg);
-
-            if self.are_inputs_complete() {
-                return (next_state.clone(), StateHolder::ComputedComplete {
-                    state: next_state,
-                });
-            } else {
-                return (next_state.clone(), StateHolder::ComputedIncomplete {
-                    state: next_state,
-                });
-            }
-        } else {
-            panic!("Shouldn't try to compute from missing state");
-            //return StateHolder::None;
+    ) -> Option<(Game::State, bool)> {
+        if !self.need_to_compute_next_state {
+            return None;
         }
+
+        let (state, is_authoritative) = match &self.state {
+            StateHolder::None => {
+                warn!("Tried to compute next state from a missing state");
+                return None;
+            },
+            StateHolder::Authoritative(state) => (state, true),
+            StateHolder::NonAuthoritative(state) => (state, false),
+        };
+
+        let is_next_state_authoritative = self.are_inputs_complete() && is_authoritative;
+        
+        let arg = UpdateArg::new(initial_information, self.frame_index, state, &self.inputs);
+
+        let next_state = Game::get_next_state(&arg);
+
+        self.need_to_compute_next_state = false;
+
+        Some((next_state, is_next_state_authoritative))
     }
 
     pub fn need_to_compute_next_state(&self) -> bool {
         return self.need_to_compute_next_state;
     }
 
-    pub fn mark_as_calculation_not_needed(&mut self) {
-        self.need_to_compute_next_state = false;
-    }
-
-    pub fn set_calculated_state(&mut self, state_holder: StateHolder<Game>) {
-        self.need_to_compute_next_state = true;
-        self.state = state_holder;
-    }
-
     pub fn mark_as_complete(&mut self) {
-        if let StateHolder::ComputedIncomplete {
-            state
-        } = &self.state
-        {
-            self.state = StateHolder::ComputedComplete {
-                state: state.clone(),
-            };
-        }
+        self.state = match take(&mut self.state) {
+            StateHolder::None => StateHolder::None,
+            StateHolder::Authoritative(state) => StateHolder::Authoritative(state),
+            StateHolder::NonAuthoritative(state) => StateHolder::Authoritative(state),
+        };
     }
 
     //TODO: rename
     pub fn get_step_index(&self) -> FrameIndex {
         return self.frame_index;
-    }
-
-    pub fn is_state_deserialized(&self) -> bool {
-        if let StateHolder::Deserialized { .. } = self.state {
-            return true;
-        } else {
-            return false;
-        }
     }
 
     pub fn is_state_none(&self) -> bool {

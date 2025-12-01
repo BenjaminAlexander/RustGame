@@ -85,7 +85,7 @@ impl<ManagerObserver: ManagerObserverTrait> Manager<ManagerObserver> {
 
     fn handle_state_message(&mut self, state_message: StateMessage<ManagerObserver::Game>) {
         if let Some(step) = self.get_state(state_message.get_frame_index()) {
-            step.set_final_state(state_message);
+            step.set_state(state_message.take_state(), true);
         }
     }
 
@@ -119,33 +119,28 @@ impl<ManagerObserver: ManagerObserverTrait> Manager<ManagerObserver> {
 
             let are_inputs_complete = self.steps[current].are_inputs_complete();
 
-            if (ManagerObserver::IS_SERVER || !self.steps[next].is_state_deserialized())
-                && (self.steps[current].need_to_compute_next_state()
-                    || (should_drop_current && self.steps[next].is_state_none()))
-            {
-                let (state, next_state) =
-                    self.steps[current].calculate_next_state(&self.initial_information);
+            if self.steps[current].need_to_compute_next_state() || (should_drop_current && self.steps[next].is_state_none()) {
+                if let Some((state, is_authoritative)) =
+                    self.steps[current].calculate_next_state(&self.initial_information) {
 
-                let state_provenance = if are_inputs_complete {
-                    StateMessageType::AuthoritativeComputed
-                } else {
-                    StateMessageType::NonAuthoritativeComputed
-                };
+                    let state_provenance = if are_inputs_complete {
+                        StateMessageType::AuthoritativeComputed
+                    } else {
+                        StateMessageType::NonAuthoritativeComputed
+                    };
 
-                self.manager_observer.on_step_message(
-                    state_provenance, 
-                    StateMessage::new( self.steps[current].get_step_index().next(), state)
-                );
+                    self.manager_observer.on_step_message(
+                        state_provenance, 
+                        StateMessage::new( self.steps[current].get_step_index().next(), state.clone())
+                    );
 
-                self.steps[next].set_calculated_state(next_state);
+                    self.steps[next].set_state(state, is_authoritative);
+                }
             }
 
-            self.steps[current].mark_as_calculation_not_needed();
 
-            if self.steps[current].are_inputs_complete() {
-                self.steps[next].mark_as_complete();
-            }
 
+            //TODO: drop steps
             if should_drop_current {
                 self.steps[next].mark_as_complete();
 
@@ -156,6 +151,18 @@ impl<ManagerObserver: ManagerObserverTrait> Manager<ManagerObserver> {
             }
         }
 
+        //TODO: check if this step is authoritative from timeout
+        if ManagerObserver::IS_SERVER {
+            loop {
+                if self.steps.len() <= 2 {
+                    break;
+                }
+
+                let first_frame = &self.steps[0];
+
+            }
+        }
+        
         return EventHandleResult::WaitForNextEvent;
     }
 
@@ -169,6 +176,7 @@ impl<ManagerObserver: ManagerObserverTrait> Manager<ManagerObserver> {
         return EventHandleResult::TryForNextEvent;
     }
 
+    //TODO: remove?
     fn on_state_message(
         &mut self,
         state_message: StateMessage<ManagerObserver::Game>,
