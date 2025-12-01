@@ -60,7 +60,7 @@ impl<Game: GameTrait> Step<Game> {
             state: StateHolder::None,
             inputs,
             input_count: 0,
-            need_to_compute_next_state: false,
+            need_to_compute_next_state: true,
         };
     }
 
@@ -135,7 +135,7 @@ impl<Game: GameTrait> Step<Game> {
     pub fn calculate_next_state(
         &self,
         initial_information: &InitialInformation<Game>,
-    ) -> StateHolder<Game> {
+    ) -> (Game::State, StateHolder<Game>) {
         if let Some(state) = match &self.state {
             StateHolder::None => None,
             StateHolder::Deserialized { state, .. } => Some(state),
@@ -147,19 +147,20 @@ impl<Game: GameTrait> Step<Game> {
             let next_state = Game::get_next_state(&arg);
 
             if self.are_inputs_complete(initial_information) {
-                return StateHolder::ComputedComplete {
+                return (next_state.clone(), StateHolder::ComputedComplete {
                     state: next_state,
                     need_to_send_as_changed: true,
                     need_to_send_as_complete: true,
-                };
+                });
             } else {
-                return StateHolder::ComputedIncomplete {
+                return (next_state.clone(), StateHolder::ComputedIncomplete {
                     state: next_state,
                     need_to_send_as_changed: true,
-                };
+                });
             }
         } else {
-            return StateHolder::None;
+            panic!("Shouldn't try to compute from missing state");
+            //return StateHolder::None;
         }
     }
 
@@ -252,18 +253,5 @@ impl<Game: GameTrait> Step<Game> {
             }
         }
         return None;
-    }
-        
-    //TODO: get rid of this
-    pub fn send_messages(&mut self, manager_observer: &impl ManagerObserverTrait<Game = Game>) {
-        let changed_message_option = self.get_changed_message();
-        if changed_message_option.is_some() {
-            manager_observer.on_step_message(StateMessageType::NonAuthoritativeComputed, changed_message_option.unwrap().clone());
-        }
-
-        let complete_message_option = self.get_complete_message();
-        if complete_message_option.is_some() {
-            manager_observer.on_step_message(StateMessageType::AuthoritativeComputed, complete_message_option.as_ref().unwrap().clone());
-        }
     }
 }

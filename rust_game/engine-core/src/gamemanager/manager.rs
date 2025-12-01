@@ -1,6 +1,6 @@
 use crate::game_time::FrameIndex;
 use crate::gamemanager::step::Step;
-use crate::gamemanager::ManagerObserverTrait;
+use crate::gamemanager::{ManagerObserverTrait, StateMessageType};
 use crate::interface::{
     GameTrait,
     InitialInformation,
@@ -14,7 +14,7 @@ use commons::real_time::{
     HandleEvent,
     ReceiveMetaData,
 };
-use log::{trace, warn};
+use log::trace;
 use std::collections::vec_deque::VecDeque;
 
 pub enum ManagerEvent<Game: GameTrait> {
@@ -102,8 +102,6 @@ impl<ManagerObserver: ManagerObserverTrait> Manager<ManagerObserver> {
 
         let mut current: usize = 0;
 
-        self.steps[current].send_messages(&self.manager_observer);
-
         while current < self.steps.len() - 1 {
             let next = current + 1;
 
@@ -116,12 +114,26 @@ impl<ManagerObserver: ManagerObserverTrait> Manager<ManagerObserver> {
                 self.steps[next].get_step_index()
             );
 
+            let are_inputs_complete = self.steps[current].are_inputs_complete(&self.initial_information);
+
             if (ManagerObserver::IS_SERVER || !self.steps[next].is_state_deserialized())
                 && (self.steps[current].need_to_compute_next_state()
                     || (should_drop_current && self.steps[next].is_state_none()))
             {
-                let next_state =
+                let (state, next_state) =
                     self.steps[current].calculate_next_state(&self.initial_information);
+
+                let state_provenance = if are_inputs_complete {
+                    StateMessageType::AuthoritativeComputed
+                } else {
+                    StateMessageType::NonAuthoritativeComputed
+                };
+
+                self.manager_observer.on_step_message(
+                    state_provenance, 
+                    StateMessage::new( self.steps[current].get_step_index().next(), state)
+                );
+
                 self.steps[next].set_calculated_state(next_state);
             }
 
@@ -130,8 +142,6 @@ impl<ManagerObserver: ManagerObserverTrait> Manager<ManagerObserver> {
             if self.steps[current].are_inputs_complete(&self.initial_information) {
                 self.steps[next].mark_as_complete();
             }
-
-            self.steps[current].send_messages(&self.manager_observer);
 
             if should_drop_current {
                 self.steps[next].mark_as_complete();
@@ -142,8 +152,6 @@ impl<ManagerObserver: ManagerObserverTrait> Manager<ManagerObserver> {
                 current = current + 1;
             }
         }
-
-        self.steps[current].send_messages(&self.manager_observer);
 
         return EventHandleResult::WaitForNextEvent;
     }
