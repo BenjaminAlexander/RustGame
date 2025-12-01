@@ -22,11 +22,7 @@ impl<Game: GameTrait> ManagerObserverTrait for ClientManagerObserver<Game> {
 
     const IS_SERVER: bool = false;
 
-    fn on_step_message(&self, message_type: StateMessageType, step_message: StateMessage<Game>) {
-
-        if !message_type.is_changed() {
-            return;
-        }
+    fn on_step_message(&self, _message_type: StateMessageType, step_message: StateMessage<Game>) {
 
         let send_result = self
             .render_receiver_sender

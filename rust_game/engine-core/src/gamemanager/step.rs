@@ -35,6 +35,8 @@ pub enum Input<T> {
 
 #[derive(Default)]
 pub enum StateHolder<T> {
+
+    //TODO: maybe get rid of the concept of an empty state holder
     #[default]
     None,
     Authoritative(T),
@@ -74,25 +76,36 @@ impl<Game: GameTrait> Step<Game> {
         }
     }
 
+    pub fn timeout_remaining_inputs(&mut self) {
+        for input in &mut self.inputs {
+            if let Input::Pending = input {
+                self.input_count = self.input_count + 1;
+                *input = Input::AuthoritativeMissing;
+                self.need_to_compute_next_state = true;
+                //TODO: send notification to clients
+                warn!("Timing out a player input")
+            }
+        }
+    }
+
     pub fn are_inputs_complete(&self) -> bool {
         self.input_count == self.inputs.len()
     }
 
     pub fn set_state(&mut self, state: Game::State, is_authoritative: bool) {
-        match self.state {
-            StateHolder::None | StateHolder::NonAuthoritative(_) => {
-                self.state = if is_authoritative {
-                    StateHolder::Authoritative(state)
-                } else {
-                    StateHolder::NonAuthoritative(state)
-                };
-                
-                self.need_to_compute_next_state = true;
-            },
-            StateHolder::Authoritative(_) => { 
-                // No-op, ignore the new state if this one is already authoritative
-            },
+
+        if self.is_state_authoritative() {
+            // No-op, ignore the new state if this one is already authoritative
+            return;
         }
+
+        self.state = if is_authoritative {
+            StateHolder::Authoritative(state)
+        } else {
+            StateHolder::NonAuthoritative(state)
+        };
+        
+        self.need_to_compute_next_state = true;
     }
 
     pub fn calculate_next_state(
@@ -105,8 +118,7 @@ impl<Game: GameTrait> Step<Game> {
 
         let (state, is_authoritative) = match &self.state {
             StateHolder::None => {
-                warn!("Tried to compute next state from a missing state");
-                return None;
+                panic!("Tried to compute next state from a missing state");
             },
             StateHolder::Authoritative(state) => (state, true),
             StateHolder::NonAuthoritative(state) => (state, false),
@@ -123,28 +135,16 @@ impl<Game: GameTrait> Step<Game> {
         Some((next_state, is_next_state_authoritative))
     }
 
-    pub fn need_to_compute_next_state(&self) -> bool {
-        return self.need_to_compute_next_state;
-    }
-
-    pub fn mark_as_complete(&mut self) {
-        self.state = match take(&mut self.state) {
-            StateHolder::None => StateHolder::None,
-            StateHolder::Authoritative(state) => StateHolder::Authoritative(state),
-            StateHolder::NonAuthoritative(state) => StateHolder::Authoritative(state),
-        };
-    }
-
     //TODO: rename
     pub fn get_step_index(&self) -> FrameIndex {
         return self.frame_index;
     }
 
-    pub fn is_state_none(&self) -> bool {
-        if let StateHolder::None = self.state {
-            return true;
-        } else {
-            return false;
+    pub fn is_state_authoritative(&self) -> bool {
+        match self.state {
+            StateHolder::None => false,
+            StateHolder::Authoritative(_) => true,
+            StateHolder::NonAuthoritative(_) => false,
         }
     }
 }

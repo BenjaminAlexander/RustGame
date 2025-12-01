@@ -4,6 +4,8 @@ use crate::messaging::{
 };
 
 /// This enum describes the provenance of the state in the [`StateMessage`]
+/// TODO: rename this enum and its variants
+/// TODO: or should this type be replaced with a boolean
 #[derive(Debug)]
 pub enum StateMessageType {
     /// The state has been computed or re-computed with incomplete information, 
@@ -13,27 +15,14 @@ pub enum StateMessageType {
     /// The state has been computed or re-computed with complete information, 
     /// making it authoritative
     AuthoritativeComputed,
-
-    /// The state has become authoritative because time has expired for clients 
-    /// to submit inputs.  It has not been recomputed since the last time this 
-    /// state was contained in a message.
-    AuthoritativeTimeout,
 }
 
 impl StateMessageType {
+    //TODO: should this be removed?
     pub fn is_authoritative(&self) -> bool {
         match self {
             StateMessageType::NonAuthoritativeComputed => false,
             StateMessageType::AuthoritativeComputed => true,
-            StateMessageType::AuthoritativeTimeout => true,
-        }
-    }
-
-    pub fn is_changed(&self) -> bool {
-        match self {
-            StateMessageType::NonAuthoritativeComputed => true,
-            StateMessageType::AuthoritativeComputed => true,
-            StateMessageType::AuthoritativeTimeout => false,
         }
     }
 }

@@ -29,15 +29,13 @@ impl<Game: GameTrait> ManagerObserverTrait for ServerManagerObserver<Game> {
 
     fn on_step_message(&self, message_type: StateMessageType, state_message: StateMessage<Game>) {
 
-        if message_type.is_changed() {
-            let send_result = self
-                .render_receiver_sender
-                .send(RenderReceiverMessage::StepMessage(state_message.clone()));
+        let send_result = self
+            .render_receiver_sender
+            .send(RenderReceiverMessage::StepMessage(state_message.clone()));
 
-            //TODO: handle without panic
-            if send_result.is_err() {
-                panic!("Failed to send StepMessage to Render Receiver");
-            }
+        //TODO: handle without panic
+        if send_result.is_err() {
+            panic!("Failed to send StepMessage to Render Receiver");
         }
 
         if message_type.is_authoritative() {

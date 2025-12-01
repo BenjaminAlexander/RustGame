@@ -14,7 +14,7 @@ use commons::real_time::{
     HandleEvent,
     ReceiveMetaData,
 };
-use log::trace;
+use log::{error, trace, warn};
 use std::collections::vec_deque::VecDeque;
 
 pub enum ManagerEvent<Game: GameTrait> {
@@ -105,11 +105,10 @@ impl<ManagerObserver: ManagerObserverTrait> Manager<ManagerObserver> {
 
         let mut current: usize = 0;
 
+        trace!("Starting update loop");
+
         while current < self.steps.len() - 1 {
             let next = current + 1;
-
-            let should_drop_current =
-                current == 0 && self.steps[current].get_step_index() < last_open_frame_index;
 
             trace!(
                 "Trying update current: {:?}, next: {:?}",
@@ -117,50 +116,40 @@ impl<ManagerObserver: ManagerObserverTrait> Manager<ManagerObserver> {
                 self.steps[next].get_step_index()
             );
 
-            let are_inputs_complete = self.steps[current].are_inputs_complete();
+            if ManagerObserver::IS_SERVER && self.steps[current].get_step_index() < last_open_frame_index {
+                self.steps[current].timeout_remaining_inputs();
+            }
 
-            if self.steps[current].need_to_compute_next_state() || (should_drop_current && self.steps[next].is_state_none()) {
-                if let Some((state, is_authoritative)) =
-                    self.steps[current].calculate_next_state(&self.initial_information) {
+            if let Some((state, is_authoritative)) =
+                self.steps[current].calculate_next_state(&self.initial_information) {
 
-                    let state_provenance = if are_inputs_complete {
-                        StateMessageType::AuthoritativeComputed
-                    } else {
-                        StateMessageType::NonAuthoritativeComputed
-                    };
+                let state_provenance = if is_authoritative {
+                    StateMessageType::AuthoritativeComputed
+                } else {
+                    StateMessageType::NonAuthoritativeComputed
+                };
 
-                    self.manager_observer.on_step_message(
-                        state_provenance, 
-                        StateMessage::new( self.steps[current].get_step_index().next(), state.clone())
-                    );
+                self.manager_observer.on_step_message(
+                    state_provenance, 
+                    StateMessage::new( self.steps[current].get_step_index().next(), state.clone())
+                );
 
-                    self.steps[next].set_state(state, is_authoritative);
+                let next_frame_index = {
+                    let next_frame = &mut self.steps[next];
+                    next_frame.set_state(state, is_authoritative);
+                    next_frame.get_step_index()
+                };
+
+                if is_authoritative {
+                    while self.steps[0].get_step_index() < next_frame_index {
+                        let dropped = self.steps.pop_front().unwrap();
+                        warn!("Dropped {:?} since the following frame's state is authoritative", dropped.get_step_index());
+                    }
+                    current = 0;
+                    continue;
                 }
             }
-
-
-
-            //TODO: drop steps
-            if should_drop_current {
-                self.steps[next].mark_as_complete();
-
-                let dropped = self.steps.pop_front().unwrap();
-                trace!("Dropped step: {:?}", dropped.get_step_index());
-            } else {
-                current = current + 1;
-            }
-        }
-
-        //TODO: check if this step is authoritative from timeout
-        if ManagerObserver::IS_SERVER {
-            loop {
-                if self.steps.len() <= 2 {
-                    break;
-                }
-
-                let first_frame = &self.steps[0];
-
-            }
+            current = current + 1;
         }
         
         return EventHandleResult::WaitForNextEvent;
