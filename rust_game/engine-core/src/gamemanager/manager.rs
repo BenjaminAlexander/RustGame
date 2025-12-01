@@ -45,7 +45,10 @@ impl<ManagerObserver: ManagerObserverTrait> Manager<ManagerObserver> {
             manager_observer,
         };
 
-        manager.handle_state_message(StateMessage::new(FrameIndex::zero(), state));
+        // Set state for FrameIndex 0 and send it as authoritative
+        let message = StateMessage::new(FrameIndex::zero(), state);
+        manager.manager_observer.on_step_message(StateMessageType::AuthoritativeComputed, message.clone());
+        manager.handle_state_message(message);
 
         return manager;
     }
@@ -114,7 +117,7 @@ impl<ManagerObserver: ManagerObserverTrait> Manager<ManagerObserver> {
                 self.steps[next].get_step_index()
             );
 
-            let are_inputs_complete = self.steps[current].are_inputs_complete(&self.initial_information);
+            let are_inputs_complete = self.steps[current].are_inputs_complete();
 
             if (ManagerObserver::IS_SERVER || !self.steps[next].is_state_deserialized())
                 && (self.steps[current].need_to_compute_next_state()
@@ -139,7 +142,7 @@ impl<ManagerObserver: ManagerObserverTrait> Manager<ManagerObserver> {
 
             self.steps[current].mark_as_calculation_not_needed();
 
-            if self.steps[current].are_inputs_complete(&self.initial_information) {
+            if self.steps[current].are_inputs_complete() {
                 self.steps[next].mark_as_complete();
             }
 

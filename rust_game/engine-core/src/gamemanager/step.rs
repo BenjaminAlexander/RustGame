@@ -1,7 +1,6 @@
 use log::warn;
 
 use crate::game_time::FrameIndex;
-use crate::gamemanager::{ManagerObserverTrait, StateMessageType};
 use crate::interface::{
     GameTrait,
     UpdateArg,
@@ -38,16 +37,12 @@ pub enum StateHolder<Game: GameTrait> {
     None,
     Deserialized {
         state: Game::State,
-        need_to_send_as_changed: bool,
     },
     ComputedIncomplete {
         state: Game::State,
-        need_to_send_as_changed: bool,
     },
     ComputedComplete {
         state: Game::State,
-        need_to_send_as_changed: bool,
-        need_to_send_as_complete: bool,
     },
 }
 
@@ -84,13 +79,8 @@ impl<Game: GameTrait> Step<Game> {
         }
     }
 
-    //TODO: smells like this method should be somewhere else
-    pub fn are_inputs_complete(&self, initial_information: &InitialInformation<Game>) -> bool {
-        return match self.state {
-            StateHolder::Deserialized { .. } => true,
-            StateHolder::ComputedComplete { .. } => true,
-            _ => false,
-        } && self.input_count == initial_information.get_player_count();
+    pub fn are_inputs_complete(&self) -> bool {
+        self.input_count == self.inputs.len()
     }
 
     pub fn set_final_state(&mut self, state_message: StateMessage<Game>) {
@@ -122,7 +112,6 @@ impl<Game: GameTrait> Step<Game> {
 
         self.state = StateHolder::Deserialized {
             state: new_state,
-            need_to_send_as_changed: has_changed,
         };
 
         if has_changed {
@@ -146,16 +135,13 @@ impl<Game: GameTrait> Step<Game> {
 
             let next_state = Game::get_next_state(&arg);
 
-            if self.are_inputs_complete(initial_information) {
+            if self.are_inputs_complete() {
                 return (next_state.clone(), StateHolder::ComputedComplete {
                     state: next_state,
-                    need_to_send_as_changed: true,
-                    need_to_send_as_complete: true,
                 });
             } else {
                 return (next_state.clone(), StateHolder::ComputedIncomplete {
                     state: next_state,
-                    need_to_send_as_changed: true,
                 });
             }
         } else {
@@ -179,14 +165,11 @@ impl<Game: GameTrait> Step<Game> {
 
     pub fn mark_as_complete(&mut self) {
         if let StateHolder::ComputedIncomplete {
-            state,
-            need_to_send_as_changed,
+            state
         } = &self.state
         {
             self.state = StateHolder::ComputedComplete {
                 state: state.clone(),
-                need_to_send_as_changed: *need_to_send_as_changed,
-                need_to_send_as_complete: true,
             };
         }
     }
@@ -210,48 +193,5 @@ impl<Game: GameTrait> Step<Game> {
         } else {
             return false;
         }
-    }
-
-    pub fn get_changed_message(&mut self) -> Option<StateMessage<Game>> {
-        if let Some((state, need_to_send_as_changed)) = match &mut self.state {
-            StateHolder::None => None,
-            StateHolder::Deserialized {
-                state,
-                need_to_send_as_changed,
-            } => Some((state, need_to_send_as_changed)),
-            StateHolder::ComputedIncomplete {
-                state,
-                need_to_send_as_changed,
-            } => Some((state, need_to_send_as_changed)),
-            StateHolder::ComputedComplete {
-                state,
-                need_to_send_as_changed,
-                ..
-            } => Some((state, need_to_send_as_changed)),
-        } {
-            if *need_to_send_as_changed {
-                *need_to_send_as_changed = false;
-
-                return Some(StateMessage::new(self.frame_index, state.clone()));
-            }
-        }
-
-        return None;
-    }
-
-    pub fn get_complete_message(&mut self) -> Option<StateMessage<Game>> {
-        if let StateHolder::ComputedComplete {
-            state,
-            need_to_send_as_complete,
-            ..
-        } = &mut self.state
-        {
-            if *need_to_send_as_complete {
-                *need_to_send_as_complete = false;
-
-                return Some(StateMessage::new(self.frame_index, state.clone()));
-            }
-        }
-        return None;
     }
 }
