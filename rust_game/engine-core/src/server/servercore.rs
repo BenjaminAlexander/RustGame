@@ -475,9 +475,16 @@ impl<Game: GameTrait> ServerCoreEventHandler<Game> {
         let last_open_frame_index = running_core.server_config.get_last_open_frame_index(current_frame_index);
         
         if last_open_frame_index <= input_message.get_frame_index() {
+            let event = ManagerEvent::InputEvent { 
+                frame_index: input_message.get_frame_index(), 
+                player_index: input_message.get_player_index(), 
+                input: input_message.get_input().clone(),
+                is_authoritative: true
+            };
+
             let send_result = running_core
                 .manager_sender
-                .send_event(ManagerEvent::InputEvent(input_message.clone()));
+                .send_event(event);
 
             if send_result.is_err() {
                 warn!("Failed to send InputEvent to Game Manager");

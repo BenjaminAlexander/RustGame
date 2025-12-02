@@ -85,9 +85,17 @@ impl<Game: GameTrait> UdpInput<Game> {
                 //TODO: ignore input messages from this player
                 //info!("Input message: {:?}", input_message.get_step());
                 self.time_of_last_input_receive = time_received;
+
+                let event = ManagerEvent::InputEvent { 
+                    frame_index: input_message.get_frame_index(), 
+                    player_index: input_message.get_player_index(), 
+                    input: input_message.take_input(),
+                    is_authoritative: true
+                };
+
                 let send_result = self
                     .manager_sender
-                    .send_event(ManagerEvent::InputEvent(input_message.clone()));
+                    .send_event(event);
 
                 if send_result.is_err() {
                     warn!("Failed to send InputEvent to Game Manager");

@@ -36,7 +36,11 @@ impl<Game: GameTrait> InputMessage<Game> {
         self.player_index
     }
 
-    pub fn get_input(self) -> Game::ClientInput {
+    pub fn get_input(&self) -> &Game::ClientInput {
+        &self.input
+    }
+
+    pub fn take_input(self) -> Game::ClientInput {
         self.input
     }
 }

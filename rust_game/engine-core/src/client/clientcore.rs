@@ -242,9 +242,16 @@ impl<Game: GameTrait> ClientCore<Game> {
                 Game::get_input(&mut running_state.input_event_handler),
             );
 
+            let event = ManagerEvent::InputEvent { 
+                frame_index: message.get_frame_index(), 
+                player_index: message.get_player_index(), 
+                input: message.get_input().clone(),
+                is_authoritative: false
+            };
+
             let send_result = running_state
                 .manager_sender
-                .send_event(ManagerEvent::InputEvent(message.clone()));
+                .send_event(event);
 
             if send_result.is_err() {
                 warn!("Failed to send InputMessage to Game Manager");

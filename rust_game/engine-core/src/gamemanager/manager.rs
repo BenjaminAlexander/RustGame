@@ -6,7 +6,6 @@ use crate::interface::{
     InitialInformation,
 };
 use crate::messaging::{
-    InputMessage,
     StateMessage,
 };
 use commons::real_time::{
@@ -14,12 +13,17 @@ use commons::real_time::{
     HandleEvent,
     ReceiveMetaData,
 };
-use log::{error, trace, warn};
+use log::trace;
 use std::collections::vec_deque::VecDeque;
 
 pub enum ManagerEvent<Game: GameTrait> {
     AdvanceFrameIndex(FrameIndex),
-    InputEvent(InputMessage<Game>),
+    InputEvent{
+        frame_index: FrameIndex,
+        player_index: usize,
+        input: Game::ClientInput,
+        is_authoritative: bool
+    },
     StateEvent(StateMessage<Game>),
 }
 
@@ -110,6 +114,8 @@ impl<ManagerObserver: ManagerObserverTrait> Manager<ManagerObserver> {
                 self.steps[current].timeout_remaining_inputs();
             }
 
+            // TODO: maybe skip calculation if the next state is already authoritative. 
+            // This would require moving the check to drop states if the next one is authoritative outside the if block
             if let Some((state, is_authoritative)) =
                 self.steps[current].calculate_next_state(&self.initial_information) {
 
@@ -141,10 +147,13 @@ impl<ManagerObserver: ManagerObserverTrait> Manager<ManagerObserver> {
 
     fn on_input_message(
         &mut self,
-        input_message: InputMessage<ManagerObserver::Game>,
+        frame_index: FrameIndex,
+        player_index: usize, 
+        input: <<ManagerObserver as ManagerObserverTrait>::Game as GameTrait>::ClientInput,
+        is_authoritative: bool
     ) -> EventHandleResult {
-        if let Some(step) = self.get_state(input_message.get_frame_index()) {
-            step.set_input(input_message);
+        if let Some(step) = self.get_state(frame_index) {
+            step.set_input(player_index, input, is_authoritative);
         }
         return EventHandleResult::TryForNextEvent;
     }
@@ -166,7 +175,7 @@ impl<ManagerObserver: ManagerObserverTrait> HandleEvent for Manager<ManagerObser
     fn on_event(&mut self, _: ReceiveMetaData, event: Self::Event) -> EventHandleResult {
         match event {
             ManagerEvent::AdvanceFrameIndex(frame_index) => self.advance_frame_index(frame_index),
-            ManagerEvent::InputEvent(input_message) => self.on_input_message(input_message),
+            ManagerEvent::InputEvent { frame_index, player_index, input, is_authoritative } => self.on_input_message(frame_index, player_index, input, is_authoritative),
             ManagerEvent::StateEvent(state_message) => self.on_state_message(state_message),
         }
     }

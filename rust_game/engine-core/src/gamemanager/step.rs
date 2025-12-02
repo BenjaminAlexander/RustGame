@@ -1,5 +1,3 @@
-use std::mem::take;
-
 use log::warn;
 
 use crate::game_time::FrameIndex;
@@ -7,12 +5,11 @@ use crate::interface::{
     GameTrait,
     UpdateArg,
 };
-use crate::messaging::InputMessage;
 use crate::InitialInformation;
 
 pub struct Step<Game: GameTrait> {
     frame_index: FrameIndex,
-    state: StateHolder<Game::State>,
+    state: State<Game::State>,
     inputs: Vec<Input<Game::ClientInput>>,
     input_count: usize,
     need_to_compute_next_state: bool,
@@ -25,7 +22,12 @@ pub enum Input<T> {
     #[default]
     Pending,
 
-    /// The Input has been received from the client which is the authoritative source
+    /// The Input has been received from the local client.  This input can still 
+    /// potentially be rejected by the server if the client's message is dropped 
+    /// or is late.
+    NonAuthoritative(T),
+
+    /// The Input has been received from the sever as authoritative
     Authoritative(T),
 
     /// The client never submitted an input in a timely manner and the server
@@ -34,9 +36,7 @@ pub enum Input<T> {
 }
 
 #[derive(Default)]
-pub enum StateHolder<T> {
-
-    //TODO: maybe get rid of the concept of an empty state holder
+pub enum State<T> {
     #[default]
     None,
     Authoritative(T),
@@ -49,28 +49,39 @@ impl<Game: GameTrait> Step<Game> {
 
         return Self {
             frame_index: step_index,
-            state: StateHolder::None,
+            state: State::None,
             inputs,
             input_count: 0,
             need_to_compute_next_state: true,
         };
     }
 
-    pub fn set_input(&mut self, input_message: InputMessage<Game>) {
-        let index = input_message.get_player_index();
-
+    pub fn set_input(&mut self, player_index: usize, input: Game::ClientInput, is_authoritative: bool) {
         //TODO: make a way for the server to say a input is missing
         //let x = &mut self.inputs[index];
-        match self.inputs[index] {
-            Input::Pending => {
-                self.input_count = self.input_count + 1;
-                self.inputs[index] = Input::Authoritative(input_message.get_input());
+        match (&self.inputs[player_index], is_authoritative) {
+            (Input::Pending, false) => {
+                self.inputs[player_index] = Input::NonAuthoritative(input);
                 self.need_to_compute_next_state = true;
             }
-            Input::Authoritative(_) => {
-                warn!("Received a duplicate input, ignorning it")
+            (Input::Pending, true) => {
+                self.input_count = self.input_count + 1;
+                self.inputs[player_index] = Input::Authoritative(input);
+                self.need_to_compute_next_state = true;
             }
-            Input::AuthoritativeMissing => {
+            (Input::NonAuthoritative(_), false) => {
+                warn!("Received a duplicate input non-authoritative, ignorning it")
+            }
+            (Input::NonAuthoritative(_), true) => {
+                warn!("NonAuthoritative input made Authoritative");
+                self.input_count = self.input_count + 1;
+                self.inputs[player_index] = Input::Authoritative(input);
+                self.need_to_compute_next_state = true;
+            }
+            (Input::Authoritative(_), _) => {
+                warn!("Received a duplicate authoritative input, ignorning it")
+            }
+            (Input::AuthoritativeMissing, _) => {
                 warn!("Received a input where one has athoritatively been declared missing")
             }
         }
@@ -100,9 +111,9 @@ impl<Game: GameTrait> Step<Game> {
         }
 
         self.state = if is_authoritative {
-            StateHolder::Authoritative(state)
+            State::Authoritative(state)
         } else {
-            StateHolder::NonAuthoritative(state)
+            State::NonAuthoritative(state)
         };
         
         self.need_to_compute_next_state = true;
@@ -117,11 +128,11 @@ impl<Game: GameTrait> Step<Game> {
         }
 
         let (state, is_authoritative) = match &self.state {
-            StateHolder::None => {
+            State::None => {
                 panic!("Tried to compute next state from a missing state");
             },
-            StateHolder::Authoritative(state) => (state, true),
-            StateHolder::NonAuthoritative(state) => (state, false),
+            State::Authoritative(state) => (state, true),
+            State::NonAuthoritative(state) => (state, false),
         };
 
         let is_next_state_authoritative = self.are_inputs_complete() && is_authoritative;
@@ -142,9 +153,9 @@ impl<Game: GameTrait> Step<Game> {
 
     pub fn is_state_authoritative(&self) -> bool {
         match self.state {
-            StateHolder::None => false,
-            StateHolder::Authoritative(_) => true,
-            StateHolder::NonAuthoritative(_) => false,
+            State::None => false,
+            State::Authoritative(_) => true,
+            State::NonAuthoritative(_) => false,
         }
     }
 }

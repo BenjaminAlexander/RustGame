@@ -1,5 +1,4 @@
 use crate::game_time::{
-    FrameIndex,
     PingRequest,
     PingResponse,
 };
@@ -22,14 +21,9 @@ use commons::real_time::{
     ReceiveMetaData,
     TimeSource,
 };
-use commons::stats::RollingAverage;
-use commons::time::{
-    TimeDuration,
-    TimeValue,
-};
+use commons::time::TimeValue;
 use commons::utils::unit_error;
 use log::{
-    debug,
     error,
     info,
     warn,
@@ -109,14 +103,7 @@ struct EventHandler<Game: GameTrait> {
     socket: UdpSocket,
     remote_peer: Option<RemoteUdpPeer>,
     fragmenter: Fragmenter,
-    last_state_sequence: Option<FrameIndex>,
     phantom: PhantomData<Game>,
-
-    //metrics
-    time_in_queue_rolling_average: RollingAverage,
-    time_of_last_state_send: TimeValue,
-    time_of_last_input_send: TimeValue,
-    time_of_last_server_input_send: TimeValue,
 }
 
 impl<Game: GameTrait> EventHandler<Game> {
@@ -125,8 +112,6 @@ impl<Game: GameTrait> EventHandler<Game> {
         player_index: usize,
         socket: &UdpSocket,
     ) -> Result<Self, Error> {
-        let now = time_source.now();
-
         Ok(EventHandler {
             player_index,
             remote_peer: None,
@@ -134,15 +119,7 @@ impl<Game: GameTrait> EventHandler<Game> {
             socket: socket.try_clone()?,
             //TODO: make max datagram size more configurable
             fragmenter: Fragmenter::new(MAX_UDP_DATAGRAM_SIZE),
-            last_state_sequence: None,
             phantom: PhantomData,
-
-            //metrics
-            time_in_queue_rolling_average: RollingAverage::new(100),
-            time_of_last_state_send: now,
-            time_of_last_input_send: now,
-            time_of_last_server_input_send: now,
-
             time_source,
         })
     }
@@ -159,49 +136,19 @@ impl<Game: GameTrait> EventHandler<Game> {
 
     fn on_completed_step(
         &mut self,
-        receive_meta_data: ReceiveMetaData,
         state_message: StateMessage<Game>,
     ) -> EventHandleResult {
-        let time_in_queue = receive_meta_data.get_send_meta_data().get_time_sent();
-
-        //TODO: it might be a good idea to move this into the manager
-        if self.last_state_sequence.is_none()
-            || self.last_state_sequence.as_ref().unwrap() <= &state_message.get_frame_index()
-        {
-            self.last_state_sequence = Some(state_message.get_frame_index());
-            self.time_of_last_state_send = self.time_source.now();
-
-            let message = UdpToClientMessage::<Game>::StateMessage(state_message);
-            self.send_message(&message);
-
-            //info!("state_message");
-            self.log_time_in_queue(*time_in_queue);
-        }
-
+        let message = UdpToClientMessage::<Game>::StateMessage(state_message);
+        self.send_message(&message);
         return EventHandleResult::TryForNextEvent;
     }
 
     fn on_input_message(
         &mut self,
-        receive_meta_data: ReceiveMetaData,
         input_message: InputMessage<Game>,
     ) -> EventHandleResult {
-        let time_in_queue = receive_meta_data.get_send_meta_data().get_time_sent();
-
-        if self.player_index != input_message.get_player_index()
-            && (self.last_state_sequence.is_none()
-                || self.last_state_sequence.as_ref().unwrap() <= &input_message.get_frame_index())
-        {
-            self.time_of_last_input_send = self.time_source.now();
-
-            let message = UdpToClientMessage::<Game>::InputMessage(input_message);
-            self.send_message(&message);
-
-            //info!("input_message");
-            self.log_time_in_queue(*time_in_queue);
-        } else {
-            //info!("InputMessage dropped. Last state: {:?}", tcp_output.last_state_sequence);
-        }
+        let message = UdpToClientMessage::<Game>::InputMessage(input_message);
+        self.send_message(&message);
 
         return EventHandleResult::TryForNextEvent;
     }
@@ -216,23 +163,6 @@ impl<Game: GameTrait> EventHandler<Game> {
         match self.send_message(&ping_response) {
             ControlFlow::Continue(()) => EventHandleResult::TryForNextEvent,
             ControlFlow::Break(()) => EventHandleResult::StopThread,
-        }
-    }
-
-    //TODO: generalize this for all channels
-    fn log_time_in_queue(&mut self, time_in_queue: TimeValue) {
-        let now = self.time_source.now();
-        let duration_in_queue = now.duration_since(&time_in_queue);
-
-        self.time_in_queue_rolling_average
-            .add_value(duration_in_queue.as_secs_f64());
-        let average = self.time_in_queue_rolling_average.get_average();
-
-        if average > 500.0 {
-            warn!(
-                "High average duration in queue: {:?} in milliseconds",
-                average
-            );
         }
     }
 
@@ -276,33 +206,16 @@ impl<Game: GameTrait> HandleEvent for EventHandler<Game> {
 
     fn on_event(
         &mut self,
-        receive_meta_data: ReceiveMetaData,
+        _receive_meta_data: ReceiveMetaData,
         event: Self::Event,
     ) -> EventHandleResult {
-        let now = self.time_source.now();
-
-        // let duration_since_last_input = now.duration_since(self.time_of_last_input_send);
-        // if duration_since_last_input > TimeDuration::one_second() {
-        //     warn!("It has been {:?} since last input message was sent. Now: {:?}, Last: {:?}, Queue length: {:?}",
-        //           duration_since_last_input, now, self.time_of_last_input_send, self.input_queue.len());
-        // }
-
-        let duration_since_last_state = now.duration_since(&self.time_of_last_state_send);
-        if duration_since_last_state > TimeDuration::ONE_SECOND {
-            //TODO: this should probably be a warn when it happens less often
-            debug!(
-                "It has been {:?} since last state message was sent. Now: {:?}, Last: {:?}",
-                duration_since_last_state, now, self.time_of_last_state_send
-            );
-        }
-
         match event {
             Event::RemotePeer(remote_udp_peer) => self.on_remote_peer(remote_udp_peer),
             Event::SendInputMessage(input_message) => {
-                self.on_input_message(receive_meta_data, input_message)
+                self.on_input_message(input_message)
             }
             Event::SendCompletedStep(state_message) => {
-                self.on_completed_step(receive_meta_data, state_message)
+                self.on_completed_step(state_message)
             }
             Event::PingRequest {
                 time_received,
