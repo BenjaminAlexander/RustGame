@@ -1,6 +1,6 @@
 use commons::real_time::Sender;
 
-use crate::gamemanager::{ManagerObserverTrait, StateMessageType};
+use crate::gamemanager::ManagerObserverTrait;
 use crate::interface::RenderReceiverMessage;
 use crate::messaging::StateMessage;
 use crate::GameTrait;
@@ -22,7 +22,7 @@ impl<Game: GameTrait> ManagerObserverTrait for ClientManagerObserver<Game> {
 
     const IS_SERVER: bool = false;
 
-    fn on_step_message(&self, _message_type: StateMessageType, step_message: StateMessage<Game>) {
+    fn on_step_message(&self, _is_state_authoritative: bool, step_message: StateMessage<Game>) {
 
         let send_result = self
             .render_receiver_sender

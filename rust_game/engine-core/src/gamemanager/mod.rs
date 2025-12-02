@@ -3,7 +3,6 @@ pub use self::manager::{
     ManagerEvent,
 };
 pub use self::managerobservertrait::ManagerObserverTrait;
-pub use self::managerobservertrait::StateMessageType;
 pub use self::step::Input;
 
 mod manager;

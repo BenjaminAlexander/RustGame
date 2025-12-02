@@ -1,6 +1,6 @@
 use crate::game_time::FrameIndex;
 use crate::gamemanager::step::Step;
-use crate::gamemanager::{ManagerObserverTrait, StateMessageType};
+use crate::gamemanager::ManagerObserverTrait;
 use crate::interface::{
     GameTrait,
     InitialInformation,
@@ -47,7 +47,7 @@ impl<ManagerObserver: ManagerObserverTrait> Manager<ManagerObserver> {
 
         // Set state for FrameIndex 0 and send it as authoritative
         let message = StateMessage::new(FrameIndex::zero(), state);
-        manager.manager_observer.on_step_message(StateMessageType::AuthoritativeComputed, message.clone());
+        manager.manager_observer.on_step_message(true, message.clone());
         manager.handle_state_message(message);
 
         return manager;
@@ -59,18 +59,8 @@ impl<ManagerObserver: ManagerObserverTrait> Manager<ManagerObserver> {
             let step = Step::blank(step_index, self.initial_information.get_player_count());
             self.steps.push_back(step);
             return Some(&mut self.steps[0]);
-        } else if step_index <= self.steps[0].get_step_index() {
-            loop {
-                let zero_index = self.steps[0].get_step_index();
-                if zero_index == step_index {
-                    return Some(&mut self.steps[0]);
-                } else {
-                    self.steps.push_front(Step::blank(
-                        zero_index - 1,
-                        self.initial_information.get_player_count(),
-                    ))
-                }
-            }
+        } else if step_index < self.steps[0].get_step_index() {
+            return None;
         } else {
             let index_to_get = step_index.usize() - self.steps[0].get_step_index().usize();
             while self.steps.len() <= index_to_get {
@@ -123,14 +113,8 @@ impl<ManagerObserver: ManagerObserverTrait> Manager<ManagerObserver> {
             if let Some((state, is_authoritative)) =
                 self.steps[current].calculate_next_state(&self.initial_information) {
 
-                let state_provenance = if is_authoritative {
-                    StateMessageType::AuthoritativeComputed
-                } else {
-                    StateMessageType::NonAuthoritativeComputed
-                };
-
                 self.manager_observer.on_step_message(
-                    state_provenance, 
+                    is_authoritative, 
                     StateMessage::new( self.steps[current].get_step_index().next(), state.clone())
                 );
 
@@ -143,7 +127,7 @@ impl<ManagerObserver: ManagerObserverTrait> Manager<ManagerObserver> {
                 if is_authoritative {
                     while self.steps[0].get_step_index() < next_frame_index {
                         let dropped = self.steps.pop_front().unwrap();
-                        warn!("Dropped {:?} since the following frame's state is authoritative", dropped.get_step_index());
+                        trace!("Dropped {:?} since the following frame's state is authoritative", dropped.get_step_index());
                     }
                     current = 0;
                     continue;

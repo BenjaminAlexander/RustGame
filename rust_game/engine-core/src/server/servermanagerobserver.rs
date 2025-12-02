@@ -1,4 +1,4 @@
-use crate::gamemanager::{ManagerObserverTrait, StateMessageType};
+use crate::gamemanager::ManagerObserverTrait;
 use crate::interface::RenderReceiverMessage;
 use crate::messaging::StateMessage;
 use crate::server::udpoutput::UdpOutput;
@@ -27,7 +27,7 @@ impl<Game: GameTrait> ManagerObserverTrait for ServerManagerObserver<Game> {
 
     const IS_SERVER: bool = true;
 
-    fn on_step_message(&self, message_type: StateMessageType, state_message: StateMessage<Game>) {
+    fn on_step_message(&self, is_state_authoritative: bool, state_message: StateMessage<Game>) {
 
         let send_result = self
             .render_receiver_sender
@@ -38,7 +38,7 @@ impl<Game: GameTrait> ManagerObserverTrait for ServerManagerObserver<Game> {
             panic!("Failed to send StepMessage to Render Receiver");
         }
 
-        if message_type.is_authoritative() {
+        if is_state_authoritative {
             for udp_output in self.udp_outputs.iter() {
                 let send_result = udp_output.send_completed_step(state_message.clone());
 
