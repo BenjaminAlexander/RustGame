@@ -1,6 +1,6 @@
 use crate::game_time::PingRequest;
 use crate::messaging::{
-    InputMessage,
+    ToServerInputMessage,
     UdpToServerMessage,
 };
 use crate::server::udphandler::UdpHandler;
@@ -78,7 +78,7 @@ impl<Game: GameTrait> ReadHandler<Game> {
         };
     }
 
-    fn on_input_message(&mut self, input_message: InputMessage<Game>) -> ControlFlow<()> {
+    fn on_input_message(&mut self, input_message: ToServerInputMessage<Game>) -> ControlFlow<()> {
         match self.server_core.handle_input_message(input_message) {
             Ok(()) => ControlFlow::Continue(()),
             Err(()) => {

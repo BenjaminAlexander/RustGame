@@ -1,6 +1,7 @@
 use log::warn;
 
 use crate::game_time::FrameIndex;
+use crate::gamemanager::ManagerObserverTrait;
 use crate::interface::{
     GameTrait,
     UpdateArg,
@@ -64,7 +65,7 @@ impl<Game: GameTrait> Step<Game> {
                 self.inputs[player_index] = Input::NonAuthoritative(input);
                 self.need_to_compute_next_state = true;
             }
-            (Input::Pending, true) => {
+            (Input::Pending | Input::NonAuthoritative(_), true) => {
                 self.input_count = self.input_count + 1;
                 self.inputs[player_index] = Input::Authoritative(input);
                 self.need_to_compute_next_state = true;
@@ -72,29 +73,45 @@ impl<Game: GameTrait> Step<Game> {
             (Input::NonAuthoritative(_), false) => {
                 warn!("Received a duplicate input non-authoritative, ignorning it")
             }
-            (Input::NonAuthoritative(_), true) => {
-                warn!("NonAuthoritative input made Authoritative");
-                self.input_count = self.input_count + 1;
-                self.inputs[player_index] = Input::Authoritative(input);
-                self.need_to_compute_next_state = true;
-            }
-            (Input::Authoritative(_), _) => {
+            (Input::Authoritative(_), true | false) => {
                 warn!("Received a duplicate authoritative input, ignorning it")
             }
-            (Input::AuthoritativeMissing, _) => {
+            (Input::AuthoritativeMissing, true | false) => {
                 warn!("Received a input where one has athoritatively been declared missing")
             }
         }
     }
 
-    pub fn timeout_remaining_inputs(&mut self) {
-        for input in &mut self.inputs {
+
+    pub fn set_input_authoritative_missing(&mut self, player_index: usize) {
+        match &self.inputs[player_index] {
+            Input::NonAuthoritative(_) | Input::Pending => {
+                self.input_count = self.input_count + 1;
+                self.inputs[player_index] = Input::AuthoritativeMissing;
+                self.need_to_compute_next_state = true;
+                warn!("Step is authoritatively missing")
+            }
+            Input::Authoritative(_) => {
+                warn!("Received an authoritative missing for an input that has already been received as authoritative, ignorning it")
+            }
+            Input::AuthoritativeMissing => {
+                 warn!("Received a duplicate authoritative missing input, ignorning it")
+            }
+        }
+    }
+
+    pub fn timeout_remaining_inputs(&mut self, observer: &impl ManagerObserverTrait<Game = Game>) {
+        for (player_index, input) in &mut self.inputs.iter_mut().enumerate() {
             if let Input::Pending = input {
                 self.input_count = self.input_count + 1;
                 *input = Input::AuthoritativeMissing;
                 self.need_to_compute_next_state = true;
-                //TODO: send notification to clients
-                warn!("Timing out a player input")
+
+                //TODO: Make a way to timeout all of a player's inputs immediatly when they disconnect.
+
+                //TODO: remove warn
+                warn!("Timing out a player input");
+                observer.on_input_authoritatively_missing(self.frame_index, player_index);
             }
         }
     }

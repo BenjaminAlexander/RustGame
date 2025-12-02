@@ -21,7 +21,7 @@ use crate::interface::{
     InitialInformation,
     RenderReceiverMessage,
 };
-use crate::messaging::InputMessage;
+use crate::messaging::ToServerInputMessage;
 use commons::real_time::net::tcp::TcpReadHandlerBuilder;
 use commons::real_time::net::udp::UdpReadHandlerBuilder;
 use commons::real_time::timer_service::{
@@ -234,7 +234,7 @@ impl<Game: GameTrait> ClientCore<Game> {
         if let Some(ref mut running_state) = self.running_state {
             trace!("TimeMessage step_index: {:?}", frame_index);
 
-            let message = InputMessage::<Game>::new(
+            let message = ToServerInputMessage::<Game>::new(
                 //TODO: message or last message?
                 //TODO: define strict and consistent rules for how real time relates to ticks, input deadlines and display states
                 frame_index,

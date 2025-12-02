@@ -4,10 +4,7 @@ use crate::game_time::{
 };
 use crate::interface::GameTrait;
 use crate::messaging::{
-    Fragmenter,
-    InputMessage,
-    StateMessage,
-    UdpToClientMessage,
+    Fragmenter, StateMessage, ToClientInputMessage, UdpToClientMessage
 };
 use crate::server::remoteudppeer::RemoteUdpPeer;
 use commons::real_time::net::udp::UdpSocket;
@@ -76,7 +73,7 @@ impl<Game: GameTrait> UdpOutput<Game> {
         self.sender.send_event(event).map_err(unit_error)
     }
 
-    pub fn send_input_message(&self, input_message: InputMessage<Game>) -> Result<(), ()> {
+    pub fn send_input_message(&self, input_message: ToClientInputMessage<Game>) -> Result<(), ()> {
         let event = Event::SendInputMessage(input_message);
         self.sender.send_event(event).map_err(unit_error)
     }
@@ -93,7 +90,7 @@ enum Event<Game: GameTrait> {
         time_received: TimeValue,
         ping_request: PingRequest,
     },
-    SendInputMessage(InputMessage<Game>),
+    SendInputMessage(ToClientInputMessage<Game>),
     SendCompletedStep(StateMessage<Game>),
 }
 
@@ -145,7 +142,7 @@ impl<Game: GameTrait> EventHandler<Game> {
 
     fn on_input_message(
         &mut self,
-        input_message: InputMessage<Game>,
+        input_message: ToClientInputMessage<Game>,
     ) -> EventHandleResult {
         let message = UdpToClientMessage::<Game>::InputMessage(input_message);
         self.send_message(&message);

@@ -8,7 +8,7 @@ use crate::interface::{
     InitialInformation,
     RenderReceiverMessage,
 };
-use crate::messaging::InputMessage;
+use crate::messaging::ToServerInputMessage;
 use crate::server::clientaddress::ClientAddress;
 use crate::server::servermanagerobserver::ServerManagerObserver;
 use crate::server::tcpinput::TcpInput;
@@ -99,7 +99,7 @@ impl<Game: GameTrait> ServerCore<Game> {
             .map_err(unit_error)
     }
 
-    pub fn handle_input_message(&self, input_message: InputMessage<Game>) -> Result<(), ()> {
+    pub fn handle_input_message(&self, input_message: ToServerInputMessage<Game>) -> Result<(), ()> {
         self.sender
             .send_event(ServerCoreEvent::InputMessage(input_message))
             .map_err(unit_error)
@@ -123,7 +123,7 @@ enum ServerCoreEvent<Game: GameTrait> {
     StartGameEvent,
     TcpConnectionEvent(TcpStream, TcpReader),
     GameTimerTick,
-    InputMessage(InputMessage<Game>),
+    InputMessage(ToServerInputMessage<Game>),
 }
 
 struct ServerCoreEventHandler<Game: GameTrait> {
@@ -460,7 +460,7 @@ impl<Game: GameTrait> ServerCoreEventHandler<Game> {
     }
 
     //TODO: maybe change return type
-    fn on_input_message(&self, input_message: InputMessage<Game>) -> EventHandleResult {
+    fn on_input_message(&self, input_message: ToServerInputMessage<Game>) -> EventHandleResult {
         //TODO: is game started?
 
         let running_core = match &self.state {
@@ -491,8 +491,10 @@ impl<Game: GameTrait> ServerCoreEventHandler<Game> {
                 return EventHandleResult::StopThread;
             }
 
+            let to_client_message = input_message.to_client_message();
+
             for udp_output in running_core.udp_output_senders.iter() {
-                let send_result = udp_output.send_input_message(input_message.clone());
+                let send_result = udp_output.send_input_message(to_client_message.clone());
 
                 if send_result.is_err() {
                     warn!("Failed to send InputEvent to UdpOutput");

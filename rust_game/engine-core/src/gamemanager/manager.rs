@@ -13,7 +13,7 @@ use commons::real_time::{
     HandleEvent,
     ReceiveMetaData,
 };
-use log::trace;
+use log::{trace, warn};
 use std::collections::vec_deque::VecDeque;
 
 pub enum ManagerEvent<Game: GameTrait> {
@@ -23,6 +23,10 @@ pub enum ManagerEvent<Game: GameTrait> {
         player_index: usize,
         input: Game::ClientInput,
         is_authoritative: bool
+    },
+    AuthoritativeMissingInputEvent{
+        frame_index: FrameIndex,
+        player_index: usize,
     },
     StateEvent(StateMessage<Game>),
 }
@@ -111,7 +115,7 @@ impl<ManagerObserver: ManagerObserverTrait> Manager<ManagerObserver> {
             );
 
             if ManagerObserver::IS_SERVER && self.steps[current].get_step_index() < last_open_frame_index {
-                self.steps[current].timeout_remaining_inputs();
+                self.steps[current].timeout_remaining_inputs(&self.manager_observer);
             }
 
             // TODO: maybe skip calculation if the next state is already authoritative. 
@@ -158,6 +162,19 @@ impl<ManagerObserver: ManagerObserverTrait> Manager<ManagerObserver> {
         return EventHandleResult::TryForNextEvent;
     }
 
+    fn on_authoritative_missing_input_message(
+        &mut self,
+        frame_index: FrameIndex,
+        player_index: usize, 
+    ) -> EventHandleResult {
+        if ManagerObserver::IS_SERVER {
+            warn!("The server received an authoritative missing message, ignoring it");
+        } else if let Some(step) = self.get_state(frame_index) {
+            step.set_input_authoritative_missing(player_index);
+        }
+        return EventHandleResult::TryForNextEvent;
+    }
+
     //TODO: remove?
     fn on_state_message(
         &mut self,
@@ -176,7 +193,9 @@ impl<ManagerObserver: ManagerObserverTrait> HandleEvent for Manager<ManagerObser
         match event {
             ManagerEvent::AdvanceFrameIndex(frame_index) => self.advance_frame_index(frame_index),
             ManagerEvent::InputEvent { frame_index, player_index, input, is_authoritative } => self.on_input_message(frame_index, player_index, input, is_authoritative),
+            ManagerEvent::AuthoritativeMissingInputEvent { frame_index, player_index } => self.on_authoritative_missing_input_message(frame_index, player_index),
             ManagerEvent::StateEvent(state_message) => self.on_state_message(state_message),
+
         }
     }
 

@@ -6,8 +6,7 @@ use serde::{
 use crate::game_time::PingResponse;
 use crate::interface::GameTrait;
 use crate::messaging::{
-    InputMessage,
-    StateMessage,
+    StateMessage, ToClientInputMessage,
 };
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -15,6 +14,6 @@ use crate::messaging::{
 pub enum UdpToClientMessage<Game: GameTrait> {
     //TODO: see if these can be borrowed
     PingResponse(PingResponse),
-    InputMessage(InputMessage<Game>),
+    InputMessage(ToClientInputMessage<Game>),
     StateMessage(StateMessage<Game>),
 }

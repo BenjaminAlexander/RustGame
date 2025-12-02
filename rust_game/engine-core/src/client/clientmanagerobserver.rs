@@ -3,7 +3,7 @@ use commons::real_time::Sender;
 use crate::gamemanager::ManagerObserverTrait;
 use crate::interface::RenderReceiverMessage;
 use crate::messaging::StateMessage;
-use crate::GameTrait;
+use crate::{FrameIndex, GameTrait};
 
 pub struct ClientManagerObserver<Game: GameTrait> {
     render_receiver_sender: Sender<RenderReceiverMessage<Game>>,
@@ -33,4 +33,10 @@ impl<Game: GameTrait> ManagerObserverTrait for ClientManagerObserver<Game> {
             panic!("Failed to send StepMessage to render receiver");
         }
     }
+    
+    fn on_input_authoritatively_missing(&self, _: FrameIndex, _: usize) {
+        panic!("The client should never declare inputs authoritatively missing");
+    }
+
+    
 }

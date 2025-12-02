@@ -6,23 +6,22 @@ use serde::{
     Deserialize,
     Serialize,
 };
-use std::cmp::Ordering;
 
-#[derive(Serialize, Deserialize, Debug)]
-pub struct InputMessage<Game: GameTrait> {
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct ToServerInputMessage<Game: GameTrait> {
     frame_index: FrameIndex,
     player_index: usize,
     input: Game::ClientInput,
 }
 
-impl<Game: GameTrait> InputMessage<Game> {
+impl<Game: GameTrait> ToServerInputMessage<Game> {
     pub fn new(
-        sequence: FrameIndex,
+        frame_index: FrameIndex,
         player_index: usize,
         input: Game::ClientInput,
-    ) -> InputMessage<Game> {
-        InputMessage {
-            frame_index: sequence,
+    ) -> Self {
+        Self {
+            frame_index,
             player_index,
             input,
         }
@@ -43,37 +42,48 @@ impl<Game: GameTrait> InputMessage<Game> {
     pub fn take_input(self) -> Game::ClientInput {
         self.input
     }
+
+    pub fn to_client_message(self) -> ToClientInputMessage<Game> {
+        ToClientInputMessage::new(self.frame_index, self.player_index, Some(self.input))
+    }
 }
 
-impl<Game: GameTrait> Clone for InputMessage<Game> {
-    fn clone(&self) -> Self {
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct ToClientInputMessage<Game: GameTrait> {
+    frame_index: FrameIndex,
+    player_index: usize,
+
+    /// When this is None, the message means that the server has declared the input
+    /// authoritatively missing
+    input: Option<Game::ClientInput>,
+}
+
+impl<Game: GameTrait> ToClientInputMessage<Game> {
+    pub fn new(
+        frame_index: FrameIndex,
+        player_index: usize,
+        input: Option<Game::ClientInput>,
+    ) -> Self{
         Self {
-            frame_index: self.frame_index,
-            player_index: self.player_index,
-            input: self.input.clone(),
+            frame_index,
+            player_index,
+            input,
         }
     }
-}
 
-impl<Game: GameTrait> PartialEq for InputMessage<Game> {
-    fn eq(&self, other: &Self) -> bool {
-        self.frame_index.eq(&other.frame_index) && self.player_index.eq(&other.player_index)
+    pub fn get_frame_index(&self) -> FrameIndex {
+        self.frame_index
     }
-}
 
-impl<Game: GameTrait> Eq for InputMessage<Game> {}
-
-impl<Game: GameTrait> PartialOrd for InputMessage<Game> {
-    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
-        Some(self.cmp(&other))
+    pub fn get_player_index(&self) -> usize {
+        self.player_index
     }
-}
 
-impl<Game: GameTrait> Ord for InputMessage<Game> {
-    fn cmp(&self, other: &Self) -> Ordering {
-        match self.frame_index.cmp(&other.frame_index) {
-            Ordering::Equal => self.player_index.cmp(&other.player_index),
-            result => result,
-        }
+    pub fn get_input(&self) -> &Option<Game::ClientInput> {
+        &self.input
+    }
+
+    pub fn take_input(self) -> Option<Game::ClientInput> {
+        self.input
     }
 }

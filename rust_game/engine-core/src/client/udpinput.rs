@@ -15,12 +15,7 @@ use commons::real_time::{
     EventSender,
     TimeSource,
 };
-use commons::time::{
-    TimeDuration,
-    TimeValue,
-};
 use log::{
-    debug,
     error,
     warn,
 };
@@ -33,11 +28,6 @@ pub struct UdpInput<Game: GameTrait> {
     fragment_assembler: FragmentAssembler,
     core_sender: EventSender<ClientCoreEvent<Game>>,
     manager_sender: EventSender<ManagerEvent<Game>>,
-
-    //metrics
-    time_of_last_state_receive: TimeValue,
-    time_of_last_input_receive: TimeValue,
-    time_of_last_server_input_receive: TimeValue,
 }
 
 impl<Game: GameTrait> UdpInput<Game> {
@@ -46,19 +36,11 @@ impl<Game: GameTrait> UdpInput<Game> {
         core_sender: EventSender<ClientCoreEvent<Game>>,
         manager_sender: EventSender<ManagerEvent<Game>>,
     ) -> io::Result<Self> {
-        let now = time_source.now();
-
         return Ok(Self {
             //TODO: make this more configurable
             fragment_assembler: FragmentAssembler::new(time_source.clone(), 5),
             core_sender,
             manager_sender,
-
-            //metrics
-            time_of_last_state_receive: now,
-            time_of_last_input_receive: now,
-            time_of_last_server_input_receive: now,
-
             time_source,
         });
     }
@@ -78,19 +60,20 @@ impl<Game: GameTrait> UdpInput<Game> {
     }
 
     fn handle_received_message(&mut self, value: UdpToClientMessage<Game>) -> ControlFlow<()> {
-        let time_received = self.time_source.now();
-
         match value {
             UdpToClientMessage::InputMessage(input_message) => {
-                //TODO: ignore input messages from this player
-                //info!("Input message: {:?}", input_message.get_step());
-                self.time_of_last_input_receive = time_received;
 
-                let event = ManagerEvent::InputEvent { 
-                    frame_index: input_message.get_frame_index(), 
-                    player_index: input_message.get_player_index(), 
-                    input: input_message.take_input(),
-                    is_authoritative: true
+                let frame_index = input_message.get_frame_index();
+                let player_index = input_message.get_player_index();
+
+                let event = match input_message.take_input() {
+                    Some(input) => ManagerEvent::InputEvent { 
+                        frame_index, 
+                        player_index, 
+                        input, 
+                        is_authoritative: true 
+                    },
+                    None => ManagerEvent::AuthoritativeMissingInputEvent { frame_index, player_index },
                 };
 
                 let send_result = self
@@ -103,17 +86,7 @@ impl<Game: GameTrait> UdpInput<Game> {
                 }
             }
             UdpToClientMessage::StateMessage(state_message) => {
-                //info!("State message: {:?}", state_message.get_sequence());
 
-                let duration_since_last_state =
-                    time_received.duration_since(&self.time_of_last_state_receive);
-                if duration_since_last_state > TimeDuration::ONE_SECOND {
-                    //TODO: this should probably be a warn
-                    debug!("It has been {:?} since last state message was received. Now: {:?}, Last: {:?}",
-                            duration_since_last_state, time_received, self.time_of_last_state_receive);
-                }
-
-                self.time_of_last_state_receive = time_received;
                 let send_result = self
                     .manager_sender
                     .send_event(ManagerEvent::StateEvent(state_message));
