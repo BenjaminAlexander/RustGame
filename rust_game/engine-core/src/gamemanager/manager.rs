@@ -1,3 +1,4 @@
+use crate::Input;
 use crate::game_time::FrameIndex;
 use crate::gamemanager::step::Step;
 use crate::gamemanager::ManagerObserverTrait;
@@ -157,7 +158,11 @@ impl<ManagerObserver: ManagerObserverTrait> Manager<ManagerObserver> {
         is_authoritative: bool
     ) -> EventHandleResult {
         if let Some(step) = self.get_state(frame_index) {
-            step.set_input(player_index, input, is_authoritative);
+            let input = match is_authoritative {
+                true => Input::Authoritative(input),
+                false => Input::NonAuthoritative(input),
+            };
+            step.set_input(player_index, input);
         }
         return EventHandleResult::TryForNextEvent;
     }
@@ -170,7 +175,7 @@ impl<ManagerObserver: ManagerObserverTrait> Manager<ManagerObserver> {
         if ManagerObserver::IS_SERVER {
             warn!("The server received an authoritative missing message, ignoring it");
         } else if let Some(step) = self.get_state(frame_index) {
-            step.set_input_authoritative_missing(player_index);
+            step.set_input(player_index, Input::AuthoritativeMissing);
         }
         return EventHandleResult::TryForNextEvent;
     }
@@ -195,7 +200,6 @@ impl<ManagerObserver: ManagerObserverTrait> HandleEvent for Manager<ManagerObser
             ManagerEvent::InputEvent { frame_index, player_index, input, is_authoritative } => self.on_input_message(frame_index, player_index, input, is_authoritative),
             ManagerEvent::AuthoritativeMissingInputEvent { frame_index, player_index } => self.on_authoritative_missing_input_message(frame_index, player_index),
             ManagerEvent::StateEvent(state_message) => self.on_state_message(state_message),
-
         }
     }
 
