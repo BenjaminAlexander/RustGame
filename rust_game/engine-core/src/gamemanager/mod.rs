@@ -3,8 +3,8 @@ pub use self::manager::{
     ManagerEvent,
 };
 pub use self::managerobservertrait::ManagerObserverTrait;
-pub use self::step::Input;
+pub use self::frame::Input;
 
 mod manager;
 mod managerobservertrait;
-mod step;
+mod frame;

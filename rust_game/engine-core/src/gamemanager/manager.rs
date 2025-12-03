@@ -1,6 +1,6 @@
 use crate::Input;
 use crate::game_time::FrameIndex;
-use crate::gamemanager::step::Step;
+use crate::gamemanager::frame::Frame;
 use crate::gamemanager::ManagerObserverTrait;
 use crate::interface::{
     GameTrait,
@@ -36,7 +36,7 @@ pub struct Manager<ManagerObserver: ManagerObserverTrait> {
     current_frame_index: FrameIndex,
     initial_information: InitialInformation<ManagerObserver::Game>,
     //New states at the back, old at the front (index 0)
-    steps: VecDeque<Step<ManagerObserver::Game>>,
+    steps: VecDeque<Frame<ManagerObserver::Game>>,
     manager_observer: ManagerObserver,
 }
 
@@ -57,35 +57,35 @@ impl<ManagerObserver: ManagerObserverTrait> Manager<ManagerObserver> {
         // Set state for FrameIndex 0 and send it as authoritative
         let message = StateMessage::new(FrameIndex::zero(), state);
         manager.manager_observer.on_step_message(true, message.clone());
-        manager.handle_state_message(message);
+        manager.on_state_message(message);
 
         return manager;
     }
 
-    //TODO: rename step
-    fn get_state(&mut self, step_index: FrameIndex) -> Option<&mut Step<ManagerObserver::Game>> {
-        if self.steps.is_empty() {
-            let step = Step::blank(step_index, self.initial_information.get_player_count());
-            self.steps.push_back(step);
-            return Some(&mut self.steps[0]);
-        } else if step_index < self.steps[0].get_step_index() {
-            return None;
-        } else {
-            let index_to_get = step_index.usize() - self.steps[0].get_step_index().usize();
-            while self.steps.len() <= index_to_get {
-                self.steps.push_back(Step::blank(
-                    self.steps[self.steps.len() - 1].get_step_index() + 1,
-                    self.initial_information.get_player_count(),
-                ));
-            }
-            return Some(&mut self.steps[index_to_get]);
-        }
-    }
+    fn get_frame(&mut self, frame_index: FrameIndex) -> Option<&mut Frame<ManagerObserver::Game>> {
 
-    fn handle_state_message(&mut self, state_message: StateMessage<ManagerObserver::Game>) {
-        if let Some(step) = self.get_state(state_message.get_frame_index()) {
-            step.set_state(state_message.take_state(), true);
+        let first_frame = match self.steps.get(0) {
+            Some(frame) => frame,
+            None => {
+                let step = Frame::blank(frame_index, self.initial_information.get_player_count());
+                self.steps.push_back(step);
+                &self.steps[0]
+            },
+        };
+
+        if frame_index < first_frame.get_step_index() {
+            return None;
         }
+
+        let index_to_get = frame_index.usize() - first_frame.get_step_index().usize();
+
+        while self.steps.len() <= index_to_get {
+            self.steps.push_back(Frame::blank(
+                self.steps[self.steps.len() - 1].get_step_index() + 1,
+                self.initial_information.get_player_count(),
+            ));
+        }
+        return Some(&mut self.steps[index_to_get]);
     }
 
     fn advance_frame_index(&mut self, frame_index: FrameIndex) -> EventHandleResult {
@@ -96,55 +96,41 @@ impl<ManagerObserver: ManagerObserverTrait> Manager<ManagerObserver> {
 
     fn on_none_pending(&mut self) -> EventHandleResult {
         // Expand Frame queue to hold up current + 1
-        self.get_state(self.current_frame_index.next());
+        self.get_frame(self.current_frame_index.next());
 
         let last_open_frame_index = self.initial_information
             .get_server_config()
             .get_last_open_frame_index(self.current_frame_index);
 
-        let mut current: usize = 0;
+        let mut index: usize = 0;
 
-        trace!("Starting update loop");
+        while index < self.steps.len() - 1 {
+            let frame = &mut self.steps[index];
 
-        while current < self.steps.len() - 1 {
-            let next = current + 1;
-
-            trace!(
-                "Trying update current: {:?}, next: {:?}",
-                self.steps[current].get_step_index(),
-                self.steps[next].get_step_index()
-            );
-
-            if ManagerObserver::IS_SERVER && self.steps[current].get_step_index() < last_open_frame_index {
-                self.steps[current].timeout_remaining_inputs(&self.manager_observer);
+            if ManagerObserver::IS_SERVER && frame.get_step_index() < last_open_frame_index {
+                frame.timeout_remaining_inputs(&self.manager_observer);
             }
 
-            // TODO: maybe skip calculation if the next state is already authoritative. 
-            // This would require moving the check to drop states if the next one is authoritative outside the if block
-            if let Some((state, is_authoritative)) =
-                self.steps[current].calculate_next_state(&self.initial_information) {
+            if let Some((state, is_authoritative)) = frame.calculate_next_state(&self.initial_information) {
 
                 self.manager_observer.on_step_message(
                     is_authoritative, 
-                    StateMessage::new( self.steps[current].get_step_index().next(), state.clone())
+                    StateMessage::new( frame.get_step_index().next(), state.clone())
                 );
 
                 let next_frame_index = {
-                    let next_frame = &mut self.steps[next];
+                    let next_frame = &mut self.steps[index + 1];
                     next_frame.set_state(state, is_authoritative);
                     next_frame.get_step_index()
                 };
 
                 if is_authoritative {
-                    while self.steps[0].get_step_index() < next_frame_index {
-                        let dropped = self.steps.pop_front().unwrap();
-                        trace!("Dropped {:?} since the following frame's state is authoritative", dropped.get_step_index());
-                    }
-                    current = 0;
+                    self.drop_all_frames_before(next_frame_index);
+                    index = 0;
                     continue;
                 }
             }
-            current = current + 1;
+            index = index + 1;
         }
         
         return EventHandleResult::WaitForNextEvent;
@@ -157,7 +143,7 @@ impl<ManagerObserver: ManagerObserverTrait> Manager<ManagerObserver> {
         input: <<ManagerObserver as ManagerObserverTrait>::Game as GameTrait>::ClientInput,
         is_authoritative: bool
     ) -> EventHandleResult {
-        if let Some(step) = self.get_state(frame_index) {
+        if let Some(step) = self.get_frame(frame_index) {
             let input = match is_authoritative {
                 true => Input::Authoritative(input),
                 false => Input::NonAuthoritative(input),
@@ -174,19 +160,33 @@ impl<ManagerObserver: ManagerObserverTrait> Manager<ManagerObserver> {
     ) -> EventHandleResult {
         if ManagerObserver::IS_SERVER {
             warn!("The server received an authoritative missing message, ignoring it");
-        } else if let Some(step) = self.get_state(frame_index) {
+        } else if let Some(step) = self.get_frame(frame_index) {
             step.set_input(player_index, Input::AuthoritativeMissing);
         }
         return EventHandleResult::TryForNextEvent;
     }
 
-    //TODO: remove?
+    //TODO: there is the potential to maybe drop all frames before the frame that this state is from
     fn on_state_message(
         &mut self,
         state_message: StateMessage<ManagerObserver::Game>,
     ) -> EventHandleResult {
-        self.handle_state_message(state_message);
+
+        if let Some(step) = self.get_frame(state_message.get_frame_index()) {
+            step.set_state(state_message.take_state(), true);
+            //TODO: I think this should work but it causes funky rubberbanding
+            //Oh, duh, its because the main loop does stuff like call the observer.  This causes some stuff to not be sent to the observer
+            //Not that I think of it, there is the potential for inputs/states to the oldest frame to not go out the observer
+            //let frame_index = step.get_step_index();
+            //self.drop_all_frames_before(frame_index);
+        }
         return EventHandleResult::TryForNextEvent;
+    }
+
+    fn drop_all_frames_before(&mut self, frame_index: FrameIndex) {
+        while self.steps[0].get_step_index() < frame_index {
+            self.steps.pop_front().unwrap();
+        }
     }
 }
 

@@ -8,11 +8,11 @@ use crate::interface::{
 };
 use crate::InitialInformation;
 
-pub struct Step<Game: GameTrait> {
+pub struct Frame<Game: GameTrait> {
     frame_index: FrameIndex,
     state: State<Game::State>,
     inputs: Vec<Input<Game::ClientInput>>,
-    input_count: usize,
+    authoritative_input_count: usize,
     need_to_compute_next_state: bool,
 }
 
@@ -55,7 +55,7 @@ pub enum State<T> {
     NonAuthoritative(T),
 }
 
-impl<Game: GameTrait> Step<Game> {
+impl<Game: GameTrait> Frame<Game> {
     pub fn blank(step_index: FrameIndex, player_count: usize) -> Self {
         let inputs = vec![Input::Pending; player_count];
 
@@ -63,7 +63,7 @@ impl<Game: GameTrait> Step<Game> {
             frame_index: step_index,
             state: State::None,
             inputs,
-            input_count: 0,
+            authoritative_input_count: 0,
             need_to_compute_next_state: true,
         };
     }
@@ -77,7 +77,7 @@ impl<Game: GameTrait> Step<Game> {
         }
 
         if input.is_authoritative() {
-            self.input_count = self.input_count + 1;
+            self.authoritative_input_count = self.authoritative_input_count + 1;
         }
 
         *current_input = input;
@@ -87,7 +87,7 @@ impl<Game: GameTrait> Step<Game> {
     pub fn timeout_remaining_inputs(&mut self, observer: &impl ManagerObserverTrait<Game = Game>) {
         for (player_index, input) in &mut self.inputs.iter_mut().enumerate() {
             if let Input::Pending = input {
-                self.input_count = self.input_count + 1;
+                self.authoritative_input_count = self.authoritative_input_count + 1;
                 *input = Input::AuthoritativeMissing;
                 self.need_to_compute_next_state = true;
 
@@ -98,7 +98,7 @@ impl<Game: GameTrait> Step<Game> {
     }
 
     pub fn are_inputs_complete(&self) -> bool {
-        self.input_count == self.inputs.len()
+        self.authoritative_input_count == self.inputs.len()
     }
 
     pub fn set_state(&mut self, state: Game::State, is_authoritative: bool) {
