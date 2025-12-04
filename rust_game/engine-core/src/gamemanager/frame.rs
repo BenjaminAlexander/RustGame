@@ -7,6 +7,7 @@ use crate::interface::{
     UpdateArg,
 };
 use crate::InitialInformation;
+use crate::messaging::StateMessage;
 
 pub struct Frame<Game: GameTrait> {
     frame_index: FrameIndex,
@@ -101,7 +102,7 @@ impl<Game: GameTrait> Frame<Game> {
         self.authoritative_input_count == self.inputs.len()
     }
 
-    pub fn set_state(&mut self, state: Game::State, is_authoritative: bool) {
+    pub fn set_state(&mut self, state: Game::State, is_authoritative: bool, observer: &impl ManagerObserverTrait<Game = Game>) {
 
         if self.is_state_authoritative() {
             // No-op, ignore the new state if this one is already authoritative
@@ -109,12 +110,14 @@ impl<Game: GameTrait> Frame<Game> {
         }
 
         self.state = if is_authoritative {
-            State::Authoritative(state)
+            State::Authoritative(state.clone())
         } else {
-            State::NonAuthoritative(state)
+            State::NonAuthoritative(state.clone())
         };
         
         self.need_to_compute_next_state = true;
+
+        observer.on_step_message(is_authoritative, StateMessage::new(self.frame_index, state));
     }
 
     pub fn calculate_next_state(
@@ -144,8 +147,7 @@ impl<Game: GameTrait> Frame<Game> {
         Some((next_state, is_next_state_authoritative))
     }
 
-    //TODO: rename
-    pub fn get_step_index(&self) -> FrameIndex {
+    pub fn get_frame_index(&self) -> FrameIndex {
         return self.frame_index;
     }
 
