@@ -1,7 +1,7 @@
 use log::warn;
 
 use crate::game_time::FrameIndex;
-use crate::gamemanager::ManagerObserverTrait;
+use crate::frame_manager::ObserveFrames;
 use crate::interface::{
     GameTrait,
     UpdateArg,
@@ -85,7 +85,7 @@ impl<Game: GameTrait> Frame<Game> {
         self.need_to_compute_next_state = true;
     }
 
-    pub fn timeout_remaining_inputs(&mut self, observer: &impl ManagerObserverTrait<Game = Game>) {
+    pub fn timeout_remaining_inputs(&mut self, observer: &impl ObserveFrames<Game = Game>) {
         for (player_index, input) in &mut self.inputs.iter_mut().enumerate() {
             if let Input::Pending = input {
                 self.authoritative_input_count = self.authoritative_input_count + 1;
@@ -102,7 +102,7 @@ impl<Game: GameTrait> Frame<Game> {
         self.authoritative_input_count == self.inputs.len()
     }
 
-    pub fn set_state(&mut self, state: Game::State, is_authoritative: bool, observer: &impl ManagerObserverTrait<Game = Game>) {
+    pub fn set_state(&mut self, state: Game::State, is_authoritative: bool, observer: &impl ObserveFrames<Game = Game>) {
 
         if self.is_state_authoritative() {
             // No-op, ignore the new state if this one is already authoritative

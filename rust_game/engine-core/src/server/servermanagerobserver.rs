@@ -1,4 +1,4 @@
-use crate::gamemanager::ManagerObserverTrait;
+use crate::frame_manager::ObserveFrames;
 use crate::interface::RenderReceiverMessage;
 use crate::messaging::{StateMessage, ToClientInputMessage};
 use crate::server::udpoutput::UdpOutput;
@@ -22,7 +22,7 @@ impl<Game: GameTrait> ServerManagerObserver<Game> {
     }
 }
 
-impl<Game: GameTrait> ManagerObserverTrait for ServerManagerObserver<Game> {
+impl<Game: GameTrait> ObserveFrames for ServerManagerObserver<Game> {
     type Game = Game;
 
     const IS_SERVER: bool = true;

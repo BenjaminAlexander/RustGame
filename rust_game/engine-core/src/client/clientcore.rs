@@ -12,10 +12,7 @@ use crate::game_time::{
     FrameIndex,
     GameTimerScheduler,
 };
-use crate::gamemanager::{
-    Manager,
-    ManagerEvent,
-};
+use crate::frame_manager::FrameManager;
 use crate::interface::{
     GameTrait,
     InitialInformation,
@@ -67,7 +64,7 @@ pub struct ClientCore<Game: GameTrait> {
 
 //TODO: don't start client core before hello
 struct RunningState<Game: GameTrait> {
-    manager_sender: EventSender<ManagerEvent<Game>>,
+    frame_manager: FrameManager<Game>,
     input_event_handler: Game::ClientInputEventHandler,
     timer_service: TimerService<(), ClientGameTimerObserver<Game>>,
     game_timer: GameTimerScheduler,
@@ -130,14 +127,11 @@ impl<Game: GameTrait> ClientCore<Game> {
         let client_manager_observer =
             ClientManagerObserver::<Game>::new(self.render_receiver_sender.clone());
 
-        let manager = Manager::new(
-            client_manager_observer,
-            initial_information.clone(),
-        );
-
-        let manager_sender =
-            EventHandlerBuilder::new_thread(&self.factory, "ClientManager".to_string(), manager)
-                .unwrap();
+        let frame_manager = FrameManager::new(
+            &self.factory, 
+            client_manager_observer, 
+            initial_information.clone()
+        ).unwrap();
 
         let mut idle_timer_service = IdleTimerService::new();
 
@@ -163,7 +157,7 @@ impl<Game: GameTrait> ClientCore<Game> {
             UdpInput::<Game>::new(
                 self.factory.get_time_source().clone(),
                 self.sender.clone(),
-                manager_sender.clone(),
+                frame_manager.clone(),
             )
             .unwrap(),
         )
@@ -189,7 +183,7 @@ impl<Game: GameTrait> ClientCore<Game> {
             as usize;
 
         self.running_state = Some(RunningState {
-            manager_sender,
+            frame_manager,
             input_event_handler: Game::new_input_event_handler(),
             timer_service,
             game_timer,
@@ -242,16 +236,12 @@ impl<Game: GameTrait> ClientCore<Game> {
                 Game::get_input(&mut running_state.input_event_handler),
             );
 
-            let event = ManagerEvent::InputEvent { 
-                frame_index: message.get_frame_index(), 
-                player_index: message.get_player_index(), 
-                input: message.get_input().clone(),
-                is_authoritative: false
-            };
-
-            let send_result = running_state
-                .manager_sender
-                .send_event(event);
+            let send_result = running_state.frame_manager.insert_input(
+                message.get_frame_index(), 
+                message.get_player_index(), 
+                message.get_input().clone(), 
+                false
+            );
 
             if send_result.is_err() {
                 warn!("Failed to send InputMessage to Game Manager");
@@ -276,9 +266,7 @@ impl<Game: GameTrait> ClientCore<Game> {
                 return EventHandleResult::StopThread;
             }
             
-            let send_result = running_state
-                .manager_sender
-                .send_event(ManagerEvent::AdvanceFrameIndex(frame_index));
+            let send_result = running_state.frame_manager.advance_frame_index(frame_index);
 
             if send_result.is_err() {
                 warn!("Failed to send FrameIndex to Game Manager");

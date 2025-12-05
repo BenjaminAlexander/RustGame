@@ -5,7 +5,7 @@ use crate::messaging::{
 };
 
 //TODO: make a way for the observer to end execution on an unrecoverable error
-pub trait ManagerObserverTrait: 'static + Send {
+pub trait ObserveFrames: 'static + Send {
     type Game: GameTrait;
 
     const IS_SERVER: bool;

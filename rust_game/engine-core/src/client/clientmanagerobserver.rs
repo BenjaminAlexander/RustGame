@@ -1,6 +1,6 @@
 use commons::real_time::Sender;
 
-use crate::gamemanager::ManagerObserverTrait;
+use crate::frame_manager::ObserveFrames;
 use crate::interface::RenderReceiverMessage;
 use crate::messaging::StateMessage;
 use crate::{FrameIndex, GameTrait};
@@ -17,7 +17,7 @@ impl<Game: GameTrait> ClientManagerObserver<Game> {
     }
 }
 
-impl<Game: GameTrait> ManagerObserverTrait for ClientManagerObserver<Game> {
+impl<Game: GameTrait> ObserveFrames for ClientManagerObserver<Game> {
     type Game = Game;
 
     const IS_SERVER: bool = false;
@@ -36,7 +36,5 @@ impl<Game: GameTrait> ManagerObserverTrait for ClientManagerObserver<Game> {
     
     fn on_input_authoritatively_missing(&self, _: FrameIndex, _: usize) {
         panic!("The client should never declare inputs authoritatively missing");
-    }
-
-    
+    }    
 }

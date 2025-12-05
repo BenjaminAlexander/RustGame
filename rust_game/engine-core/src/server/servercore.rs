@@ -1,8 +1,5 @@
 use crate::game_time::GameTimerScheduler;
-use crate::gamemanager::{
-    Manager,
-    ManagerEvent,
-};
+use crate::frame_manager::FrameManager;
 use crate::interface::{
     GameTrait,
     InitialInformation,
@@ -154,7 +151,7 @@ struct RunningCore<Game: GameTrait> {
     game_timer: GameTimerScheduler,
     _udp_input: UdpInput,
     udp_output_senders: Vec<UdpOutput<Game>>,
-    manager_sender: EventSender<ManagerEvent<Game>>,
+    frame_manager: FrameManager<Game>,
 }
 
 impl<Game: GameTrait> HandleEvent for ServerCoreEventHandler<Game> {
@@ -272,14 +269,6 @@ impl<Game: GameTrait> ServerCoreEventHandler<Game> {
 
         let initial_state = Game::get_initial_state(self.tcp_outputs.len());
 
-        let server_manager_observer = ServerManagerObserver::<Game>::new(
-            udp_outputs.clone(),
-            self.render_receiver_sender.clone(),
-        );
-
-        let manager_builder =
-            EventHandlerBuilder::<Manager<ServerManagerObserver<Game>>>::new(&self.factory);
-
         let mut idle_timer_service = IdleTimerService::new();
 
         let mut game_timer = GameTimerScheduler::server_new(
@@ -345,15 +334,16 @@ impl<Game: GameTrait> ServerCoreEventHandler<Game> {
             }
         }
 
-        let manager_sender = manager_builder
-            .spawn_thread(
-                "ServerManager".to_string(),
-                Manager::new(
-                    server_manager_observer,
-                    server_initial_information.clone(),
-                ),
-            )
-            .unwrap();
+        let server_manager_observer = ServerManagerObserver::<Game>::new(
+            udp_outputs.clone(),
+            self.render_receiver_sender.clone(),
+        );
+
+        let frame_manager = FrameManager::new(
+            &self.factory, 
+            server_manager_observer, 
+            server_initial_information
+        ).unwrap();
 
         self.state = State::Running(RunningCore {
             server_config,
@@ -361,7 +351,7 @@ impl<Game: GameTrait> ServerCoreEventHandler<Game> {
             game_timer,
             _udp_input: udp_input,
             udp_output_senders: udp_outputs,
-            manager_sender,
+            frame_manager,
         });
 
         return self.send_new_frame_index(frame_index);
@@ -442,7 +432,7 @@ impl<Game: GameTrait> ServerCoreEventHandler<Game> {
             }
         };
 
-        if running_core.manager_sender.send_event(ManagerEvent::AdvanceFrameIndex(frame_index)).is_err() {
+        if running_core.frame_manager.advance_frame_index(frame_index).is_err() {
             warn!("Failed to send DropSteps to Game Manager");
             return EventHandleResult::StopThread;
         }
@@ -475,16 +465,13 @@ impl<Game: GameTrait> ServerCoreEventHandler<Game> {
         let last_open_frame_index = running_core.server_config.get_last_open_frame_index(current_frame_index);
         
         if last_open_frame_index <= input_message.get_frame_index() {
-            let event = ManagerEvent::InputEvent { 
-                frame_index: input_message.get_frame_index(), 
-                player_index: input_message.get_player_index(), 
-                input: input_message.get_input().clone(),
-                is_authoritative: true
-            };
 
-            let send_result = running_core
-                .manager_sender
-                .send_event(event);
+            let send_result = running_core.frame_manager.insert_input(
+                input_message.get_frame_index(), 
+                input_message.get_player_index(), 
+                input_message.get_input().clone(),
+                true
+            );
 
             if send_result.is_err() {
                 warn!("Failed to send InputEvent to Game Manager");

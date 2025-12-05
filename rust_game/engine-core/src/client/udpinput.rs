@@ -3,7 +3,7 @@ use crate::game_time::{
     CompletedPing,
     PingResponse,
 };
-use crate::gamemanager::ManagerEvent;
+use crate::frame_manager::FrameManager;
 use crate::messaging::{
     FragmentAssembler,
     MessageFragment,
@@ -27,20 +27,20 @@ pub struct UdpInput<Game: GameTrait> {
     time_source: TimeSource,
     fragment_assembler: FragmentAssembler,
     core_sender: EventSender<ClientCoreEvent<Game>>,
-    manager_sender: EventSender<ManagerEvent<Game>>,
+    frame_manager: FrameManager<Game>,
 }
 
 impl<Game: GameTrait> UdpInput<Game> {
     pub fn new(
         time_source: TimeSource,
         core_sender: EventSender<ClientCoreEvent<Game>>,
-        manager_sender: EventSender<ManagerEvent<Game>>,
+        frame_manager: FrameManager<Game>,
     ) -> io::Result<Self> {
         return Ok(Self {
             //TODO: make this more configurable
             fragment_assembler: FragmentAssembler::new(time_source.clone(), 5),
             core_sender,
-            manager_sender,
+            frame_manager,
             time_source,
         });
     }
@@ -66,32 +66,21 @@ impl<Game: GameTrait> UdpInput<Game> {
                 let frame_index = input_message.get_frame_index();
                 let player_index = input_message.get_player_index();
 
-                let event = match input_message.take_input() {
-                    Some(input) => ManagerEvent::InputEvent { 
-                        frame_index, 
-                        player_index, 
-                        input, 
-                        is_authoritative: true 
-                    },
-                    None => ManagerEvent::AuthoritativeMissingInputEvent { frame_index, player_index },
+                let result = match input_message.take_input() {
+                    Some(input) => self.frame_manager.insert_input(frame_index, player_index, input, true),
+                    None => self.frame_manager.insert_missing_input(frame_index, player_index),
                 };
 
-                let send_result = self
-                    .manager_sender
-                    .send_event(event);
-
-                if send_result.is_err() {
+                if result.is_err() {
                     warn!("Failed to send InputEvent to Game Manager");
                     return ControlFlow::Break(());
                 }
             }
             UdpToClientMessage::StateMessage(state_message) => {
 
-                let send_result = self
-                    .manager_sender
-                    .send_event(ManagerEvent::StateEvent(state_message));
+                let result = self.frame_manager.insert_state(state_message.get_frame_index(), state_message.take_state());
 
-                if send_result.is_err() {
+                if result.is_err() {
                     warn!("Failed to send StateMessage to Game Manager");
                     return ControlFlow::Break(());
                 }
