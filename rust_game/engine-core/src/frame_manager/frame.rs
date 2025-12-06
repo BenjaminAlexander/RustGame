@@ -1,12 +1,11 @@
 use log::warn;
 
-use crate::game_time::FrameIndex;
 use crate::frame_manager::ObserveFrames;
 use crate::interface::{
     GameTrait,
     UpdateArg,
 };
-use crate::InitialInformation;
+use crate::{FrameIndex, InitialInformation};
 use crate::messaging::StateMessage;
 
 pub struct Frame<Game: GameTrait> {

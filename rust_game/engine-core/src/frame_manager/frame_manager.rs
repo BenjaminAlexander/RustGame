@@ -1,5 +1,4 @@
-use crate::Input;
-use crate::game_time::FrameIndex;
+use crate::{FrameIndex, Input};
 use crate::frame_manager::frame::Frame;
 use crate::frame_manager::ObserveFrames;
 use crate::interface::{
@@ -14,13 +13,17 @@ use std::collections::vec_deque::VecDeque;
 use std::io::Error;
 
 /// The [FrameManager] manages [Frames](Frame) and calculates new 
-/// [states](GameTrait::State) from [inputs](Input) in another thread.
+/// [states](GameTrait::State) from [Inputs](Input) in another thread.
+/// 
+/// The [FrameManager] queues [Inputs](Input) from local and remote clients as well as authoritative [Game] 
 #[derive(Clone)]
 pub struct FrameManager<Game: GameTrait> {
     sender: EventSender<Event<Game>>
 }
 
 impl<Game: GameTrait> FrameManager<Game> {
+
+    /// Starts a new [FrameManager]
     pub fn new<T: ObserveFrames<Game = Game>>(
         factory: &Factory,
         manager_observer: T,
@@ -44,11 +47,13 @@ impl<Game: GameTrait> FrameManager<Game> {
         Ok(Self { sender })
     }
 
+    /// Advances the current [FrameIndex] of the [FrameManager].  The [FrameManager] will compute frames up to `frame_index + 1`.
     pub fn advance_frame_index(&self, frame_index: FrameIndex) -> Result<(), ()> {
         let event = Event::AdvanceFrameIndex(frame_index);
         self.sender.send_event(event).map_err(unit_error)
     }
 
+    /// Inserts a [Input] with a [GameTrait::ClientInput] into the [Frame] at [FrameIndex].  If the [FrameIndex] is too far in the past, it input will be ignored.
     pub fn insert_input(
         &self, 
         frame_index: FrameIndex,
@@ -66,6 +71,7 @@ impl<Game: GameTrait> FrameManager<Game> {
         self.sender.send_event(event).map_err(unit_error)
     }
 
+    /// Inserts an [Input::AuthoritativeMissing] into the [Frame] at [FrameIndex].  If the [FrameIndex] is too far in the past, it input will be ignored.
     pub fn insert_missing_input(
         &self, 
         frame_index: FrameIndex,
@@ -79,6 +85,7 @@ impl<Game: GameTrait> FrameManager<Game> {
         self.sender.send_event(event).map_err(unit_error)
     }
 
+    /// Inserts a [State](GameTrait::State) into the [Frame] at [FrameIndex].  If the [FrameIndex] is too far in the past, it state will be ignored.
     pub fn insert_state(
         &self, 
         frame_index: FrameIndex,
