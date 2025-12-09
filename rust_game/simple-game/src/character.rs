@@ -4,7 +4,8 @@ use commons::geometry::twod::Vector2;
 use commons::time::TimeDuration;
 use engine_core::{
     GameTrait,
-    Input, UpdateArg,
+    Input,
+    UpdateArg,
 };
 use graphics::rectangle;
 use graphics::*;

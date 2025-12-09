@@ -1,5 +1,5 @@
-use crate::game_time::GameTimerScheduler;
 use crate::frame_manager::FrameManager;
+use crate::game_time::GameTimerScheduler;
 use crate::interface::{
     GameTrait,
     InitialInformation,
@@ -96,7 +96,10 @@ impl<Game: GameTrait> ServerCore<Game> {
             .map_err(unit_error)
     }
 
-    pub fn handle_input_message(&self, input_message: ToServerInputMessage<Game>) -> Result<(), ()> {
+    pub fn handle_input_message(
+        &self,
+        input_message: ToServerInputMessage<Game>,
+    ) -> Result<(), ()> {
         self.sender
             .send_event(ServerCoreEvent::InputMessage(input_message))
             .map_err(unit_error)
@@ -340,10 +343,11 @@ impl<Game: GameTrait> ServerCoreEventHandler<Game> {
         );
 
         let frame_manager = FrameManager::new(
-            &self.factory, 
-            server_manager_observer, 
-            server_initial_information
-        ).unwrap();
+            &self.factory,
+            server_manager_observer,
+            server_initial_information,
+        )
+        .unwrap();
 
         self.state = State::Running(RunningCore {
             server_config,
@@ -391,10 +395,8 @@ impl<Game: GameTrait> ServerCoreEventHandler<Game> {
             Err(err) => {
                 error!("Failed to start TCP input thread: {:?}", err);
                 return EventHandleResult::StopThread;
-            },
+            }
         };
-
-        
 
         match TcpOutput::new(&self.factory, player_index, tcp_stream) {
             Ok(tcp_output) => self.tcp_outputs.push(tcp_output),
@@ -432,7 +434,11 @@ impl<Game: GameTrait> ServerCoreEventHandler<Game> {
             }
         };
 
-        if running_core.frame_manager.advance_frame_index(frame_index).is_err() {
+        if running_core
+            .frame_manager
+            .advance_frame_index(frame_index)
+            .is_err()
+        {
             warn!("Failed to send DropSteps to Game Manager");
             return EventHandleResult::StopThread;
         }
@@ -462,15 +468,16 @@ impl<Game: GameTrait> ServerCoreEventHandler<Game> {
         };
 
         let current_frame_index = running_core.game_timer.get_current_frame_index();
-        let last_open_frame_index = running_core.server_config.get_last_open_frame_index(current_frame_index);
-        
-        if last_open_frame_index <= input_message.get_frame_index() {
+        let last_open_frame_index = running_core
+            .server_config
+            .get_last_open_frame_index(current_frame_index);
 
+        if last_open_frame_index <= input_message.get_frame_index() {
             let send_result = running_core.frame_manager.insert_input(
-                input_message.get_frame_index(), 
-                input_message.get_player_index(), 
+                input_message.get_frame_index(),
+                input_message.get_player_index(),
                 input_message.get_input().clone(),
-                true
+                true,
             );
 
             if send_result.is_err() {

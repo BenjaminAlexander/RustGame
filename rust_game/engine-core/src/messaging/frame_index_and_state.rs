@@ -10,17 +10,14 @@ use serde::{
 };
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
-pub struct StateMessage<Game: GameTrait> {
+pub struct FrameIndexAndState<Game: GameTrait> {
     frame_index: FrameIndex,
     state: Game::State,
 }
 
-impl<Game: GameTrait> StateMessage<Game> {
+impl<Game: GameTrait> FrameIndexAndState<Game> {
     pub fn new(frame_index: FrameIndex, state: Game::State) -> Self {
-        Self {
-            frame_index,
-            state,
-        }
+        Self { frame_index, state }
     }
 
     pub fn get_state(&self) -> &Game::State {
@@ -36,21 +33,21 @@ impl<Game: GameTrait> StateMessage<Game> {
     }
 }
 
-impl<Game: GameTrait> PartialEq for StateMessage<Game> {
+impl<Game: GameTrait> PartialEq for FrameIndexAndState<Game> {
     fn eq(&self, other: &Self) -> bool {
         return self.frame_index.eq(&other.frame_index);
     }
 }
 
-impl<Game: GameTrait> Eq for StateMessage<Game> {}
+impl<Game: GameTrait> Eq for FrameIndexAndState<Game> {}
 
-impl<Game: GameTrait> PartialOrd for StateMessage<Game> {
+impl<Game: GameTrait> PartialOrd for FrameIndexAndState<Game> {
     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
         return Some(self.cmp(&other));
     }
 }
 
-impl<Game: GameTrait> Ord for StateMessage<Game> {
+impl<Game: GameTrait> Ord for FrameIndexAndState<Game> {
     fn cmp(&self, other: &Self) -> Ordering {
         return self.frame_index.cmp(&other.frame_index);
     }

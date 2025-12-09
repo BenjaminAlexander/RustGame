@@ -9,7 +9,7 @@ use crate::interface::{
     InitialInformation,
     InterpolationArg,
 };
-use crate::messaging::StateMessage;
+use crate::messaging::FrameIndexAndState;
 use commons::real_time::{
     Factory,
     Receiver,
@@ -25,7 +25,7 @@ use log::{
 pub enum RenderReceiverMessage<Game: GameTrait> {
     InitialInformation(InitialInformation<Game>),
     //TODO: rename
-    StepMessage(StateMessage<Game>),
+    StepMessage(FrameIndexAndState<Game>),
     //TODO: rename and document these
     StartTime(StartTime),
     FrameIndex(FrameIndex),
@@ -43,7 +43,7 @@ struct Data<Game: GameTrait> {
     time_source: TimeSource,
     start_time: Option<StartTime>,
     //TODO: use vec deque so that this is more efficient
-    step_queue: Vec<StateMessage<Game>>,
+    step_queue: Vec<FrameIndexAndState<Game>>,
     latest_frame_index: Option<FrameIndex>,
     initial_information: Option<InitialInformation<Game>>,
 }
@@ -209,7 +209,7 @@ impl<Game: GameTrait> Data<Game> {
         self.initial_information = Some(initial_information);
     }
 
-    fn on_step_message(&mut self, state_message: StateMessage<Game>) {
+    fn on_step_message(&mut self, state_message: FrameIndexAndState<Game>) {
         if !self.step_queue.is_empty()
             && self.step_queue[0].get_frame_index() + 1 < state_message.get_frame_index()
         {

@@ -7,12 +7,12 @@ use crate::client::udpoutput::{
     UdpOutput,
     UdpOutputEvent,
 };
+use crate::frame_manager::FrameManager;
 use crate::game_time::{
     CompletedPing,
     FrameIndex,
     GameTimerScheduler,
 };
-use crate::frame_manager::FrameManager;
 use crate::interface::{
     GameTrait,
     InitialInformation,
@@ -128,10 +128,11 @@ impl<Game: GameTrait> ClientCore<Game> {
             ClientManagerObserver::<Game>::new(self.render_receiver_sender.clone());
 
         let frame_manager = FrameManager::new(
-            &self.factory, 
-            client_manager_observer, 
-            initial_information.clone()
-        ).unwrap();
+            &self.factory,
+            client_manager_observer,
+            initial_information.clone(),
+        )
+        .unwrap();
 
         let mut idle_timer_service = IdleTimerService::new();
 
@@ -237,10 +238,10 @@ impl<Game: GameTrait> ClientCore<Game> {
             );
 
             let send_result = running_state.frame_manager.insert_input(
-                message.get_frame_index(), 
-                message.get_player_index(), 
-                message.get_input().clone(), 
-                false
+                message.get_frame_index(),
+                message.get_player_index(),
+                message.get_input().clone(),
+                false,
             );
 
             if send_result.is_err() {
@@ -265,7 +266,7 @@ impl<Game: GameTrait> ClientCore<Game> {
                 warn!("Failed to send InputMessage to Udp Output");
                 return EventHandleResult::StopThread;
             }
-            
+
             let send_result = running_state.frame_manager.advance_frame_index(frame_index);
 
             if send_result.is_err() {

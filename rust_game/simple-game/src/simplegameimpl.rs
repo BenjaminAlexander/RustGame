@@ -8,7 +8,8 @@ use crate::{
 use engine_core::{
     GameTrait,
     InitialInformation,
-    InterpolationArg, UpdateArg,
+    InterpolationArg,
+    UpdateArg,
 };
 use serde::{
     Deserialize,

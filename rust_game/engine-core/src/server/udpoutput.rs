@@ -4,7 +4,10 @@ use crate::game_time::{
 };
 use crate::interface::GameTrait;
 use crate::messaging::{
-    Fragmenter, StateMessage, ToClientInputMessage, UdpToClientMessage
+    Fragmenter,
+    FrameIndexAndState,
+    ToClientInputMessage,
+    UdpToClientMessage,
 };
 use crate::server::remoteudppeer::RemoteUdpPeer;
 use commons::real_time::net::udp::UdpSocket;
@@ -78,7 +81,7 @@ impl<Game: GameTrait> UdpOutput<Game> {
         self.sender.send_event(event).map_err(unit_error)
     }
 
-    pub fn send_completed_step(&self, step_message: StateMessage<Game>) -> Result<(), ()> {
+    pub fn send_completed_step(&self, step_message: FrameIndexAndState<Game>) -> Result<(), ()> {
         let event = Event::SendCompletedStep(step_message);
         self.sender.send_event(event).map_err(unit_error)
     }
@@ -91,7 +94,7 @@ enum Event<Game: GameTrait> {
         ping_request: PingRequest,
     },
     SendInputMessage(ToClientInputMessage<Game>),
-    SendCompletedStep(StateMessage<Game>),
+    SendCompletedStep(FrameIndexAndState<Game>),
 }
 
 struct EventHandler<Game: GameTrait> {
@@ -131,19 +134,13 @@ impl<Game: GameTrait> EventHandler<Game> {
         return EventHandleResult::TryForNextEvent;
     }
 
-    fn on_completed_step(
-        &mut self,
-        state_message: StateMessage<Game>,
-    ) -> EventHandleResult {
+    fn on_completed_step(&mut self, state_message: FrameIndexAndState<Game>) -> EventHandleResult {
         let message = UdpToClientMessage::<Game>::StateMessage(state_message);
         self.send_message(&message);
         return EventHandleResult::TryForNextEvent;
     }
 
-    fn on_input_message(
-        &mut self,
-        input_message: ToClientInputMessage<Game>,
-    ) -> EventHandleResult {
+    fn on_input_message(&mut self, input_message: ToClientInputMessage<Game>) -> EventHandleResult {
         let message = UdpToClientMessage::<Game>::InputMessage(input_message);
         self.send_message(&message);
 
@@ -208,12 +205,8 @@ impl<Game: GameTrait> HandleEvent for EventHandler<Game> {
     ) -> EventHandleResult {
         match event {
             Event::RemotePeer(remote_udp_peer) => self.on_remote_peer(remote_udp_peer),
-            Event::SendInputMessage(input_message) => {
-                self.on_input_message(input_message)
-            }
-            Event::SendCompletedStep(state_message) => {
-                self.on_completed_step(state_message)
-            }
+            Event::SendInputMessage(input_message) => self.on_input_message(input_message),
+            Event::SendCompletedStep(state_message) => self.on_completed_step(state_message),
             Event::PingRequest {
                 time_received,
                 ping_request,

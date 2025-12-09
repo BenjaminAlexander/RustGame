@@ -4,10 +4,14 @@ use serde::{
     Serialize,
 };
 
-use crate::{FrameIndex, GameTrait, game_time::{
-    FrameDuration,
-    StartTime,
-}};
+use crate::{
+    game_time::{
+        FrameDuration,
+        StartTime,
+    },
+    FrameIndex,
+    GameTrait,
+};
 
 #[derive(Serialize, Deserialize, Clone, Debug, Copy)]
 pub struct ServerConfig {
@@ -25,7 +29,7 @@ impl ServerConfig {
         return Self {
             start_time: StartTime::new(now),
             frame_duration,
-            input_grace_period_frames
+            input_grace_period_frames,
         };
     }
 

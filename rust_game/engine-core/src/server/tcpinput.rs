@@ -31,7 +31,6 @@ impl TcpInput {
 
         Ok(TcpInput { _stopper: stopper })
     }
-
 }
 
 pub struct ReadHandler;

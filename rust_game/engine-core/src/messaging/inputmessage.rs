@@ -15,11 +15,7 @@ pub struct ToServerInputMessage<Game: GameTrait> {
 }
 
 impl<Game: GameTrait> ToServerInputMessage<Game> {
-    pub fn new(
-        frame_index: FrameIndex,
-        player_index: usize,
-        input: Game::ClientInput,
-    ) -> Self {
+    pub fn new(frame_index: FrameIndex, player_index: usize, input: Game::ClientInput) -> Self {
         Self {
             frame_index,
             player_index,
@@ -63,7 +59,7 @@ impl<Game: GameTrait> ToClientInputMessage<Game> {
         frame_index: FrameIndex,
         player_index: usize,
         input: Option<Game::ClientInput>,
-    ) -> Self{
+    ) -> Self {
         Self {
             frame_index,
             player_index,

@@ -21,7 +21,7 @@ use serde::{
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct SimpleState {
     player_characters: Vec<Character>,
-    bullets: Vec<Bullet>
+    bullets: Vec<Bullet>,
 }
 
 impl SimpleState {
@@ -63,7 +63,6 @@ impl SimpleState {
     }
 
     fn update(&mut self, arg: &UpdateArg<SimpleGameImpl>) {
-
         //TODO: This should probably check the authoritativeness of the input to do server-only logic
         let server_input = Self::get_server_input(arg);
         server_input.apply_to_state(self);

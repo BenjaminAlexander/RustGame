@@ -50,13 +50,7 @@ impl GameTimerScheduler {
         server_config: &ServerConfig,
         call_back: T,
     ) -> Self {
-        Self::client_new(
-            time_source,
-            idle_timer_service,
-            server_config,
-            1,
-            call_back,
-        )
+        Self::client_new(time_source, idle_timer_service, server_config, 1, call_back)
     }
     /// Creates a [`GameTimerScheduler`] and a [`TimerId`] using the synchronous
     ///  functions on a [`IdleTimerService`] for the client.

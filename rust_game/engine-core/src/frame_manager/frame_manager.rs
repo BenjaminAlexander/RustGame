@@ -1,36 +1,52 @@
-use crate::{FrameIndex, Input};
 use crate::frame_manager::frame::Frame;
 use crate::frame_manager::ObserveFrames;
 use crate::interface::{
     GameTrait,
     InitialInformation,
 };
-use commons::real_time::{
-    EventHandleResult, EventHandlerBuilder, EventSender, Factory, HandleEvent, ReceiveMetaData
+use crate::{
+    FrameIndex,
+    Input,
 };
-use commons::utils::unit_error;
+use commons::real_time::{
+    EventHandleResult,
+    EventHandlerBuilder,
+    EventSender,
+    Factory,
+    HandleEvent,
+    ReceiveMetaData,
+};
+use commons::utils::{
+    log_error,
+    unit_error,
+};
 use std::collections::vec_deque::VecDeque;
-use std::io::Error;
+use std::ops::ControlFlow;
 
-/// The [FrameManager] manages [Frames](Frame) and calculates new 
+/// The [FrameManager] manages [Frames](Frame) and calculates new
 /// [states](GameTrait::State) from [Inputs](Input) in another thread.
-/// 
-/// The [FrameManager] queues [Inputs](Input) from local and remote clients as well as authoritative [Game] 
+///
+/// The [FrameManager] inserts [Inputs](Input) from local and remote clients as
+/// well as authoritative [States](GameTrait::State) from the server into a vector
+/// of [Frames](Frame).  When there are no queued events, the [FrameManager] will
+/// iterate over the Frames, calculating new States, up to the current
+/// [FrameIndex] + 1.
+///
+/// New States and Inputs which are declared authoritatively missing can be observerd
+/// by implementing [ObserveFrames].
 #[derive(Clone)]
 pub struct FrameManager<Game: GameTrait> {
-    sender: EventSender<Event<Game>>
+    sender: EventSender<Event<Game>>,
 }
 
 impl<Game: GameTrait> FrameManager<Game> {
-
     /// Starts a new [FrameManager]
     pub fn new<T: ObserveFrames<Game = Game>>(
         factory: &Factory,
         manager_observer: T,
         initial_information: InitialInformation<T::Game>,
-    ) -> Result<Self, Error> {
-
-        let event_handler = EventHandler::new(manager_observer, initial_information);
+    ) -> Result<Self, ()> {
+        let event_handler = EventHandler::new(manager_observer, initial_information)?;
 
         let thread_name = if T::IS_SERVER {
             "ServerManager"
@@ -38,63 +54,59 @@ impl<Game: GameTrait> FrameManager<Game> {
             "ClientManager"
         };
 
-        let sender = EventHandlerBuilder::new_thread(
-            factory, 
-            thread_name.to_string(), 
-            event_handler
-        )?;
+        let sender =
+            EventHandlerBuilder::new_thread(factory, thread_name.to_string(), event_handler)
+                .map_err(log_error)?;
 
         Ok(Self { sender })
     }
 
-    /// Advances the current [FrameIndex] of the [FrameManager].  The [FrameManager] will compute frames up to `frame_index + 1`.
+    /// Advances the current [FrameIndex] of the [FrameManager].  The [FrameManager]
+    /// will compute frames up to `frame_index + 1`.
     pub fn advance_frame_index(&self, frame_index: FrameIndex) -> Result<(), ()> {
         let event = Event::AdvanceFrameIndex(frame_index);
         self.sender.send_event(event).map_err(unit_error)
     }
 
-    /// Inserts a [Input] with a [GameTrait::ClientInput] into the [Frame] at [FrameIndex].  If the [FrameIndex] is too far in the past, it input will be ignored.
+    /// Inserts a [Input] with a [GameTrait::ClientInput] into the [Frame] at
+    /// [FrameIndex].  If the [FrameIndex] is too far in the past, it input will
+    /// be ignored.
     pub fn insert_input(
-        &self, 
+        &self,
         frame_index: FrameIndex,
         player_index: usize,
         input: Game::ClientInput,
-        is_authoritative: bool
+        is_authoritative: bool,
     ) -> Result<(), ()> {
-        let event = Event::Input { 
-            frame_index, 
-            player_index, 
-            input, 
-            is_authoritative 
+        let event = Event::Input {
+            frame_index,
+            player_index,
+            input,
+            is_authoritative,
         };
 
         self.sender.send_event(event).map_err(unit_error)
     }
 
-    /// Inserts an [Input::AuthoritativeMissing] into the [Frame] at [FrameIndex].  If the [FrameIndex] is too far in the past, it input will be ignored.
+    /// Inserts an [Input::AuthoritativeMissing] into the [Frame] at [FrameIndex].
+    /// If the [FrameIndex] is too far in the past, it input will be ignored.
     pub fn insert_missing_input(
-        &self, 
+        &self,
         frame_index: FrameIndex,
         player_index: usize,
     ) -> Result<(), ()> {
-        let event = Event::AuthoritativeMissingInput { 
-            frame_index, 
-            player_index, 
+        let event = Event::AuthoritativeMissingInput {
+            frame_index,
+            player_index,
         };
 
         self.sender.send_event(event).map_err(unit_error)
     }
 
-    /// Inserts a [State](GameTrait::State) into the [Frame] at [FrameIndex].  If the [FrameIndex] is too far in the past, it state will be ignored.
-    pub fn insert_state(
-        &self, 
-        frame_index: FrameIndex,
-        state: Game::State,
-    ) -> Result<(), ()> {
-        let event = Event::State { 
-            frame_index, 
-            state, 
-        };
+    /// Inserts a [State](GameTrait::State) into the [Frame] at [FrameIndex].  
+    /// If the [FrameIndex] is too far in the past, it state will be ignored.
+    pub fn insert_state(&self, frame_index: FrameIndex, state: Game::State) -> Result<(), ()> {
+        let event = Event::State { frame_index, state };
 
         self.sender.send_event(event).map_err(unit_error)
     }
@@ -102,17 +114,17 @@ impl<Game: GameTrait> FrameManager<Game> {
 
 enum Event<Game: GameTrait> {
     AdvanceFrameIndex(FrameIndex),
-    Input{
+    Input {
         frame_index: FrameIndex,
         player_index: usize,
         input: Game::ClientInput,
-        is_authoritative: bool
+        is_authoritative: bool,
     },
-    AuthoritativeMissingInput{
+    AuthoritativeMissingInput {
         frame_index: FrameIndex,
         player_index: usize,
     },
-    State{
+    State {
         frame_index: FrameIndex,
         state: Game::State,
     },
@@ -130,7 +142,7 @@ impl<ManagerObserver: ObserveFrames> EventHandler<ManagerObserver> {
     fn new(
         manager_observer: ManagerObserver,
         initial_information: InitialInformation<ManagerObserver::Game>,
-    ) -> Self {
+    ) -> Result<Self, ()> {
         let state = initial_information.get_state().clone();
 
         let mut manager = Self {
@@ -147,20 +159,22 @@ impl<ManagerObserver: ObserveFrames> EventHandler<ManagerObserver> {
         };
 
         let frame = &mut manager.frames[index];
-        frame.set_state(state, true, &manager.manager_observer);
+        let result = frame.set_state(state, true, &manager.manager_observer);
 
-        return manager;
+        match result {
+            ControlFlow::Continue(()) => Ok(manager),
+            ControlFlow::Break(()) => Err(()),
+        }
     }
 
     fn get_frame_queue_index(&mut self, frame_index: FrameIndex) -> Option<usize> {
-
         let first_frame = match self.frames.get(0) {
             Some(frame) => frame,
             None => {
                 let step = Frame::blank(frame_index, self.initial_information.get_player_count());
                 self.frames.push_back(step);
                 &self.frames[0]
-            },
+            }
         };
 
         if frame_index < first_frame.get_frame_index() {
@@ -185,21 +199,26 @@ impl<ManagerObserver: ObserveFrames> EventHandler<ManagerObserver> {
         }
     }
 
-    fn advance_frame_index(&mut self, frame_index: FrameIndex) {
+    fn advance_frame_index(&mut self, frame_index: FrameIndex) -> ControlFlow<()> {
         self.current_frame_index = frame_index;
 
         if ManagerObserver::IS_SERVER {
-            let last_open_frame_index = self.initial_information
+            let last_open_frame_index = self
+                .initial_information
                 .get_server_config()
                 .get_last_open_frame_index(self.current_frame_index);
 
             let mut index = 0;
 
-            while index < self.frames.len() && self.frames[index].get_frame_index() < last_open_frame_index {
-                self.frames[index].timeout_remaining_inputs(&self.manager_observer);
+            while index < self.frames.len()
+                && self.frames[index].get_frame_index() < last_open_frame_index
+            {
+                self.frames[index].timeout_remaining_inputs(&self.manager_observer)?;
                 index += 1;
             }
         }
+
+        ControlFlow::Continue(())
     }
 
     fn on_none_pending(&mut self) -> EventHandleResult {
@@ -211,11 +230,19 @@ impl<ManagerObserver: ObserveFrames> EventHandler<ManagerObserver> {
         while index < self.frames.len() - 1 {
             let frame = &mut self.frames[index];
 
-            if let Some((state, is_authoritative)) = frame.calculate_next_state(&self.initial_information) {
-
+            if let Some((state, is_authoritative)) =
+                frame.calculate_next_state(&self.initial_information)
+            {
                 let next_frame_index = {
                     let next_frame = &mut self.frames[index + 1];
-                    next_frame.set_state(state, is_authoritative, &self.manager_observer);
+
+                    let result =
+                        next_frame.set_state(state, is_authoritative, &self.manager_observer);
+
+                    if result.is_break() {
+                        return EventHandleResult::StopThread;
+                    }
+
                     next_frame.get_frame_index()
                 };
 
@@ -227,16 +254,16 @@ impl<ManagerObserver: ObserveFrames> EventHandler<ManagerObserver> {
             }
             index = index + 1;
         }
-        
+
         return EventHandleResult::WaitForNextEvent;
     }
 
     fn on_input_message(
         &mut self,
         frame_index: FrameIndex,
-        player_index: usize, 
+        player_index: usize,
         input: <<ManagerObserver as ObserveFrames>::Game as GameTrait>::ClientInput,
-        is_authoritative: bool
+        is_authoritative: bool,
     ) {
         if let Some(step) = self.get_frame(frame_index) {
             let input = match is_authoritative {
@@ -250,7 +277,7 @@ impl<ManagerObserver: ObserveFrames> EventHandler<ManagerObserver> {
     fn on_authoritative_missing_input_message(
         &mut self,
         frame_index: FrameIndex,
-        player_index: usize, 
+        player_index: usize,
     ) {
         #[cfg(debug_assertions)]
         if ManagerObserver::IS_SERVER {
@@ -266,8 +293,7 @@ impl<ManagerObserver: ObserveFrames> EventHandler<ManagerObserver> {
         &mut self,
         frame_index: FrameIndex,
         state: <<ManagerObserver as ObserveFrames>::Game as GameTrait>::State,
-    ) {
-
+    ) -> ControlFlow<()> {
         #[cfg(debug_assertions)]
         if ManagerObserver::IS_SERVER {
             panic!("Remote states should only be received by the client")
@@ -275,17 +301,19 @@ impl<ManagerObserver: ObserveFrames> EventHandler<ManagerObserver> {
 
         let index = match self.get_frame_queue_index(frame_index) {
             Some(index) => index,
-            None => return,
+            None => return ControlFlow::Continue(()),
         };
 
         let frame = &mut self.frames[index];
-        frame.set_state(state, true, &self.manager_observer);
+        frame.set_state(state, true, &self.manager_observer)?;
 
         // Drop frames that are no longer needed to calculate updates over to get
         // to an authoritative state.
         if frame_index <= self.current_frame_index {
             self.drop_all_frames_before(frame_index);
         }
+
+        ControlFlow::Continue(())
     }
 
     fn drop_all_frames_before(&mut self, frame_index: FrameIndex) {
@@ -301,10 +329,28 @@ impl<ManagerObserver: ObserveFrames> HandleEvent for EventHandler<ManagerObserve
 
     fn on_event(&mut self, _: ReceiveMetaData, event: Self::Event) -> EventHandleResult {
         match event {
-            Event::AdvanceFrameIndex(frame_index) => self.advance_frame_index(frame_index),
-            Event::Input { frame_index, player_index, input, is_authoritative } => self.on_input_message(frame_index, player_index, input, is_authoritative),
-            Event::AuthoritativeMissingInput { frame_index, player_index } => self.on_authoritative_missing_input_message(frame_index, player_index),
-            Event::State{ frame_index, state } => self.on_state_message(frame_index, state),
+            Event::AdvanceFrameIndex(frame_index) => {
+                let result = self.advance_frame_index(frame_index);
+                if result.is_break() {
+                    return EventHandleResult::StopThread;
+                }
+            }
+            Event::Input {
+                frame_index,
+                player_index,
+                input,
+                is_authoritative,
+            } => self.on_input_message(frame_index, player_index, input, is_authoritative),
+            Event::AuthoritativeMissingInput {
+                frame_index,
+                player_index,
+            } => self.on_authoritative_missing_input_message(frame_index, player_index),
+            Event::State { frame_index, state } => {
+                let result = self.on_state_message(frame_index, state);
+                if result.is_break() {
+                    return EventHandleResult::StopThread;
+                }
+            }
         };
 
         EventHandleResult::TryForNextEvent

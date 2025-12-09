@@ -1,5 +1,5 @@
-use crate::game_time::FrameIndex;
 use crate::frame_manager::Input;
+use crate::game_time::FrameIndex;
 use crate::interface::game::GameTrait;
 use crate::interface::InitialInformation;
 use commons::time::TimeDuration;

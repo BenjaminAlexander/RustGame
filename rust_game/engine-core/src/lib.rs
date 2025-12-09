@@ -1,6 +1,6 @@
 mod client;
-mod game_time;
 mod frame_manager;
+mod game_time;
 mod interface;
 mod messaging;
 mod server;

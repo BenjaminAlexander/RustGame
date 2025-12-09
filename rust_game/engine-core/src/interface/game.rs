@@ -1,6 +1,6 @@
-use crate::UpdateArg;
 use crate::interface::InitialInformation;
 use crate::interface::InterpolationArg;
+use crate::UpdateArg;
 use commons::time::TimeDuration;
 use serde::de::DeserializeOwned;
 use serde::Serialize;
