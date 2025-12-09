@@ -273,15 +273,6 @@ impl<Game: GameTrait> ClientCore<Game> {
                 warn!("Failed to send FrameIndex to Game Manager");
                 return EventHandleResult::StopThread;
             }
-
-            if self
-                .render_receiver_sender
-                .send(RenderReceiverMessage::FrameIndex(frame_index))
-                .is_err()
-            {
-                warn!("Failed to send FrameIndex to Render Receiver");
-                return EventHandleResult::StopThread;
-            }
         } else {
             warn!("Tried to send next frame when the core wasn't running")
         }

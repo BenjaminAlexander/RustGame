@@ -443,15 +443,6 @@ impl<Game: GameTrait> ServerCoreEventHandler<Game> {
             return EventHandleResult::StopThread;
         }
 
-        if self
-            .render_receiver_sender
-            .send(RenderReceiverMessage::FrameIndex(frame_index))
-            .is_err()
-        {
-            warn!("Failed to send FrameIndex to Render Receiver");
-            return EventHandleResult::StopThread;
-        }
-
         return EventHandleResult::TryForNextEvent;
     }
 

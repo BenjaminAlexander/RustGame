@@ -1,7 +1,6 @@
 use std::sync::mpsc::TryRecvError;
 
 use crate::game_time::{
-    FrameIndex,
     StartTime,
 };
 use crate::interface::{
@@ -28,7 +27,6 @@ pub enum RenderReceiverMessage<Game: GameTrait> {
     StepMessage(FrameIndexAndState<Game>),
     //TODO: rename and document these
     StartTime(StartTime),
-    FrameIndex(FrameIndex),
     StopThread,
 }
 
@@ -42,9 +40,8 @@ pub struct RenderReceiver<Game: GameTrait> {
 struct Data<Game: GameTrait> {
     time_source: TimeSource,
     start_time: Option<StartTime>,
-    //TODO: use vec deque so that this is more efficient
-    step_queue: Vec<FrameIndexAndState<Game>>,
-    latest_frame_index: Option<FrameIndex>,
+    current_frame: Option<FrameIndexAndState<Game>>,
+    next_frame: Option<FrameIndexAndState<Game>>,
     initial_information: Option<InitialInformation<Game>>,
 }
 
@@ -55,8 +52,8 @@ impl<Game: GameTrait> RenderReceiver<Game> {
         let data = Data::<Game> {
             time_source: factory.get_time_source().clone(),
             start_time: None,
-            step_queue: Vec::new(),
-            latest_frame_index: None,
+            current_frame: None,
+            next_frame: None,
             initial_information: None,
         };
 
@@ -86,10 +83,6 @@ impl<Game: GameTrait> RenderReceiver<Game> {
                     self.data.on_start_time(start_time)
                 }
 
-                Ok(RenderReceiverMessage::FrameIndex(frame_index)) => {
-                    self.data.on_frame_index(frame_index)
-                }
-
                 Ok(RenderReceiverMessage::StopThread) => {
                     info!("Thread commanded to stop, but not stopping...");
                     //TODO: notify the caller if the channel is disconnected
@@ -106,7 +99,7 @@ impl<Game: GameTrait> RenderReceiver<Game> {
             }
         }
 
-        if self.data.step_queue.is_empty() {
+        if self.data.next_frame.is_none() {
             return None;
         }
 
@@ -132,11 +125,14 @@ impl<Game: GameTrait> RenderReceiver<Game> {
             &now,
         );
 
-        let first_step = &self.data.step_queue[self.data.step_queue.len() - 1];
-        let second_step = if self.data.step_queue.len() >= 2 {
-            &self.data.step_queue[self.data.step_queue.len() - 2]
-        } else {
-            first_step
+        let second_step = match &self.data.next_frame {
+            Some(second_step) => second_step,
+            None => return None,
+        };
+
+        let first_step = match &self.data.current_frame {
+            Some(first_step) => first_step,
+            None => second_step,
         };
 
         if first_step.get_frame_index() + 1 != second_step.get_frame_index() {
@@ -196,52 +192,45 @@ impl<Game: GameTrait> RenderReceiver<Game> {
 }
 
 impl<Game: GameTrait> Data<Game> {
-    fn drop_steps_before(&mut self, drop_before: FrameIndex) {
-        while self.step_queue.len() > 2
-            && self.step_queue[self.step_queue.len() - 1].get_frame_index() < drop_before
-        {
-            let _dropped = self.step_queue.pop().unwrap();
-            //info!("Dropped step: {:?}", dropped.get_step_index());
-        }
-    }
-
     fn on_initial_information(&mut self, initial_information: InitialInformation<Game>) {
         self.initial_information = Some(initial_information);
     }
 
-    fn on_step_message(&mut self, state_message: FrameIndexAndState<Game>) {
-        if !self.step_queue.is_empty()
-            && self.step_queue[0].get_frame_index() + 1 < state_message.get_frame_index()
-        {
-            warn!(
-                "Received steps out of order.  Waiting for {:?} but got {:?}.",
-                self.step_queue[0].get_frame_index() + 1,
-                state_message.get_frame_index()
-            );
+    fn on_step_message(&mut self, frame_index_and_state: FrameIndexAndState<Game>) {
+
+        let next_frame = match &mut self.next_frame {
+            Some(next_frame) => next_frame,
+            None => {
+                self.next_frame = Some(frame_index_and_state);
+                return;
+            },
+        };
+
+        if next_frame.get_frame_index() == frame_index_and_state.get_frame_index() {
+            *next_frame = frame_index_and_state;
+            return;
         }
 
-        //info!("StepMessage: {:?}", step_message.get_step_index());
-        //insert in reverse sorted order
-        match self
-            .step_queue
-            .binary_search_by(|elem| state_message.cmp(elem))
-        {
-            Ok(pos) => self.step_queue[pos] = state_message,
-            Err(pos) => self.step_queue.insert(pos, state_message),
+        if next_frame.get_frame_index() < frame_index_and_state.get_frame_index() {
+            self.current_frame = self.next_frame.take();
+            self.next_frame = Some(frame_index_and_state);
+            return;
         }
 
-        //TODO: this while block seems strange
-        if let Some(latest_frame_index) = self.latest_frame_index {
-            self.drop_steps_before(latest_frame_index);
+        let current_frame = match &mut self.current_frame {
+            Some(current_frame) => current_frame,
+            None => {
+                self.current_frame = Some(frame_index_and_state);
+                return;
+            },
+        };
+
+        if current_frame.get_frame_index() <= frame_index_and_state.get_frame_index() {
+            *current_frame = frame_index_and_state;
         }
     }
 
     fn on_start_time(&mut self, start_time: StartTime) {
         self.start_time = Some(start_time);
-    }
-
-    fn on_frame_index(&mut self, frame_index: FrameIndex) {
-        self.latest_frame_index = Some(frame_index);
-        self.drop_steps_before(frame_index);
     }
 }
