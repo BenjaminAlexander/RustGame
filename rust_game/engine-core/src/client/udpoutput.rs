@@ -5,7 +5,7 @@ use crate::interface::{
 };
 use crate::messaging::{
     Fragmenter,
-    InputMessage,
+    ToServerInputMessage,
     UdpToServerMessage,
 };
 use crate::FrameIndex;
@@ -17,15 +17,12 @@ use commons::real_time::{
     ReceiveMetaData,
     TimeSource,
 };
-use log::{
-    error,
-    info,
-};
+use log::error;
 use std::net::SocketAddr;
 
 //TODO: combine server/client and tcp/udp inputs/outputs to shared listener/eventhandler types
 pub enum UdpOutputEvent<Game: GameTrait> {
-    InputMessageEvent(InputMessage<Game>),
+    InputMessageEvent(ToServerInputMessage<Game>),
     FrameIndex(FrameIndex),
 }
 
@@ -36,8 +33,6 @@ pub struct UdpOutput<Game: GameTrait> {
     ping_period_frames: usize,
     next_ping: FrameIndex,
     fragmenter: Fragmenter,
-    input_queue: Vec<InputMessage<Game>>,
-    max_observed_input_queue: usize,
     initial_information: InitialInformation<Game>,
 }
 
@@ -61,44 +56,15 @@ impl<Game: GameTrait> UdpOutput<Game> {
             next_ping: FrameIndex::zero(),
             //TODO: make max datagram size more configurable
             fragmenter: Fragmenter::new(MAX_UDP_DATAGRAM_SIZE),
-            input_queue: Vec::new(),
-            max_observed_input_queue: 0,
             initial_information,
         }
     }
 
-    fn on_input_message(&mut self, input_message: InputMessage<Game>) -> EventHandleResult {
-        //insert in reverse sorted order
-        match self
-            .input_queue
-            .binary_search_by(|elem| input_message.cmp(elem))
-        {
-            Ok(pos) => self.input_queue[pos] = input_message,
-            Err(pos) => self.input_queue.insert(pos, input_message),
-        };
+    fn on_input_message(&mut self, input_message: ToServerInputMessage<Game>) -> EventHandleResult {
+        let message = UdpToServerMessage::<Game>::Input(input_message);
+        self.send_message(&message);
 
         return EventHandleResult::TryForNextEvent;
-    }
-
-    fn send_all_messages(&mut self) {
-        let mut send_another_message = true;
-        while send_another_message {
-            if self.input_queue.len() > self.max_observed_input_queue {
-                self.max_observed_input_queue = self.input_queue.len();
-                info!(
-                    "Outbound input queue has hit a max size of {:?}",
-                    self.max_observed_input_queue
-                );
-            }
-
-            match self.input_queue.pop() {
-                None => send_another_message = false,
-                Some(input_to_send) => {
-                    let message = UdpToServerMessage::<Game>::Input(input_to_send);
-                    self.send_message(&message);
-                }
-            }
-        }
     }
 
     fn send_message(&mut self, message: &UdpToServerMessage<Game>) {
@@ -148,16 +114,6 @@ impl<Game: GameTrait> HandleEvent for UdpOutput<Game> {
             }
             UdpOutputEvent::FrameIndex(frame_index) => self.on_frame_index(frame_index),
         }
-    }
-
-    fn on_channel_empty(&mut self) -> EventHandleResult {
-        self.send_all_messages();
-        return EventHandleResult::WaitForNextEvent;
-    }
-
-    fn on_timeout(&mut self) -> EventHandleResult {
-        self.send_all_messages();
-        return EventHandleResult::WaitForNextEvent;
     }
 
     fn on_stop_self(self) -> Self::ThreadReturn {

@@ -1,15 +1,13 @@
-use commons::real_time::Sender;
-
-use crate::gamemanager::{
-    ManagerObserverTrait,
-    StepMessage,
-};
+use crate::frame_manager::ObserveFrames;
 use crate::interface::RenderReceiverMessage;
-use crate::messaging::{
-    ServerInputMessage,
-    StateMessage,
+use crate::messaging::FrameIndexAndState;
+use crate::{
+    FrameIndex,
+    GameTrait,
 };
-use crate::GameTrait;
+use commons::real_time::Sender;
+use log::warn;
+use std::ops::ControlFlow;
 
 pub struct ClientManagerObserver<Game: GameTrait> {
     render_receiver_sender: Sender<RenderReceiverMessage<Game>>,
@@ -23,23 +21,29 @@ impl<Game: GameTrait> ClientManagerObserver<Game> {
     }
 }
 
-impl<Game: GameTrait> ManagerObserverTrait for ClientManagerObserver<Game> {
+impl<Game: GameTrait> ObserveFrames for ClientManagerObserver<Game> {
     type Game = Game;
 
     const IS_SERVER: bool = false;
 
-    fn on_step_message(&self, step_message: StepMessage<Game>) {
-        let send_result = self
+    fn new_state(
+        &self,
+        _is_state_authoritative: bool,
+        step_message: FrameIndexAndState<Game>,
+    ) -> ControlFlow<()> {
+        let result = self
             .render_receiver_sender
             .send(RenderReceiverMessage::StepMessage(step_message));
 
-        //TODO: handle this without panic
-        if send_result.is_err() {
-            panic!("Failed to send StepMessage to render receiver");
+        if result.is_err() {
+            warn!("Failed to send new state to render receiver");
+            ControlFlow::Break(())
+        } else {
+            ControlFlow::Continue(())
         }
     }
 
-    fn on_completed_step(&self, _state_message: StateMessage<Game>) {}
-
-    fn on_server_input_message(&self, _server_input_message: ServerInputMessage<Self::Game>) {}
+    fn input_authoritatively_missing(&self, _: FrameIndex, _: usize) -> ControlFlow<()> {
+        panic!("The client should never declare inputs authoritatively missing");
+    }
 }

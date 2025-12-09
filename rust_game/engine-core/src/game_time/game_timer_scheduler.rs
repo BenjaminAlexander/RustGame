@@ -4,6 +4,7 @@ use crate::game_time::{
     FrameDuration,
     StartTime,
 };
+use crate::server::ServerConfig;
 use commons::real_time::timer_service::{
     IdleTimerService,
     Schedule,
@@ -46,26 +47,17 @@ impl GameTimerScheduler {
     pub fn server_new<T: TimerCallBack>(
         time_source: TimeSource,
         idle_timer_service: &mut IdleTimerService<(), T>,
-        frame_duration: FrameDuration,
+        server_config: &ServerConfig,
         call_back: T,
     ) -> Self {
-        let start_time = StartTime::new(time_source.now());
-        Self::client_new(
-            time_source,
-            idle_timer_service,
-            start_time,
-            frame_duration,
-            1,
-            call_back,
-        )
+        Self::client_new(time_source, idle_timer_service, server_config, 1, call_back)
     }
     /// Creates a [`GameTimerScheduler`] and a [`TimerId`] using the synchronous
     ///  functions on a [`IdleTimerService`] for the client.
     pub fn client_new<T: TimerCallBack>(
         time_source: TimeSource,
         idle_timer_service: &mut IdleTimerService<(), T>,
-        remote_start_time: StartTime,
-        frame_duration: FrameDuration,
+        server_config: &ServerConfig,
         rolling_average_size: usize,
         call_back: T,
     ) -> Self {
@@ -76,8 +68,8 @@ impl GameTimerScheduler {
 
         return Self {
             time_source,
-            frame_duration,
-            remote_start_time,
+            frame_duration: *server_config.get_frame_duration(),
+            remote_start_time: *server_config.get_start_time(),
             start_time,
             current_frame_index: FrameIndex::zero(),
             rolling_average: RollingAverage::new(rolling_average_size),

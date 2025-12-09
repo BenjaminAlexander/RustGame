@@ -23,6 +23,10 @@ impl FrameIndex {
         Self(self.0 + 1)
     }
 
+    pub const fn previous(&self) -> FrameIndex {
+        Self(self.0 + 1)
+    }
+
     pub const fn usize(&self) -> usize {
         self.0
     }

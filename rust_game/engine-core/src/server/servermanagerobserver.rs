@@ -1,15 +1,17 @@
-use crate::gamemanager::{
-    ManagerObserverTrait,
-    StepMessage,
-};
+use crate::frame_manager::ObserveFrames;
 use crate::interface::RenderReceiverMessage;
 use crate::messaging::{
-    ServerInputMessage,
-    StateMessage,
+    FrameIndexAndState,
+    ToClientInputMessage,
 };
 use crate::server::udpoutput::UdpOutput;
-use crate::GameTrait;
+use crate::{
+    FrameIndex,
+    GameTrait,
+};
 use commons::real_time::Sender;
+use log::warn;
+use std::ops::ControlFlow;
 
 pub struct ServerManagerObserver<Game: GameTrait> {
     udp_outputs: Vec<UdpOutput<Game>>,
@@ -28,41 +30,57 @@ impl<Game: GameTrait> ServerManagerObserver<Game> {
     }
 }
 
-impl<Game: GameTrait> ManagerObserverTrait for ServerManagerObserver<Game> {
+impl<Game: GameTrait> ObserveFrames for ServerManagerObserver<Game> {
     type Game = Game;
 
     const IS_SERVER: bool = true;
 
-    fn on_step_message(&self, step_message: StepMessage<Game>) {
-        let send_result = self
+    fn new_state(
+        &self,
+        is_state_authoritative: bool,
+        state_message: FrameIndexAndState<Game>,
+    ) -> ControlFlow<()> {
+        let result = self
             .render_receiver_sender
-            .send(RenderReceiverMessage::StepMessage(step_message));
+            .send(RenderReceiverMessage::StepMessage(state_message.clone()));
 
-        //TODO: handle without panic
-        if send_result.is_err() {
-            panic!("Failed to send StepMessage to Render Receiver");
+        if result.is_err() {
+            warn!("Failed to send StepMessage to Render Receiver");
+            return ControlFlow::Break(());
         }
-    }
 
-    fn on_completed_step(&self, state_message: StateMessage<Game>) {
-        for udp_output in self.udp_outputs.iter() {
-            let send_result = udp_output.send_completed_step(state_message.clone());
+        if is_state_authoritative {
+            for udp_output in self.udp_outputs.iter() {
+                let result = udp_output.send_completed_step(state_message.clone());
 
-            //TODO: handle without panic
-            if send_result.is_err() {
-                panic!("Failed to send CompletedStep to UdpOutput");
+                if result.is_err() {
+                    warn!("Failed to send CompletedStep to UdpOutput");
+                    return ControlFlow::Break(());
+                }
             }
         }
+
+        ControlFlow::Continue(())
     }
 
-    fn on_server_input_message(&self, server_input_message: ServerInputMessage<Game>) {
+    fn input_authoritatively_missing(
+        &self,
+        frame_index: FrameIndex,
+        player_index: usize,
+    ) -> ControlFlow<()> {
         for udp_output in self.udp_outputs.iter() {
-            let send_result = udp_output.send_server_input_message(server_input_message.clone());
+            let result = udp_output.send_input_message(ToClientInputMessage::new(
+                frame_index,
+                player_index,
+                None,
+            ));
 
-            //TODO: handle without panic
-            if send_result.is_err() {
-                panic!("Failed to send ServerInput to UdpOutput");
+            if result.is_err() {
+                warn!("Failed to send CompletedStep to UdpOutput");
+                return ControlFlow::Break(());
             }
         }
+
+        ControlFlow::Continue(())
     }
 }

@@ -4,12 +4,12 @@ use crate::game_time::{
     FrameIndex,
     StartTime,
 };
-use crate::gamemanager::StepMessage;
 use crate::interface::{
     GameTrait,
     InitialInformation,
     InterpolationArg,
 };
+use crate::messaging::FrameIndexAndState;
 use commons::real_time::{
     Factory,
     Receiver,
@@ -24,7 +24,8 @@ use log::{
 
 pub enum RenderReceiverMessage<Game: GameTrait> {
     InitialInformation(InitialInformation<Game>),
-    StepMessage(StepMessage<Game>),
+    //TODO: rename
+    StepMessage(FrameIndexAndState<Game>),
     //TODO: rename and document these
     StartTime(StartTime),
     FrameIndex(FrameIndex),
@@ -42,7 +43,7 @@ struct Data<Game: GameTrait> {
     time_source: TimeSource,
     start_time: Option<StartTime>,
     //TODO: use vec deque so that this is more efficient
-    step_queue: Vec<StepMessage<Game>>,
+    step_queue: Vec<FrameIndexAndState<Game>>,
     latest_frame_index: Option<FrameIndex>,
     initial_information: Option<InitialInformation<Game>>,
 }
@@ -138,34 +139,34 @@ impl<Game: GameTrait> RenderReceiver<Game> {
             first_step
         };
 
-        if first_step.get_step_index() + 1 != second_step.get_step_index() {
+        if first_step.get_frame_index() + 1 != second_step.get_frame_index() {
             warn!(
                 "Interpolating from non-sequential steps: {:?}, {:?}",
-                first_step.get_step_index(),
-                second_step.get_step_index()
+                first_step.get_frame_index(),
+                second_step.get_frame_index()
             );
         }
 
-        if (desired_first_step_index.usize() as i64 - first_step.get_step_index().usize() as i64)
+        if (desired_first_step_index.usize() as i64 - first_step.get_frame_index().usize() as i64)
             .abs()
             > 1
         {
             warn!(
                 "Needed step: {:?}, Gotten step: {:?}",
                 desired_first_step_index,
-                first_step.get_step_index()
+                first_step.get_frame_index()
             );
         }
 
-        let mut weight = if second_step.get_step_index() == first_step.get_step_index() {
+        let mut weight = if second_step.get_frame_index() == first_step.get_frame_index() {
             1 as f64
         } else {
             let fractional_frame_index = start_time.get_fractional_frame_index(
                 initial_information.get_server_config().get_frame_duration(),
                 &now,
             );
-            (fractional_frame_index - first_step.get_step_index().usize() as f64)
-                / ((second_step.get_step_index().usize() - first_step.get_step_index().usize())
+            (fractional_frame_index - first_step.get_frame_index().usize() as f64)
+                / ((second_step.get_frame_index().usize() - first_step.get_frame_index().usize())
                     as f64)
         };
 
@@ -197,7 +198,7 @@ impl<Game: GameTrait> RenderReceiver<Game> {
 impl<Game: GameTrait> Data<Game> {
     fn drop_steps_before(&mut self, drop_before: FrameIndex) {
         while self.step_queue.len() > 2
-            && self.step_queue[self.step_queue.len() - 1].get_step_index() < drop_before
+            && self.step_queue[self.step_queue.len() - 1].get_frame_index() < drop_before
         {
             let _dropped = self.step_queue.pop().unwrap();
             //info!("Dropped step: {:?}", dropped.get_step_index());
@@ -208,14 +209,14 @@ impl<Game: GameTrait> Data<Game> {
         self.initial_information = Some(initial_information);
     }
 
-    fn on_step_message(&mut self, step_message: StepMessage<Game>) {
+    fn on_step_message(&mut self, state_message: FrameIndexAndState<Game>) {
         if !self.step_queue.is_empty()
-            && self.step_queue[0].get_step_index() + 1 < step_message.get_step_index()
+            && self.step_queue[0].get_frame_index() + 1 < state_message.get_frame_index()
         {
             warn!(
                 "Received steps out of order.  Waiting for {:?} but got {:?}.",
-                self.step_queue[0].get_step_index() + 1,
-                step_message.get_step_index()
+                self.step_queue[0].get_frame_index() + 1,
+                state_message.get_frame_index()
             );
         }
 
@@ -223,10 +224,10 @@ impl<Game: GameTrait> Data<Game> {
         //insert in reverse sorted order
         match self
             .step_queue
-            .binary_search_by(|elem| step_message.cmp(elem))
+            .binary_search_by(|elem| state_message.cmp(elem))
         {
-            Ok(pos) => self.step_queue[pos] = step_message,
-            Err(pos) => self.step_queue.insert(pos, step_message),
+            Ok(pos) => self.step_queue[pos] = state_message,
+            Err(pos) => self.step_queue.insert(pos, state_message),
         }
 
         //TODO: this while block seems strange

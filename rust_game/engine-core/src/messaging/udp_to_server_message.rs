@@ -7,14 +7,14 @@ use serde::{
     Serialize,
 };
 
-use super::InputMessage;
+use super::ToServerInputMessage;
 
 #[derive(Serialize, Deserialize, Debug)]
 #[serde(bound = "")]
 pub enum UdpToServerMessage<Game: GameTrait> {
     //TODO: see if these can be borrowed
     PingRequest(PingRequest),
-    Input(InputMessage<Game>),
+    Input(ToServerInputMessage<Game>),
 }
 
 impl<Game: GameTrait> UdpToServerMessage<Game> {

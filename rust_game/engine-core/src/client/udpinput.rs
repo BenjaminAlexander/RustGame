@@ -1,9 +1,9 @@
 use crate::client::ClientCoreEvent;
+use crate::frame_manager::FrameManager;
 use crate::game_time::{
     CompletedPing,
     PingResponse,
 };
-use crate::gamemanager::ManagerEvent;
 use crate::messaging::{
     FragmentAssembler,
     MessageFragment,
@@ -15,12 +15,7 @@ use commons::real_time::{
     EventSender,
     TimeSource,
 };
-use commons::time::{
-    TimeDuration,
-    TimeValue,
-};
 use log::{
-    debug,
     error,
     warn,
 };
@@ -32,33 +27,20 @@ pub struct UdpInput<Game: GameTrait> {
     time_source: TimeSource,
     fragment_assembler: FragmentAssembler,
     core_sender: EventSender<ClientCoreEvent<Game>>,
-    manager_sender: EventSender<ManagerEvent<Game>>,
-
-    //metrics
-    time_of_last_state_receive: TimeValue,
-    time_of_last_input_receive: TimeValue,
-    time_of_last_server_input_receive: TimeValue,
+    frame_manager: FrameManager<Game>,
 }
 
 impl<Game: GameTrait> UdpInput<Game> {
     pub fn new(
         time_source: TimeSource,
         core_sender: EventSender<ClientCoreEvent<Game>>,
-        manager_sender: EventSender<ManagerEvent<Game>>,
+        frame_manager: FrameManager<Game>,
     ) -> io::Result<Self> {
-        let now = time_source.now();
-
         return Ok(Self {
             //TODO: make this more configurable
             fragment_assembler: FragmentAssembler::new(time_source.clone(), 5),
             core_sender,
-            manager_sender,
-
-            //metrics
-            time_of_last_state_receive: now,
-            time_of_last_input_receive: now,
-            time_of_last_server_input_receive: now,
-
+            frame_manager,
             time_source,
         });
     }
@@ -78,51 +60,32 @@ impl<Game: GameTrait> UdpInput<Game> {
     }
 
     fn handle_received_message(&mut self, value: UdpToClientMessage<Game>) -> ControlFlow<()> {
-        let time_received = self.time_source.now();
-
         match value {
             UdpToClientMessage::InputMessage(input_message) => {
-                //TODO: ignore input messages from this player
-                //info!("Input message: {:?}", input_message.get_step());
-                self.time_of_last_input_receive = time_received;
-                let send_result = self
-                    .manager_sender
-                    .send_event(ManagerEvent::InputEvent(input_message.clone()));
+                let frame_index = input_message.get_frame_index();
+                let player_index = input_message.get_player_index();
 
-                if send_result.is_err() {
+                let result = match input_message.take_input() {
+                    Some(input) => {
+                        self.frame_manager
+                            .insert_input(frame_index, player_index, input, true)
+                    }
+                    None => self
+                        .frame_manager
+                        .insert_missing_input(frame_index, player_index),
+                };
+
+                if result.is_err() {
                     warn!("Failed to send InputEvent to Game Manager");
                     return ControlFlow::Break(());
                 }
             }
-            UdpToClientMessage::ServerInputMessage(server_input_message) => {
-                //info!("Server Input message: {:?}", server_input_message.get_step());
-                self.time_of_last_server_input_receive = time_received;
-                let send_result = self
-                    .manager_sender
-                    .send_event(ManagerEvent::ServerInputEvent(server_input_message));
-
-                if send_result.is_err() {
-                    warn!("Failed to send ServerInputEvent to Game Manager");
-                    return ControlFlow::Break(());
-                }
-            }
             UdpToClientMessage::StateMessage(state_message) => {
-                //info!("State message: {:?}", state_message.get_sequence());
+                let result = self
+                    .frame_manager
+                    .insert_state(state_message.get_frame_index(), state_message.take_state());
 
-                let duration_since_last_state =
-                    time_received.duration_since(&self.time_of_last_state_receive);
-                if duration_since_last_state > TimeDuration::ONE_SECOND {
-                    //TODO: this should probably be a warn
-                    debug!("It has been {:?} since last state message was received. Now: {:?}, Last: {:?}",
-                            duration_since_last_state, time_received, self.time_of_last_state_receive);
-                }
-
-                self.time_of_last_state_receive = time_received;
-                let send_result = self
-                    .manager_sender
-                    .send_event(ManagerEvent::StateEvent(state_message));
-
-                if send_result.is_err() {
+                if result.is_err() {
                     warn!("Failed to send StateMessage to Game Manager");
                     return ControlFlow::Break(());
                 }

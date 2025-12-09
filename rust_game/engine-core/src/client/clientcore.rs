@@ -7,21 +7,18 @@ use crate::client::udpoutput::{
     UdpOutput,
     UdpOutputEvent,
 };
+use crate::frame_manager::FrameManager;
 use crate::game_time::{
     CompletedPing,
     FrameIndex,
     GameTimerScheduler,
-};
-use crate::gamemanager::{
-    Manager,
-    ManagerEvent,
 };
 use crate::interface::{
     GameTrait,
     InitialInformation,
     RenderReceiverMessage,
 };
-use crate::messaging::InputMessage;
+use crate::messaging::ToServerInputMessage;
 use commons::real_time::net::tcp::TcpReadHandlerBuilder;
 use commons::real_time::net::udp::UdpReadHandlerBuilder;
 use commons::real_time::timer_service::{
@@ -67,7 +64,7 @@ pub struct ClientCore<Game: GameTrait> {
 
 //TODO: don't start client core before hello
 struct RunningState<Game: GameTrait> {
-    manager_sender: EventSender<ManagerEvent<Game>>,
+    frame_manager: FrameManager<Game>,
     input_event_handler: Game::ClientInputEventHandler,
     timer_service: TimerService<(), ClientGameTimerObserver<Game>>,
     game_timer: GameTimerScheduler,
@@ -130,23 +127,19 @@ impl<Game: GameTrait> ClientCore<Game> {
         let client_manager_observer =
             ClientManagerObserver::<Game>::new(self.render_receiver_sender.clone());
 
-        let manager = Manager::new(
-            self.factory.get_time_source().clone(),
+        let frame_manager = FrameManager::new(
+            &self.factory,
             client_manager_observer,
             initial_information.clone(),
-        );
-
-        let manager_sender =
-            EventHandlerBuilder::new_thread(&self.factory, "ClientManager".to_string(), manager)
-                .unwrap();
+        )
+        .unwrap();
 
         let mut idle_timer_service = IdleTimerService::new();
 
         let game_timer = GameTimerScheduler::client_new(
             self.factory.get_time_source().clone(),
             &mut idle_timer_service,
-            *initial_information.get_server_config().get_start_time(),
-            *initial_information.get_server_config().get_frame_duration(),
+            initial_information.get_server_config(),
             Game::CLOCK_AVERAGE_SIZE,
             ClientGameTimerObserver::new(self.sender.clone()),
         );
@@ -165,7 +158,7 @@ impl<Game: GameTrait> ClientCore<Game> {
             UdpInput::<Game>::new(
                 self.factory.get_time_source().clone(),
                 self.sender.clone(),
-                manager_sender.clone(),
+                frame_manager.clone(),
             )
             .unwrap(),
         )
@@ -191,7 +184,7 @@ impl<Game: GameTrait> ClientCore<Game> {
             as usize;
 
         self.running_state = Some(RunningState {
-            manager_sender,
+            frame_manager,
             input_event_handler: Game::new_input_event_handler(),
             timer_service,
             game_timer,
@@ -236,7 +229,7 @@ impl<Game: GameTrait> ClientCore<Game> {
         if let Some(ref mut running_state) = self.running_state {
             trace!("TimeMessage step_index: {:?}", frame_index);
 
-            let message = InputMessage::<Game>::new(
+            let message = ToServerInputMessage::<Game>::new(
                 //TODO: message or last message?
                 //TODO: define strict and consistent rules for how real time relates to ticks, input deadlines and display states
                 frame_index,
@@ -244,9 +237,12 @@ impl<Game: GameTrait> ClientCore<Game> {
                 Game::get_input(&mut running_state.input_event_handler),
             );
 
-            let send_result = running_state
-                .manager_sender
-                .send_event(ManagerEvent::InputEvent(message.clone()));
+            let send_result = running_state.frame_manager.insert_input(
+                message.get_frame_index(),
+                message.get_player_index(),
+                message.get_input().clone(),
+                false,
+            );
 
             if send_result.is_err() {
                 warn!("Failed to send InputMessage to Game Manager");
@@ -271,29 +267,10 @@ impl<Game: GameTrait> ClientCore<Game> {
                 return EventHandleResult::StopThread;
             }
 
-            let drop_step = if frame_index.usize() > running_state.input_grace_period_frames {
-                frame_index - running_state.input_grace_period_frames
-            } else {
-                FrameIndex::zero()
-            };
-
-            let send_result = running_state
-                .manager_sender
-                .send_event(ManagerEvent::DropStepsBeforeEvent(drop_step.usize()));
+            let send_result = running_state.frame_manager.advance_frame_index(frame_index);
 
             if send_result.is_err() {
-                warn!("Failed to send Drop Steps to Game Manager");
-                return EventHandleResult::StopThread;
-            }
-
-            //TODO: message or last message or next?
-            //TODO: define strict and consistent rules for how real time relates to ticks, input deadlines and display states
-            let send_result = running_state
-                .manager_sender
-                .send_event(ManagerEvent::SetRequestedStepEvent(frame_index.usize() + 1));
-
-            if send_result.is_err() {
-                warn!("Failed to send Request Step to Game Manager");
+                warn!("Failed to send FrameIndex to Game Manager");
                 return EventHandleResult::StopThread;
             }
 

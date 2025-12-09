@@ -4,7 +4,6 @@ mod initialinformation;
 mod interpolationarg;
 mod renderreceiver;
 mod server;
-mod serverupdatearg;
 mod updatearg;
 
 pub use self::client::Client;
@@ -14,5 +13,4 @@ pub use self::interpolationarg::InterpolationArg;
 pub use self::renderreceiver::RenderReceiver;
 pub use self::renderreceiver::RenderReceiverMessage;
 pub use self::server::Server;
-pub use self::serverupdatearg::ServerUpdateArg;
-pub use self::updatearg::ClientUpdateArg;
+pub use self::updatearg::UpdateArg;
