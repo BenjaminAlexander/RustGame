@@ -2,7 +2,7 @@ use crate::simplegameimpl::SimpleGameImpl;
 use crate::simpleinputevent::SimpleInputEvent;
 use engine_core::{
     Client,
-    RenderReceiver,
+    StateReceiver, StateReceiverError,
 };
 use glutin_window::GlutinWindow as Window;
 use graphics::*;
@@ -24,7 +24,7 @@ use piston::{
 
 pub struct SimpleWindow {
     window_name: String,
-    render_receiver: RenderReceiver<SimpleGameImpl>,
+    render_receiver: StateReceiver<SimpleGameImpl>,
     //TODO: don't expose eventhandling, sender or ClientCore, or ClientCoreEvent, or GameFactoryTrait, or RealGameFactory
     client_option: Option<Client<SimpleGameImpl>>,
     mouse_position: [f64; 2],
@@ -33,7 +33,7 @@ pub struct SimpleWindow {
 impl SimpleWindow {
     pub fn new(
         window_name: String,
-        render_receiver: RenderReceiver<SimpleGameImpl>,
+        render_receiver: StateReceiver<SimpleGameImpl>,
         client_option: Option<Client<SimpleGameImpl>>,
     ) -> Self {
         return Self {
@@ -74,8 +74,15 @@ impl SimpleWindow {
     }
 
     fn render(&mut self, gl_graphics: &mut GlGraphics, args: &RenderArgs) {
-        let step_message = self.render_receiver.get_step_message();
-        let initial_information = self.render_receiver.get_initial_information();
+
+        let mouse_position = &self.mouse_position;
+
+        let result = self.render_receiver.get_step_message();
+        let current_states = match result {
+            Ok(current_states) => Some(current_states),
+            Err(StateReceiverError::StateNoYetAvailable) => None,
+            Err(StateReceiverError::Disconnected) => panic!("Receiver Disconnected"),
+        };
 
         gl_graphics.draw(args.viewport(), |context, gl| {
             const GREEN: [f32; 4] = [0.7, 0.7, 0.3, 1.0];
@@ -83,15 +90,15 @@ impl SimpleWindow {
             // Clear the screen.
             clear(GREEN, gl);
 
-            if step_message.is_some() && initial_information.is_some() {
-                let (duration_since_game_start, step_message) = step_message.unwrap();
-                let initial_information = initial_information.as_ref().unwrap();
-
+            if let Some(current_states) = &current_states {
+                let now = current_states.time_source.now();
+                let duration_since_game_start = now.duration_since(current_states.start_time.get_time_value());
+                
                 //let duration_since_game_start = STEP_DURATION * step_message.get_step_index() as i64;
-                step_message.draw(initial_information, duration_since_game_start, context, gl);
+                current_states.next_frame.get_state().draw(current_states.initial_information, duration_since_game_start, context, gl);
             }
 
-            self.draw_mouse(context, gl)
+            draw_mouse(mouse_position, context, gl)
         });
     }
 
@@ -110,17 +117,17 @@ impl SimpleWindow {
                 .unwrap();
         }
     }
+}
 
-    fn draw_mouse(&self, context: Context, gl: &mut GlGraphics) {
-        const MOUSE_COLOR: [f32; 4] = [0.0, 1.0, 1.0, 1.0];
+fn draw_mouse(mouse_position: &[f64; 2], context: Context, gl: &mut GlGraphics) {
+    const MOUSE_COLOR: [f32; 4] = [0.0, 1.0, 1.0, 1.0];
 
-        let square = rectangle::square(0.0, 0.0, 10.0);
+    let square = rectangle::square(0.0, 0.0, 10.0);
 
-        let transform = context
-            .transform
-            .trans(self.mouse_position[0], self.mouse_position[1])
-            .trans(-5.0, -5.0);
+    let transform = context
+        .transform
+        .trans(mouse_position[0], mouse_position[1])
+        .trans(-5.0, -5.0);
 
-        rectangle(MOUSE_COLOR, square, transform, gl);
-    }
+    rectangle(MOUSE_COLOR, square, transform, gl);
 }

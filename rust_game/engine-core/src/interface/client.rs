@@ -2,7 +2,7 @@ use crate::client::{
     ClientCore,
     ClientCoreEvent,
 };
-use crate::interface::RenderReceiver;
+use crate::interface::StateReceiver;
 use crate::GameTrait;
 use commons::real_time::{
     EventHandlerBuilder,
@@ -17,10 +17,10 @@ pub struct Client<Game: GameTrait> {
 }
 
 impl<Game: GameTrait> Client<Game> {
-    pub fn new(factory: Factory) -> (Self, RenderReceiver<Game>) {
+    pub fn new(factory: Factory) -> (Self, StateReceiver<Game>) {
         let client_core_thread_builder = EventHandlerBuilder::<ClientCore<Game>>::new(&factory);
 
-        let (render_receiver_sender, render_receiver) = RenderReceiver::<Game>::new(&factory);
+        let (render_receiver_sender, render_receiver) = StateReceiver::<Game>::new(&factory);
 
         let core_sender = client_core_thread_builder.get_sender().clone();
 

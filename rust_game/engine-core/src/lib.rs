@@ -13,6 +13,7 @@ pub use interface::Client;
 pub use interface::GameTrait;
 pub use interface::InitialInformation;
 pub use interface::InterpolationArg;
-pub use interface::RenderReceiver;
+pub use interface::StateReceiver;
+pub use interface::StateReceiverError;
 pub use interface::Server;
 pub use interface::UpdateArg;

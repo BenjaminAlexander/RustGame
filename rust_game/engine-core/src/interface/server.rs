@@ -1,5 +1,5 @@
 use crate::{
-    interface::RenderReceiver,
+    interface::StateReceiver,
     server::ServerCore,
     GameTrait,
 };
@@ -7,12 +7,12 @@ use commons::real_time::Factory;
 
 pub struct Server<Game: GameTrait> {
     server_core: ServerCore<Game>,
-    render_receiver_option: Option<RenderReceiver<Game>>,
+    render_receiver_option: Option<StateReceiver<Game>>,
 }
 
 impl<Game: GameTrait> Server<Game> {
     pub fn new(factory: Factory) -> Result<Self, ()> {
-        let (render_receiver_sender, render_receiver) = RenderReceiver::new(&factory);
+        let (render_receiver_sender, render_receiver) = StateReceiver::new(&factory);
 
         let server_core = ServerCore::new(factory.clone(), render_receiver_sender.clone()).unwrap();
 
@@ -26,7 +26,7 @@ impl<Game: GameTrait> Server<Game> {
         self.server_core.start_game()
     }
 
-    pub fn take_render_receiver(&mut self) -> Option<RenderReceiver<Game>> {
+    pub fn take_render_receiver(&mut self) -> Option<StateReceiver<Game>> {
         return self.render_receiver_option.take();
     }
 }
