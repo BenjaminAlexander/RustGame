@@ -15,9 +15,10 @@ use crate::game_time::{
 };
 use crate::interface::{
     GameTrait,
-    InitialInformation, StateSender,
+    InitialInformation,
 };
 use crate::messaging::ToServerInputMessage;
+use crate::state_channel::StateSender;
 use commons::real_time::net::tcp::TcpReadHandlerBuilder;
 use commons::real_time::net::udp::UdpReadHandlerBuilder;
 use commons::real_time::timer_service::{

@@ -1,10 +1,10 @@
 use crate::frame_manager::ObserveFrames;
-use crate::interface::StateSender;
 use crate::messaging::{
     FrameIndexAndState,
     ToClientInputMessage,
 };
 use crate::server::udpoutput::UdpOutput;
+use crate::state_channel::StateSender;
 use crate::{
     FrameIndex,
     GameTrait,

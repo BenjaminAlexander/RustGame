@@ -4,6 +4,7 @@ mod game_time;
 mod interface;
 mod messaging;
 mod server;
+mod state_channel;
 
 pub use self::frame_manager::Input;
 
@@ -13,7 +14,7 @@ pub use interface::Client;
 pub use interface::GameTrait;
 pub use interface::InitialInformation;
 pub use interface::InterpolationArg;
-pub use interface::StateReceiver;
-pub use interface::StateReceiverError;
+pub use self::state_channel::StateReceiver;
+pub use self::state_channel::StateReceiverError;
 pub use interface::Server;
 pub use interface::UpdateArg;

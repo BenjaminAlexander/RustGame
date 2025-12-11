@@ -2,7 +2,7 @@ use crate::frame_manager::FrameManager;
 use crate::game_time::GameTimerScheduler;
 use crate::interface::{
     GameTrait,
-    InitialInformation, StateSender,
+    InitialInformation,
 };
 use crate::messaging::ToServerInputMessage;
 use crate::server::clientaddress::ClientAddress;
@@ -17,6 +17,7 @@ use crate::server::{
     TcpConnectionHandler,
 };
 use crate::FrameIndex;
+use crate::state_channel::StateSender;
 use commons::real_time::net::tcp::{
     TcpListenerBuilder,
     TcpReader,

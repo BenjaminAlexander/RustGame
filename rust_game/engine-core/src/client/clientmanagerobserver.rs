@@ -1,6 +1,6 @@
 use crate::frame_manager::ObserveFrames;
-use crate::interface::StateSender;
 use crate::messaging::FrameIndexAndState;
+use crate::state_channel::StateSender;
 use crate::{
     FrameIndex,
     GameTrait,

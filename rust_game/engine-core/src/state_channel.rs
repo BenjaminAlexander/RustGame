@@ -17,30 +17,48 @@ use commons::real_time::{
 use commons::utils::unit_error;
 use log::info;
 
-enum RenderReceiverMessage<Game: GameTrait> {
+enum Message<Game: GameTrait> {
     InitialInformation(InitialInformation<Game>),
-    //TODO: rename
-    StepMessage(FrameIndexAndState<Game>),
-    //TODO: rename and document these
+    State(FrameIndexAndState<Game>),
     StartTime(StartTime),
 }
 
+/// An error describing why a [CurrentStates] is not available
 pub enum StateReceiverError {
+    /// The channel has been disconnected and no new states will be received.  
+    /// This will occur when the game stops.
     Disconnected,
+
+    /// The channel is connect but not all necessary information or a state has 
+    /// been received.  This can occur breifly immediatly after the game starts.
     StateNoYetAvailable
 }
 
+/// A struct containing the most recent states calculated by the game.
 pub struct CurrentStates<'a, Game: GameTrait> {
     pub time_source: &'a TimeSource,
     pub start_time: &'a StartTime,
     pub initial_information: &'a InitialInformation<Game>,
+
+    /// This is the second newest state that has been received from the game.
+    /// Typically, the time of occurance of this state will be slightly in the 
+    /// past from now.
     pub current_frame: &'a FrameIndexAndState<Game>,
+
+    /// This is the newest state that has been received from the game.  Typically, 
+    /// the time of occurance of this state will be slightly in the future from 
+    /// now.
     pub next_frame: &'a FrameIndexAndState<Game>,
 }
 
+/// The [StateReceiver] is the receiver for states produced by the game.  The 
+/// [StateReceiver] receiveds new states as they are calculated and tracks the 
+/// two newest states.  This typically means that the [StateReceiver] has one 
+/// state occuring slightly in the past and one state occuring slightly in the 
+/// future.
 pub struct StateReceiver<Game: GameTrait> {
     time_source: TimeSource,
-    receiver: Receiver<RenderReceiverMessage<Game>>,
+    receiver: Receiver<Message<Game>>,
     start_time: Option<StartTime>,
     current_frame: Option<FrameIndexAndState<Game>>,
     next_frame: Option<FrameIndexAndState<Game>>,
@@ -48,7 +66,7 @@ pub struct StateReceiver<Game: GameTrait> {
 }
 
 impl<Game: GameTrait> StateReceiver<Game> {
-    pub fn new(factory: &Factory) -> (StateSender<Game>, Self) {
+    pub(crate) fn new(factory: &Factory) -> (StateSender<Game>, Self) {
 
         let (sender, receiver) = factory.new_channel();
 
@@ -69,9 +87,9 @@ impl<Game: GameTrait> StateReceiver<Game> {
     pub fn get_step_message(&mut self) -> Result<CurrentStates<Game>, StateReceiverError> {
         loop {
             match self.receiver.try_recv() {
-                Ok(RenderReceiverMessage::InitialInformation(initial_information)) => self.on_initial_information(initial_information),
-                Ok(RenderReceiverMessage::StepMessage(step_message)) => self.on_step_message(step_message),
-                Ok(RenderReceiverMessage::StartTime(start_time)) => self.on_start_time(start_time),
+                Ok(Message::InitialInformation(initial_information)) => self.on_initial_information(initial_information),
+                Ok(Message::State(step_message)) => self.on_step_message(step_message),
+                Ok(Message::StartTime(start_time)) => self.on_start_time(start_time),
                 Err(TryRecvError::Empty) => break,
                 Err(TryRecvError::Disconnected) => {
                     info!("Channel disconnected.");
@@ -218,20 +236,20 @@ impl<Game: GameTrait> StateReceiver<Game> {
 }
 
 #[derive(Clone)]
-pub struct StateSender<Game: GameTrait> {
-    sender: Sender<RenderReceiverMessage<Game>>
+pub(crate) struct StateSender<Game: GameTrait> {
+    sender: Sender<Message<Game>>
 }
 
 impl<Game: GameTrait> StateSender<Game> {
-    pub fn send_initial_information(&self, initial_information: InitialInformation<Game>) -> Result<(), ()> {
-        self.sender.send(RenderReceiverMessage::InitialInformation(initial_information)).map_err(unit_error)
+    pub(crate) fn send_initial_information(&self, initial_information: InitialInformation<Game>) -> Result<(), ()> {
+        self.sender.send(Message::InitialInformation(initial_information)).map_err(unit_error)
     }
 
-    pub fn send_state(&self, frame_index_and_state: FrameIndexAndState<Game>) -> Result<(), ()> {
-        self.sender.send(RenderReceiverMessage::StepMessage(frame_index_and_state)).map_err(unit_error)
+    pub(crate) fn send_state(&self, frame_index_and_state: FrameIndexAndState<Game>) -> Result<(), ()> {
+        self.sender.send(Message::State(frame_index_and_state)).map_err(unit_error)
     }
 
-    pub fn send_start_time(&self, start_time: StartTime) -> Result<(), ()> {
-        self.sender.send(RenderReceiverMessage::StartTime(start_time)).map_err(unit_error)
+    pub(crate) fn send_start_time(&self, start_time: StartTime) -> Result<(), ()> {
+        self.sender.send(Message::StartTime(start_time)).map_err(unit_error)
     }
 }
