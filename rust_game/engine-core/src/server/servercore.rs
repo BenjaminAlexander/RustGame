@@ -2,8 +2,7 @@ use crate::frame_manager::FrameManager;
 use crate::game_time::GameTimerScheduler;
 use crate::interface::{
     GameTrait,
-    InitialInformation,
-    RenderReceiverMessage,
+    InitialInformation, StateSender,
 };
 use crate::messaging::ToServerInputMessage;
 use crate::server::clientaddress::ClientAddress;
@@ -36,7 +35,6 @@ use commons::real_time::{
     Factory,
     HandleEvent,
     ReceiveMetaData,
-    Sender,
 };
 use commons::utils::unit_error;
 use log::{
@@ -61,7 +59,7 @@ pub struct ServerCore<Game: GameTrait> {
 impl<Game: GameTrait> ServerCore<Game> {
     pub fn new(
         factory: Factory,
-        render_receiver_sender: Sender<RenderReceiverMessage<Game>>,
+        state_sender: StateSender<Game>,
     ) -> Result<Self, Error> {
         let builder = EventHandlerBuilder::new(&factory);
 
@@ -72,7 +70,7 @@ impl<Game: GameTrait> ServerCore<Game> {
         let event_handler = ServerCoreEventHandler::new(
             factory,
             server_core.clone(),
-            render_receiver_sender.clone(),
+            state_sender.clone(),
         )?;
 
         builder.spawn_thread("ServerCore".to_string(), event_handler)?;
@@ -129,7 +127,7 @@ enum ServerCoreEvent<Game: GameTrait> {
 struct ServerCoreEventHandler<Game: GameTrait> {
     factory: Factory,
     server_core: ServerCore<Game>,
-    render_receiver_sender: Sender<RenderReceiverMessage<Game>>,
+    state_sender: StateSender<Game>,
     tcp_listener_sender: EventHandlerStopper,
     tcp_inputs: Vec<TcpInput>,
     tcp_outputs: Vec<TcpOutput<Game>>,
@@ -181,7 +179,7 @@ impl<Game: GameTrait> ServerCoreEventHandler<Game> {
     pub fn new(
         factory: Factory,
         server_core: ServerCore<Game>,
-        render_receiver_sender: Sender<RenderReceiverMessage<Game>>,
+        state_sender: StateSender<Game>,
     ) -> Result<Self, Error> {
         let udp_handler = UdpHandler::<Game>::new(factory.get_time_source().clone());
 
@@ -203,7 +201,7 @@ impl<Game: GameTrait> ServerCoreEventHandler<Game> {
         Ok(Self {
             factory,
             server_core,
-            render_receiver_sender,
+            state_sender,
             tcp_listener_sender,
             tcp_inputs: Vec::new(),
             tcp_outputs: Vec::new(),
@@ -304,22 +302,12 @@ impl<Game: GameTrait> ServerCoreEventHandler<Game> {
             initial_state.clone(),
         );
 
-        let send_result =
-            self.render_receiver_sender
-                .send(RenderReceiverMessage::InitialInformation(
-                    server_initial_information.clone(),
-                ));
-
-        if send_result.is_err() {
+        if self.state_sender.send_initial_information(server_initial_information.clone()).is_err() {
             warn!("Failed to send InitialInformation to Render Receiver");
             return EventHandleResult::StopThread;
         }
 
-        if self
-            .render_receiver_sender
-            .send(RenderReceiverMessage::StartTime(start_time))
-            .is_err()
-        {
+        if self.state_sender.send_start_time(start_time).is_err() {
             warn!("Failed to send StartTime to Render Receiver");
             return EventHandleResult::StopThread;
         }
@@ -339,7 +327,7 @@ impl<Game: GameTrait> ServerCoreEventHandler<Game> {
 
         let server_manager_observer = ServerManagerObserver::<Game>::new(
             udp_outputs.clone(),
-            self.render_receiver_sender.clone(),
+            self.state_sender.clone(),
         );
 
         let frame_manager = FrameManager::new(

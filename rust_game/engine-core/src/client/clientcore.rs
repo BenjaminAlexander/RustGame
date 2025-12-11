@@ -15,8 +15,7 @@ use crate::game_time::{
 };
 use crate::interface::{
     GameTrait,
-    InitialInformation,
-    RenderReceiverMessage,
+    InitialInformation, StateSender,
 };
 use crate::messaging::ToServerInputMessage;
 use commons::real_time::net::tcp::TcpReadHandlerBuilder;
@@ -33,7 +32,6 @@ use commons::real_time::{
     Factory,
     HandleEvent,
     ReceiveMetaData,
-    Sender,
 };
 use log::{
     trace,
@@ -58,7 +56,7 @@ pub struct ClientCore<Game: GameTrait> {
     server_ip: Ipv4Addr,
     tcp_input_sender: EventHandlerStopper,
     tcp_output_sender: EventSender<()>,
-    render_receiver_sender: Sender<RenderReceiverMessage<Game>>,
+    state_sender: StateSender<Game>,
     running_state: Option<RunningState<Game>>,
 }
 
@@ -79,14 +77,14 @@ impl<Game: GameTrait> ClientCore<Game> {
         factory: Factory,
         server_ip: Ipv4Addr,
         sender: EventSender<ClientCoreEvent<Game>>,
-        render_receiver_sender: Sender<RenderReceiverMessage<Game>>,
+        state_sender: StateSender<Game>
     ) -> Self {
         let socket_addr_v4 = SocketAddrV4::new(server_ip.clone(), Game::TCP_PORT);
         let socket_addr = SocketAddr::from(socket_addr_v4);
 
         let (tcp_sender, tcp_receiver) = factory.connect_tcp(socket_addr).unwrap();
 
-        let tcp_input = TcpInput::<Game>::new(sender.clone(), render_receiver_sender.clone());
+        let tcp_input = TcpInput::<Game>::new(sender.clone(), state_sender.clone());
 
         let tcp_input_sender = TcpReadHandlerBuilder::new_thread(
             &factory,
@@ -109,7 +107,7 @@ impl<Game: GameTrait> ClientCore<Game> {
             server_ip,
             tcp_input_sender,
             tcp_output_sender,
-            render_receiver_sender,
+            state_sender,
             running_state: None,
         };
     }
@@ -125,7 +123,7 @@ impl<Game: GameTrait> ClientCore<Game> {
 
         //TODO: maybe consolidate building of the manager into its own method
         let client_manager_observer =
-            ClientManagerObserver::<Game>::new(self.render_receiver_sender.clone());
+            ClientManagerObserver::<Game>::new(self.state_sender.clone());
 
         let frame_manager = FrameManager::new(
             &self.factory,
@@ -293,11 +291,7 @@ impl<Game: GameTrait> ClientCore<Game> {
                 }
             };
 
-            if self
-                .render_receiver_sender
-                .send(RenderReceiverMessage::StartTime(start_time))
-                .is_err()
-            {
+            if self.state_sender.send_start_time(start_time).is_err() {
                 warn!("Failed to send StartTime to Render Receiver");
                 return EventHandleResult::StopThread;
             }

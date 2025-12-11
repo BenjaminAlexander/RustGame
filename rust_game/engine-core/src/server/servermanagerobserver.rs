@@ -1,5 +1,5 @@
 use crate::frame_manager::ObserveFrames;
-use crate::interface::RenderReceiverMessage;
+use crate::interface::StateSender;
 use crate::messaging::{
     FrameIndexAndState,
     ToClientInputMessage,
@@ -9,23 +9,22 @@ use crate::{
     FrameIndex,
     GameTrait,
 };
-use commons::real_time::Sender;
 use log::warn;
 use std::ops::ControlFlow;
 
 pub struct ServerManagerObserver<Game: GameTrait> {
     udp_outputs: Vec<UdpOutput<Game>>,
-    render_receiver_sender: Sender<RenderReceiverMessage<Game>>,
+    state_sender: StateSender<Game>,
 }
 
 impl<Game: GameTrait> ServerManagerObserver<Game> {
     pub fn new(
         udp_outputs: Vec<UdpOutput<Game>>,
-        render_receiver_sender: Sender<RenderReceiverMessage<Game>>,
+        state_sender: StateSender<Game>,
     ) -> Self {
         return Self {
             udp_outputs,
-            render_receiver_sender,
+            state_sender,
         };
     }
 }
@@ -40,9 +39,7 @@ impl<Game: GameTrait> ObserveFrames for ServerManagerObserver<Game> {
         is_state_authoritative: bool,
         state_message: FrameIndexAndState<Game>,
     ) -> ControlFlow<()> {
-        let result = self
-            .render_receiver_sender
-            .send(RenderReceiverMessage::StepMessage(state_message.clone()));
+        let result = self.state_sender.send_state(state_message.clone());
 
         if result.is_err() {
             warn!("Failed to send StepMessage to Render Receiver");

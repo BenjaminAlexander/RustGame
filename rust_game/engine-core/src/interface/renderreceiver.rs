@@ -6,7 +6,6 @@ use crate::game_time::{
 use crate::interface::{
     GameTrait,
     InitialInformation,
-    InterpolationArg,
 };
 use crate::messaging::FrameIndexAndState;
 use commons::real_time::{
@@ -15,11 +14,21 @@ use commons::real_time::{
     Sender,
     TimeSource,
 };
-use commons::time::TimeDuration;
-use log::{
-    info,
-    warn,
-};
+use commons::utils::unit_error;
+use log::info;
+
+enum RenderReceiverMessage<Game: GameTrait> {
+    InitialInformation(InitialInformation<Game>),
+    //TODO: rename
+    StepMessage(FrameIndexAndState<Game>),
+    //TODO: rename and document these
+    StartTime(StartTime),
+}
+
+pub enum StateReceiverError {
+    Disconnected,
+    StateNoYetAvailable
+}
 
 pub struct CurrentStates<'a, Game: GameTrait> {
     pub time_source: &'a TimeSource,
@@ -29,19 +38,9 @@ pub struct CurrentStates<'a, Game: GameTrait> {
     pub next_frame: &'a FrameIndexAndState<Game>,
 }
 
-pub enum StateReceiverError {
-    Disconnected,
-    StateNoYetAvailable
-}
-
-//TODO: make the difference between the render receiver and the Data more clear
 pub struct StateReceiver<Game: GameTrait> {
     time_source: TimeSource,
     receiver: Receiver<RenderReceiverMessage<Game>>,
-    data: Data<Game>,
-}
-
-struct Data<Game: GameTrait> {
     start_time: Option<StartTime>,
     current_frame: Option<FrameIndexAndState<Game>>,
     next_frame: Option<FrameIndexAndState<Game>>,
@@ -49,50 +48,31 @@ struct Data<Game: GameTrait> {
 }
 
 impl<Game: GameTrait> StateReceiver<Game> {
-    pub fn new(factory: &Factory) -> (Sender<RenderReceiverMessage<Game>>, Self) {
+    pub fn new(factory: &Factory) -> (StateSender<Game>, Self) {
+
         let (sender, receiver) = factory.new_channel();
 
-        let data = Data::<Game> {
+        let receiver = Self {
+            time_source: factory.get_time_source().clone(),
+            receiver,
             start_time: None,
             current_frame: None,
             next_frame: None,
             initial_information: None,
         };
 
-        let render_receiver = Self {
-            time_source: factory.get_time_source().clone(),
-            receiver,
-            data,
-        };
+        let sender = StateSender { sender };
 
-        return (sender, render_receiver);
+        return (sender, receiver);
     }
 
-    //TODO: remove timeduration
-    //TODO: notify the caller if the channel is disconnected
     pub fn get_step_message(&mut self) -> Result<CurrentStates<Game>, StateReceiverError> {
         loop {
             match self.receiver.try_recv() {
-                Ok(RenderReceiverMessage::InitialInformation(initial_information)) => {
-                    self.data.on_initial_information(initial_information)
-                }
-
-                Ok(RenderReceiverMessage::StepMessage(step_message)) => {
-                    self.data.on_step_message(step_message)
-                }
-
-                Ok(RenderReceiverMessage::StartTime(start_time)) => {
-                    self.data.on_start_time(start_time)
-                }
-
-                Ok(RenderReceiverMessage::StopThread) => {
-                    info!("Thread commanded to stop, but not stopping...");
-                    //TODO: notify the caller if the channel is disconnected
-                    break;
-                }
-
+                Ok(RenderReceiverMessage::InitialInformation(initial_information)) => self.on_initial_information(initial_information),
+                Ok(RenderReceiverMessage::StepMessage(step_message)) => self.on_step_message(step_message),
+                Ok(RenderReceiverMessage::StartTime(start_time)) => self.on_start_time(start_time),
                 Err(TryRecvError::Empty) => break,
-
                 Err(TryRecvError::Disconnected) => {
                     info!("Channel disconnected.");
                     return Err(StateReceiverError::Disconnected);
@@ -100,26 +80,22 @@ impl<Game: GameTrait> StateReceiver<Game> {
             }
         }
 
-        if self.data.next_frame.is_none() {
-            return Err(StateReceiverError::StateNoYetAvailable);
-        }
-
-        let start_time = match &self.data.start_time {
+        let start_time = match &self.start_time {
             Some(start_time) => start_time,
             None => return Err(StateReceiverError::StateNoYetAvailable),
         };
 
-        let initial_information = match &self.data.initial_information {
+        let initial_information = match &self.initial_information {
             Some(initial_information) => initial_information,
             None => return Err(StateReceiverError::StateNoYetAvailable),
         };
 
-        let next_frame = match &self.data.next_frame {
+        let next_frame = match &self.next_frame {
             Some(second_step) => second_step,
             None => return Err(StateReceiverError::StateNoYetAvailable),
         };
 
-        let current_frame = match &self.data.current_frame {
+        let current_frame = match &self.current_frame {
             Some(first_step) => first_step,
             None => next_frame,
         };
@@ -197,12 +173,6 @@ impl<Game: GameTrait> StateReceiver<Game> {
         */
     }
 
-    pub fn get_initial_information(&self) -> &Option<InitialInformation<Game>> {
-        return &self.data.initial_information;
-    }
-}
-
-impl<Game: GameTrait> Data<Game> {
     fn on_initial_information(&mut self, initial_information: InitialInformation<Game>) {
         self.initial_information = Some(initial_information);
     }
@@ -244,13 +214,24 @@ impl<Game: GameTrait> Data<Game> {
     fn on_start_time(&mut self, start_time: StartTime) {
         self.start_time = Some(start_time);
     }
+
 }
 
-pub enum RenderReceiverMessage<Game: GameTrait> {
-    InitialInformation(InitialInformation<Game>),
-    //TODO: rename
-    StepMessage(FrameIndexAndState<Game>),
-    //TODO: rename and document these
-    StartTime(StartTime),
-    StopThread,
+#[derive(Clone)]
+pub struct StateSender<Game: GameTrait> {
+    sender: Sender<RenderReceiverMessage<Game>>
+}
+
+impl<Game: GameTrait> StateSender<Game> {
+    pub fn send_initial_information(&self, initial_information: InitialInformation<Game>) -> Result<(), ()> {
+        self.sender.send(RenderReceiverMessage::InitialInformation(initial_information)).map_err(unit_error)
+    }
+
+    pub fn send_state(&self, frame_index_and_state: FrameIndexAndState<Game>) -> Result<(), ()> {
+        self.sender.send(RenderReceiverMessage::StepMessage(frame_index_and_state)).map_err(unit_error)
+    }
+
+    pub fn send_start_time(&self, start_time: StartTime) -> Result<(), ()> {
+        self.sender.send(RenderReceiverMessage::StartTime(start_time)).map_err(unit_error)
+    }
 }
