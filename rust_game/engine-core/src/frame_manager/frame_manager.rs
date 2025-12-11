@@ -284,8 +284,8 @@ impl<ManagerObserver: ObserveFrames> EventHandler<ManagerObserver> {
             panic!("The server received an authoritative missing message")
         }
 
-        if let Some(step) = self.get_frame(frame_index) {
-            step.set_input(player_index, Input::AuthoritativeMissing);
+        if let Some(frame) = self.get_frame(frame_index) {
+            frame.set_input(player_index, Input::AuthoritativeMissing);
         }
     }
 

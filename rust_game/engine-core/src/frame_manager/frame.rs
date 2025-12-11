@@ -53,6 +53,16 @@ impl<T> Input<T> {
             Input::AuthoritativeMissing => true,
         }
     }
+
+    /// Returns Some [GameTrait::ClientInput] if one is present
+    pub fn input(&self) -> Option<&T> {
+        match self {
+            Input::Pending => None,
+            Input::NonAuthoritative(input) => Some(input),
+            Input::Authoritative(input) => Some(input),
+            Input::AuthoritativeMissing => None,
+        }
+    }
 }
 
 /// An enum describing the provenance of a [GameTrait::State].
@@ -91,6 +101,13 @@ impl<Game: GameTrait> Frame<Game> {
         if current_input.is_authoritative() {
             warn!("Received a duplicate input where an authoritative one has already been received, ignorning it");
             return;
+        }
+
+        //TODO: migrate to 2024 edition and use a chain if let
+        if let Input::NonAuthoritative(_) = current_input {
+            if let Input::AuthoritativeMissing = input {
+                warn!("Local input was rejected by the server");
+            }
         }
 
         if input.is_authoritative() {

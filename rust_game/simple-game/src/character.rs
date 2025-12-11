@@ -61,7 +61,7 @@ impl Character {
     }
 
     pub fn move_character(&mut self, arg: &UpdateArg<SimpleGameImpl>) {
-        if let Input::Authoritative(input) = arg.get_input(self.player_index) {
+        if let Some(input) = arg.get_input(self.player_index).input() {
             self.velocity = input.get_velocity();
         }
 
@@ -70,7 +70,7 @@ impl Character {
     }
 
     pub fn get_fired_bullet(&self, arg: &UpdateArg<SimpleGameImpl>) -> Option<Bullet> {
-        if let Input::Authoritative(input) = arg.get_input(self.player_index) {
+        if let Some(input) = arg.get_input(self.player_index).input() {
             if input.should_fire() {
                 return Some(Bullet::new(
                     arg.get_current_step(),

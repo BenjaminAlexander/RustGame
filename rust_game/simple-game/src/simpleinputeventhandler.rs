@@ -13,10 +13,10 @@ use piston::{
 
 pub struct SimpleInputEventHandler {
     aim_point: Vector2,
-    d_state: ButtonState,
-    a_state: ButtonState,
-    s_state: ButtonState,
-    w_state: ButtonState,
+    d: MoveButtonTracker,
+    a: MoveButtonTracker,
+    s: MoveButtonTracker,
+    w: MoveButtonTracker,
     left_mouse_state: ButtonState,
     should_fire: bool,
 }
@@ -25,10 +25,10 @@ impl SimpleInputEventHandler {
     pub fn new() -> Self {
         Self {
             aim_point: Vector2::new(0 as f64, 0 as f64),
-            d_state: ButtonState::Release,
-            a_state: ButtonState::Release,
-            s_state: ButtonState::Release,
-            w_state: ButtonState::Release,
+            d: MoveButtonTracker::new(),
+            a: MoveButtonTracker::new(),
+            s: MoveButtonTracker::new(),
+            w: MoveButtonTracker::new(),
             left_mouse_state: ButtonState::Release,
             should_fire: false,
         }
@@ -52,18 +52,18 @@ impl SimpleInputEventHandler {
     }
 
     pub fn get_input(&mut self) -> SimpleInput {
-        let x = match (self.d_state, self.a_state) {
-            (ButtonState::Press, ButtonState::Press) => 0,
-            (ButtonState::Release, ButtonState::Press) => -1,
-            (ButtonState::Press, ButtonState::Release) => 1,
-            (ButtonState::Release, ButtonState::Release) => 0,
+        let x = match (self.d.take_was_down(), self.a.take_was_down()) {
+            (true, true) => 0,
+            (false, true) => -1,
+            (true, false) => 1,
+            (false, false) => 0,
         } as f64;
 
-        let y = match (self.s_state, self.w_state) {
-            (ButtonState::Press, ButtonState::Press) => 0,
-            (ButtonState::Release, ButtonState::Press) => -1,
-            (ButtonState::Press, ButtonState::Release) => 1,
-            (ButtonState::Release, ButtonState::Release) => 0,
+        let y = match (self.s.take_was_down(), self.w.take_was_down()) {
+            (true, true) => 0,
+            (false, true) => -1,
+            (true, false) => 1,
+            (false, false) => 0,
         } as f64;
 
         let velocity = Vector2::new(x, y).normalize();
@@ -87,10 +87,10 @@ impl SimpleInputEventHandler {
     fn accumulate_button(&mut self, button: &ButtonArgs) {
         match button.button {
             Button::Keyboard(key) => match key {
-                Key::D => self.d_state = button.state,
-                Key::A => self.a_state = button.state,
-                Key::S => self.s_state = button.state,
-                Key::W => self.w_state = button.state,
+                Key::D => self.d.set_state(button.state),
+                Key::A => self.a.set_state(button.state),
+                Key::S => self.s.set_state(button.state),
+                Key::W => self.w.set_state(button.state),
                 _ => {}
             },
             Button::Mouse(mouse_button) => match mouse_button {
@@ -107,5 +107,32 @@ impl SimpleInputEventHandler {
             },
             _ => {}
         }
+    }
+}
+
+struct MoveButtonTracker {
+    last_state: ButtonState,
+    was_down: bool
+}
+
+impl MoveButtonTracker {
+    fn new() -> Self {
+        Self {
+            last_state: ButtonState::Release,
+            was_down: false
+        }
+    }
+
+    fn set_state(&mut self, new_state: ButtonState) {
+        self.last_state = new_state;
+        if self.last_state == ButtonState::Press {
+            self.was_down = true;
+        }
+    }
+
+    fn take_was_down(&mut self) -> bool {
+        let value = self.was_down;
+        self.was_down = false;
+        return value || self.last_state == ButtonState::Press;
     }
 }
