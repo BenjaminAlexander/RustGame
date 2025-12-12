@@ -127,6 +127,15 @@ impl<Game: GameTrait> StateReceiver<Game> {
         });
 /*
 
+
+
+
+na1                   na2
+        last render 
+nb1                   nb2
+
+
+
         let now = self.time_source.now();
         //let latest_time_message = self.data.latest_time_message.as_ref().unwrap();
         //let mut duration_since_start = latest_time_message.get_duration_since_start(now);

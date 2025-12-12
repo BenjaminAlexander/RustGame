@@ -24,7 +24,7 @@ impl GameTrait for SimpleGameImpl {
     type ClientInput = SimpleInput;
     type InterpolationResult = SimpleState;
     type ClientInputEvent = SimpleInputEvent;
-    type ClientInputEventHandler = SimpleInputEventHandler;
+    type InputAggregator = SimpleInputEventHandler;
 
     const TCP_PORT: u16 = 3456;
     const UDP_PORT: u16 = 3457;
@@ -48,20 +48,5 @@ impl GameTrait for SimpleGameImpl {
         arg: &InterpolationArg,
     ) -> Self::InterpolationResult {
         return SimpleState::interpolate(initial_information, first, second, arg);
-    }
-
-    fn new_input_event_handler() -> Self::ClientInputEventHandler {
-        SimpleInputEventHandler::new()
-    }
-
-    fn handle_input_event(
-        input_event_handler: &mut Self::ClientInputEventHandler,
-        input_event: Self::ClientInputEvent,
-    ) {
-        input_event_handler.handle_event(input_event);
-    }
-
-    fn get_input(input_event_handler: &mut Self::ClientInputEventHandler) -> Self::ClientInput {
-        input_event_handler.get_input()
     }
 }

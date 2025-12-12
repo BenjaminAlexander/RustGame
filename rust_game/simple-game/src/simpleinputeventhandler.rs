@@ -1,6 +1,7 @@
 use crate::simpleinput::SimpleInput;
 use crate::simpleinputevent::SimpleInputEvent;
 use commons::geometry::twod::Vector2;
+use engine_core::AggregateInput;
 use piston::input::Input as PistonInput;
 use piston::{
     Button,
@@ -21,8 +22,12 @@ pub struct SimpleInputEventHandler {
     should_fire: bool,
 }
 
-impl SimpleInputEventHandler {
-    pub fn new() -> Self {
+impl AggregateInput for SimpleInputEventHandler {
+    type ClientInputEvent = SimpleInputEvent;
+
+    type ClientInput = SimpleInput;
+
+    fn new() -> Self {
         Self {
             aim_point: Vector2::new(0 as f64, 0 as f64),
             d: MoveButtonTracker::new(),
@@ -34,7 +39,7 @@ impl SimpleInputEventHandler {
         }
     }
 
-    pub fn handle_event(&mut self, input_event: SimpleInputEvent) {
+    fn handle_input_event(&mut self, input_event: Self::ClientInputEvent) {
         match input_event.get_piston_input() {
             PistonInput::Button(arg) => {
                 self.accumulate_button(arg);
@@ -51,7 +56,7 @@ impl SimpleInputEventHandler {
         }
     }
 
-    pub fn get_input(&mut self) -> SimpleInput {
+    fn get_input(&mut self) -> Self::ClientInput {
         let x = match (self.d.take_was_down(), self.a.take_was_down()) {
             (true, true) => 0,
             (false, true) => -1,
@@ -74,6 +79,9 @@ impl SimpleInputEventHandler {
 
         return input;
     }
+}
+
+impl SimpleInputEventHandler {
 
     fn accumulate_move(&mut self, move_event: &Motion) {
         match move_event {

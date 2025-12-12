@@ -1,3 +1,4 @@
+use crate::AggregateInput;
 use crate::interface::InitialInformation;
 use crate::interface::InterpolationArg;
 use crate::UpdateArg;
@@ -10,14 +11,12 @@ use std::fmt::Debug;
 pub trait GameTrait: 'static + Send + Sized + Clone {
     type State: Serialize + DeserializeOwned + Clone + Debug + Send + Sync + 'static;
 
+    type ClientInputEvent: Send + 'static;
     type ClientInput: Serialize + DeserializeOwned + Clone + Debug + Send + 'static;
 
     type InterpolationResult: Send + 'static;
 
-    type ClientInputEvent: Send + 'static;
-
-    //TODO: make input event handler its own trait
-    type ClientInputEventHandler: Send + 'static;
+    type InputAggregator: AggregateInput<ClientInputEvent = Self::ClientInputEvent, ClientInput = Self::ClientInput>;
 
     const TCP_PORT: u16;
     const UDP_PORT: u16;
@@ -38,13 +37,4 @@ pub trait GameTrait: 'static + Send + Sized + Clone {
         second: &Self::State,
         arg: &InterpolationArg,
     ) -> Self::InterpolationResult;
-
-    fn new_input_event_handler() -> Self::ClientInputEventHandler;
-
-    fn handle_input_event(
-        input_event_handler: &mut Self::ClientInputEventHandler,
-        input_event: Self::ClientInputEvent,
-    );
-
-    fn get_input(input_event_handler: &mut Self::ClientInputEventHandler) -> Self::ClientInput;
 }
