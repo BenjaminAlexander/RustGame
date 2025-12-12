@@ -39,7 +39,7 @@ impl AggregateInput for SimpleInputEventHandler {
         }
     }
 
-    fn handle_input_event(&mut self, input_event: Self::ClientInputEvent) {
+    fn aggregate_input_event(&mut self, input_event: Self::ClientInputEvent) {
         match input_event.get_piston_input() {
             PistonInput::Button(arg) => {
                 self.accumulate_button(arg);
@@ -55,16 +55,16 @@ impl AggregateInput for SimpleInputEventHandler {
             PistonInput::Close(_) => {}
         }
     }
-
-    fn get_input(&mut self) -> Self::ClientInput {
-        let x = match (self.d.take_was_down(), self.a.take_was_down()) {
+    
+    fn peak_input(&self) -> Self::ClientInput {
+        let x = match (self.d.was_down(), self.a.was_down()) {
             (true, true) => 0,
             (false, true) => -1,
             (true, false) => 1,
             (false, false) => 0,
         } as f64;
 
-        let y = match (self.s.take_was_down(), self.w.take_was_down()) {
+        let y = match (self.s.was_down(), self.w.was_down()) {
             (true, true) => 0,
             (false, true) => -1,
             (true, false) => 1,
@@ -75,9 +75,15 @@ impl AggregateInput for SimpleInputEventHandler {
 
         let input = SimpleInput::new(self.aim_point, velocity, self.should_fire);
 
-        self.should_fire = false;
-
         return input;
+    }
+
+    fn reset_for_new_frame(&mut self) {
+        self.should_fire = false;
+        self.a.reset_for_new_frame();
+        self.d.reset_for_new_frame();
+        self.s.reset_for_new_frame();
+        self.w.reset_for_new_frame();
     }
 }
 
@@ -138,9 +144,11 @@ impl MoveButtonTracker {
         }
     }
 
-    fn take_was_down(&mut self) -> bool {
-        let value = self.was_down;
+    fn was_down(&self) -> bool {
+        return self.was_down || self.last_state == ButtonState::Press;
+    }
+
+    fn reset_for_new_frame(&mut self) {
         self.was_down = false;
-        return value || self.last_state == ButtonState::Press;
     }
 }

@@ -9,7 +9,9 @@ pub trait AggregateInput: Send {
 
     fn new() -> Self;
 
-    fn handle_input_event(&mut self, input_event: Self::ClientInputEvent);
+    fn aggregate_input_event(&mut self, input_event: Self::ClientInputEvent);
 
-    fn get_input(&mut self) -> Self::ClientInput;
+    fn peak_input(&self) -> Self::ClientInput;
+
+    fn reset_for_new_frame(&mut self);
 }

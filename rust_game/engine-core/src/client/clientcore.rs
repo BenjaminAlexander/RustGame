@@ -65,8 +65,7 @@ pub struct ClientCore<Game: GameTrait> {
 //TODO: don't start client core before hello
 struct RunningState<Game: GameTrait> {
     frame_manager: FrameManager<Game>,
-    //TODO: rename
-    input_event_handler: Game::InputAggregator,
+    input_aggregator: Game::InputAggregator,
     timer_service: TimerService<(), ClientGameTimerObserver<Game>>,
     game_timer: GameTimerScheduler,
     udp_input_sender: EventHandlerStopper,
@@ -186,7 +185,7 @@ impl<Game: GameTrait> ClientCore<Game> {
 
         self.running_state = Some(RunningState {
             frame_manager,
-            input_event_handler: Game::InputAggregator::new(),
+            input_aggregator: Game::InputAggregator::new(),
             timer_service,
             game_timer,
             udp_input_sender,
@@ -203,7 +202,7 @@ impl<Game: GameTrait> ClientCore<Game> {
 
     fn on_input_event(&mut self, input_event: Game::ClientInputEvent) -> EventHandleResult {
         if let Some(ref mut running_state) = self.running_state {
-            running_state.input_event_handler.handle_input_event(input_event);
+            running_state.input_aggregator.aggregate_input_event(input_event);
         }
         //Else: No-op, just discard the input
 
@@ -235,8 +234,10 @@ impl<Game: GameTrait> ClientCore<Game> {
                 //TODO: define strict and consistent rules for how real time relates to ticks, input deadlines and display states
                 frame_index,
                 running_state.initial_information.get_player_index(),
-                running_state.input_event_handler.get_input(),
+                running_state.input_aggregator.peak_input(),
             );
+
+            running_state.input_aggregator.reset_for_new_frame();
 
             let send_result = running_state.frame_manager.insert_input(
                 message.get_frame_index(),
