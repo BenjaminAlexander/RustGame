@@ -112,6 +112,7 @@ impl SimpleInputEventHandler {
                     if self.left_mouse_state == ButtonState::Release
                         && button.state == ButtonState::Press
                     {
+                        //TODO: should probably capture the bullet direction when the fire happens
                         self.should_fire = true;
                     }
 

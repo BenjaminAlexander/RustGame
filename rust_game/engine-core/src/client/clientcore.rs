@@ -64,6 +64,7 @@ pub struct ClientCore<Game: GameTrait> {
 
 //TODO: don't start client core before hello
 struct RunningState<Game: GameTrait> {
+    current_frame_index: FrameIndex,
     frame_manager: FrameManager<Game>,
     input_aggregator: Game::InputAggregator,
     timer_service: TimerService<(), ClientGameTimerObserver<Game>>,
@@ -71,7 +72,6 @@ struct RunningState<Game: GameTrait> {
     udp_input_sender: EventHandlerStopper,
     udp_output_sender: EventSender<UdpOutputEvent<Game>>,
     initial_information: InitialInformation<Game>,
-    input_grace_period_frames: usize,
 }
 
 impl<Game: GameTrait> ClientCore<Game> {
@@ -177,13 +177,20 @@ impl<Game: GameTrait> ClientCore<Game> {
         )
         .unwrap();
 
-        let input_grace_period_frames = initial_information
-            .get_server_config()
-            .get_frame_duration()
-            .to_frame_count(&Game::GRACE_PERIOD.mul_f64(2.0))
-            as usize;
+        let current_frame_index = FrameIndex::zero();
+
+        // TODO: this causes the first client ping to be requested.  If the first
+        // ping is dropped (its udp), then the client clock will never start.
+        // There should probably be some retry logic for this.
+        let send_result = udp_output_sender.send_event(UdpOutputEvent::FrameIndex(current_frame_index));
+
+        if send_result.is_err() {
+            warn!("Failed to send InputMessage to Udp Output");
+            return EventHandleResult::StopThread;
+        }
 
         self.running_state = Some(RunningState {
+            current_frame_index,
             frame_manager,
             input_aggregator: Game::InputAggregator::new(),
             timer_service,
@@ -191,18 +198,30 @@ impl<Game: GameTrait> ClientCore<Game> {
             udp_input_sender,
             udp_output_sender,
             initial_information,
-            input_grace_period_frames,
         });
 
-        // TODO: this causes the first client ping to be requested.  If the first
-        // ping is dropped (its udp), then the client clock will never start.
-        // There should probably be some retry logic for this.
-        return self.send_new_frame_index(FrameIndex::zero());
+        return EventHandleResult::TryForNextEvent;
     }
 
     fn on_input_event(&mut self, input_event: Game::ClientInputEvent) -> EventHandleResult {
         if let Some(ref mut running_state) = self.running_state {
+
             running_state.input_aggregator.aggregate_input_event(input_event);
+
+            //TODO: Can this peak code be consolidate with the one from new frame index logic?
+            let input = running_state.input_aggregator.peak_input();
+
+            let send_result = running_state.frame_manager.insert_input(
+                running_state.current_frame_index,
+                running_state.initial_information.get_player_index(),
+                input,
+                false,
+            );
+
+            if send_result.is_err() {
+                warn!("Failed to send InputMessage to Game Manager");
+                return EventHandleResult::StopThread;
+            }
         }
         //Else: No-op, just discard the input
 
@@ -225,6 +244,7 @@ impl<Game: GameTrait> ClientCore<Game> {
         return self.send_new_frame_index(frame_index);
     }
 
+    //TODO: make this a function on the running state
     fn send_new_frame_index(&mut self, frame_index: FrameIndex) -> EventHandleResult {
         if let Some(ref mut running_state) = self.running_state {
             trace!("TimeMessage step_index: {:?}", frame_index);
@@ -232,10 +252,14 @@ impl<Game: GameTrait> ClientCore<Game> {
             let message = ToServerInputMessage::<Game>::new(
                 //TODO: message or last message?
                 //TODO: define strict and consistent rules for how real time relates to ticks, input deadlines and display states
-                frame_index,
+                running_state.current_frame_index,
                 running_state.initial_information.get_player_index(),
                 running_state.input_aggregator.peak_input(),
             );
+
+            running_state.current_frame_index = frame_index;
+
+            //TODO: peak next input and send it to frame manager
 
             running_state.input_aggregator.reset_for_new_frame();
 

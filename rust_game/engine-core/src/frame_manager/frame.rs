@@ -63,6 +63,15 @@ impl<T> Input<T> {
             Input::AuthoritativeMissing => None,
         }
     }
+
+    pub fn type_as_str(&self) -> &str{
+        match self {
+            Input::Pending => "Pending",
+            Input::NonAuthoritative(_) => "NonAuthoritative",
+            Input::Authoritative(_) => "Authoritative",
+            Input::AuthoritativeMissing => "AuthoritativeMissing",
+        }
+    }
 }
 
 /// An enum describing the provenance of a [GameTrait::State].
@@ -99,7 +108,12 @@ impl<Game: GameTrait> Frame<Game> {
         let current_input = &mut self.inputs[player_index];
 
         if current_input.is_authoritative() {
-            warn!("Received a duplicate input where an authoritative one has already been received, ignorning it");
+            warn!(
+                "Received a duplicate input where an authoritative one has already been received, ignorning it\n{:?}\nCurrent: {:}\nIgnored: {:?}", 
+                self.frame_index,
+                current_input.type_as_str(),
+                input.type_as_str()
+            );
             return;
         }
 
