@@ -64,7 +64,7 @@ impl<T> Input<T> {
         }
     }
 
-    pub fn type_as_str(&self) -> &str{
+    pub fn type_as_str(&self) -> &str {
         match self {
             Input::Pending => "Pending",
             Input::NonAuthoritative(_) => "NonAuthoritative",

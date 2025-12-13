@@ -2,7 +2,8 @@ use crate::simplegameimpl::SimpleGameImpl;
 use crate::simpleinputevent::SimpleInputEvent;
 use engine_core::{
     Client,
-    StateReceiver, StateReceiverError,
+    StateReceiver,
+    StateReceiverError,
 };
 use glutin_window::GlutinWindow as Window;
 use graphics::*;
@@ -74,7 +75,6 @@ impl SimpleWindow {
     }
 
     fn render(&mut self, gl_graphics: &mut GlGraphics, args: &RenderArgs) {
-
         let mouse_position = &self.mouse_position;
 
         let result = self.render_receiver.get_step_message();
@@ -92,10 +92,16 @@ impl SimpleWindow {
 
             if let Some(current_states) = &current_states {
                 let now = current_states.time_source.now();
-                let duration_since_game_start = now.duration_since(current_states.start_time.get_time_value());
-                
+                let duration_since_game_start =
+                    now.duration_since(current_states.start_time.get_time_value());
+
                 //let duration_since_game_start = STEP_DURATION * step_message.get_step_index() as i64;
-                current_states.next_frame.get_state().draw(current_states.initial_information, duration_since_game_start, context, gl);
+                current_states.next_frame.get_state().draw(
+                    current_states.initial_information,
+                    duration_since_game_start,
+                    context,
+                    gl,
+                );
             }
 
             draw_mouse(mouse_position, context, gl)

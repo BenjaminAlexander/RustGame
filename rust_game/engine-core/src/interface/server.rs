@@ -1,5 +1,7 @@
 use crate::{
-    GameTrait, StateReceiver, server::ServerCore
+    server::ServerCore,
+    GameTrait,
+    StateReceiver,
 };
 use commons::real_time::Factory;
 

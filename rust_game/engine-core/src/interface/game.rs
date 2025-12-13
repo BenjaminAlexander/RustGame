@@ -1,6 +1,6 @@
-use crate::AggregateInput;
 use crate::interface::InitialInformation;
 use crate::interface::InterpolationArg;
+use crate::AggregateInput;
 use crate::UpdateArg;
 use commons::time::TimeDuration;
 use serde::de::DeserializeOwned;
@@ -16,7 +16,10 @@ pub trait GameTrait: 'static + Send + Sized + Clone {
 
     type InterpolationResult: Send + 'static;
 
-    type InputAggregator: AggregateInput<ClientInputEvent = Self::ClientInputEvent, ClientInput = Self::ClientInput>;
+    type InputAggregator: AggregateInput<
+        ClientInputEvent = Self::ClientInputEvent,
+        ClientInput = Self::ClientInput,
+    >;
 
     const TCP_PORT: u16;
     const UDP_PORT: u16;

@@ -9,14 +9,12 @@ use log::warn;
 use std::ops::ControlFlow;
 
 pub struct ClientManagerObserver<Game: GameTrait> {
-    state_sender: StateSender<Game>
+    state_sender: StateSender<Game>,
 }
 
 impl<Game: GameTrait> ClientManagerObserver<Game> {
     pub fn new(state_sender: StateSender<Game>) -> Self {
-        return Self {
-            state_sender,
-        };
+        return Self { state_sender };
     }
 }
 

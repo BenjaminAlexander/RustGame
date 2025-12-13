@@ -2,7 +2,10 @@ use crate::client::{
     ClientCore,
     ClientCoreEvent,
 };
-use crate::{GameTrait, StateReceiver};
+use crate::{
+    GameTrait,
+    StateReceiver,
+};
 use commons::real_time::{
     EventHandlerBuilder,
     EventSender,

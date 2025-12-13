@@ -61,7 +61,8 @@ impl Character {
         if let Some(input) = arg.get_input(self.player_index).input() {
             let velocity = input.get_velocity();
 
-            self.position = self.position + velocity * SimpleGameImpl::STEP_PERIOD.as_secs_f64() * 500.0;
+            self.position =
+                self.position + velocity * SimpleGameImpl::STEP_PERIOD.as_secs_f64() * 500.0;
         }
     }
 

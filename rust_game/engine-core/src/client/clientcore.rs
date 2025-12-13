@@ -79,7 +79,7 @@ impl<Game: GameTrait> ClientCore<Game> {
         factory: Factory,
         server_ip: Ipv4Addr,
         sender: EventSender<ClientCoreEvent<Game>>,
-        state_sender: StateSender<Game>
+        state_sender: StateSender<Game>,
     ) -> Self {
         let socket_addr_v4 = SocketAddrV4::new(server_ip.clone(), Game::TCP_PORT);
         let socket_addr = SocketAddr::from(socket_addr_v4);
@@ -124,8 +124,7 @@ impl<Game: GameTrait> ClientCore<Game> {
         }
 
         //TODO: maybe consolidate building of the manager into its own method
-        let client_manager_observer =
-            ClientManagerObserver::<Game>::new(self.state_sender.clone());
+        let client_manager_observer = ClientManagerObserver::<Game>::new(self.state_sender.clone());
 
         let frame_manager = FrameManager::new(
             &self.factory,
@@ -182,7 +181,8 @@ impl<Game: GameTrait> ClientCore<Game> {
         // TODO: this causes the first client ping to be requested.  If the first
         // ping is dropped (its udp), then the client clock will never start.
         // There should probably be some retry logic for this.
-        let send_result = udp_output_sender.send_event(UdpOutputEvent::FrameIndex(current_frame_index));
+        let send_result =
+            udp_output_sender.send_event(UdpOutputEvent::FrameIndex(current_frame_index));
 
         if send_result.is_err() {
             warn!("Failed to send InputMessage to Udp Output");
@@ -205,8 +205,9 @@ impl<Game: GameTrait> ClientCore<Game> {
 
     fn on_input_event(&mut self, input_event: Game::ClientInputEvent) -> EventHandleResult {
         if let Some(ref mut running_state) = self.running_state {
-
-            running_state.input_aggregator.aggregate_input_event(input_event);
+            running_state
+                .input_aggregator
+                .aggregate_input_event(input_event);
 
             //TODO: Can this peak code be consolidate with the one from new frame index logic?
             let input = running_state.input_aggregator.peak_input();
@@ -249,24 +250,23 @@ impl<Game: GameTrait> ClientCore<Game> {
         if let Some(ref mut running_state) = self.running_state {
             trace!("TimeMessage step_index: {:?}", frame_index);
 
+            let final_input = running_state.input_aggregator.peak_input();
+
             let message = ToServerInputMessage::<Game>::new(
                 //TODO: message or last message?
                 //TODO: define strict and consistent rules for how real time relates to ticks, input deadlines and display states
                 running_state.current_frame_index,
                 running_state.initial_information.get_player_index(),
-                running_state.input_aggregator.peak_input(),
+                final_input.clone(),
             );
 
             running_state.current_frame_index = frame_index;
-
-            //TODO: peak next input and send it to frame manager
-
             running_state.input_aggregator.reset_for_new_frame();
 
             let send_result = running_state.frame_manager.client_advance_frame_index(
                 frame_index,
-                message.get_player_index(),
-                message.get_input().clone(),
+                running_state.initial_information.get_player_index(),
+                final_input,
                 running_state.input_aggregator.peak_input(),
             );
 
@@ -292,7 +292,6 @@ impl<Game: GameTrait> ClientCore<Game> {
                 warn!("Failed to send InputMessage to Udp Output");
                 return EventHandleResult::StopThread;
             }
-
         } else {
             warn!("Tried to send next frame when the core wasn't running")
         }

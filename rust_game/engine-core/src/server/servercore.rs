@@ -16,8 +16,8 @@ use crate::server::{
     ServerConfig,
     TcpConnectionHandler,
 };
-use crate::FrameIndex;
 use crate::state_channel::StateSender;
+use crate::FrameIndex;
 use commons::real_time::net::tcp::{
     TcpListenerBuilder,
     TcpReader,
@@ -58,21 +58,15 @@ pub struct ServerCore<Game: GameTrait> {
 }
 
 impl<Game: GameTrait> ServerCore<Game> {
-    pub fn new(
-        factory: Factory,
-        state_sender: StateSender<Game>,
-    ) -> Result<Self, Error> {
+    pub fn new(factory: Factory, state_sender: StateSender<Game>) -> Result<Self, Error> {
         let builder = EventHandlerBuilder::new(&factory);
 
         let server_core = Self {
             sender: builder.get_sender().clone(),
         };
 
-        let event_handler = ServerCoreEventHandler::new(
-            factory,
-            server_core.clone(),
-            state_sender.clone(),
-        )?;
+        let event_handler =
+            ServerCoreEventHandler::new(factory, server_core.clone(), state_sender.clone())?;
 
         builder.spawn_thread("ServerCore".to_string(), event_handler)?;
 
@@ -303,7 +297,11 @@ impl<Game: GameTrait> ServerCoreEventHandler<Game> {
             initial_state.clone(),
         );
 
-        if self.state_sender.send_initial_information(server_initial_information.clone()).is_err() {
+        if self
+            .state_sender
+            .send_initial_information(server_initial_information.clone())
+            .is_err()
+        {
             warn!("Failed to send InitialInformation to Render Receiver");
             return EventHandleResult::StopThread;
         }
@@ -326,10 +324,8 @@ impl<Game: GameTrait> ServerCoreEventHandler<Game> {
             }
         }
 
-        let server_manager_observer = ServerManagerObserver::<Game>::new(
-            udp_outputs.clone(),
-            self.state_sender.clone(),
-        );
+        let server_manager_observer =
+            ServerManagerObserver::<Game>::new(udp_outputs.clone(), self.state_sender.clone());
 
         let frame_manager = FrameManager::new(
             &self.factory,

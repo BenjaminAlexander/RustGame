@@ -18,10 +18,7 @@ pub struct ServerManagerObserver<Game: GameTrait> {
 }
 
 impl<Game: GameTrait> ServerManagerObserver<Game> {
-    pub fn new(
-        udp_outputs: Vec<UdpOutput<Game>>,
-        state_sender: StateSender<Game>,
-    ) -> Self {
+    pub fn new(udp_outputs: Vec<UdpOutput<Game>>, state_sender: StateSender<Game>) -> Self {
         return Self {
             udp_outputs,
             state_sender,

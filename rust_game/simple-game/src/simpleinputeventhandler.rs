@@ -55,7 +55,7 @@ impl AggregateInput for SimpleInputEventHandler {
             PistonInput::Close(_) => {}
         }
     }
-    
+
     fn peak_input(&self) -> Self::ClientInput {
         let x = match (self.d.was_down(), self.a.was_down()) {
             (true, true) => 0,
@@ -88,7 +88,6 @@ impl AggregateInput for SimpleInputEventHandler {
 }
 
 impl SimpleInputEventHandler {
-
     fn accumulate_move(&mut self, move_event: &Motion) {
         match move_event {
             Motion::MouseCursor(position) => {
@@ -127,14 +126,14 @@ impl SimpleInputEventHandler {
 
 struct MoveButtonTracker {
     last_state: ButtonState,
-    was_down: bool
+    was_down: bool,
 }
 
 impl MoveButtonTracker {
     fn new() -> Self {
         Self {
             last_state: ButtonState::Release,
-            was_down: false
+            was_down: false,
         }
     }
 

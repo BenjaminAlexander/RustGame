@@ -1,8 +1,10 @@
+use serde::{
+    de::DeserializeOwned,
+    Serialize,
+};
 use std::fmt::Debug;
-use serde::{Serialize, de::DeserializeOwned};
 
 pub trait AggregateInput: Send {
-
     type ClientInputEvent: Send + 'static;
 
     type ClientInput: Serialize + DeserializeOwned + Clone + Debug + Send + 'static;
