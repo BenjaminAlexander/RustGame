@@ -28,7 +28,9 @@ impl GameTrait for SimpleGameImpl {
 
     const TCP_PORT: u16 = 3456;
     const UDP_PORT: u16 = 3457;
-    const STEP_PERIOD: TimeDuration = TimeDuration::new(0, 1000_000_000);
+    //One sec 1_000_000_000
+    //60hz 16_666_666
+    const STEP_PERIOD: TimeDuration = TimeDuration::new(0, 1_000_000_000);
     const GRACE_PERIOD: TimeDuration = TimeDuration::new(1, 0);
     const PING_PERIOD: TimeDuration = TimeDuration::new(1, 0);
     const CLOCK_AVERAGE_SIZE: usize = 100;

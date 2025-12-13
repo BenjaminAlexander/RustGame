@@ -17,7 +17,6 @@ use serde::{
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Character {
     player_index: usize,
-    velocity: Vector2,
     position: Vector2,
     health: u8,
 }
@@ -26,7 +25,6 @@ impl Character {
     pub fn new(player_index: usize, position: Vector2) -> Self {
         return Self {
             player_index,
-            velocity: Vector2::new(0 as f64, 0 as f64),
             position,
             health: 10,
         };
@@ -61,11 +59,10 @@ impl Character {
 
     pub fn move_character(&mut self, arg: &UpdateArg<SimpleGameImpl>) {
         if let Some(input) = arg.get_input(self.player_index).input() {
-            self.velocity = input.get_velocity();
-        }
+            let velocity = input.get_velocity();
 
-        self.position =
-            self.position + self.velocity * SimpleGameImpl::STEP_PERIOD.as_secs_f64() * 500.0;
+            self.position = self.position + velocity * SimpleGameImpl::STEP_PERIOD.as_secs_f64() * 500.0;
+        }
     }
 
     pub fn get_fired_bullet(&self, arg: &UpdateArg<SimpleGameImpl>) -> Option<Bullet> {

@@ -25,7 +25,7 @@ impl SimpleInput {
     }
 
     pub fn get_velocity(&self) -> Vector2 {
-        return self.velocity;
+        return self.velocity * 0.3;
     }
 
     pub fn should_fire(&self) -> bool {

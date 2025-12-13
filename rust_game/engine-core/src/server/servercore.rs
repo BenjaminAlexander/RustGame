@@ -425,7 +425,7 @@ impl<Game: GameTrait> ServerCoreEventHandler<Game> {
 
         if running_core
             .frame_manager
-            .advance_frame_index(frame_index)
+            .server_advance_frame_index(frame_index)
             .is_err()
         {
             warn!("Failed to send DropSteps to Game Manager");

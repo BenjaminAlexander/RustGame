@@ -20,6 +20,7 @@ use commons::utils::{
     log_error,
     unit_error,
 };
+use log::{error, warn};
 use std::collections::vec_deque::VecDeque;
 use std::ops::ControlFlow;
 
@@ -61,10 +62,22 @@ impl<Game: GameTrait> FrameManager<Game> {
         Ok(Self { sender })
     }
 
-    /// Advances the current [FrameIndex] of the [FrameManager].  The [FrameManager]
-    /// will compute frames up to `frame_index + 1`.
-    pub fn advance_frame_index(&self, frame_index: FrameIndex) -> Result<(), ()> {
-        let event = Event::AdvanceFrameIndex(frame_index);
+    /// Advances the current [FrameIndex] of the [FrameManager] on the server.  
+    /// The [FrameManager] will compute frames up to `frame_index + 1`.
+    pub fn server_advance_frame_index(&self, frame_index: FrameIndex) -> Result<(), ()> {
+        let event = Event::ServerAdvanceFrameIndex(frame_index);
+        self.sender.send_event(event).map_err(unit_error)
+    }
+
+    /// Advances the current [FrameIndex] of the [FrameManager] on the client.  
+    /// The [FrameManager] will compute frames up to `frame_index + 1`.
+    pub fn client_advance_frame_index(&self, frame_index: FrameIndex, player_index: usize, previous_frame_input: Game::ClientInput, peak_of_current_frame_input: Game::ClientInput) -> Result<(), ()> {
+        let event = Event::ClientAdvanceFrameIndex{
+            frame_index,
+            player_index,
+            previous_frame_input,
+            peak_of_current_frame_input
+        };
         self.sender.send_event(event).map_err(unit_error)
     }
 
@@ -113,7 +126,13 @@ impl<Game: GameTrait> FrameManager<Game> {
 }
 
 enum Event<Game: GameTrait> {
-    AdvanceFrameIndex(FrameIndex),
+    ServerAdvanceFrameIndex(FrameIndex),
+    ClientAdvanceFrameIndex{
+        frame_index: FrameIndex,
+        player_index: usize,
+        previous_frame_input: Game::ClientInput,
+        peak_of_current_frame_input: Game::ClientInput,
+    },
     Input {
         frame_index: FrameIndex,
         player_index: usize,
@@ -222,6 +241,7 @@ impl<ManagerObserver: ObserveFrames> EventHandler<ManagerObserver> {
     }
 
     fn on_none_pending(&mut self) -> EventHandleResult {
+        error!("Expanding Frame Queue to  {:?}", self.current_frame_index.next());
         // Expand Frame queue to hold up current + 1
         self.get_frame_queue_index(self.current_frame_index.next());
 
@@ -235,6 +255,8 @@ impl<ManagerObserver: ObserveFrames> EventHandler<ManagerObserver> {
             {
                 let next_frame_index = {
                     let next_frame = &mut self.frames[index + 1];
+
+                    warn!("Calculated {:?}", next_frame.get_frame_index());
 
                     let result =
                         next_frame.set_state(state, is_authoritative, &self.manager_observer);
@@ -329,12 +351,20 @@ impl<ManagerObserver: ObserveFrames> HandleEvent for EventHandler<ManagerObserve
 
     fn on_event(&mut self, _: ReceiveMetaData, event: Self::Event) -> EventHandleResult {
         match event {
-            Event::AdvanceFrameIndex(frame_index) => {
+            Event::ServerAdvanceFrameIndex(frame_index) => {
                 let result = self.advance_frame_index(frame_index);
                 if result.is_break() {
                     return EventHandleResult::StopThread;
                 }
             }
+            Event::ClientAdvanceFrameIndex { frame_index, player_index, previous_frame_input, peak_of_current_frame_input } => {
+                self.on_input_message(frame_index.previous(), player_index, previous_frame_input, false);
+                self.on_input_message(frame_index, player_index, peak_of_current_frame_input, false);
+                let result = self.advance_frame_index(frame_index);
+                if result.is_break() {
+                    return EventHandleResult::StopThread;
+                }
+            },
             Event::Input {
                 frame_index,
                 player_index,

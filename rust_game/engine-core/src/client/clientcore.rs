@@ -263,11 +263,11 @@ impl<Game: GameTrait> ClientCore<Game> {
 
             running_state.input_aggregator.reset_for_new_frame();
 
-            let send_result = running_state.frame_manager.insert_input(
-                message.get_frame_index(),
+            let send_result = running_state.frame_manager.client_advance_frame_index(
+                frame_index,
                 message.get_player_index(),
                 message.get_input().clone(),
-                false,
+                running_state.input_aggregator.peak_input(),
             );
 
             if send_result.is_err() {
@@ -293,12 +293,6 @@ impl<Game: GameTrait> ClientCore<Game> {
                 return EventHandleResult::StopThread;
             }
 
-            let send_result = running_state.frame_manager.advance_frame_index(frame_index);
-
-            if send_result.is_err() {
-                warn!("Failed to send FrameIndex to Game Manager");
-                return EventHandleResult::StopThread;
-            }
         } else {
             warn!("Tried to send next frame when the core wasn't running")
         }
