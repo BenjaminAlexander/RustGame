@@ -453,7 +453,7 @@ impl<Game: GameTrait> ServerCoreEventHandler<Game> {
                 input_message.get_frame_index(),
                 input_message.get_player_index(),
                 input_message.get_input().clone(),
-                true,
+                input_message.is_authoritative(),
             );
 
             if send_result.is_err() {

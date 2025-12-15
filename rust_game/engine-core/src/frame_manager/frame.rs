@@ -10,6 +10,7 @@ use crate::{
     FrameIndex,
     InitialInformation,
 };
+use std::mem::take;
 use std::ops::ControlFlow;
 
 /// A Frame is a [State], set of [Inputs](Input), and some metadata used by the
@@ -132,19 +133,30 @@ impl<Game: GameTrait> Frame<Game> {
         self.need_to_compute_next_state = true;
     }
 
-    pub fn timeout_remaining_inputs(
+    pub fn close_frame(
         &mut self,
         observer: &impl ObserveFrames<Game = Game>,
     ) -> ControlFlow<()> {
-        for (player_index, input) in &mut self.inputs.iter_mut().enumerate() {
-            if let Input::Pending = input {
-                self.authoritative_input_count = self.authoritative_input_count + 1;
-                *input = Input::AuthoritativeMissing;
-                self.need_to_compute_next_state = true;
+        for (player_index, input_enum) in &mut self.inputs.iter_mut().enumerate() {
+            match take(input_enum) {
+                Input::Pending => {
+                    self.authoritative_input_count = self.authoritative_input_count + 1;
+                    *input_enum = Input::AuthoritativeMissing;
+                    self.need_to_compute_next_state = true;
 
-                //TODO: Make a way to timeout all of a player's inputs immediatly when they disconnect.
-                observer.input_authoritatively_missing(self.frame_index, player_index)?;
-            }
+                    //TODO: Make a way to timeout all of a player's inputs immediatly when they disconnect.
+                    observer.input_authoritatively_missing(self.frame_index, player_index)?;
+                },
+                Input::NonAuthoritative(input) => {
+                    self.authoritative_input_count = self.authoritative_input_count + 1;
+                    *input_enum = Input::Authoritative(input.clone());
+                    self.need_to_compute_next_state = true;
+
+                    //TODO: Make a way to timeout all of a player's inputs immediatly when they disconnect.
+                    observer.input_authoritative(self.frame_index, player_index, input.clone())?;
+                },
+                taken_input_enum => *input_enum = taken_input_enum,
+            };
         }
 
         ControlFlow::Continue(())

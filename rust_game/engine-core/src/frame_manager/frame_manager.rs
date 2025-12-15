@@ -20,10 +20,6 @@ use commons::utils::{
     log_error,
     unit_error,
 };
-use log::{
-    error,
-    warn,
-};
 use std::collections::vec_deque::VecDeque;
 use std::ops::ControlFlow;
 
@@ -245,7 +241,7 @@ impl<ManagerObserver: ObserveFrames> EventHandler<ManagerObserver> {
             while index < self.frames.len()
                 && self.frames[index].get_frame_index() < last_open_frame_index
             {
-                self.frames[index].timeout_remaining_inputs(&self.manager_observer)?;
+                self.frames[index].close_frame(&self.manager_observer)?;
                 index += 1;
             }
         }

@@ -1,7 +1,6 @@
 use crate::frame_manager::ObserveFrames;
 use crate::messaging::{
-    FrameIndexAndState,
-    ToClientInputMessage,
+    FrameIndexAndState, ToClientInput, ToClientInputMessage
 };
 use crate::server::udpoutput::UdpOutput;
 use crate::state_channel::StateSender;
@@ -66,7 +65,29 @@ impl<Game: GameTrait> ObserveFrames for ServerManagerObserver<Game> {
             let result = udp_output.send_input_message(ToClientInputMessage::new(
                 frame_index,
                 player_index,
-                None,
+                ToClientInput::AuthoritativeMissing,
+            ));
+
+            if result.is_err() {
+                warn!("Failed to send CompletedStep to UdpOutput");
+                return ControlFlow::Break(());
+            }
+        }
+
+        ControlFlow::Continue(())
+    }
+    
+    fn input_authoritative(
+        &self,
+        frame_index: FrameIndex,
+        player_index: usize,
+        input: <Self::Game as GameTrait>::ClientInput
+    ) -> ControlFlow<()> {
+        for udp_output in self.udp_outputs.iter() {
+            let result = udp_output.send_input_message(ToClientInputMessage::new(
+                frame_index,
+                player_index,
+                ToClientInput::Authoritative(input.clone()),
             ));
 
             if result.is_err() {

@@ -12,6 +12,17 @@ pub trait ObserveFrames: 'static + Send {
     /// or client-only logic.
     const IS_SERVER: bool;
 
+    /// Called when an [Input](super::Input) was received as non-authoritative 
+    /// but is declared authoritative by the server because the client did not 
+    /// submit an authoritative input in a timely manner.  This is only called 
+    /// on the server.
+    fn input_authoritative(
+        &self,
+        frame_index: FrameIndex,
+        player_index: usize,
+        input: <Self::Game as GameTrait>::ClientInput
+    ) -> ControlFlow<()>;
+
     /// Called when an [Input](super::Input) is declared authoritatively missing
     /// by the server.  This is only called on the server.
     fn input_authoritatively_missing(

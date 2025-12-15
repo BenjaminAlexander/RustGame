@@ -252,12 +252,14 @@ impl<Game: GameTrait> ClientCore<Game> {
 
             let final_input = running_state.input_aggregator.peak_input();
 
+            //TODO: send non-authoritative inputs
             let message = ToServerInputMessage::<Game>::new(
                 //TODO: message or last message?
                 //TODO: define strict and consistent rules for how real time relates to ticks, input deadlines and display states
                 running_state.current_frame_index,
                 running_state.initial_information.get_player_index(),
                 final_input.clone(),
+                true
             );
 
             running_state.current_frame_index = frame_index;

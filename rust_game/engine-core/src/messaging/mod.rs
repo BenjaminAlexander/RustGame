@@ -1,8 +1,11 @@
 pub use self::fragmentassembler::FragmentAssembler;
 pub use self::fragmenter::Fragmenter;
 pub use self::frame_index_and_state::FrameIndexAndState;
-pub use self::inputmessage::ToClientInputMessage;
-pub use self::inputmessage::ToServerInputMessage;
+pub use self::inputmessage::{
+    ToClientInput,
+    ToClientInputMessage,
+    ToServerInputMessage
+};
 pub use self::messagefragment::MessageFragment;
 pub use self::toclientmessagetcp::ToClientMessageTCP;
 pub use self::toservermessagetcp::ToServerMessageTCP;

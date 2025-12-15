@@ -5,9 +5,7 @@ use crate::game_time::{
     PingResponse,
 };
 use crate::messaging::{
-    FragmentAssembler,
-    MessageFragment,
-    UdpToClientMessage,
+    FragmentAssembler, MessageFragment, ToClientInput, UdpToClientMessage
 };
 use crate::GameTrait;
 use commons::real_time::net::udp::HandleUdpRead;
@@ -66,13 +64,9 @@ impl<Game: GameTrait> UdpInput<Game> {
                 let player_index = input_message.get_player_index();
 
                 let result = match input_message.take_input() {
-                    Some(input) => {
-                        self.frame_manager
-                            .insert_input(frame_index, player_index, input, true)
-                    }
-                    None => self
-                        .frame_manager
-                        .insert_missing_input(frame_index, player_index),
+                    ToClientInput::AuthoritativeMissing => self.frame_manager.insert_missing_input(frame_index, player_index),
+                    ToClientInput::Authoritative(input) => self.frame_manager.insert_input(frame_index, player_index, input, true),
+                    ToClientInput::NonAuthoritative(input) => self.frame_manager.insert_input(frame_index, player_index, input, false),
                 };
 
                 if result.is_err() {

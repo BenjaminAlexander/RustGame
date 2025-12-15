@@ -41,4 +41,13 @@ impl<Game: GameTrait> ObserveFrames for ClientManagerObserver<Game> {
     fn input_authoritatively_missing(&self, _: FrameIndex, _: usize) -> ControlFlow<()> {
         panic!("The client should never declare inputs authoritatively missing");
     }
+    
+    fn input_authoritative(
+        &self,
+        _: FrameIndex,
+        _: usize,
+        _: <Self::Game as GameTrait>::ClientInput
+    ) -> ControlFlow<()> {
+        panic!("The client should never declare non-authoritative inputs as authoritative");
+    }
 }
