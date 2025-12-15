@@ -4,10 +4,7 @@ use crate::client::clientmanagerobserver::ClientManagerObserver;
 use crate::client::tcpinput::TcpInput;
 use crate::client::tcpoutput::TcpOutput;
 use crate::client::udpinput::UdpInput;
-use crate::client::udpoutput::{
-    UdpOutput,
-    UdpOutputEvent,
-};
+use crate::client::udpoutput::UdpOutput;
 use crate::frame_manager::FrameManager;
 use crate::game_time::{
     CompletedPing,
@@ -70,7 +67,7 @@ struct RunningState<Game: GameTrait> {
     timer_service: TimerService<(), ClientGameTimerObserver<Game>>,
     game_timer: GameTimerScheduler,
     udp_input_sender: EventHandlerStopper,
-    udp_output_sender: EventSender<UdpOutputEvent<Game>>,
+    udp_output: UdpOutput<Game>,
     initial_information: InitialInformation<Game>,
 }
 
@@ -164,25 +161,19 @@ impl<Game: GameTrait> ClientCore<Game> {
         .unwrap();
 
         //TODO: unwrap after try_clone is not good
-        let udp_output_sender = EventHandlerBuilder::new_thread(
+        let udp_output = UdpOutput::new(
             &self.factory,
-            "ClientUdpOutput".to_string(),
-            UdpOutput::<Game>::new(
-                self.factory.get_time_source().clone(),
-                server_udp_socket_addr,
-                udp_socket.try_clone().unwrap(),
-                initial_information.clone(),
-            ),
-        )
-        .unwrap();
+            server_udp_socket_addr, 
+            udp_socket, 
+            initial_information.clone()
+        ).unwrap();
 
         let current_frame_index = FrameIndex::zero();
 
         // TODO: this causes the first client ping to be requested.  If the first
         // ping is dropped (its udp), then the client clock will never start.
         // There should probably be some retry logic for this.
-        let send_result =
-            udp_output_sender.send_event(UdpOutputEvent::FrameIndex(current_frame_index));
+        let send_result = udp_output.advance_frame_index(current_frame_index);
 
         if send_result.is_err() {
             warn!("Failed to send InputMessage to Udp Output");
@@ -196,7 +187,7 @@ impl<Game: GameTrait> ClientCore<Game> {
             timer_service,
             game_timer,
             udp_input_sender,
-            udp_output_sender,
+            udp_output,
             initial_information,
         });
 
@@ -210,12 +201,26 @@ impl<Game: GameTrait> ClientCore<Game> {
                 .aggregate_input_event(input_event);
 
             //TODO: Can this peak code be consolidate with the one from new frame index logic?
-            let input = running_state.input_aggregator.peak_input();
+            let peaked_input = running_state.input_aggregator.peak_input();
+
+            let message = ToServerInputMessage::<Game>::new(
+                running_state.current_frame_index,
+                running_state.initial_information.get_player_index(),
+                peaked_input.clone(),
+                false
+            );
+
+            let send_result = running_state.udp_output.send_input(message);
+
+            if send_result.is_err() {
+                warn!("Failed to send InputMessage to Udp Output");
+                return EventHandleResult::StopThread;
+            }
 
             let send_result = running_state.frame_manager.insert_input(
                 running_state.current_frame_index,
                 running_state.initial_information.get_player_index(),
-                input,
+                peaked_input,
                 false,
             );
 
@@ -262,14 +267,36 @@ impl<Game: GameTrait> ClientCore<Game> {
                 true
             );
 
+            let send_result = running_state.udp_output.send_input(message);
+
+            if send_result.is_err() {
+                warn!("Failed to send InputMessage to Udp Output");
+                return EventHandleResult::StopThread;
+            }
+
             running_state.current_frame_index = frame_index;
             running_state.input_aggregator.reset_for_new_frame();
+            let peaked_input = running_state.input_aggregator.peak_input();
+
+            let message = ToServerInputMessage::<Game>::new(
+                running_state.current_frame_index,
+                running_state.initial_information.get_player_index(),
+                peaked_input.clone(),
+                false
+            );
+
+            let send_result = running_state.udp_output.send_input(message);
+
+            if send_result.is_err() {
+                warn!("Failed to send InputMessage to Udp Output");
+                return EventHandleResult::StopThread;
+            }
 
             let send_result = running_state.frame_manager.client_advance_frame_index(
                 frame_index,
                 running_state.initial_information.get_player_index(),
                 final_input,
-                running_state.input_aggregator.peak_input(),
+                peaked_input,
             );
 
             if send_result.is_err() {
@@ -277,23 +304,14 @@ impl<Game: GameTrait> ClientCore<Game> {
                 return EventHandleResult::StopThread;
             }
 
-            let send_result = running_state
-                .udp_output_sender
-                .send_event(UdpOutputEvent::FrameIndex(frame_index));
+            let send_result = running_state.udp_output.advance_frame_index(frame_index);
 
             if send_result.is_err() {
                 warn!("Failed to send InputMessage to Udp Output");
                 return EventHandleResult::StopThread;
             }
 
-            let send_result = running_state
-                .udp_output_sender
-                .send_event(UdpOutputEvent::InputMessageEvent(message));
 
-            if send_result.is_err() {
-                warn!("Failed to send InputMessage to Udp Output");
-                return EventHandleResult::StopThread;
-            }
         } else {
             warn!("Tried to send next frame when the core wasn't running")
         }

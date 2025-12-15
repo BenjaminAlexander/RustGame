@@ -12,21 +12,68 @@ use crate::FrameIndex;
 use commons::real_time::net::udp::UdpSocket;
 use commons::real_time::net::MAX_UDP_DATAGRAM_SIZE;
 use commons::real_time::{
-    EventHandleResult,
-    HandleEvent,
-    ReceiveMetaData,
-    TimeSource,
+    EventHandleResult, EventHandlerBuilder, EventSender, Factory, HandleEvent, ReceiveMetaData, TimeSource
 };
+use commons::utils::unit_error;
 use log::error;
+use std::io::Error;
 use std::net::SocketAddr;
 
-//TODO: combine server/client and tcp/udp inputs/outputs to shared listener/eventhandler types
-pub enum UdpOutputEvent<Game: GameTrait> {
+enum UdpOutputEvent<Game: GameTrait> {
     InputMessageEvent(ToServerInputMessage<Game>),
     FrameIndex(FrameIndex),
 }
 
 pub struct UdpOutput<Game: GameTrait> {
+    sender: EventSender<UdpOutputEvent<Game>>
+}
+
+impl<Game: GameTrait> UdpOutput<Game> {
+    pub fn new(
+        factory: &Factory,
+        server_address: SocketAddr,
+        socket: UdpSocket,
+        initial_information: InitialInformation<Game>,
+    ) -> Result<Self, Error> {
+        let ping_period_frames = initial_information
+            .get_server_config()
+            .get_frame_duration()
+            .to_frame_count(&Game::PING_PERIOD) as usize;
+
+        let event_handler = EventHandler {
+            time_source: factory.get_time_source().clone(),
+            server_address,
+            socket,
+            ping_period_frames,
+            next_ping: FrameIndex::zero(),
+            //TODO: make max datagram size more configurable
+            fragmenter: Fragmenter::new(MAX_UDP_DATAGRAM_SIZE),
+            initial_information,
+        };
+
+        //TODO: unwrap after try_clone is not good
+        let sender = EventHandlerBuilder::new_thread(
+            factory,
+            "ClientUdpOutput".to_string(),
+            event_handler,
+        )?;
+
+        Ok(Self{sender})
+    }
+
+    pub fn advance_frame_index(&self, frame_index: FrameIndex) -> Result<(), ()> {
+        let event = UdpOutputEvent::FrameIndex(frame_index);
+        self.sender.send_event(event).map_err(unit_error)
+    }
+
+    //TODO: add method/logic for non-authoritative inputs
+    pub fn send_input(&self, input: ToServerInputMessage<Game>) -> Result<(), ()> {
+        let event = UdpOutputEvent::InputMessageEvent(input);
+        self.sender.send_event(event).map_err(unit_error)
+    }
+}
+
+struct EventHandler<Game: GameTrait> {
     time_source: TimeSource,
     server_address: SocketAddr,
     socket: UdpSocket,
@@ -36,30 +83,7 @@ pub struct UdpOutput<Game: GameTrait> {
     initial_information: InitialInformation<Game>,
 }
 
-impl<Game: GameTrait> UdpOutput<Game> {
-    pub fn new(
-        time_source: TimeSource,
-        server_address: SocketAddr,
-        socket: UdpSocket,
-        initial_information: InitialInformation<Game>,
-    ) -> Self {
-        let ping_period_frames = initial_information
-            .get_server_config()
-            .get_frame_duration()
-            .to_frame_count(&Game::PING_PERIOD) as usize;
-
-        Self {
-            time_source,
-            server_address,
-            socket,
-            ping_period_frames,
-            next_ping: FrameIndex::zero(),
-            //TODO: make max datagram size more configurable
-            fragmenter: Fragmenter::new(MAX_UDP_DATAGRAM_SIZE),
-            initial_information,
-        }
-    }
-
+impl<Game: GameTrait> EventHandler<Game> {
     fn on_input_message(&mut self, input_message: ToServerInputMessage<Game>) -> EventHandleResult {
         let message = UdpToServerMessage::<Game>::Input(input_message);
         self.send_message(&message);
@@ -103,7 +127,7 @@ impl<Game: GameTrait> UdpOutput<Game> {
     }
 }
 
-impl<Game: GameTrait> HandleEvent for UdpOutput<Game> {
+impl<Game: GameTrait> HandleEvent for EventHandler<Game> {
     type Event = UdpOutputEvent<Game>;
     type ThreadReturn = ();
 
