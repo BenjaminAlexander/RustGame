@@ -1,12 +1,11 @@
 use log::warn;
 use serde::{Deserialize, Serialize};
 
-use crate::frame_manager::ObserveFrames;
+use crate::frame_manager::{FrameIndexAndState, InputCoordinates, ObserveFrames};
 use crate::interface::{
     GameTrait,
     UpdateArg,
 };
-use crate::messaging::{FrameIndexAndState, InputCoordinates};
 use crate::{
     FrameIndex,
     InitialInformation,

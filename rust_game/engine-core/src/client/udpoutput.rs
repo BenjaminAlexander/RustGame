@@ -49,6 +49,7 @@ impl<Game: GameTrait> UdpOutput<Game> {
             //TODO: make max datagram size more configurable
             fragmenter: Fragmenter::new(MAX_UDP_DATAGRAM_SIZE),
             initial_information,
+            non_authoritative_input: None
         };
 
         //TODO: unwrap after try_clone is not good
@@ -81,17 +82,34 @@ struct EventHandler<Game: GameTrait> {
     next_ping: FrameIndex,
     fragmenter: Fragmenter,
     initial_information: InitialInformation<Game>,
+    non_authoritative_input: Option<ToServerInputMessage<Game>>
 }
 
 impl<Game: GameTrait> EventHandler<Game> {
     fn on_input_message(&mut self, input_message: ToServerInputMessage<Game>) -> EventHandleResult {
-        let message = UdpToServerMessage::<Game>::Input(input_message);
-        self.send_message(&message);
+        if input_message.get_input().is_authoritative() {
+
+            let message = UdpToServerMessage::<Game>::Input(input_message);
+            if self.send_message(&message).is_err() {
+                return EventHandleResult::StopThread;
+            }
+            
+        } else {
+
+            match &self.non_authoritative_input {
+                Some(pending) if pending.get_input_coordinates().get_frame_index() <= input_message.get_input_coordinates().get_frame_index() => self.non_authoritative_input = Some(input_message),
+                None => self.non_authoritative_input = Some(input_message),
+                _ => {
+                    #[cfg(debug_assertions)]
+                    panic!("An attempt was made to send an outdated non-authoritative input");
+                }
+            }
+        }
 
         return EventHandleResult::TryForNextEvent;
     }
 
-    fn send_message(&mut self, message: &UdpToServerMessage<Game>) {
+    fn send_message(&mut self, message: &UdpToServerMessage<Game>) -> Result<(), ()> {
         //TODO: use write instead of to_vec
         let buf = rmp_serde::to_vec(&message).unwrap();
         let fragments = self.fragmenter.make_fragments(buf);
@@ -104,10 +122,15 @@ impl<Game: GameTrait> EventHandler<Game> {
                 );
             }
 
-            self.socket
-                .send_to(fragment.get_whole_buf(), &self.server_address)
-                .unwrap();
+            let result = self.socket.send_to(fragment.get_whole_buf(), &self.server_address);
+
+            if let Err(err) = result {
+                error!("Error sending a UDP message.\n{:?}", err);
+                return Err(())
+            }
         }
+
+        return Ok(())
     }
 
     fn on_frame_index(&mut self, frame_index: FrameIndex) -> EventHandleResult {
@@ -121,8 +144,12 @@ impl<Game: GameTrait> EventHandler<Game> {
             self.initial_information.get_player_index(),
             self.time_source.now(),
         );
+
         let ping_request = UdpToServerMessage::PingRequest(ping_request);
-        self.send_message(&ping_request);
+        if self.send_message(&ping_request).is_err() {
+            return EventHandleResult::StopThread
+        }
+
         return EventHandleResult::TryForNextEvent;
     }
 }
@@ -138,6 +165,16 @@ impl<Game: GameTrait> HandleEvent for EventHandler<Game> {
             }
             UdpOutputEvent::FrameIndex(frame_index) => self.on_frame_index(frame_index),
         }
+    }
+    fn on_channel_empty(&mut self) -> EventHandleResult {
+        if let Some(input_message) = self.non_authoritative_input.take() {
+            let message = UdpToServerMessage::<Game>::Input(input_message);
+            if self.send_message(&message).is_err() {
+                return EventHandleResult::StopThread;
+            };
+        }
+
+        return EventHandleResult::WaitForNextEvent;
     }
 
     fn on_stop_self(self) -> Self::ThreadReturn {

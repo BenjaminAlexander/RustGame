@@ -1,7 +1,5 @@
-use crate::frame_manager::{ClientProvidedInput, ObserveFrames, PresentInput};
-use crate::messaging::{
-    FrameIndexAndState, InputCoordinates, ToClientInputMessage
-};
+use crate::frame_manager::{ClientProvidedInput, FrameIndexAndState, InputCoordinates, ObserveFrames, PresentInput};
+use crate::messaging::ToClientInputMessage;
 use crate::server::udpoutput::UdpOutput;
 use crate::state_channel::StateSender;
 use crate::GameTrait;

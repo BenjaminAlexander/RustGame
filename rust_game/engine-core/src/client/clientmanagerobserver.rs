@@ -1,5 +1,4 @@
-use crate::frame_manager::ObserveFrames;
-use crate::messaging::{FrameIndexAndState, InputCoordinates};
+use crate::frame_manager::{FrameIndexAndState, InputCoordinates, ObserveFrames};
 use crate::state_channel::StateSender;
 use crate::GameTrait;
 use log::warn;

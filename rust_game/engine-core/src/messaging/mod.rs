@@ -1,8 +1,6 @@
 pub use self::fragmentassembler::FragmentAssembler;
 pub use self::fragmenter::Fragmenter;
-pub use self::frame_index_and_state::FrameIndexAndState;
 pub use self::inputmessage::{
-    InputCoordinates,
     ToClientInputMessage,
     ToServerInputMessage
 };
@@ -14,7 +12,6 @@ pub use self::udp_to_server_message::UdpToServerMessage;
 
 mod fragmentassembler;
 mod fragmenter;
-mod frame_index_and_state;
 mod inputmessage;
 mod messagefragment;
 mod toclientmessagetcp;

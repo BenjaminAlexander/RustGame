@@ -3,6 +3,7 @@ use crate::{
     time::TimeDuration,
 };
 
+#[must_use = "EventHandleResult must be used"]
 pub enum EventHandleResult {
     WaitForNextEvent,
     WaitForNextEventOrTimeout(TimeDuration),

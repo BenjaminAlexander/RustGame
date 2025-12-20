@@ -1,3 +1,4 @@
+use crate::frame_manager::FrameIndexAndState;
 use crate::game_time::{
     PingRequest,
     PingResponse,
@@ -5,7 +6,6 @@ use crate::game_time::{
 use crate::interface::GameTrait;
 use crate::messaging::{
     Fragmenter,
-    FrameIndexAndState,
     ToClientInputMessage,
     UdpToClientMessage,
 };

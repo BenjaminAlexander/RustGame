@@ -1,11 +1,11 @@
 use std::sync::mpsc::TryRecvError;
 
+use crate::frame_manager::FrameIndexAndState;
 use crate::game_time::StartTime;
 use crate::interface::{
     GameTrait,
     InitialInformation,
 };
-use crate::messaging::FrameIndexAndState;
 use commons::real_time::{
     Factory,
     Receiver,

@@ -1,10 +1,9 @@
 use crate::frame_manager::frame::{ClientProvidedInput, Frame, PresentInput};
-use crate::frame_manager::ObserveFrames;
+use crate::frame_manager::{InputCoordinates, ObserveFrames};
 use crate::interface::{
     GameTrait,
     InitialInformation,
 };
-use crate::messaging::InputCoordinates;
 use crate::FrameIndex;
 use commons::real_time::{
     EventHandleResult,
@@ -183,13 +182,6 @@ impl<ManagerObserver: ObserveFrames> EventHandler<ManagerObserver> {
             ));
         }
         return Some(index_to_get);
-    }
-
-    fn get_frame(&mut self, frame_index: FrameIndex) -> Option<&mut Frame<ManagerObserver::Game>> {
-        match self.get_frame_queue_index(frame_index) {
-            Some(index) => Some(&mut self.frames[index]),
-            None => None,
-        }
     }
 
     fn advance_frame_index(&mut self, frame_index: FrameIndex) -> ControlFlow<()> {

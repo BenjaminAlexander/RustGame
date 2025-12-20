@@ -5,7 +5,7 @@ use crate::client::tcpinput::TcpInput;
 use crate::client::tcpoutput::TcpOutput;
 use crate::client::udpinput::UdpInput;
 use crate::client::udpoutput::UdpOutput;
-use crate::frame_manager::{ClientProvidedInput, FrameManager, PresentInput};
+use crate::frame_manager::{ClientProvidedInput, FrameManager, InputCoordinates, PresentInput};
 use crate::game_time::{
     CompletedPing,
     FrameIndex,
@@ -15,7 +15,7 @@ use crate::interface::{
     GameTrait,
     InitialInformation,
 };
-use crate::messaging::{InputCoordinates, ToServerInputMessage};
+use crate::messaging::ToServerInputMessage;
 use crate::state_channel::StateSender;
 use commons::real_time::net::tcp::TcpReadHandlerBuilder;
 use commons::real_time::net::udp::UdpReadHandlerBuilder;
@@ -118,8 +118,6 @@ impl<Game: GameTrait> ClientCore<Game> {
             warn!("Received a hello from the server after the client has already received a hello");
             return EventHandleResult::TryForNextEvent;
         }
-
-        info!("Local Player is index {:?}", initial_information.get_player_index());
 
         //TODO: maybe consolidate building of the manager into its own method
         let client_manager_observer = ClientManagerObserver::<Game>::new(self.state_sender.clone());
