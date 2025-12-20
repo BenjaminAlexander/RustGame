@@ -1,6 +1,5 @@
 use crate::interface::GameTrait;
-use crate::messaging::FrameIndexAndState;
-use crate::FrameIndex;
+use crate::messaging::{FrameIndexAndState, InputCoordinates};
 use std::ops::ControlFlow;
 
 /// A trait to observe the [FrameManager](super::frame_manager::FrameManager)
@@ -18,8 +17,7 @@ pub trait ObserveFrames: 'static + Send {
     /// on the server.
     fn input_authoritative(
         &self,
-        frame_index: FrameIndex,
-        player_index: usize,
+        input_coordinates: InputCoordinates,
         input: <Self::Game as GameTrait>::ClientInput
     ) -> ControlFlow<()>;
 
@@ -27,8 +25,7 @@ pub trait ObserveFrames: 'static + Send {
     /// by the server.  This is only called on the server.
     fn input_authoritatively_missing(
         &self,
-        frame_index: FrameIndex,
-        player_index: usize,
+        input_coordinates: InputCoordinates,
     ) -> ControlFlow<()>;
 
     /// Called when a new State is available.  This is called both when new

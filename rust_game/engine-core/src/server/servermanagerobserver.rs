@@ -1,13 +1,10 @@
-use crate::frame_manager::ObserveFrames;
+use crate::frame_manager::{ClientProvidedInput, ObserveFrames, PresentInput};
 use crate::messaging::{
-    FrameIndexAndState, ToClientInput, ToClientInputMessage
+    FrameIndexAndState, InputCoordinates, ToClientInputMessage
 };
 use crate::server::udpoutput::UdpOutput;
 use crate::state_channel::StateSender;
-use crate::{
-    FrameIndex,
-    GameTrait,
-};
+use crate::GameTrait;
 use log::warn;
 use std::ops::ControlFlow;
 
@@ -58,14 +55,12 @@ impl<Game: GameTrait> ObserveFrames for ServerManagerObserver<Game> {
 
     fn input_authoritatively_missing(
         &self,
-        frame_index: FrameIndex,
-        player_index: usize,
+        input_coordinates: InputCoordinates,
     ) -> ControlFlow<()> {
         for udp_output in self.udp_outputs.iter() {
             let result = udp_output.send_input_message(ToClientInputMessage::new(
-                frame_index,
-                player_index,
-                ToClientInput::AuthoritativeMissing,
+                input_coordinates,
+                PresentInput::AuthoritativeMissing,
             ));
 
             if result.is_err() {
@@ -79,15 +74,13 @@ impl<Game: GameTrait> ObserveFrames for ServerManagerObserver<Game> {
     
     fn input_authoritative(
         &self,
-        frame_index: FrameIndex,
-        player_index: usize,
+        input_coordinates: InputCoordinates,
         input: <Self::Game as GameTrait>::ClientInput
     ) -> ControlFlow<()> {
         for udp_output in self.udp_outputs.iter() {
             let result = udp_output.send_input_message(ToClientInputMessage::new(
-                frame_index,
-                player_index,
-                ToClientInput::Authoritative(input.clone()),
+                input_coordinates,
+                PresentInput::ClientProvided(ClientProvidedInput::Authoritative(input.clone())),
             ));
 
             if result.is_err() {

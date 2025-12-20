@@ -1,4 +1,6 @@
 pub use self::frame::Input;
+pub use self::frame::PresentInput;
+pub use self::frame::ClientProvidedInput;
 pub use self::frame_manager::FrameManager;
 pub use self::observe_frames::ObserveFrames;
 

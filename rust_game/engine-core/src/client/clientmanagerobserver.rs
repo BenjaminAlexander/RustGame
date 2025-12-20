@@ -1,10 +1,7 @@
 use crate::frame_manager::ObserveFrames;
-use crate::messaging::FrameIndexAndState;
+use crate::messaging::{FrameIndexAndState, InputCoordinates};
 use crate::state_channel::StateSender;
-use crate::{
-    FrameIndex,
-    GameTrait,
-};
+use crate::GameTrait;
 use log::warn;
 use std::ops::ControlFlow;
 
@@ -38,14 +35,13 @@ impl<Game: GameTrait> ObserveFrames for ClientManagerObserver<Game> {
         }
     }
 
-    fn input_authoritatively_missing(&self, _: FrameIndex, _: usize) -> ControlFlow<()> {
+    fn input_authoritatively_missing(&self, _: InputCoordinates) -> ControlFlow<()> {
         panic!("The client should never declare inputs authoritatively missing");
     }
     
     fn input_authoritative(
         &self,
-        _: FrameIndex,
-        _: usize,
+        _: InputCoordinates,
         _: <Self::Game as GameTrait>::ClientInput
     ) -> ControlFlow<()> {
         panic!("The client should never declare non-authoritative inputs as authoritative");

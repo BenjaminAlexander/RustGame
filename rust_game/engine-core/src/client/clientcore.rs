@@ -5,7 +5,7 @@ use crate::client::tcpinput::TcpInput;
 use crate::client::tcpoutput::TcpOutput;
 use crate::client::udpinput::UdpInput;
 use crate::client::udpoutput::UdpOutput;
-use crate::frame_manager::FrameManager;
+use crate::frame_manager::{ClientProvidedInput, FrameManager, PresentInput};
 use crate::game_time::{
     CompletedPing,
     FrameIndex,
@@ -15,7 +15,7 @@ use crate::interface::{
     GameTrait,
     InitialInformation,
 };
-use crate::messaging::ToServerInputMessage;
+use crate::messaging::{InputCoordinates, ToServerInputMessage};
 use crate::state_channel::StateSender;
 use commons::real_time::net::tcp::TcpReadHandlerBuilder;
 use commons::real_time::net::udp::UdpReadHandlerBuilder;
@@ -33,8 +33,7 @@ use commons::real_time::{
     ReceiveMetaData,
 };
 use log::{
-    trace,
-    warn,
+    info, trace, warn
 };
 use std::net::{
     Ipv4Addr,
@@ -120,6 +119,8 @@ impl<Game: GameTrait> ClientCore<Game> {
             return EventHandleResult::TryForNextEvent;
         }
 
+        info!("Local Player is index {:?}", initial_information.get_player_index());
+
         //TODO: maybe consolidate building of the manager into its own method
         let client_manager_observer = ClientManagerObserver::<Game>::new(self.state_sender.clone());
 
@@ -201,28 +202,23 @@ impl<Game: GameTrait> ClientCore<Game> {
                 .aggregate_input_event(input_event);
 
             //TODO: Can this peak code be consolidate with the one from new frame index logic?
-            let peaked_input = running_state.input_aggregator.peak_input();
+            let peaked_input = ClientProvidedInput::NonAuthoritative(running_state.input_aggregator.peak_input());
+
+            let input_coordinates = InputCoordinates::new(running_state.current_frame_index, running_state.initial_information.get_player_index());
 
             let message = ToServerInputMessage::<Game>::new(
-                running_state.current_frame_index,
-                running_state.initial_information.get_player_index(),
+                input_coordinates,
                 peaked_input.clone(),
-                false
             );
 
-            let send_result = running_state.udp_output.send_input(message);
+            let send_result = running_state.udp_output.send_input(message.clone());
 
             if send_result.is_err() {
                 warn!("Failed to send InputMessage to Udp Output");
                 return EventHandleResult::StopThread;
             }
 
-            let send_result = running_state.frame_manager.insert_input(
-                running_state.current_frame_index,
-                running_state.initial_information.get_player_index(),
-                peaked_input,
-                false,
-            );
+            let send_result = running_state.frame_manager.insert_input(input_coordinates, PresentInput::ClientProvided(peaked_input));
 
             if send_result.is_err() {
                 warn!("Failed to send InputMessage to Game Manager");
@@ -255,16 +251,18 @@ impl<Game: GameTrait> ClientCore<Game> {
         if let Some(ref mut running_state) = self.running_state {
             trace!("TimeMessage step_index: {:?}", frame_index);
 
-            let final_input = running_state.input_aggregator.peak_input();
+            running_state.current_frame_index = frame_index;
+
+            let previous_input_coordinates = InputCoordinates::new(
+                running_state.current_frame_index.previous(), 
+                running_state.initial_information.get_player_index()
+            );
+            let previous_input = running_state.input_aggregator.peak_input();
 
             //TODO: send non-authoritative inputs
             let message = ToServerInputMessage::<Game>::new(
-                //TODO: message or last message?
-                //TODO: define strict and consistent rules for how real time relates to ticks, input deadlines and display states
-                running_state.current_frame_index,
-                running_state.initial_information.get_player_index(),
-                final_input.clone(),
-                true
+                previous_input_coordinates,
+                ClientProvidedInput::Authoritative(previous_input.clone())
             );
 
             let send_result = running_state.udp_output.send_input(message);
@@ -274,15 +272,16 @@ impl<Game: GameTrait> ClientCore<Game> {
                 return EventHandleResult::StopThread;
             }
 
-            running_state.current_frame_index = frame_index;
+            let current_input_coordinates = InputCoordinates::new(
+                running_state.current_frame_index, 
+                running_state.initial_information.get_player_index()
+            );
             running_state.input_aggregator.reset_for_new_frame();
             let peaked_input = running_state.input_aggregator.peak_input();
 
             let message = ToServerInputMessage::<Game>::new(
-                running_state.current_frame_index,
-                running_state.initial_information.get_player_index(),
-                peaked_input.clone(),
-                false
+                current_input_coordinates,
+                ClientProvidedInput::NonAuthoritative(peaked_input.clone())
             );
 
             let send_result = running_state.udp_output.send_input(message);
@@ -293,10 +292,9 @@ impl<Game: GameTrait> ClientCore<Game> {
             }
 
             let send_result = running_state.frame_manager.client_advance_frame_index(
-                frame_index,
-                running_state.initial_information.get_player_index(),
-                final_input,
-                peaked_input,
+                current_input_coordinates,
+                previous_input,
+                peaked_input
             );
 
             if send_result.is_err() {

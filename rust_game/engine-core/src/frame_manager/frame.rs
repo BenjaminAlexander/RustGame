@@ -1,11 +1,12 @@
 use log::warn;
+use serde::{Deserialize, Serialize};
 
 use crate::frame_manager::ObserveFrames;
 use crate::interface::{
     GameTrait,
     UpdateArg,
 };
-use crate::messaging::FrameIndexAndState;
+use crate::messaging::{FrameIndexAndState, InputCoordinates};
 use crate::{
     FrameIndex,
     InitialInformation,
@@ -26,22 +27,16 @@ pub struct Frame<Game: GameTrait> {
 /// An enum that describes the provenance of a [GameTrait::ClientInput]
 #[derive(Clone, Debug, Default)]
 pub enum Input<T> {
-    /// Pending signifies that an input from a client isn't yet known but may
-    /// become known in the future.
+    /// [Input::Pending] signifies that an input from a client isn't yet known but may
+    /// become known in the future.  If no [ClientProvidedInput] is received in 
+    /// a timely manner, the server will upgrate this to 
+    /// [PresentInput::AuthoritativeMissing] and distribute it to the clients.
     #[default]
     Pending,
 
-    /// The Input has been received from the local client.  This input can still
-    /// potentially be rejected by the server if the client's message is dropped
-    /// or is late.
-    NonAuthoritative(T),
-
-    /// The Input has been received from the sever as authoritative
-    Authoritative(T),
-
-    /// The client never submitted an input in a timely manner and the server
-    /// has authoritatively decided that the client cannot submit an input in the future
-    AuthoritativeMissing,
+    /// [Input::Present] signifies that something, even if it is non-authoritative, 
+    /// is known about the client's input.
+    Present(PresentInput<T>),
 }
 
 impl<T> Input<T> {
@@ -49,9 +44,7 @@ impl<T> Input<T> {
     pub fn is_authoritative(&self) -> bool {
         match self {
             Input::Pending => false,
-            Input::NonAuthoritative(_) => false,
-            Input::Authoritative(_) => true,
-            Input::AuthoritativeMissing => true,
+            Input::Present(present) => present.is_authoritative(),
         }
     }
 
@@ -59,18 +52,105 @@ impl<T> Input<T> {
     pub fn input(&self) -> Option<&T> {
         match self {
             Input::Pending => None,
-            Input::NonAuthoritative(input) => Some(input),
-            Input::Authoritative(input) => Some(input),
-            Input::AuthoritativeMissing => None,
+            Input::Present(present) => present.input(),
         }
     }
 
     pub fn type_as_str(&self) -> &str {
         match self {
             Input::Pending => "Pending",
-            Input::NonAuthoritative(_) => "NonAuthoritative",
-            Input::Authoritative(_) => "Authoritative",
-            Input::AuthoritativeMissing => "AuthoritativeMissing",
+            Input::Present(present_input) => present_input.type_as_str(),
+        }
+    }
+}
+
+/// An enum representing the different ways a client's input can be known
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub enum PresentInput<T> {
+
+    /// The client has submitted an input.
+    ClientProvided(ClientProvidedInput<T>),
+
+    /// The client never submitted an input in a timely manner and the server
+    /// has authoritatively decided that the client cannot submit an input in the future
+    AuthoritativeMissing,
+}
+
+impl<T> PresentInput<T> {
+    /// Returns true if the status of the input is authoritatively known.
+    pub fn is_authoritative(&self) -> bool {
+        match self {
+            PresentInput::ClientProvided(client_provided) => client_provided.is_authoritative(),
+            PresentInput::AuthoritativeMissing => true,
+        }
+    }
+
+    pub fn input(&self) -> Option<&T> {
+        match self {
+            PresentInput::ClientProvided(client_provided) => Some(client_provided.input()),
+            PresentInput::AuthoritativeMissing => None,
+        }
+    }
+
+    pub fn type_as_str(&self) -> &str {
+        match self {
+            PresentInput::ClientProvided(client_provided) => client_provided.type_as_str(),
+            PresentInput::AuthoritativeMissing => "AuthoritativeMissing",
+        }
+    }
+}
+
+/// An enum representing the different ways a client can provide an input
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub enum ClientProvidedInput<T> {
+
+    /// The Input has been received from the client.  This input can be superseded 
+    /// by the client submitting another, more current input.  Also, this input 
+    /// can still potentially be rejected by the server if the client's message 
+    /// is dropped or is late.
+    /// 
+    /// The client will always insert [ClientProvidedInput::NonAuthoritative] into 
+    /// its own [super::FrameManager].  Clients do not know if their inputs will 
+    /// make it to the server in time to be accepted.  This is the case even when 
+    /// the client has made a [ClientProvidedInput::Authoritative] submission to 
+    /// the server.
+    /// 
+    /// If the server does not receive a [ClientProvidedInput::Authoritative] in time, 
+    /// the server will upgrade the last [ClientProvidedInput::NonAuthoritative] it 
+    /// received to be authoritative and redistribute it to the clients.
+    NonAuthoritative(T),
+
+    /// The Input has been sent from the client to the server and the server has 
+    /// accepted it and redistributed it back to the clients.
+    /// 
+    /// [ClientProvidedInput::Authoritative] inputs are always sent directly to 
+    /// the server.  Clients will insert the same [GameTrait::ClientInput] into 
+    /// their [super::FrameManager] as a [ClientProvidedInput::NonAuthoritative].
+    /// The server will redistribute the authoritative input to all clients if it 
+    /// is received in a timely manner.
+    Authoritative(T),
+}
+
+impl<T> ClientProvidedInput<T> {
+    /// Returns true if the status of the input is authoritatively known.
+    pub fn is_authoritative(&self) -> bool {
+        match self {
+            ClientProvidedInput::NonAuthoritative(_) => false,
+            ClientProvidedInput::Authoritative(_) => true,
+        }
+    }
+
+    pub fn input(&self) -> &T {
+        match self {
+            ClientProvidedInput::NonAuthoritative(input) => input,
+            ClientProvidedInput::Authoritative(input) => input,
+        }
+    }
+
+    pub fn type_as_str(&self) -> &str {
+        match self {
+            ClientProvidedInput::NonAuthoritative(_) => "NonAuthoritative",
+            ClientProvidedInput::Authoritative(_) => "Authoritative",
         }
     }
 }
@@ -105,12 +185,14 @@ impl<Game: GameTrait> Frame<Game> {
         };
     }
 
-    pub fn set_input(&mut self, player_index: usize, input: Input<Game::ClientInput>) {
+    pub fn set_input(&mut self, player_index: usize, input: PresentInput<Game::ClientInput>) {  
+        
         let current_input = &mut self.inputs[player_index];
 
         if current_input.is_authoritative() {
             warn!(
-                "Received a duplicate input where an authoritative one has already been received, ignorning it\n{:?}\nCurrent: {:}\nIgnored: {:?}", 
+                "Received a duplicate input where an authoritative one has already been received, ignorning it. Player: {:?}\n{:?}\nCurrent: {:}\nIgnored: {:?}", 
+                player_index,
                 self.frame_index,
                 current_input.type_as_str(),
                 input.type_as_str()
@@ -119,8 +201,8 @@ impl<Game: GameTrait> Frame<Game> {
         }
 
         //TODO: migrate to 2024 edition and use a chain if let
-        if let Input::NonAuthoritative(_) = current_input {
-            if let Input::AuthoritativeMissing = input {
+        if let Input::Present(PresentInput::ClientProvided(_)) = current_input {
+            if let PresentInput::AuthoritativeMissing = input {
                 warn!("Local input was rejected by the server");
             }
         }
@@ -129,7 +211,7 @@ impl<Game: GameTrait> Frame<Game> {
             self.authoritative_input_count = self.authoritative_input_count + 1;
         }
 
-        *current_input = input;
+        *current_input = Input::Present(input);
         self.need_to_compute_next_state = true;
     }
 
@@ -141,19 +223,19 @@ impl<Game: GameTrait> Frame<Game> {
             match take(input_enum) {
                 Input::Pending => {
                     self.authoritative_input_count = self.authoritative_input_count + 1;
-                    *input_enum = Input::AuthoritativeMissing;
+                    *input_enum = Input::Present(PresentInput::AuthoritativeMissing);
                     self.need_to_compute_next_state = true;
 
                     //TODO: Make a way to timeout all of a player's inputs immediatly when they disconnect.
-                    observer.input_authoritatively_missing(self.frame_index, player_index)?;
+                    observer.input_authoritatively_missing(InputCoordinates::new(self.frame_index, player_index))?;
                 },
-                Input::NonAuthoritative(input) => {
+                Input::Present(PresentInput::ClientProvided(ClientProvidedInput::NonAuthoritative(input))) => {
                     self.authoritative_input_count = self.authoritative_input_count + 1;
-                    *input_enum = Input::Authoritative(input.clone());
+                    *input_enum = Input::Present(PresentInput::ClientProvided(ClientProvidedInput::Authoritative(input.clone())));
                     self.need_to_compute_next_state = true;
 
                     //TODO: Make a way to timeout all of a player's inputs immediatly when they disconnect.
-                    observer.input_authoritative(self.frame_index, player_index, input.clone())?;
+                    observer.input_authoritative(InputCoordinates::new(self.frame_index, player_index), input.clone())?;
                 },
                 taken_input_enum => *input_enum = taken_input_enum,
             };

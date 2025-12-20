@@ -2,7 +2,7 @@ pub use self::fragmentassembler::FragmentAssembler;
 pub use self::fragmenter::Fragmenter;
 pub use self::frame_index_and_state::FrameIndexAndState;
 pub use self::inputmessage::{
-    ToClientInput,
+    InputCoordinates,
     ToClientInputMessage,
     ToServerInputMessage
 };

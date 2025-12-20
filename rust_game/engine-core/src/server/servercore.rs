@@ -1,10 +1,10 @@
-use crate::frame_manager::FrameManager;
+use crate::frame_manager::{FrameManager, PresentInput};
 use crate::game_time::GameTimerScheduler;
 use crate::interface::{
     GameTrait,
     InitialInformation,
 };
-use crate::messaging::ToServerInputMessage;
+use crate::messaging::{ToClientInputMessage, ToServerInputMessage};
 use crate::server::clientaddress::ClientAddress;
 use crate::server::servermanagerobserver::ServerManagerObserver;
 use crate::server::tcpinput::TcpInput;
@@ -448,22 +448,26 @@ impl<Game: GameTrait> ServerCoreEventHandler<Game> {
             .server_config
             .get_last_open_frame_index(current_frame_index);
 
-        if last_open_frame_index <= input_message.get_frame_index() {
-            let send_result = running_core.frame_manager.insert_input(
-                input_message.get_frame_index(),
-                input_message.get_player_index(),
-                input_message.get_input().clone(),
-                input_message.is_authoritative(),
-            );
+        let (input_coordinates, input) = input_message.take();
+        if last_open_frame_index <= input_coordinates.get_frame_index() {
+            let is_input_authoritative = input.is_authoritative();
+            let present_input = PresentInput::ClientProvided(input);
+            let send_result = running_core.frame_manager.insert_input(input_coordinates, present_input.clone());
 
             if send_result.is_err() {
                 warn!("Failed to send InputEvent to Game Manager");
                 return EventHandleResult::StopThread;
             }
 
-            let to_client_message = input_message.to_client_message();
+            let to_client_message = ToClientInputMessage::new(input_coordinates, present_input);
 
-            for udp_output in running_core.udp_output_senders.iter() {
+            for (index, udp_output) in running_core.udp_output_senders.iter().enumerate() {
+
+                // don't send non-authoritative inputs back to the original client
+                if !is_input_authoritative && index == input_coordinates.get_player_index() {
+                    continue;
+                }
+                
                 let send_result = udp_output.send_input_message(to_client_message.clone());
 
                 if send_result.is_err() {
