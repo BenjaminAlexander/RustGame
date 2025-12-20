@@ -33,7 +33,7 @@ use commons::real_time::{
     ReceiveMetaData,
 };
 use log::{
-    info, trace, warn
+    trace, warn
 };
 use std::net::{
     Ipv4Addr,
