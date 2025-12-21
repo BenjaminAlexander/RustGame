@@ -177,4 +177,8 @@ impl GameTimerScheduler {
     pub fn get_current_frame_index(&self) -> FrameIndex {
         self.current_frame_index
     }
+
+    pub fn get_start_time(&self) -> &StartTime {
+        &self.start_time
+    }
 }

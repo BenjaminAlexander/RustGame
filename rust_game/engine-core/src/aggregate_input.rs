@@ -11,7 +11,7 @@ pub trait AggregateInput: Send {
 
     fn new() -> Self;
 
-    fn aggregate_input_event(&mut self, input_event: Self::ClientInputEvent);
+    fn aggregate_input_event(&mut self, fractional_frame_duration: f64, input_event: Self::ClientInputEvent);
 
     fn peak_input(&self) -> Self::ClientInput;
 

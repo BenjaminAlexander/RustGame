@@ -39,7 +39,7 @@ impl AggregateInput for SimpleInputEventHandler {
         }
     }
 
-    fn aggregate_input_event(&mut self, input_event: Self::ClientInputEvent) {
+    fn aggregate_input_event(&mut self, fractional_frame_duration: f64, input_event: Self::ClientInputEvent) {
         match input_event.get_piston_input() {
             PistonInput::Button(arg) => {
                 self.accumulate_button(arg);

@@ -195,9 +195,17 @@ impl<Game: GameTrait> ClientCore<Game> {
 
     fn on_input_event(&mut self, input_event: Game::ClientInputEvent) -> EventHandleResult {
         if let Some(ref mut running_state) = self.running_state {
+
+            let now = self.factory.get_time_source().now();
+
+            let fractional_frame_duration = running_state.game_timer.get_start_time().get_fractional_frame_index(
+                running_state.initial_information.get_server_config().get_frame_duration(), 
+                &now
+            ).fract().max(1.0).min(0.0);
+
             running_state
                 .input_aggregator
-                .aggregate_input_event(input_event);
+                .aggregate_input_event(fractional_frame_duration, input_event);
 
             //TODO: Can this peak code be consolidate with the one from new frame index logic?
             let peaked_input = ClientProvidedInput::NonAuthoritative(running_state.input_aggregator.peak_input());

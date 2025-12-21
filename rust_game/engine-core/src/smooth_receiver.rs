@@ -52,18 +52,18 @@ impl<T: Smooth> SmoothReceiver<T> {
                 if weight < 0.0 {
                     warn!("Negetive smoothing weight {:?}\nLast Result: {:?}\nFuture State: {:?}", weight, last_result_and_time.time_value, future_frame_time);
                 }
-                
-                /*
 
-                let arg = ExtrapolationArguments {
-                    last_result: &last_result_and_time.result,
-                    future_state: current_states.next_frame.get_state(),
-                    weight,
-                };
+                if false {
+                    let arg = ExtrapolationArguments {
+                        last_result: &last_result_and_time.result,
+                        future_state: current_states.next_frame.get_state(),
+                        weight,
+                    };
 
-                T::smooth(&arg)
-                */
-                T::to_smooth_result(current_states.next_frame.get_state())
+                    T::smooth(&arg)
+                } else {
+                    T::to_smooth_result(current_states.next_frame.get_state())
+                }
             },
             None => T::to_smooth_result(current_states.next_frame.get_state()),
         };
