@@ -2,6 +2,7 @@ use crate::simpleinput::SimpleInput;
 use crate::simpleinputevent::SimpleInputEvent;
 use commons::geometry::twod::Vector2;
 use engine_core::AggregateInput;
+use log::info;
 use piston::input::Input as PistonInput;
 use piston::{
     Button,
@@ -42,7 +43,7 @@ impl AggregateInput for SimpleInputEventHandler {
     fn aggregate_input_event(&mut self, fractional_frame_duration: f64, input_event: Self::ClientInputEvent) {
         match input_event.get_piston_input() {
             PistonInput::Button(arg) => {
-                self.accumulate_button(arg);
+                self.accumulate_button(fractional_frame_duration, arg);
             }
             PistonInput::Move(move_event) => {
                 self.accumulate_move(move_event);
@@ -57,21 +58,12 @@ impl AggregateInput for SimpleInputEventHandler {
     }
 
     fn peak_input(&self) -> Self::ClientInput {
-        let x = match (self.d.was_down(), self.a.was_down()) {
-            (true, true) => 0,
-            (false, true) => -1,
-            (true, false) => 1,
-            (false, false) => 0,
-        } as f64;
+        let x = self.d.get_total_down_time() - self.a.get_total_down_time();
+        let y = self.s.get_total_down_time() - self.w.get_total_down_time();
 
-        let y = match (self.s.was_down(), self.w.was_down()) {
-            (true, true) => 0,
-            (false, true) => -1,
-            (true, false) => 1,
-            (false, false) => 0,
-        } as f64;
+        let velocity = Vector2::new(x, y);
 
-        let velocity = Vector2::new(x, y).normalize();
+        info!("V: {:?}", velocity);
 
         let input = SimpleInput::new(self.aim_point, velocity, self.should_fire);
 
@@ -97,13 +89,13 @@ impl SimpleInputEventHandler {
         }
     }
 
-    fn accumulate_button(&mut self, button: &ButtonArgs) {
+    fn accumulate_button(&mut self, fractional_frame_duration: f64, button: &ButtonArgs) {
         match button.button {
             Button::Keyboard(key) => match key {
-                Key::D => self.d.set_state(button.state),
-                Key::A => self.a.set_state(button.state),
-                Key::S => self.s.set_state(button.state),
-                Key::W => self.w.set_state(button.state),
+                Key::D => self.d.set_state(fractional_frame_duration, button.state),
+                Key::A => self.a.set_state(fractional_frame_duration, button.state),
+                Key::S => self.s.set_state(fractional_frame_duration, button.state),
+                Key::W => self.w.set_state(fractional_frame_duration, button.state),
                 _ => {}
             },
             Button::Mouse(mouse_button) => match mouse_button {
@@ -125,30 +117,44 @@ impl SimpleInputEventHandler {
 }
 
 struct MoveButtonTracker {
-    last_state: ButtonState,
-    was_down: bool,
+    state: ButtonState,
+    since: f64,
+    total_down_time: f64
 }
 
 impl MoveButtonTracker {
     fn new() -> Self {
         Self {
-            last_state: ButtonState::Release,
-            was_down: false,
+            state: ButtonState::Release,
+            since: 0.0,
+            total_down_time: 0.0
         }
     }
 
-    fn set_state(&mut self, new_state: ButtonState) {
-        self.last_state = new_state;
-        if self.last_state == ButtonState::Press {
-            self.was_down = true;
+    fn set_state(&mut self, fractional_frame_duration: f64, new_state: ButtonState) {
+        if self.state == ButtonState::Press && new_state == ButtonState::Release {
+            let this_duration = fractional_frame_duration - self.since;
+            self.total_down_time += this_duration;
+        }
+
+        if self.state != new_state {
+            self.state = new_state;
+            self.since = fractional_frame_duration;
         }
     }
 
-    fn was_down(&self) -> bool {
-        return self.was_down || self.last_state == ButtonState::Press;
+    fn get_total_down_time(&self) -> f64 {
+        let mut total = self.total_down_time;
+
+        if self.state == ButtonState::Press {
+            total += 1.0 - self.since;
+        }
+        
+        total
     }
 
     fn reset_for_new_frame(&mut self) {
-        self.was_down = false;
+        self.since = 0.0;
+        self.total_down_time = 0.0;
     }
 }

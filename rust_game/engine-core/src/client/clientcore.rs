@@ -33,7 +33,7 @@ use commons::real_time::{
     ReceiveMetaData,
 };
 use log::{
-    trace, warn
+    info, trace, warn
 };
 use std::net::{
     Ipv4Addr,
@@ -201,7 +201,9 @@ impl<Game: GameTrait> ClientCore<Game> {
             let fractional_frame_duration = running_state.game_timer.get_start_time().get_fractional_frame_index(
                 running_state.initial_information.get_server_config().get_frame_duration(), 
                 &now
-            ).fract().max(1.0).min(0.0);
+            ).fract().min(1.0).max(0.0);
+
+            info!("Frac {:?}", fractional_frame_duration);
 
             running_state
                 .input_aggregator
