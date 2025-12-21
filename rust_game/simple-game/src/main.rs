@@ -33,6 +33,7 @@ mod simpleinputeventhandler;
 mod simpleserverinput;
 mod simplestate;
 mod simplewindow;
+mod simple_smooth;
 
 pub fn main() {
     let mut run_client = None;

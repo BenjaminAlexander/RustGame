@@ -5,11 +5,16 @@ mod game_time;
 mod interface;
 mod messaging;
 mod server;
+mod smooth;
+mod smooth_receiver;
 mod state_channel;
 
 pub use self::aggregate_input::AggregateInput;
 pub use self::frame_manager::Input;
 pub use self::game_time::FrameIndex;
+pub use self::smooth::Smooth;
+pub use self::smooth::ExtrapolationArguments;
+pub use self::smooth_receiver::SmoothReceiver;
 pub use self::state_channel::StateReceiver;
 pub use self::state_channel::StateReceiverError;
 pub use interface::Client;

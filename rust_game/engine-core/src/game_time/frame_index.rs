@@ -9,7 +9,7 @@ use std::ops::{
 
 /// A FrameIndex is the index of a frame.  The game engine uses frames with
 /// fixed amounts of time between them to compute the progression of the game's
-///  state over time.  A FrameIndex is the index of one of these frames in the
+/// state over time.  A FrameIndex is the index of one of these frames in the
 /// sequence.
 #[derive(Serialize, Deserialize, Clone, Debug, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct FrameIndex(usize);

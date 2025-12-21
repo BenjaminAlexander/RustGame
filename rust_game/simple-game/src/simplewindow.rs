@@ -1,9 +1,8 @@
+use crate::simple_smooth::SimpleSmooth;
 use crate::simplegameimpl::SimpleGameImpl;
 use crate::simpleinputevent::SimpleInputEvent;
 use engine_core::{
-    Client,
-    StateReceiver,
-    StateReceiverError,
+    Client, SmoothReceiver, StateReceiver, StateReceiverError
 };
 use glutin_window::GlutinWindow as Window;
 use graphics::*;
@@ -25,7 +24,7 @@ use piston::{
 
 pub struct SimpleWindow {
     window_name: String,
-    render_receiver: StateReceiver<SimpleGameImpl>,
+    render_receiver: SmoothReceiver<SimpleSmooth>,
     //TODO: don't expose eventhandling, sender or ClientCore, or ClientCoreEvent, or GameFactoryTrait, or RealGameFactory
     client_option: Option<Client<SimpleGameImpl>>,
     mouse_position: [f64; 2],
@@ -39,7 +38,7 @@ impl SimpleWindow {
     ) -> Self {
         return Self {
             window_name,
-            render_receiver,
+            render_receiver: SmoothReceiver::new(render_receiver),
             client_option,
             mouse_position: [0.0, 0.0],
         };
@@ -51,7 +50,7 @@ impl SimpleWindow {
 
         // Create an Glutin window.
         //EventLoopExtWindows::new_any_thread
-        let mut window: Window = WindowSettings::new(self.window_name.clone(), [200, 200])
+        let mut window: Window = WindowSettings::new(self.window_name.clone(), [400, 400])
             .graphics_api(opengl)
             .exit_on_esc(true)
             .build()
@@ -77,7 +76,7 @@ impl SimpleWindow {
     fn render(&mut self, gl_graphics: &mut GlGraphics, args: &RenderArgs) {
         let mouse_position = &self.mouse_position;
 
-        let result = self.render_receiver.get_step_message();
+        let result = self.render_receiver.get_smoothed_state();
         let current_states = match result {
             Ok(current_states) => Some(current_states),
             Err(StateReceiverError::StateNoYetAvailable) => None,
@@ -91,12 +90,12 @@ impl SimpleWindow {
             clear(GREEN, gl);
 
             if let Some(current_states) = &current_states {
-                let now = current_states.time_source.now();
+                let now = current_states.current_time;
                 let duration_since_game_start =
                     now.duration_since(current_states.start_time.get_time_value());
 
                 //let duration_since_game_start = STEP_DURATION * step_message.get_step_index() as i64;
-                current_states.next_frame.get_state().draw(
+                current_states.current_state.draw(
                     current_states.initial_information,
                     duration_since_game_start,
                     context,

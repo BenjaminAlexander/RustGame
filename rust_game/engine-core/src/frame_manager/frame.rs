@@ -253,16 +253,17 @@ impl<Game: GameTrait> Frame<Game> {
         is_authoritative: bool,
         observer: &impl ObserveFrames<Game = Game>,
     ) -> ControlFlow<()> {
-        if self.is_state_authoritative() {
-            // No-op, ignore the new state if this one is already authoritative
-            return ControlFlow::Continue(());
-        }
+        let old_state_is_authoritative = self.is_state_authoritative();
 
         self.state = if is_authoritative {
             State::Authoritative(state.clone())
         } else {
             State::NonAuthoritative(state.clone())
         };
+
+        if old_state_is_authoritative {
+            return ControlFlow::Continue(());
+        }
 
         self.need_to_compute_next_state = true;
 

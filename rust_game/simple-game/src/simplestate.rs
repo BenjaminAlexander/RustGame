@@ -8,7 +8,6 @@ use commons::time::TimeDuration;
 use engine_core::{
     GameTrait,
     InitialInformation,
-    InterpolationArg,
     UpdateArg,
 };
 use graphics::Context;
@@ -90,10 +89,9 @@ impl SimpleState {
     }
 
     pub fn interpolate(
-        _initial_information: &InitialInformation<SimpleGameImpl>,
         first: &Self,
         second: &Self,
-        arg: &InterpolationArg,
+        weight: f64,
     ) -> Self {
         let mut second_clone = second.clone();
 
@@ -101,7 +99,7 @@ impl SimpleState {
             if let Some(first_character) = first.player_characters.get(i) {
                 let new_position = first_character.get_position().lerp(
                     second_clone.player_characters[i].get_position(),
-                    arg.get_weight(),
+                    weight,
                 );
                 second_clone.player_characters[i].set_position(new_position);
             }

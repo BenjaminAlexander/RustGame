@@ -7,8 +7,6 @@ use crate::{
 };
 use engine_core::{
     GameTrait,
-    InitialInformation,
-    InterpolationArg,
     UpdateArg,
 };
 use serde::{
@@ -22,7 +20,6 @@ pub struct SimpleGameImpl {}
 impl GameTrait for SimpleGameImpl {
     type State = SimpleState;
     type ClientInput = SimpleInput;
-    type InterpolationResult = SimpleState;
     type ClientInputEvent = SimpleInputEvent;
     type InputAggregator = SimpleInputEventHandler;
 
@@ -41,14 +38,5 @@ impl GameTrait for SimpleGameImpl {
 
     fn get_next_state(arg: &UpdateArg<Self>) -> Self::State {
         return SimpleState::get_next_state(arg);
-    }
-
-    fn interpolate(
-        initial_information: &InitialInformation<Self>,
-        first: &Self::State,
-        second: &Self::State,
-        arg: &InterpolationArg,
-    ) -> Self::InterpolationResult {
-        return SimpleState::interpolate(initial_information, first, second, arg);
     }
 }

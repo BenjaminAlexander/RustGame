@@ -1,5 +1,3 @@
-use crate::interface::InitialInformation;
-use crate::interface::InterpolationArg;
 use crate::AggregateInput;
 use crate::UpdateArg;
 use commons::time::TimeDuration;
@@ -13,8 +11,6 @@ pub trait GameTrait: 'static + Send + Sized + Clone {
 
     type ClientInputEvent: Send + 'static;
     type ClientInput: Serialize + DeserializeOwned + Clone + Debug + Send + 'static;
-
-    type InterpolationResult: Send + 'static;
 
     type InputAggregator: AggregateInput<
         ClientInputEvent = Self::ClientInputEvent,
@@ -32,12 +28,4 @@ pub trait GameTrait: 'static + Send + Sized + Clone {
     fn get_initial_state(player_count: usize) -> Self::State;
 
     fn get_next_state(arg: &UpdateArg<Self>) -> Self::State;
-
-    //TODO: this method needs to include the last interpolation result
-    fn interpolate(
-        initial_information: &InitialInformation<Self>,
-        first: &Self::State,
-        second: &Self::State,
-        arg: &InterpolationArg,
-    ) -> Self::InterpolationResult;
 }
