@@ -24,9 +24,9 @@ pub struct SimpleInputEventHandler {
 }
 
 impl AggregateInput for SimpleInputEventHandler {
-    type ClientInputEvent = SimpleInputEvent;
+    type InputEvent = SimpleInputEvent;
 
-    type ClientInput = SimpleInput;
+    type InputAggregate = SimpleInput;
 
     fn new() -> Self {
         Self {
@@ -40,7 +40,7 @@ impl AggregateInput for SimpleInputEventHandler {
         }
     }
 
-    fn aggregate_input_event(&mut self, fractional_frame_duration: f64, input_event: Self::ClientInputEvent) {
+    fn aggregate_input_event(&mut self, fractional_frame_duration: f64, input_event: Self::InputEvent) {
         match input_event.get_piston_input() {
             PistonInput::Button(arg) => {
                 self.accumulate_button(fractional_frame_duration, arg);
@@ -57,7 +57,7 @@ impl AggregateInput for SimpleInputEventHandler {
         }
     }
 
-    fn peak_input(&self) -> Self::ClientInput {
+    fn peak_input(&self) -> Self::InputAggregate {
         let x = self.d.get_total_down_time() - self.a.get_total_down_time();
         let y = self.s.get_total_down_time() - self.w.get_total_down_time();
 

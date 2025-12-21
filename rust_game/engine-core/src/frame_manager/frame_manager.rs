@@ -74,8 +74,8 @@ impl<Game: GameTrait> FrameManager<Game> {
     pub fn client_advance_frame_index(
         &self,
         current_coordinates: InputCoordinates,
-        previous_frame_input: Game::ClientInput,
-        peak_of_current_frame_input: Game::ClientInput,
+        previous_frame_input: Game::InputAggregate,
+        peak_of_current_frame_input: Game::InputAggregate,
     ) -> Result<(), ()> {
         let event = Event::ClientAdvanceFrameIndex {
             current_coordinates,
@@ -88,7 +88,7 @@ impl<Game: GameTrait> FrameManager<Game> {
     /// Inserts a [PresentInput] with a [GameTrait::ClientInput] into the [Frame] at
     /// [InputCoordinates].  If the [FrameIndex] is too far in the past, it input will
     /// be ignored.
-    pub fn insert_input(&self, coordinates: InputCoordinates, input: PresentInput<Game::ClientInput>) -> Result<(), ()> {
+    pub fn insert_input(&self, coordinates: InputCoordinates, input: PresentInput<Game::InputAggregate>) -> Result<(), ()> {
         let event = Event::Input{
             coordinates,
             input
@@ -109,12 +109,12 @@ enum Event<Game: GameTrait> {
     ServerAdvanceFrameIndex(FrameIndex),
     ClientAdvanceFrameIndex {
         current_coordinates: InputCoordinates,
-        previous_frame_input: Game::ClientInput,
-        peak_of_current_frame_input: Game::ClientInput,
+        previous_frame_input: Game::InputAggregate,
+        peak_of_current_frame_input: Game::InputAggregate,
     },
     Input {
         coordinates: InputCoordinates,
-        input: PresentInput<Game::ClientInput>
+        input: PresentInput<Game::InputAggregate>
     },
     State {
         frame_index: FrameIndex,
@@ -245,7 +245,7 @@ impl<ManagerObserver: ObserveFrames> EventHandler<ManagerObserver> {
 
     fn set_input(&mut self,
         coordinates: &InputCoordinates,
-        input: PresentInput<<<ManagerObserver as ObserveFrames>::Game as GameTrait>::ClientInput>,
+        input: PresentInput<<<ManagerObserver as ObserveFrames>::Game as GameTrait>::InputAggregate>,
     ) {
         #[cfg(debug_assertions)]
         match (&input, ManagerObserver::IS_SERVER) {

@@ -89,6 +89,15 @@ impl<Game: GameTrait> EventHandler<Game> {
     fn on_input_message(&mut self, input_message: ToServerInputMessage<Game>) -> EventHandleResult {
         if input_message.get_input().is_authoritative() {
 
+            // If the authoritative input is as new or newer than the pending 
+            // non-authoritative one, don't bother to send the non-authoritative 
+            // one
+            if let Some(non_authoritative_message) = &self.non_authoritative_input {
+                if input_message.get_input_coordinates().get_frame_index() >= non_authoritative_message.get_input_coordinates().get_frame_index() {
+                    self.non_authoritative_input = None;
+                }
+            }
+
             let message = UdpToServerMessage::<Game>::Input(input_message);
             if self.send_message(&message).is_err() {
                 return EventHandleResult::StopThread;

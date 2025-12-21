@@ -18,7 +18,7 @@ use std::ops::ControlFlow;
 pub struct Frame<Game: GameTrait> {
     frame_index: FrameIndex,
     state: State<Game::State>,
-    inputs: Vec<Input<Game::ClientInput>>,
+    inputs: Vec<Input<Game::InputAggregate>>,
     authoritative_input_count: usize,
     need_to_compute_next_state: bool,
 }
@@ -184,7 +184,7 @@ impl<Game: GameTrait> Frame<Game> {
         };
     }
 
-    pub fn set_input(&mut self, player_index: usize, input: PresentInput<Game::ClientInput>) {  
+    pub fn set_input(&mut self, player_index: usize, input: PresentInput<Game::InputAggregate>) {  
         
         let current_input = &mut self.inputs[player_index];
 

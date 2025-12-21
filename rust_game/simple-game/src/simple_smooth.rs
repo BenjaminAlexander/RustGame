@@ -1,4 +1,4 @@
-use engine_core::{ExtrapolationArguments, Smooth};
+use engine_core::{SmoothArguments, Smooth};
 
 use crate::{simplegameimpl::SimpleGameImpl, simplestate::SimpleState};
 
@@ -12,7 +12,7 @@ impl Smooth for SimpleSmooth {
         state.clone()
     }
 
-    fn smooth(arg: &ExtrapolationArguments<Self>) -> Self::SmoothResult {
+    fn smooth(arg: &SmoothArguments<Self>) -> Self::SmoothResult {
         SimpleState::interpolate(arg.last_result, arg.future_state, arg.weight)
     }
 }

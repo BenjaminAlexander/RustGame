@@ -1,7 +1,7 @@
 use commons::time::TimeValue;
 use log::warn;
 
-use crate::{InitialInformation, StateReceiver, StateReceiverError, game_time::StartTime, smooth::{ExtrapolationArguments, Smooth}};
+use crate::{InitialInformation, StateReceiver, StateReceiverError, game_time::StartTime, smooth::{SmoothArguments, Smooth}};
 
 pub struct SmoothReceiver<T: Smooth> {
     state_receiver: StateReceiver<T::Game>,
@@ -54,7 +54,7 @@ impl<T: Smooth> SmoothReceiver<T> {
                 }
 
                 if true {
-                    let arg = ExtrapolationArguments {
+                    let arg = SmoothArguments {
                         last_result: &last_result_and_time.result,
                         future_state: current_states.next_frame.get_state(),
                         weight,

@@ -140,6 +140,7 @@ impl<Game: GameTrait> EventHandler<Game> {
         return EventHandleResult::TryForNextEvent;
     }
 
+    //TODO: stash non-authoritative inputs and only send them if there is nothing else valuable to send
     fn on_input_message(&mut self, input_message: ToClientInputMessage<Game>) -> EventHandleResult {
         let message = UdpToClientMessage::<Game>::InputMessage(input_message);
         self.send_message(&message);

@@ -5,15 +5,16 @@ use serde::{
 use std::fmt::Debug;
 
 pub trait AggregateInput: Send {
-    type ClientInputEvent: Send + 'static;
+    type InputEvent: Send + 'static;
 
-    type ClientInput: Serialize + DeserializeOwned + Clone + Debug + Send + 'static;
+    type InputAggregate: Serialize + DeserializeOwned + Clone + Debug + Send + 'static;
 
     fn new() -> Self;
 
-    fn aggregate_input_event(&mut self, fractional_frame_duration: f64, input_event: Self::ClientInputEvent);
+    //TODO: make type for fractional frame duration
+    fn aggregate_input_event(&mut self, fractional_frame_duration: f64, input_event: Self::InputEvent);
 
-    fn peak_input(&self) -> Self::ClientInput;
+    fn peak_input(&self) -> Self::InputAggregate;
 
     fn reset_for_new_frame(&mut self);
 }

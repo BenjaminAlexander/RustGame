@@ -9,12 +9,12 @@ use std::fmt::Debug;
 pub trait GameTrait: 'static + Send + Sized + Clone {
     type State: Serialize + DeserializeOwned + Clone + Debug + Send + Sync + 'static;
 
-    type ClientInputEvent: Send + 'static;
-    type ClientInput: Serialize + DeserializeOwned + Clone + Debug + Send + 'static;
+    type InputEvent: Send + 'static;
+    type InputAggregate: Serialize + DeserializeOwned + Clone + Debug + Send + 'static;
 
     type InputAggregator: AggregateInput<
-        ClientInputEvent = Self::ClientInputEvent,
-        ClientInput = Self::ClientInput,
+        InputEvent = Self::InputEvent,
+        InputAggregate = Self::InputAggregate,
     >;
 
     const TCP_PORT: u16;

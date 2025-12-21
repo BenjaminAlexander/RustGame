@@ -45,8 +45,8 @@ impl<Game: GameTrait> Client<Game> {
 
     pub fn send_client_input_event(
         &self,
-        client_input_event: Game::ClientInputEvent,
-    ) -> Result<(), Game::ClientInputEvent> {
+        client_input_event: Game::InputEvent,
+    ) -> Result<(), Game::InputEvent> {
         return match self
             .core_sender
             .send_event(ClientCoreEvent::OnInputEvent(client_input_event))

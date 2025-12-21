@@ -73,7 +73,7 @@ impl<Game: GameTrait> ObserveFrames for ServerManagerObserver<Game> {
     fn input_authoritative(
         &self,
         input_coordinates: InputCoordinates,
-        input: <Self::Game as GameTrait>::ClientInput
+        input: <Self::Game as GameTrait>::InputAggregate
     ) -> ControlFlow<()> {
         for udp_output in self.udp_outputs.iter() {
             let result = udp_output.send_input_message(ToClientInputMessage::new(

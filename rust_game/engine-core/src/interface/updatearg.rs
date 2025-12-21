@@ -9,8 +9,9 @@ pub struct UpdateArg<'a, Game: GameTrait> {
     initial_information: &'a InitialInformation<Game>,
     //TODO: rename
     step: FrameIndex,
+    //TODO: expose provenance of state
     state: &'a Game::State,
-    inputs: &'a Vec<Input<Game::ClientInput>>,
+    inputs: &'a Vec<Input<Game::InputAggregate>>,
 }
 
 impl<'a, 'b, Game: GameTrait> UpdateArg<'a, Game> {
@@ -18,7 +19,7 @@ impl<'a, 'b, Game: GameTrait> UpdateArg<'a, Game> {
         initial_information: &'a InitialInformation<Game>,
         step: FrameIndex,
         state: &'a Game::State,
-        inputs: &'a Vec<Input<Game::ClientInput>>,
+        inputs: &'a Vec<Input<Game::InputAggregate>>,
     ) -> Self {
         return Self {
             initial_information,
@@ -28,7 +29,7 @@ impl<'a, 'b, Game: GameTrait> UpdateArg<'a, Game> {
         };
     }
 
-    pub fn get_input(&self, player_index: usize) -> &Input<Game::ClientInput> {
+    pub fn get_input(&self, player_index: usize) -> &Input<Game::InputAggregate> {
         return &self.inputs[player_index];
     }
 

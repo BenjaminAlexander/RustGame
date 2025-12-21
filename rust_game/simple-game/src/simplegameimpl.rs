@@ -19,8 +19,8 @@ pub struct SimpleGameImpl {}
 
 impl GameTrait for SimpleGameImpl {
     type State = SimpleState;
-    type ClientInput = SimpleInput;
-    type ClientInputEvent = SimpleInputEvent;
+    type InputAggregate = SimpleInput;
+    type InputEvent = SimpleInputEvent;
     type InputAggregator = SimpleInputEventHandler;
 
     const TCP_PORT: u16 = 3456;

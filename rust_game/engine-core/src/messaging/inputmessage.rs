@@ -9,11 +9,11 @@ use serde::{
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct ToServerInputMessage<Game: GameTrait> {
     input_coordinates: InputCoordinates,
-    input: ClientProvidedInput<Game::ClientInput>,
+    input: ClientProvidedInput<Game::InputAggregate>,
 }
 
 impl<Game: GameTrait> ToServerInputMessage<Game> {
-    pub fn new(input_coordinates: InputCoordinates, input: ClientProvidedInput<Game::ClientInput>) -> Self {
+    pub fn new(input_coordinates: InputCoordinates, input: ClientProvidedInput<Game::InputAggregate>) -> Self {
         Self {
             input_coordinates,
             input
@@ -24,11 +24,11 @@ impl<Game: GameTrait> ToServerInputMessage<Game> {
         &self.input_coordinates
     }
 
-    pub fn get_input(&self) -> &ClientProvidedInput<Game::ClientInput> {
+    pub fn get_input(&self) -> &ClientProvidedInput<Game::InputAggregate> {
         &self.input
     }
 
-    pub fn take(self) -> (InputCoordinates, ClientProvidedInput<Game::ClientInput>) {
+    pub fn take(self) -> (InputCoordinates, ClientProvidedInput<Game::InputAggregate>) {
         (self.input_coordinates, self.input)
     }
 }
@@ -36,13 +36,13 @@ impl<Game: GameTrait> ToServerInputMessage<Game> {
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct ToClientInputMessage<Game: GameTrait> {
     input_coordinates: InputCoordinates,
-    input: PresentInput<Game::ClientInput>,
+    input: PresentInput<Game::InputAggregate>,
 }
 
 impl<Game: GameTrait> ToClientInputMessage<Game> {
     pub fn new(
         input_coordinates: InputCoordinates,
-        input: PresentInput<Game::ClientInput>,
+        input: PresentInput<Game::InputAggregate>,
     ) -> Self {
         Self {
             input_coordinates,
@@ -50,7 +50,7 @@ impl<Game: GameTrait> ToClientInputMessage<Game> {
         }
     }
 
-    pub fn take(self) -> (InputCoordinates, PresentInput<Game::ClientInput>) {
+    pub fn take(self) -> (InputCoordinates, PresentInput<Game::InputAggregate>) {
         (self.input_coordinates, self.input)
     }
 }

@@ -41,7 +41,7 @@ impl<Game: GameTrait> ObserveFrames for ClientManagerObserver<Game> {
     fn input_authoritative(
         &self,
         _: InputCoordinates,
-        _: <Self::Game as GameTrait>::ClientInput
+        _: <Self::Game as GameTrait>::InputAggregate
     ) -> ControlFlow<()> {
         panic!("The client should never declare non-authoritative inputs as authoritative");
     }

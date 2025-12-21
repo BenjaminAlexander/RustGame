@@ -18,7 +18,7 @@ pub trait ObserveFrames: 'static + Send {
     fn input_authoritative(
         &self,
         input_coordinates: InputCoordinates,
-        input: <Self::Game as GameTrait>::ClientInput
+        input: <Self::Game as GameTrait>::InputAggregate
     ) -> ControlFlow<()>;
 
     /// Called when an [Input](super::Input) is declared authoritatively missing

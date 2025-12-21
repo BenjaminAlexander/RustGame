@@ -43,7 +43,7 @@ use std::net::{
 
 pub enum ClientCoreEvent<Game: GameTrait> {
     OnInitialInformation(InitialInformation<Game>),
-    OnInputEvent(Game::ClientInputEvent),
+    OnInputEvent(Game::InputEvent),
     GameTimerTick,
     CompletedPing(CompletedPing),
 }
@@ -193,7 +193,7 @@ impl<Game: GameTrait> ClientCore<Game> {
         return EventHandleResult::TryForNextEvent;
     }
 
-    fn on_input_event(&mut self, input_event: Game::ClientInputEvent) -> EventHandleResult {
+    fn on_input_event(&mut self, input_event: Game::InputEvent) -> EventHandleResult {
         if let Some(ref mut running_state) = self.running_state {
 
             let now = self.factory.get_time_source().now();
