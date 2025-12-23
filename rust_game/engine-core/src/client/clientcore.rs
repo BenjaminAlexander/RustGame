@@ -169,21 +169,9 @@ impl<Game: GameTrait> ClientCore<Game> {
             .unwrap(),
         )
         .unwrap();
-
-        let current_frame_index = FrameIndex::zero();
-
-        // TODO: this causes the first client ping to be requested.  If the first
-        // ping is dropped (its udp), then the client clock will never start.
-        // There should probably be some retry logic for this.
-        let send_result = udp_output.advance_frame_index(current_frame_index);
-
-        if send_result.is_err() {
-            warn!("Failed to send InputMessage to Udp Output");
-            return EventHandleResult::StopThread;
-        }
-
+    
         self.running_state = Some(RunningState {
-            current_frame_index,
+            current_frame_index: FrameIndex::zero(),
             frame_manager,
             input_aggregator: Game::InputAggregator::new(),
             timer_service,
@@ -193,7 +181,10 @@ impl<Game: GameTrait> ClientCore<Game> {
             initial_information,
         });
 
-        return EventHandleResult::TryForNextEvent;
+        // TODO: this causes the first client ping to be requested.  If the first
+        // ping is dropped (its udp), then the client clock will never start.
+        // There should probably be some retry logic for this.
+        return self.send_new_frame_index(FrameIndex::zero());
     }
 
     fn on_input_event(&mut self, input_event: Game::InputEvent) -> EventHandleResult {

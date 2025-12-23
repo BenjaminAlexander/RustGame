@@ -331,7 +331,10 @@ impl<ManagerObserver: ObserveFrames> HandleEvent for EventHandler<ManagerObserve
                             }
                         },
                         None => {
-                            error!("There should always be an input");
+                            #[cfg(debug_assertions)]
+                            if current_coordinates.get_frame_index() > FrameIndex::zero() {
+                                error!("There should always be an input");
+                            }
                         },
                     }
                 } else {
