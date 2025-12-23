@@ -12,9 +12,11 @@ pub trait AggregateInput: Send {
     fn new() -> Self;
 
     //TODO: make type for fractional frame duration
-    fn aggregate_input_event(&mut self, fractional_frame_duration: f64, input_event: Self::InputEvent);
+    fn aggregate_input_event(&mut self, fractional_frame_duration: f64, input_event: Self::InputEvent) /* -> Option<Self::InputEvent> */;
 
+    //TODO: remove
     fn peak_input(&self) -> Self::InputAggregate;
 
-    fn reset_for_new_frame(&mut self);
+    //TODO: rename
+    fn reset_for_new_frame(&mut self) /* -> Self::InputEvent */;
 }

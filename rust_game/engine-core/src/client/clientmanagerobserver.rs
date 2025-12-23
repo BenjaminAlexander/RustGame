@@ -1,4 +1,6 @@
-use crate::frame_manager::{FrameIndexAndState, InputCoordinates, ObserveFrames};
+use crate::client::udpoutput::UdpOutput;
+use crate::frame_manager::{ClientProvidedInput, FrameIndexAndState, InputCoordinates, ObserveFrames};
+use crate::messaging::ToServerInputMessage;
 use crate::state_channel::StateSender;
 use crate::GameTrait;
 use log::warn;
@@ -6,11 +8,15 @@ use std::ops::ControlFlow;
 
 pub struct ClientManagerObserver<Game: GameTrait> {
     state_sender: StateSender<Game>,
+    udp_output: UdpOutput<Game>,
 }
 
 impl<Game: GameTrait> ClientManagerObserver<Game> {
-    pub fn new(state_sender: StateSender<Game>) -> Self {
-        return Self { state_sender };
+    pub fn new(state_sender: StateSender<Game>, udp_output: UdpOutput<Game>) -> Self {
+        Self { 
+            state_sender,
+            udp_output
+        }
     }
 }
 
@@ -40,9 +46,22 @@ impl<Game: GameTrait> ObserveFrames for ClientManagerObserver<Game> {
     
     fn input_authoritative(
         &self,
-        _: InputCoordinates,
-        _: <Self::Game as GameTrait>::InputAggregate
+        input_coordinates: InputCoordinates,
+        input: <Self::Game as GameTrait>::InputAggregate
     ) -> ControlFlow<()> {
-        panic!("The client should never declare non-authoritative inputs as authoritative");
+
+        let message = ToServerInputMessage::<Game>::new(
+            input_coordinates,
+            ClientProvidedInput::Authoritative(input)
+        );
+
+        let send_result = self.udp_output.send_input(message);
+
+        if send_result.is_err() {
+            warn!("Failed to send InputMessage to Udp Output");
+            return ControlFlow::Break(());
+        }
+
+        ControlFlow::Continue(())
     }
 }

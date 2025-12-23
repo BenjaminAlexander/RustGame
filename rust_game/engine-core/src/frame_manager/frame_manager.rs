@@ -17,6 +17,7 @@ use commons::utils::{
     log_error,
     unit_error,
 };
+use log::error;
 use std::collections::vec_deque::VecDeque;
 use std::ops::ControlFlow;
 
@@ -68,18 +69,16 @@ impl<Game: GameTrait> FrameManager<Game> {
     /// Advances the current [FrameIndex] of the [FrameManager] on the client.  
     /// The [FrameManager] will compute frames up to `frame_index + 1`.
     /// 
-    /// This call will insert the final completed [GameTrait::ClientInput] from 
-    /// the local player into the frame before frame_index, and insert a peak 
-    /// (non-final) input into frame_index.
+    /// This will notify the observer of the final completed [GameTrait::InputEvent] 
+    /// from last current frame index for the local player.  It will also insert a peak 
+    /// (non-final) input for the local playyer into the new current frame.
     pub fn client_advance_frame_index(
         &self,
         current_coordinates: InputCoordinates,
-        previous_frame_input: Game::InputAggregate,
         peak_of_current_frame_input: Game::InputAggregate,
     ) -> Result<(), ()> {
         let event = Event::ClientAdvanceFrameIndex {
             current_coordinates,
-            previous_frame_input,
             peak_of_current_frame_input,
         };
         self.sender.send_event(event).map_err(unit_error)
@@ -109,7 +108,6 @@ enum Event<Game: GameTrait> {
     ServerAdvanceFrameIndex(FrameIndex),
     ClientAdvanceFrameIndex {
         current_coordinates: InputCoordinates,
-        previous_frame_input: Game::InputAggregate,
         peak_of_current_frame_input: Game::InputAggregate,
     },
     Input {
@@ -184,27 +182,6 @@ impl<ManagerObserver: ObserveFrames> EventHandler<ManagerObserver> {
         return Some(index_to_get);
     }
 
-    fn advance_frame_index(&mut self, frame_index: FrameIndex) -> ControlFlow<()> {
-        self.current_frame_index = frame_index;
-
-        if ManagerObserver::IS_SERVER {
-            let last_open_frame_index = self
-                .initial_information
-                .get_server_config()
-                .get_last_open_frame_index(self.current_frame_index);
-
-            let mut index = 0;
-
-            while index < self.frames.len()
-                && self.frames[index].get_frame_index() < last_open_frame_index
-            {
-                self.frames[index].close_frame(&self.manager_observer)?;
-                index += 1;
-            }
-        }
-
-        ControlFlow::Continue(())
-    }
 
     fn on_none_pending(&mut self) -> EventHandleResult {
         // Expand Frame queue to hold up current + 1
@@ -299,28 +276,74 @@ impl<ManagerObserver: ObserveFrames> HandleEvent for EventHandler<ManagerObserve
     fn on_event(&mut self, _: ReceiveMetaData, event: Self::Event) -> EventHandleResult {
         match event {
             Event::ServerAdvanceFrameIndex(frame_index) => {
-                let result = self.advance_frame_index(frame_index);
-                if result.is_break() {
-                    return EventHandleResult::StopThread;
+
+                #[cfg(debug_assertions)]
+                if !ManagerObserver::IS_SERVER {
+                    panic!("This message is for the server frame manager only");
+                }
+
+                self.current_frame_index = frame_index;
+
+                if ManagerObserver::IS_SERVER {
+                    let last_open_frame_index = self
+                        .initial_information
+                        .get_server_config()
+                        .get_last_open_frame_index(self.current_frame_index);
+
+                    let mut index = 0;
+
+                    while index < self.frames.len()
+                        && self.frames[index].get_frame_index() < last_open_frame_index
+                    {
+                        if self.frames[index].close_frame(&self.manager_observer).is_break() {
+                            return EventHandleResult::StopThread
+                        }
+                        index += 1;
+                    }
                 }
             }
             Event::ClientAdvanceFrameIndex {
                 current_coordinates,
-                previous_frame_input,
                 peak_of_current_frame_input,
             } => {
-                self.set_input(
-                    &current_coordinates.previous(),
-                    PresentInput::ClientProvided(ClientProvidedInput::NonAuthoritative(previous_frame_input))
-                );
+
+                #[cfg(debug_assertions)]
+                if ManagerObserver::IS_SERVER {
+                    panic!("This message is for the client frame manager only");
+                }
+
+                //let previous_coordinates = current_coordinates;
+
+                if let Some(index) = self.get_frame_queue_index(self.current_frame_index) {
+                    let previous_input = self.frames[index].get_input(current_coordinates.get_player_index());
+
+                    #[cfg(debug_assertions)]
+                    if previous_input.is_authoritative() {
+                        panic!("This should never be authoritative");
+                    }
+
+                    match previous_input.input() {
+                        Some(previous_input) => {
+                            let previous_coordinates = InputCoordinates::new(self.current_frame_index, current_coordinates.get_player_index());
+                            let result = self.manager_observer.input_authoritative(previous_coordinates, previous_input.clone());
+                            if result.is_break() {
+                                return EventHandleResult::StopThread;
+                            }
+                        },
+                        None => {
+                            error!("There should always be an input");
+                        },
+                    }
+                } else {
+                    error!("There should always be a previous frame");
+                }
+
                 self.set_input(
                     &current_coordinates, 
                     PresentInput::ClientProvided(ClientProvidedInput::NonAuthoritative(peak_of_current_frame_input))
                 );
-                let result = self.advance_frame_index(current_coordinates.get_frame_index());
-                if result.is_break() {
-                    return EventHandleResult::StopThread;
-                }
+
+                self.current_frame_index = current_coordinates.get_frame_index();
             }
             Event::Input{coordinates, input} => self.set_input(&coordinates, input),
             Event::State { frame_index, state } => {

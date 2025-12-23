@@ -214,6 +214,10 @@ impl<Game: GameTrait> Frame<Game> {
         self.need_to_compute_next_state = true;
     }
 
+    pub fn get_input(&self, player_index: usize) -> &Input<Game::InputAggregate> {
+        &self.inputs[player_index]
+    }
+
     pub fn close_frame(
         &mut self,
         observer: &impl ObserveFrames<Game = Game>,

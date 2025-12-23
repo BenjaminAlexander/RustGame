@@ -119,8 +119,24 @@ impl<Game: GameTrait> ClientCore<Game> {
             return EventHandleResult::TryForNextEvent;
         }
 
+        let server_udp_socket_addr =
+            SocketAddr::V4(SocketAddrV4::new(self.server_ip, Game::UDP_PORT));
+
+        let udp_socket = self.factory.bind_udp_ephemeral_port().unwrap();
+
+        //TODO: unwrap after try_clone is not good
+        let udp_output = UdpOutput::new(
+            &self.factory,
+            server_udp_socket_addr, 
+            udp_socket.try_clone().unwrap(), 
+            initial_information.clone()
+        ).unwrap();
+
         //TODO: maybe consolidate building of the manager into its own method
-        let client_manager_observer = ClientManagerObserver::<Game>::new(self.state_sender.clone());
+        let client_manager_observer = ClientManagerObserver::<Game>::new(
+            self.state_sender.clone(),
+            udp_output.clone()
+        );
 
         let frame_manager = FrameManager::new(
             &self.factory,
@@ -141,15 +157,10 @@ impl<Game: GameTrait> ClientCore<Game> {
 
         let timer_service = idle_timer_service.start(&self.factory).unwrap();
 
-        let server_udp_socket_addr =
-            SocketAddr::V4(SocketAddrV4::new(self.server_ip, Game::UDP_PORT));
-
-        let udp_socket = self.factory.bind_udp_ephemeral_port().unwrap();
-
         let udp_input_sender = UdpReadHandlerBuilder::new_thread(
             &self.factory,
             "ClientUdpInput".to_string(),
-            udp_socket.try_clone().unwrap(),
+            udp_socket,
             UdpInput::<Game>::new(
                 self.factory.get_time_source().clone(),
                 self.sender.clone(),
@@ -158,14 +169,6 @@ impl<Game: GameTrait> ClientCore<Game> {
             .unwrap(),
         )
         .unwrap();
-
-        //TODO: unwrap after try_clone is not good
-        let udp_output = UdpOutput::new(
-            &self.factory,
-            server_udp_socket_addr, 
-            udp_socket, 
-            initial_information.clone()
-        ).unwrap();
 
         let current_frame_index = FrameIndex::zero();
 
@@ -261,25 +264,6 @@ impl<Game: GameTrait> ClientCore<Game> {
 
             running_state.current_frame_index = frame_index;
 
-            let previous_input_coordinates = InputCoordinates::new(
-                running_state.current_frame_index.previous(), 
-                running_state.initial_information.get_player_index()
-            );
-            let previous_input = running_state.input_aggregator.peak_input();
-
-            //TODO: send non-authoritative inputs
-            let message = ToServerInputMessage::<Game>::new(
-                previous_input_coordinates,
-                ClientProvidedInput::Authoritative(previous_input.clone())
-            );
-
-            let send_result = running_state.udp_output.send_input(message);
-
-            if send_result.is_err() {
-                warn!("Failed to send InputMessage to Udp Output");
-                return EventHandleResult::StopThread;
-            }
-
             let current_input_coordinates = InputCoordinates::new(
                 running_state.current_frame_index, 
                 running_state.initial_information.get_player_index()
@@ -301,7 +285,6 @@ impl<Game: GameTrait> ClientCore<Game> {
 
             let send_result = running_state.frame_manager.client_advance_frame_index(
                 current_input_coordinates,
-                previous_input,
                 peaked_input
             );
 

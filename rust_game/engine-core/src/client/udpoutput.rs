@@ -24,6 +24,7 @@ enum UdpOutputEvent<Game: GameTrait> {
     FrameIndex(FrameIndex),
 }
 
+#[derive(Clone)]
 pub struct UdpOutput<Game: GameTrait> {
     sender: EventSender<UdpOutputEvent<Game>>
 }

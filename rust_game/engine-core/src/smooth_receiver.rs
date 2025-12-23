@@ -53,7 +53,9 @@ impl<T: Smooth> SmoothReceiver<T> {
                     warn!("Negetive smoothing weight {:?}\nLast Result: {:?}\nFuture State: {:?}", weight, last_result_and_time.time_value, future_frame_time);
                 }
 
-                if true {
+                if cfg!(feature = "no-smoothing") {
+                    T::to_smooth_result(current_states.next_frame.get_state())
+                } else {
                     let arg = SmoothArguments {
                         last_result: &last_result_and_time.result,
                         future_state: current_states.next_frame.get_state(),
@@ -61,8 +63,6 @@ impl<T: Smooth> SmoothReceiver<T> {
                     };
 
                     T::smooth(&arg)
-                } else {
-                    T::to_smooth_result(current_states.next_frame.get_state())
                 }
             },
             None => T::to_smooth_result(current_states.next_frame.get_state()),

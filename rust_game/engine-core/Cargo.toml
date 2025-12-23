@@ -4,6 +4,10 @@ edition.workspace = true
 version.workspace = true
 authors.workspace = true
 
+[features]
+# This feature disables smoothing.
+no-smoothing = []
+
 [dependencies]
 commons.workspace = true
 
