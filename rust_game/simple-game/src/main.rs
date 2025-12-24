@@ -1,8 +1,8 @@
+#![deny(rustdoc::broken_intra_doc_links)]
 use crate::simplegameimpl::SimpleGameImpl;
 use crate::simpleinput::SimpleInput;
 use crate::simpleinputevent::SimpleInputEvent;
 use crate::simpleinputeventhandler::SimpleInputEventHandler;
-use crate::simpleserverinput::SimpleServerInput;
 use crate::simplestate::*;
 use crate::simplewindow::SimpleWindow;
 use commons::logging::LoggingConfigBuilder;
@@ -27,6 +27,7 @@ use std::{
 
 mod bullet;
 mod character;
+mod simple_smooth;
 mod simplegameimpl;
 mod simpleinput;
 mod simpleinputevent;

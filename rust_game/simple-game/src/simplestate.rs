@@ -8,7 +8,6 @@ use commons::time::TimeDuration;
 use engine_core::{
     GameTrait,
     InitialInformation,
-    InterpolationArg,
     UpdateArg,
 };
 use graphics::Context;
@@ -43,8 +42,8 @@ impl SimpleState {
     pub fn get_server_input(arg: &UpdateArg<SimpleGameImpl>) -> SimpleServerInput {
         let mut server_input = SimpleServerInput::new();
 
-        for character in &arg.get_state().player_characters {
-            for bullet in &arg.get_state().bullets {
+        for character in &arg.get_frame_state().get_state().player_characters {
+            for bullet in &arg.get_frame_state().get_state().bullets {
                 if character.is_hit(bullet, arg.get_current_duration_since_start()) {
                     server_input.add_event(SimplServerInputEvent::CharacterHit {
                         index: character.get_player_index(),
@@ -57,7 +56,7 @@ impl SimpleState {
     }
 
     pub fn get_next_state(arg: &UpdateArg<SimpleGameImpl>) -> SimpleState {
-        let mut new = arg.get_state().clone();
+        let mut new = arg.get_frame_state().get_state().clone();
         new.update(arg);
         return new;
     }
@@ -89,20 +88,14 @@ impl SimpleState {
         }
     }
 
-    pub fn interpolate(
-        _initial_information: &InitialInformation<SimpleGameImpl>,
-        first: &Self,
-        second: &Self,
-        arg: &InterpolationArg,
-    ) -> Self {
+    pub fn interpolate(first: &Self, second: &Self, weight: f64) -> Self {
         let mut second_clone = second.clone();
 
         for i in 0..second_clone.player_characters.len() {
             if let Some(first_character) = first.player_characters.get(i) {
-                let new_position = first_character.get_position().lerp(
-                    second_clone.player_characters[i].get_position(),
-                    arg.get_weight(),
-                );
+                let new_position = first_character
+                    .get_position()
+                    .lerp(second_clone.player_characters[i].get_position(), weight);
                 second_clone.player_characters[i].set_position(new_position);
             }
         }

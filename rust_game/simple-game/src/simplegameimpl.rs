@@ -7,8 +7,6 @@ use crate::{
 };
 use engine_core::{
     GameTrait,
-    InitialInformation,
-    InterpolationArg,
     UpdateArg,
 };
 use serde::{
@@ -21,14 +19,15 @@ pub struct SimpleGameImpl {}
 
 impl GameTrait for SimpleGameImpl {
     type State = SimpleState;
-    type ClientInput = SimpleInput;
-    type InterpolationResult = SimpleState;
-    type ClientInputEvent = SimpleInputEvent;
-    type ClientInputEventHandler = SimpleInputEventHandler;
+    type InputAggregate = SimpleInput;
+    type InputEvent = SimpleInputEvent;
+    type InputAggregator = SimpleInputEventHandler;
 
     const TCP_PORT: u16 = 3456;
     const UDP_PORT: u16 = 3457;
-    const STEP_PERIOD: TimeDuration = TimeDuration::new(0, 100_000_000);
+    //One sec 1_000_000_000
+    //60hz 16_666_666
+    const STEP_PERIOD: TimeDuration = TimeDuration::new(5, 0);
     const GRACE_PERIOD: TimeDuration = TimeDuration::new(1, 0);
     const PING_PERIOD: TimeDuration = TimeDuration::new(1, 0);
     const CLOCK_AVERAGE_SIZE: usize = 100;
@@ -39,29 +38,5 @@ impl GameTrait for SimpleGameImpl {
 
     fn get_next_state(arg: &UpdateArg<Self>) -> Self::State {
         return SimpleState::get_next_state(arg);
-    }
-
-    fn interpolate(
-        initial_information: &InitialInformation<Self>,
-        first: &Self::State,
-        second: &Self::State,
-        arg: &InterpolationArg,
-    ) -> Self::InterpolationResult {
-        return SimpleState::interpolate(initial_information, first, second, arg);
-    }
-
-    fn new_input_event_handler() -> Self::ClientInputEventHandler {
-        SimpleInputEventHandler::new()
-    }
-
-    fn handle_input_event(
-        input_event_handler: &mut Self::ClientInputEventHandler,
-        input_event: Self::ClientInputEvent,
-    ) {
-        input_event_handler.handle_event(input_event);
-    }
-
-    fn get_input(input_event_handler: &mut Self::ClientInputEventHandler) -> Self::ClientInput {
-        input_event_handler.get_input()
     }
 }

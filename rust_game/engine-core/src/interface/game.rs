@@ -1,5 +1,4 @@
-use crate::interface::InitialInformation;
-use crate::interface::InterpolationArg;
+use crate::AggregateInput;
 use crate::UpdateArg;
 use commons::time::TimeDuration;
 use serde::de::DeserializeOwned;
@@ -10,14 +9,10 @@ use std::fmt::Debug;
 pub trait GameTrait: 'static + Send + Sized + Clone {
     type State: Serialize + DeserializeOwned + Clone + Debug + Send + Sync + 'static;
 
-    type ClientInput: Serialize + DeserializeOwned + Clone + Debug + Send + 'static;
+    type InputEvent: Send + 'static;
+    type InputAggregate: Serialize + DeserializeOwned + Clone + Debug + Send + 'static;
 
-    type InterpolationResult: Send + 'static;
-
-    type ClientInputEvent: Send + 'static;
-
-    //TODO: make input event handler its own trait
-    type ClientInputEventHandler: Send + 'static;
+    type InputAggregator: AggregateInput<Game = Self>;
 
     const TCP_PORT: u16;
     const UDP_PORT: u16;
@@ -30,21 +25,4 @@ pub trait GameTrait: 'static + Send + Sized + Clone {
     fn get_initial_state(player_count: usize) -> Self::State;
 
     fn get_next_state(arg: &UpdateArg<Self>) -> Self::State;
-
-    //TODO: this method needs to include the last interpolation result
-    fn interpolate(
-        initial_information: &InitialInformation<Self>,
-        first: &Self::State,
-        second: &Self::State,
-        arg: &InterpolationArg,
-    ) -> Self::InterpolationResult;
-
-    fn new_input_event_handler() -> Self::ClientInputEventHandler;
-
-    fn handle_input_event(
-        input_event_handler: &mut Self::ClientInputEventHandler,
-        input_event: Self::ClientInputEvent,
-    );
-
-    fn get_input(input_event_handler: &mut Self::ClientInputEventHandler) -> Self::ClientInput;
 }

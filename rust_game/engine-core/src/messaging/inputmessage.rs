@@ -1,5 +1,9 @@
 use crate::{
-    game_time::FrameIndex,
+    frame_manager::{
+        ClientProvidedInput,
+        InputCoordinates,
+        PresentInput,
+    },
     interface::GameTrait,
 };
 use serde::{
@@ -8,78 +12,49 @@ use serde::{
 };
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
+#[serde(bound = "")]
 pub struct ToServerInputMessage<Game: GameTrait> {
-    frame_index: FrameIndex,
-    player_index: usize,
-    input: Game::ClientInput,
+    input_coordinates: InputCoordinates,
+    input: ClientProvidedInput<Game>,
 }
 
 impl<Game: GameTrait> ToServerInputMessage<Game> {
-    pub fn new(frame_index: FrameIndex, player_index: usize, input: Game::ClientInput) -> Self {
+    pub fn new(input_coordinates: InputCoordinates, input: ClientProvidedInput<Game>) -> Self {
         Self {
-            frame_index,
-            player_index,
+            input_coordinates,
             input,
         }
     }
 
-    pub fn get_frame_index(&self) -> FrameIndex {
-        self.frame_index
+    pub fn get_input_coordinates(&self) -> &InputCoordinates {
+        &self.input_coordinates
     }
 
-    pub fn get_player_index(&self) -> usize {
-        self.player_index
-    }
-
-    pub fn get_input(&self) -> &Game::ClientInput {
+    pub fn get_input(&self) -> &ClientProvidedInput<Game> {
         &self.input
     }
 
-    pub fn take_input(self) -> Game::ClientInput {
-        self.input
-    }
-
-    pub fn to_client_message(self) -> ToClientInputMessage<Game> {
-        ToClientInputMessage::new(self.frame_index, self.player_index, Some(self.input))
+    pub fn take(self) -> (InputCoordinates, ClientProvidedInput<Game>) {
+        (self.input_coordinates, self.input)
     }
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
+#[serde(bound = "")]
 pub struct ToClientInputMessage<Game: GameTrait> {
-    frame_index: FrameIndex,
-    player_index: usize,
-
-    /// When this is None, the message means that the server has declared the input
-    /// authoritatively missing
-    input: Option<Game::ClientInput>,
+    input_coordinates: InputCoordinates,
+    input: PresentInput<Game>,
 }
 
 impl<Game: GameTrait> ToClientInputMessage<Game> {
-    pub fn new(
-        frame_index: FrameIndex,
-        player_index: usize,
-        input: Option<Game::ClientInput>,
-    ) -> Self {
+    pub fn new(input_coordinates: InputCoordinates, input: PresentInput<Game>) -> Self {
         Self {
-            frame_index,
-            player_index,
+            input_coordinates,
             input,
         }
     }
 
-    pub fn get_frame_index(&self) -> FrameIndex {
-        self.frame_index
-    }
-
-    pub fn get_player_index(&self) -> usize {
-        self.player_index
-    }
-
-    pub fn get_input(&self) -> &Option<Game::ClientInput> {
-        &self.input
-    }
-
-    pub fn take_input(self) -> Option<Game::ClientInput> {
-        self.input
+    pub fn take(self) -> (InputCoordinates, PresentInput<Game>) {
+        (self.input_coordinates, self.input)
     }
 }

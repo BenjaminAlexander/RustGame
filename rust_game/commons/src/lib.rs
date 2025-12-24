@@ -1,3 +1,4 @@
+#![deny(rustdoc::broken_intra_doc_links)]
 pub mod geometry;
 pub mod logging;
 pub mod real_time;

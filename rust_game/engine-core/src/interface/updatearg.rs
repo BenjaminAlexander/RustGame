@@ -1,4 +1,7 @@
-use crate::frame_manager::Input;
+use crate::frame_manager::{
+    FrameInput,
+    FrameState,
+};
 use crate::game_time::FrameIndex;
 use crate::interface::game::GameTrait;
 use crate::interface::InitialInformation;
@@ -9,16 +12,16 @@ pub struct UpdateArg<'a, Game: GameTrait> {
     initial_information: &'a InitialInformation<Game>,
     //TODO: rename
     step: FrameIndex,
-    state: &'a Game::State,
-    inputs: &'a Vec<Input<Game::ClientInput>>,
+    state: &'a FrameState<Game>,
+    inputs: &'a Vec<FrameInput<Game>>,
 }
 
 impl<'a, 'b, Game: GameTrait> UpdateArg<'a, Game> {
     pub fn new(
         initial_information: &'a InitialInformation<Game>,
         step: FrameIndex,
-        state: &'a Game::State,
-        inputs: &'a Vec<Input<Game::ClientInput>>,
+        state: &'a FrameState<Game>,
+        inputs: &'a Vec<FrameInput<Game>>,
     ) -> Self {
         return Self {
             initial_information,
@@ -28,7 +31,7 @@ impl<'a, 'b, Game: GameTrait> UpdateArg<'a, Game> {
         };
     }
 
-    pub fn get_input(&self, player_index: usize) -> &Input<Game::ClientInput> {
+    pub fn get_frame_input(&self, player_index: usize) -> &FrameInput<Game> {
         return &self.inputs[player_index];
     }
 
@@ -36,7 +39,7 @@ impl<'a, 'b, Game: GameTrait> UpdateArg<'a, Game> {
         return self.step;
     }
 
-    pub fn get_state(&self) -> &'a Game::State {
+    pub fn get_frame_state(&self) -> &'a FrameState<Game> {
         return self.state;
     }
 

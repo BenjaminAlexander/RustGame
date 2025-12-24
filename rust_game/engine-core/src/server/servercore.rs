@@ -1,11 +1,16 @@
-use crate::frame_manager::FrameManager;
+use crate::frame_manager::{
+    FrameManager,
+    PresentInput,
+};
 use crate::game_time::GameTimerScheduler;
 use crate::interface::{
     GameTrait,
     InitialInformation,
-    RenderReceiverMessage,
 };
-use crate::messaging::ToServerInputMessage;
+use crate::messaging::{
+    ToClientInputMessage,
+    ToServerInputMessage,
+};
 use crate::server::clientaddress::ClientAddress;
 use crate::server::servermanagerobserver::ServerManagerObserver;
 use crate::server::tcpinput::TcpInput;
@@ -17,6 +22,7 @@ use crate::server::{
     ServerConfig,
     TcpConnectionHandler,
 };
+use crate::state_channel::StateSender;
 use crate::FrameIndex;
 use commons::real_time::net::tcp::{
     TcpListenerBuilder,
@@ -36,7 +42,6 @@ use commons::real_time::{
     Factory,
     HandleEvent,
     ReceiveMetaData,
-    Sender,
 };
 use commons::utils::unit_error;
 use log::{
@@ -59,21 +64,15 @@ pub struct ServerCore<Game: GameTrait> {
 }
 
 impl<Game: GameTrait> ServerCore<Game> {
-    pub fn new(
-        factory: Factory,
-        render_receiver_sender: Sender<RenderReceiverMessage<Game>>,
-    ) -> Result<Self, Error> {
+    pub fn new(factory: Factory, state_sender: StateSender<Game>) -> Result<Self, Error> {
         let builder = EventHandlerBuilder::new(&factory);
 
         let server_core = Self {
             sender: builder.get_sender().clone(),
         };
 
-        let event_handler = ServerCoreEventHandler::new(
-            factory,
-            server_core.clone(),
-            render_receiver_sender.clone(),
-        )?;
+        let event_handler =
+            ServerCoreEventHandler::new(factory, server_core.clone(), state_sender.clone())?;
 
         builder.spawn_thread("ServerCore".to_string(), event_handler)?;
 
@@ -129,7 +128,7 @@ enum ServerCoreEvent<Game: GameTrait> {
 struct ServerCoreEventHandler<Game: GameTrait> {
     factory: Factory,
     server_core: ServerCore<Game>,
-    render_receiver_sender: Sender<RenderReceiverMessage<Game>>,
+    state_sender: StateSender<Game>,
     tcp_listener_sender: EventHandlerStopper,
     tcp_inputs: Vec<TcpInput>,
     tcp_outputs: Vec<TcpOutput<Game>>,
@@ -181,7 +180,7 @@ impl<Game: GameTrait> ServerCoreEventHandler<Game> {
     pub fn new(
         factory: Factory,
         server_core: ServerCore<Game>,
-        render_receiver_sender: Sender<RenderReceiverMessage<Game>>,
+        state_sender: StateSender<Game>,
     ) -> Result<Self, Error> {
         let udp_handler = UdpHandler::<Game>::new(factory.get_time_source().clone());
 
@@ -203,7 +202,7 @@ impl<Game: GameTrait> ServerCoreEventHandler<Game> {
         Ok(Self {
             factory,
             server_core,
-            render_receiver_sender,
+            state_sender,
             tcp_listener_sender,
             tcp_inputs: Vec::new(),
             tcp_outputs: Vec::new(),
@@ -304,22 +303,16 @@ impl<Game: GameTrait> ServerCoreEventHandler<Game> {
             initial_state.clone(),
         );
 
-        let send_result =
-            self.render_receiver_sender
-                .send(RenderReceiverMessage::InitialInformation(
-                    server_initial_information.clone(),
-                ));
-
-        if send_result.is_err() {
+        if self
+            .state_sender
+            .send_initial_information(server_initial_information.clone())
+            .is_err()
+        {
             warn!("Failed to send InitialInformation to Render Receiver");
             return EventHandleResult::StopThread;
         }
 
-        if self
-            .render_receiver_sender
-            .send(RenderReceiverMessage::StartTime(start_time))
-            .is_err()
-        {
+        if self.state_sender.send_start_time(start_time).is_err() {
             warn!("Failed to send StartTime to Render Receiver");
             return EventHandleResult::StopThread;
         }
@@ -337,10 +330,8 @@ impl<Game: GameTrait> ServerCoreEventHandler<Game> {
             }
         }
 
-        let server_manager_observer = ServerManagerObserver::<Game>::new(
-            udp_outputs.clone(),
-            self.render_receiver_sender.clone(),
-        );
+        let server_manager_observer =
+            ServerManagerObserver::<Game>::new(udp_outputs.clone(), self.state_sender.clone());
 
         let frame_manager = FrameManager::new(
             &self.factory,
@@ -436,19 +427,10 @@ impl<Game: GameTrait> ServerCoreEventHandler<Game> {
 
         if running_core
             .frame_manager
-            .advance_frame_index(frame_index)
+            .server_advance_frame_index(frame_index)
             .is_err()
         {
             warn!("Failed to send DropSteps to Game Manager");
-            return EventHandleResult::StopThread;
-        }
-
-        if self
-            .render_receiver_sender
-            .send(RenderReceiverMessage::FrameIndex(frame_index))
-            .is_err()
-        {
-            warn!("Failed to send FrameIndex to Render Receiver");
             return EventHandleResult::StopThread;
         }
 
@@ -472,22 +454,27 @@ impl<Game: GameTrait> ServerCoreEventHandler<Game> {
             .server_config
             .get_last_open_frame_index(current_frame_index);
 
-        if last_open_frame_index <= input_message.get_frame_index() {
-            let send_result = running_core.frame_manager.insert_input(
-                input_message.get_frame_index(),
-                input_message.get_player_index(),
-                input_message.get_input().clone(),
-                true,
-            );
+        let (input_coordinates, input) = input_message.take();
+        if last_open_frame_index <= input_coordinates.get_frame_index() {
+            let is_input_authoritative = input.is_authoritative();
+            let present_input = PresentInput::ClientProvided(input);
+            let send_result = running_core
+                .frame_manager
+                .insert_input(input_coordinates, present_input.clone());
 
             if send_result.is_err() {
                 warn!("Failed to send InputEvent to Game Manager");
                 return EventHandleResult::StopThread;
             }
 
-            let to_client_message = input_message.to_client_message();
+            let to_client_message = ToClientInputMessage::new(input_coordinates, present_input);
 
-            for udp_output in running_core.udp_output_senders.iter() {
+            for (index, udp_output) in running_core.udp_output_senders.iter().enumerate() {
+                // don't send non-authoritative inputs back to the original client
+                if !is_input_authoritative && index == input_coordinates.get_player_index() {
+                    continue;
+                }
+
                 let send_result = udp_output.send_input_message(to_client_message.clone());
 
                 if send_result.is_err() {

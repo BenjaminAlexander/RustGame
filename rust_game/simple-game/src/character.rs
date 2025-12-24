@@ -4,7 +4,6 @@ use commons::geometry::twod::Vector2;
 use commons::time::TimeDuration;
 use engine_core::{
     GameTrait,
-    Input,
     UpdateArg,
 };
 use graphics::rectangle;
@@ -18,8 +17,8 @@ use serde::{
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Character {
     player_index: usize,
-    velocity: Vector2,
     position: Vector2,
+    velocity: Vector2,
     health: u8,
 }
 
@@ -27,8 +26,8 @@ impl Character {
     pub fn new(player_index: usize, position: Vector2) -> Self {
         return Self {
             player_index,
-            velocity: Vector2::new(0 as f64, 0 as f64),
             position,
+            velocity: Vector2::zero(),
             health: 10,
         };
     }
@@ -61,7 +60,7 @@ impl Character {
     }
 
     pub fn move_character(&mut self, arg: &UpdateArg<SimpleGameImpl>) {
-        if let Input::Authoritative(input) = arg.get_input(self.player_index) {
+        if let Some(input) = arg.get_frame_input(self.player_index).get_input() {
             self.velocity = input.get_velocity();
         }
 
@@ -70,7 +69,7 @@ impl Character {
     }
 
     pub fn get_fired_bullet(&self, arg: &UpdateArg<SimpleGameImpl>) -> Option<Bullet> {
-        if let Input::Authoritative(input) = arg.get_input(self.player_index) {
+        if let Some(input) = arg.get_frame_input(self.player_index).get_input() {
             if input.should_fire() {
                 return Some(Bullet::new(
                     arg.get_current_step(),

@@ -1,31 +1,27 @@
-use crate::frame_manager::ObserveFrames;
-use crate::interface::RenderReceiverMessage;
-use crate::messaging::{
+use crate::frame_manager::{
+    ClientProvidedInput,
     FrameIndexAndState,
-    ToClientInputMessage,
+    InputCoordinates,
+    ObserveFrames,
+    PresentInput,
 };
+use crate::messaging::ToClientInputMessage;
 use crate::server::udpoutput::UdpOutput;
-use crate::{
-    FrameIndex,
-    GameTrait,
-};
-use commons::real_time::Sender;
+use crate::state_channel::StateSender;
+use crate::GameTrait;
 use log::warn;
 use std::ops::ControlFlow;
 
 pub struct ServerManagerObserver<Game: GameTrait> {
     udp_outputs: Vec<UdpOutput<Game>>,
-    render_receiver_sender: Sender<RenderReceiverMessage<Game>>,
+    state_sender: StateSender<Game>,
 }
 
 impl<Game: GameTrait> ServerManagerObserver<Game> {
-    pub fn new(
-        udp_outputs: Vec<UdpOutput<Game>>,
-        render_receiver_sender: Sender<RenderReceiverMessage<Game>>,
-    ) -> Self {
+    pub fn new(udp_outputs: Vec<UdpOutput<Game>>, state_sender: StateSender<Game>) -> Self {
         return Self {
             udp_outputs,
-            render_receiver_sender,
+            state_sender,
         };
     }
 }
@@ -40,9 +36,7 @@ impl<Game: GameTrait> ObserveFrames for ServerManagerObserver<Game> {
         is_state_authoritative: bool,
         state_message: FrameIndexAndState<Game>,
     ) -> ControlFlow<()> {
-        let result = self
-            .render_receiver_sender
-            .send(RenderReceiverMessage::StepMessage(state_message.clone()));
+        let result = self.state_sender.send_state(state_message.clone());
 
         if result.is_err() {
             warn!("Failed to send StepMessage to Render Receiver");
@@ -65,14 +59,32 @@ impl<Game: GameTrait> ObserveFrames for ServerManagerObserver<Game> {
 
     fn input_authoritatively_missing(
         &self,
-        frame_index: FrameIndex,
-        player_index: usize,
+        input_coordinates: InputCoordinates,
     ) -> ControlFlow<()> {
         for udp_output in self.udp_outputs.iter() {
             let result = udp_output.send_input_message(ToClientInputMessage::new(
-                frame_index,
-                player_index,
-                None,
+                input_coordinates,
+                PresentInput::AuthoritativeMissing,
+            ));
+
+            if result.is_err() {
+                warn!("Failed to send CompletedStep to UdpOutput");
+                return ControlFlow::Break(());
+            }
+        }
+
+        ControlFlow::Continue(())
+    }
+
+    fn input_authoritative(
+        &self,
+        input_coordinates: InputCoordinates,
+        input: <Self::Game as GameTrait>::InputAggregate,
+    ) -> ControlFlow<()> {
+        for udp_output in self.udp_outputs.iter() {
+            let result = udp_output.send_input_message(ToClientInputMessage::new(
+                input_coordinates,
+                PresentInput::ClientProvided(ClientProvidedInput::Authoritative(input.clone())),
             ));
 
             if result.is_err() {

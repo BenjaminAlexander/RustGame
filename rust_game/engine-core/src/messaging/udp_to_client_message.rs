@@ -3,12 +3,10 @@ use serde::{
     Serialize,
 };
 
+use crate::frame_manager::FrameIndexAndState;
 use crate::game_time::PingResponse;
 use crate::interface::GameTrait;
-use crate::messaging::{
-    FrameIndexAndState,
-    ToClientInputMessage,
-};
+use crate::messaging::ToClientInputMessage;
 
 #[derive(Serialize, Deserialize, Debug)]
 #[serde(bound = "")]

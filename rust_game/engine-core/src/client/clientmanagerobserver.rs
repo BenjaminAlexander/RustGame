@@ -1,23 +1,27 @@
-use crate::frame_manager::ObserveFrames;
-use crate::interface::RenderReceiverMessage;
-use crate::messaging::FrameIndexAndState;
-use crate::{
-    FrameIndex,
-    GameTrait,
+use crate::client::udpoutput::UdpOutput;
+use crate::frame_manager::{
+    ClientProvidedInput,
+    FrameIndexAndState,
+    InputCoordinates,
+    ObserveFrames,
 };
-use commons::real_time::Sender;
+use crate::messaging::ToServerInputMessage;
+use crate::state_channel::StateSender;
+use crate::GameTrait;
 use log::warn;
 use std::ops::ControlFlow;
 
 pub struct ClientManagerObserver<Game: GameTrait> {
-    render_receiver_sender: Sender<RenderReceiverMessage<Game>>,
+    state_sender: StateSender<Game>,
+    udp_output: UdpOutput<Game>,
 }
 
 impl<Game: GameTrait> ClientManagerObserver<Game> {
-    pub fn new(render_receiver_sender: Sender<RenderReceiverMessage<Game>>) -> Self {
-        return Self {
-            render_receiver_sender,
-        };
+    pub fn new(state_sender: StateSender<Game>, udp_output: UdpOutput<Game>) -> Self {
+        Self {
+            state_sender,
+            udp_output,
+        }
     }
 }
 
@@ -31,9 +35,7 @@ impl<Game: GameTrait> ObserveFrames for ClientManagerObserver<Game> {
         _is_state_authoritative: bool,
         step_message: FrameIndexAndState<Game>,
     ) -> ControlFlow<()> {
-        let result = self
-            .render_receiver_sender
-            .send(RenderReceiverMessage::StepMessage(step_message));
+        let result = self.state_sender.send_state(step_message);
 
         if result.is_err() {
             warn!("Failed to send new state to render receiver");
@@ -43,7 +45,27 @@ impl<Game: GameTrait> ObserveFrames for ClientManagerObserver<Game> {
         }
     }
 
-    fn input_authoritatively_missing(&self, _: FrameIndex, _: usize) -> ControlFlow<()> {
+    fn input_authoritatively_missing(&self, _: InputCoordinates) -> ControlFlow<()> {
         panic!("The client should never declare inputs authoritatively missing");
+    }
+
+    fn input_authoritative(
+        &self,
+        input_coordinates: InputCoordinates,
+        input: <Self::Game as GameTrait>::InputAggregate,
+    ) -> ControlFlow<()> {
+        let message = ToServerInputMessage::<Game>::new(
+            input_coordinates,
+            ClientProvidedInput::Authoritative(input),
+        );
+
+        let send_result = self.udp_output.send_input(message);
+
+        if send_result.is_err() {
+            warn!("Failed to send InputMessage to Udp Output");
+            return ControlFlow::Break(());
+        }
+
+        ControlFlow::Continue(())
     }
 }

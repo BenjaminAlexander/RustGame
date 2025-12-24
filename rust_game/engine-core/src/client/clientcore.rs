@@ -1,13 +1,16 @@
+use crate::aggregate_input::AggregateInput;
 use crate::client::clientgametimeobserver::ClientGameTimerObserver;
 use crate::client::clientmanagerobserver::ClientManagerObserver;
 use crate::client::tcpinput::TcpInput;
 use crate::client::tcpoutput::TcpOutput;
 use crate::client::udpinput::UdpInput;
-use crate::client::udpoutput::{
-    UdpOutput,
-    UdpOutputEvent,
+use crate::client::udpoutput::UdpOutput;
+use crate::frame_manager::{
+    ClientProvidedInput,
+    FrameManager,
+    InputCoordinates,
+    PresentInput,
 };
-use crate::frame_manager::FrameManager;
 use crate::game_time::{
     CompletedPing,
     FrameIndex,
@@ -16,9 +19,9 @@ use crate::game_time::{
 use crate::interface::{
     GameTrait,
     InitialInformation,
-    RenderReceiverMessage,
 };
 use crate::messaging::ToServerInputMessage;
+use crate::state_channel::StateSender;
 use commons::real_time::net::tcp::TcpReadHandlerBuilder;
 use commons::real_time::net::udp::UdpReadHandlerBuilder;
 use commons::real_time::timer_service::{
@@ -33,8 +36,8 @@ use commons::real_time::{
     Factory,
     HandleEvent,
     ReceiveMetaData,
-    Sender,
 };
+use commons::time::TimeValue;
 use log::{
     trace,
     warn,
@@ -47,7 +50,7 @@ use std::net::{
 
 pub enum ClientCoreEvent<Game: GameTrait> {
     OnInitialInformation(InitialInformation<Game>),
-    OnInputEvent(Game::ClientInputEvent),
+    OnInputEvent(Game::InputEvent),
     GameTimerTick,
     CompletedPing(CompletedPing),
 }
@@ -58,20 +61,21 @@ pub struct ClientCore<Game: GameTrait> {
     server_ip: Ipv4Addr,
     tcp_input_sender: EventHandlerStopper,
     tcp_output_sender: EventSender<()>,
-    render_receiver_sender: Sender<RenderReceiverMessage<Game>>,
+    state_sender: StateSender<Game>,
     running_state: Option<RunningState<Game>>,
 }
 
 //TODO: don't start client core before hello
 struct RunningState<Game: GameTrait> {
+    current_frame_index: FrameIndex,
+    time_of_current_frame: TimeValue,
     frame_manager: FrameManager<Game>,
-    input_event_handler: Game::ClientInputEventHandler,
+    input_aggregator: Game::InputAggregator,
     timer_service: TimerService<(), ClientGameTimerObserver<Game>>,
     game_timer: GameTimerScheduler,
     udp_input_sender: EventHandlerStopper,
-    udp_output_sender: EventSender<UdpOutputEvent<Game>>,
+    udp_output: UdpOutput<Game>,
     initial_information: InitialInformation<Game>,
-    input_grace_period_frames: usize,
 }
 
 impl<Game: GameTrait> ClientCore<Game> {
@@ -79,14 +83,14 @@ impl<Game: GameTrait> ClientCore<Game> {
         factory: Factory,
         server_ip: Ipv4Addr,
         sender: EventSender<ClientCoreEvent<Game>>,
-        render_receiver_sender: Sender<RenderReceiverMessage<Game>>,
+        state_sender: StateSender<Game>,
     ) -> Self {
         let socket_addr_v4 = SocketAddrV4::new(server_ip.clone(), Game::TCP_PORT);
         let socket_addr = SocketAddr::from(socket_addr_v4);
 
         let (tcp_sender, tcp_receiver) = factory.connect_tcp(socket_addr).unwrap();
 
-        let tcp_input = TcpInput::<Game>::new(sender.clone(), render_receiver_sender.clone());
+        let tcp_input = TcpInput::<Game>::new(sender.clone(), state_sender.clone());
 
         let tcp_input_sender = TcpReadHandlerBuilder::new_thread(
             &factory,
@@ -109,7 +113,7 @@ impl<Game: GameTrait> ClientCore<Game> {
             server_ip,
             tcp_input_sender,
             tcp_output_sender,
-            render_receiver_sender,
+            state_sender,
             running_state: None,
         };
     }
@@ -123,9 +127,23 @@ impl<Game: GameTrait> ClientCore<Game> {
             return EventHandleResult::TryForNextEvent;
         }
 
+        let server_udp_socket_addr =
+            SocketAddr::V4(SocketAddrV4::new(self.server_ip, Game::UDP_PORT));
+
+        let udp_socket = self.factory.bind_udp_ephemeral_port().unwrap();
+
+        //TODO: unwrap after try_clone is not good
+        let udp_output = UdpOutput::new(
+            &self.factory,
+            server_udp_socket_addr,
+            udp_socket.try_clone().unwrap(),
+            initial_information.clone(),
+        )
+        .unwrap();
+
         //TODO: maybe consolidate building of the manager into its own method
         let client_manager_observer =
-            ClientManagerObserver::<Game>::new(self.render_receiver_sender.clone());
+            ClientManagerObserver::<Game>::new(self.state_sender.clone(), udp_output.clone());
 
         let frame_manager = FrameManager::new(
             &self.factory,
@@ -146,15 +164,10 @@ impl<Game: GameTrait> ClientCore<Game> {
 
         let timer_service = idle_timer_service.start(&self.factory).unwrap();
 
-        let server_udp_socket_addr =
-            SocketAddr::V4(SocketAddrV4::new(self.server_ip, Game::UDP_PORT));
-
-        let udp_socket = self.factory.bind_udp_ephemeral_port().unwrap();
-
         let udp_input_sender = UdpReadHandlerBuilder::new_thread(
             &self.factory,
             "ClientUdpInput".to_string(),
-            udp_socket.try_clone().unwrap(),
+            udp_socket,
             UdpInput::<Game>::new(
                 self.factory.get_time_source().clone(),
                 self.sender.clone(),
@@ -164,34 +177,16 @@ impl<Game: GameTrait> ClientCore<Game> {
         )
         .unwrap();
 
-        //TODO: unwrap after try_clone is not good
-        let udp_output_sender = EventHandlerBuilder::new_thread(
-            &self.factory,
-            "ClientUdpOutput".to_string(),
-            UdpOutput::<Game>::new(
-                self.factory.get_time_source().clone(),
-                server_udp_socket_addr,
-                udp_socket.try_clone().unwrap(),
-                initial_information.clone(),
-            ),
-        )
-        .unwrap();
-
-        let input_grace_period_frames = initial_information
-            .get_server_config()
-            .get_frame_duration()
-            .to_frame_count(&Game::GRACE_PERIOD.mul_f64(2.0))
-            as usize;
-
         self.running_state = Some(RunningState {
+            current_frame_index: FrameIndex::zero(),
+            time_of_current_frame: self.factory.get_time_source().now(),
             frame_manager,
-            input_event_handler: Game::new_input_event_handler(),
+            input_aggregator: Game::InputAggregator::new(),
             timer_service,
             game_timer,
             udp_input_sender,
-            udp_output_sender,
+            udp_output,
             initial_information,
-            input_grace_period_frames,
         });
 
         // TODO: this causes the first client ping to be requested.  If the first
@@ -200,11 +195,60 @@ impl<Game: GameTrait> ClientCore<Game> {
         return self.send_new_frame_index(FrameIndex::zero());
     }
 
-    fn on_input_event(&mut self, input_event: Game::ClientInputEvent) -> EventHandleResult {
+    fn on_input_event(&mut self, input_event: Game::InputEvent) -> EventHandleResult {
         if let Some(ref mut running_state) = self.running_state {
-            Game::handle_input_event(&mut running_state.input_event_handler, input_event);
+            let now = self.factory.get_time_source().now();
+
+            // Calculating the fractional time based on the local time of occurance
+            // of the current frame ensures the fractional time is always increasing.
+            let duration_since_current_frame =
+                now.duration_since(&running_state.time_of_current_frame);
+            let fractional_frame_duration = (duration_since_current_frame.as_secs_f64()
+                / running_state
+                    .initial_information
+                    .get_server_config()
+                    .get_frame_duration()
+                    .get_frame_duration()
+                    .as_secs_f64())
+            .min(1.0)
+            .max(0.0);
+
+            let input_option = running_state
+                .input_aggregator
+                .aggregate_input_event(fractional_frame_duration, input_event);
+
+            if let Some(input) = input_option {
+                //TODO: Can this peak code be consolidate with the one from new frame index logic?
+                let client_provided_input = ClientProvidedInput::NonAuthoritative(input);
+
+                let input_coordinates = InputCoordinates::new(
+                    running_state.current_frame_index,
+                    running_state.initial_information.get_player_index(),
+                );
+
+                let message = ToServerInputMessage::<Game>::new(
+                    input_coordinates,
+                    client_provided_input.clone(),
+                );
+
+                let send_result = running_state.udp_output.send_input(message.clone());
+
+                if send_result.is_err() {
+                    warn!("Failed to send InputMessage to Udp Output");
+                    return EventHandleResult::StopThread;
+                }
+
+                let send_result = running_state.frame_manager.insert_input(
+                    input_coordinates,
+                    PresentInput::ClientProvided(client_provided_input),
+                );
+
+                if send_result.is_err() {
+                    warn!("Failed to send InputMessage to Game Manager");
+                    return EventHandleResult::StopThread;
+                }
+            }
         }
-        //Else: No-op, just discard the input
 
         return EventHandleResult::TryForNextEvent;
     }
@@ -225,61 +269,46 @@ impl<Game: GameTrait> ClientCore<Game> {
         return self.send_new_frame_index(frame_index);
     }
 
+    //TODO: make this a function on the running state
     fn send_new_frame_index(&mut self, frame_index: FrameIndex) -> EventHandleResult {
         if let Some(ref mut running_state) = self.running_state {
             trace!("TimeMessage step_index: {:?}", frame_index);
 
-            let message = ToServerInputMessage::<Game>::new(
-                //TODO: message or last message?
-                //TODO: define strict and consistent rules for how real time relates to ticks, input deadlines and display states
-                frame_index,
+            running_state.current_frame_index = frame_index;
+            running_state.time_of_current_frame = self.factory.get_time_source().now();
+
+            let current_input_coordinates = InputCoordinates::new(
+                running_state.current_frame_index,
                 running_state.initial_information.get_player_index(),
-                Game::get_input(&mut running_state.input_event_handler),
             );
 
-            let send_result = running_state.frame_manager.insert_input(
-                message.get_frame_index(),
-                message.get_player_index(),
-                message.get_input().clone(),
-                false,
+            let peaked_input = running_state.input_aggregator.start_next_frame();
+
+            let message = ToServerInputMessage::<Game>::new(
+                current_input_coordinates,
+                ClientProvidedInput::NonAuthoritative(peaked_input.clone()),
             );
+
+            let send_result = running_state.udp_output.send_input(message);
+
+            if send_result.is_err() {
+                warn!("Failed to send InputMessage to Udp Output");
+                return EventHandleResult::StopThread;
+            }
+
+            let send_result = running_state
+                .frame_manager
+                .client_advance_frame_index(current_input_coordinates, peaked_input);
 
             if send_result.is_err() {
                 warn!("Failed to send InputMessage to Game Manager");
                 return EventHandleResult::StopThread;
             }
 
-            let send_result = running_state
-                .udp_output_sender
-                .send_event(UdpOutputEvent::FrameIndex(frame_index));
+            let send_result = running_state.udp_output.advance_frame_index(frame_index);
 
             if send_result.is_err() {
                 warn!("Failed to send InputMessage to Udp Output");
-                return EventHandleResult::StopThread;
-            }
-
-            let send_result = running_state
-                .udp_output_sender
-                .send_event(UdpOutputEvent::InputMessageEvent(message));
-
-            if send_result.is_err() {
-                warn!("Failed to send InputMessage to Udp Output");
-                return EventHandleResult::StopThread;
-            }
-
-            let send_result = running_state.frame_manager.advance_frame_index(frame_index);
-
-            if send_result.is_err() {
-                warn!("Failed to send FrameIndex to Game Manager");
-                return EventHandleResult::StopThread;
-            }
-
-            if self
-                .render_receiver_sender
-                .send(RenderReceiverMessage::FrameIndex(frame_index))
-                .is_err()
-            {
-                warn!("Failed to send FrameIndex to Render Receiver");
                 return EventHandleResult::StopThread;
             }
         } else {
@@ -302,11 +331,7 @@ impl<Game: GameTrait> ClientCore<Game> {
                 }
             };
 
-            if self
-                .render_receiver_sender
-                .send(RenderReceiverMessage::StartTime(start_time))
-                .is_err()
-            {
+            if self.state_sender.send_start_time(start_time).is_err() {
                 warn!("Failed to send StartTime to Render Receiver");
                 return EventHandleResult::StopThread;
             }

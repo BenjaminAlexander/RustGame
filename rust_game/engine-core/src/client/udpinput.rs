@@ -62,18 +62,9 @@ impl<Game: GameTrait> UdpInput<Game> {
     fn handle_received_message(&mut self, value: UdpToClientMessage<Game>) -> ControlFlow<()> {
         match value {
             UdpToClientMessage::InputMessage(input_message) => {
-                let frame_index = input_message.get_frame_index();
-                let player_index = input_message.get_player_index();
+                let (input_coordinates, input) = input_message.take();
 
-                let result = match input_message.take_input() {
-                    Some(input) => {
-                        self.frame_manager
-                            .insert_input(frame_index, player_index, input, true)
-                    }
-                    None => self
-                        .frame_manager
-                        .insert_missing_input(frame_index, player_index),
-                };
+                let result = self.frame_manager.insert_input(input_coordinates, input);
 
                 if result.is_err() {
                     warn!("Failed to send InputEvent to Game Manager");
