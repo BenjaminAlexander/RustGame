@@ -17,7 +17,7 @@ use std::ops::ControlFlow;
 /// [FrameManager](crate::frame_manager::FrameManager) to calculate new [States](GameTrait::State).
 pub struct Frame<Game: GameTrait> {
     frame_index: FrameIndex,
-    state: State<Game::State>,
+    state: Option<State<Game::State>>,
     inputs: Vec<Input<Game::InputAggregate>>,
     authoritative_input_count: usize,
     need_to_compute_next_state: bool,
@@ -155,11 +155,8 @@ impl<T> ClientProvidedInput<T> {
 }
 
 /// An enum describing the provenance of a [GameTrait::State].
-#[derive(Default)]
+#[derive(Debug)]
 pub enum State<T> {
-    /// No State calculated or received
-    #[default]
-    None,
 
     /// The state has been calculated from another authoritative State and a
     /// complete set of authoritative inputs, or has been received from the
@@ -171,13 +168,33 @@ pub enum State<T> {
     NonAuthoritative(T),
 }
 
+impl<T> State<T> {
+
+    /// Returns true if this state was computed from an previous authoritative state 
+    /// and a complete set of authoritative inputs for the clients.
+    pub fn is_authoritative(&self) -> bool {
+        match self {
+            State::Authoritative(_) => true,
+            State::NonAuthoritative(_) => false,
+        }
+    }
+
+    /// Gets the state
+    pub fn get_state(&self) -> &T {
+        match self {
+            State::Authoritative(state) => state,
+            State::NonAuthoritative(state) => state,
+        }
+    }
+}
+
 impl<Game: GameTrait> Frame<Game> {
     pub fn blank(step_index: FrameIndex, player_count: usize) -> Self {
         let inputs = vec![Input::Pending; player_count];
 
         return Self {
             frame_index: step_index,
-            state: State::None,
+            state: None,
             inputs,
             authoritative_input_count: 0,
             need_to_compute_next_state: true,
@@ -259,11 +276,11 @@ impl<Game: GameTrait> Frame<Game> {
     ) -> ControlFlow<()> {
         let old_state_is_authoritative = self.is_state_authoritative();
 
-        self.state = if is_authoritative {
+        self.state = Some(if is_authoritative {
             State::Authoritative(state.clone())
         } else {
             State::NonAuthoritative(state.clone())
-        };
+        });
 
         if old_state_is_authoritative {
             return ControlFlow::Continue(());
@@ -285,15 +302,14 @@ impl<Game: GameTrait> Frame<Game> {
             return None;
         }
 
-        let (state, is_authoritative) = match &self.state {
-            State::None => {
+        let state = match &self.state {
+            Some(state) => state,
+            None => {
                 panic!("Tried to compute next state from a missing state");
             }
-            State::Authoritative(state) => (state, true),
-            State::NonAuthoritative(state) => (state, false),
         };
 
-        let is_next_state_authoritative = self.are_inputs_complete() && is_authoritative;
+        let is_next_state_authoritative = self.are_inputs_complete() && state.is_authoritative();
 
         let arg = UpdateArg::new(initial_information, self.frame_index, state, &self.inputs);
 
@@ -310,9 +326,9 @@ impl<Game: GameTrait> Frame<Game> {
 
     pub fn is_state_authoritative(&self) -> bool {
         match self.state {
-            State::None => false,
-            State::Authoritative(_) => true,
-            State::NonAuthoritative(_) => false,
+            None => false,
+            Some(State::Authoritative(_)) => true,
+            Some(State::NonAuthoritative(_)) => false,
         }
     }
 }

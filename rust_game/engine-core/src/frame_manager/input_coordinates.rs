@@ -24,11 +24,4 @@ impl InputCoordinates {
     pub fn get_player_index(&self) -> usize {
         self.player_index
     }
-
-    pub fn previous(&self) -> InputCoordinates {
-        Self {
-            frame_index: self.frame_index.previous(),
-            player_index: self.player_index
-        }
-    }
 }

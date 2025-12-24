@@ -1,4 +1,4 @@
-use crate::frame_manager::Input;
+use crate::frame_manager::{Input, State};
 use crate::game_time::FrameIndex;
 use crate::interface::game::GameTrait;
 use crate::interface::InitialInformation;
@@ -9,8 +9,7 @@ pub struct UpdateArg<'a, Game: GameTrait> {
     initial_information: &'a InitialInformation<Game>,
     //TODO: rename
     step: FrameIndex,
-    //TODO: expose provenance of state
-    state: &'a Game::State,
+    state: &'a State<Game::State>,
     inputs: &'a Vec<Input<Game::InputAggregate>>,
 }
 
@@ -18,7 +17,7 @@ impl<'a, 'b, Game: GameTrait> UpdateArg<'a, Game> {
     pub fn new(
         initial_information: &'a InitialInformation<Game>,
         step: FrameIndex,
-        state: &'a Game::State,
+        state: &'a State<Game::State>,
         inputs: &'a Vec<Input<Game::InputAggregate>>,
     ) -> Self {
         return Self {
@@ -37,7 +36,7 @@ impl<'a, 'b, Game: GameTrait> UpdateArg<'a, Game> {
         return self.step;
     }
 
-    pub fn get_state(&self) -> &'a Game::State {
+    pub fn get_state(&self) -> &'a State<Game::State> {
         return self.state;
     }
 
