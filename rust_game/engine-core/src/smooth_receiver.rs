@@ -46,7 +46,7 @@ impl<T: Smooth> SmoothReceiver<T> {
     }
 
     /// Gets the most recent smoothed state if it is available
-    pub fn get_smoothed_state(&mut self) -> Result<SmoothedState<T>, StateReceiverError> {
+    pub fn get_smoothed_state(&mut self) -> Result<SmoothedState<'_, T>, StateReceiverError> {
         let current_states = self.state_receiver.get_most_recent_state()?;
 
         let now = current_states.time_source.now();

@@ -74,7 +74,7 @@ impl<Game: GameTrait> StateReceiver<Game> {
     }
 
     /// Gets the most recent state, if it is available
-    pub fn get_most_recent_state(&mut self) -> Result<MostRecentState<Game>, StateReceiverError> {
+    pub fn get_most_recent_state(&mut self) -> Result<MostRecentState<'_, Game>, StateReceiverError> {
         loop {
             match self.receiver.try_recv() {
                 Ok(Message::InitialInformation(initial_information)) => {
