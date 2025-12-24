@@ -10,10 +10,9 @@ use commons::time::TimeDuration;
 #[derive(Debug)]
 pub struct UpdateArg<'a, Game: Play> {
     initial_information: &'a InitialInformation<Game>,
-    //TODO: rename
-    step: FrameIndex,
-    state: &'a FrameState<Game>,
-    inputs: &'a Vec<FrameInput<Game>>,
+    frame_index: FrameIndex,
+    frame_state: &'a FrameState<Game>,
+    frame_inputs: &'a Vec<FrameInput<Game>>,
 }
 
 impl<'a, 'b, Game: Play> UpdateArg<'a, Game> {
@@ -25,26 +24,22 @@ impl<'a, 'b, Game: Play> UpdateArg<'a, Game> {
     ) -> Self {
         return Self {
             initial_information,
-            step,
-            state,
-            inputs,
+            frame_index: step,
+            frame_state: state,
+            frame_inputs: inputs,
         };
     }
 
     pub fn get_frame_input(&self, player_index: usize) -> &FrameInput<Game> {
-        return &self.inputs[player_index];
+        return &self.frame_inputs[player_index];
     }
 
-    pub fn get_current_step(&self) -> FrameIndex {
-        return self.step;
+    pub fn get_frame_index(&self) -> FrameIndex {
+        return self.frame_index;
     }
 
     pub fn get_frame_state(&self) -> &'a FrameState<Game> {
-        return self.state;
-    }
-
-    pub fn get_next_step(&self) -> FrameIndex {
-        return self.get_current_step() + 1;
+        return self.frame_state;
     }
 
     //TODO: refactor to not use usize
@@ -54,7 +49,7 @@ impl<'a, 'b, Game: Play> UpdateArg<'a, Game> {
             .get_server_config()
             .get_frame_duration()
             .get_frame_duration()
-            .mul_f64(self.step.usize() as f64);
+            .mul_f64(self.frame_index.usize() as f64);
     }
 
     //TODO: refactor to not use usize
@@ -64,6 +59,6 @@ impl<'a, 'b, Game: Play> UpdateArg<'a, Game> {
             .get_server_config()
             .get_frame_duration()
             .get_frame_duration()
-            .mul_f64(self.get_next_step().usize() as f64);
+            .mul_f64(self.frame_index.next().usize() as f64);
     }
 }

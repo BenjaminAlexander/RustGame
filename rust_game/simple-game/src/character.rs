@@ -72,7 +72,7 @@ impl Character {
         if let Some(input) = arg.get_frame_input(self.player_index).get_input() {
             if input.should_fire() {
                 return Some(Bullet::new(
-                    arg.get_current_step(),
+                    arg.get_frame_index(),
                     self.position,
                     input.get_aim_point(),
                 ));
