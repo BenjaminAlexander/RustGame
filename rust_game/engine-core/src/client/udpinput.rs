@@ -1,3 +1,4 @@
+use crate::GameTrait;
 use crate::client::ClientCoreEvent;
 use crate::frame_manager::FrameManager;
 use crate::game_time::{
@@ -9,7 +10,6 @@ use crate::messaging::{
     MessageFragment,
     UdpToClientMessage,
 };
-use crate::GameTrait;
 use commons::real_time::net::udp::HandleUdpRead;
 use commons::real_time::{
     EventSender,

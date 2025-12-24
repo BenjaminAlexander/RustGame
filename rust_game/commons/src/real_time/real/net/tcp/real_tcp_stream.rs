@@ -1,7 +1,7 @@
 use crate::real_time::net::NET_POLLING_PERIOD;
 use rmp_serde::encode::Error as EncodeError;
-use serde::de::DeserializeOwned;
 use serde::Serialize;
+use serde::de::DeserializeOwned;
 use std::fmt::Debug;
 use std::io::{
     Error,

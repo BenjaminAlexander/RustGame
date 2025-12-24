@@ -1,8 +1,8 @@
 use commons::real_time::{
-    net::tcp::TcpStream,
     EventHandleResult,
     HandleEvent,
     ReceiveMetaData,
+    net::tcp::TcpStream,
 };
 
 //TODO: Send response to time messages to calculate ping

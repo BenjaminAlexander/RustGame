@@ -1,5 +1,5 @@
-use crate::messaging::messagefragment::FRAGMENT_HEADER_SIZE;
 use crate::messaging::MessageFragment;
+use crate::messaging::messagefragment::FRAGMENT_HEADER_SIZE;
 
 pub struct Fragmenter {
     next_id: u32,

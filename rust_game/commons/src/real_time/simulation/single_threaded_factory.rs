@@ -6,13 +6,13 @@ use crate::real_time::net::tcp::{
 use crate::real_time::net::udp::UdpSocket;
 use crate::real_time::receiver::ReceiverImplementation;
 use crate::real_time::sender::SenderImplementation;
+use crate::real_time::simulation::SimulatedTimeSource;
 use crate::real_time::simulation::net::{
     HostSimulator,
     NetworkSimulator,
 };
 use crate::real_time::simulation::single_threaded_receiver::SingleThreadedReceiver;
 use crate::real_time::simulation::time_queue::TimeQueue;
-use crate::real_time::simulation::SimulatedTimeSource;
 use crate::real_time::{
     Factory,
     Receiver,

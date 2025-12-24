@@ -1,10 +1,10 @@
-use crate::client::clientcore::ClientCoreEvent;
+use crate::GameTrait;
 use crate::client::ClientCoreEvent::OnInitialInformation;
+use crate::client::clientcore::ClientCoreEvent;
 use crate::messaging::ToClientMessageTCP;
 use crate::state_channel::StateSender;
-use crate::GameTrait;
-use commons::real_time::net::tcp::HandleTcpRead;
 use commons::real_time::EventSender;
+use commons::real_time::net::tcp::HandleTcpRead;
 use log::{
     info,
     warn,

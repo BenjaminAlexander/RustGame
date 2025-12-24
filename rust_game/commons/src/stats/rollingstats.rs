@@ -1,9 +1,9 @@
-use crate::stats::totalstandarddeviation::TotalStandardDeviation;
 use crate::stats::MinMaxChange::{
     FirstMinAndMax,
     NewMax,
     NewMin,
 };
+use crate::stats::totalstandarddeviation::TotalStandardDeviation;
 use crate::stats::{
     MinMax,
     MinMaxChange,

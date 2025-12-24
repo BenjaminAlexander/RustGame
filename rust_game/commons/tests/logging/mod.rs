@@ -3,8 +3,8 @@ use commons::{
     test_utils::with_test_temp_dir,
 };
 use log::{
-    info,
     LevelFilter,
+    info,
 };
 
 #[test]

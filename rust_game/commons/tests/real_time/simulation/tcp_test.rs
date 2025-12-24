@@ -1,4 +1,5 @@
 use commons::logging::LoggingConfigBuilder;
+use commons::real_time::EventHandlerStopper;
 use commons::real_time::net::tcp::{
     HandleTcpConnection,
     HandleTcpRead,
@@ -8,11 +9,10 @@ use commons::real_time::net::tcp::{
     TcpStream,
 };
 use commons::real_time::simulation::SingleThreadedFactory;
-use commons::real_time::EventHandlerStopper;
 use log::{
+    LevelFilter,
     error,
     info,
-    LevelFilter,
 };
 use std::net::{
     IpAddr,
@@ -183,12 +183,15 @@ impl HandleTcpRead for TcpReadHandler {
     type ReadType = u32;
 
     fn on_read(&mut self, read: Self::ReadType) -> ControlFlow<()> {
-        if let Some(ref mut server_side) = *self.test_connection.lock().unwrap() {
-            server_side.last_value = Some(read);
-            return Continue(());
-        } else {
-            error!("Expected Some");
-            panic!("Expected Some");
+        match *self.test_connection.lock().unwrap() {
+            Some(ref mut server_side) => {
+                server_side.last_value = Some(read);
+                return Continue(());
+            }
+            _ => {
+                error!("Expected Some");
+                panic!("Expected Some");
+            }
         }
     }
 }

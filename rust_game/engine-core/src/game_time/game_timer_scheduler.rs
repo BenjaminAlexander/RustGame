@@ -5,6 +5,7 @@ use crate::game_time::{
     StartTime,
 };
 use crate::server::ServerConfig;
+use commons::real_time::TimeSource;
 use commons::real_time::timer_service::{
     IdleTimerService,
     Schedule,
@@ -12,7 +13,6 @@ use commons::real_time::timer_service::{
     TimerId,
     TimerService,
 };
-use commons::real_time::TimeSource;
 use commons::stats::RollingAverage;
 use commons::time::TimeDuration;
 use log::{
@@ -154,10 +154,16 @@ impl GameTimerScheduler {
                 &self.current_frame_index.next(),
             );
             let time_until_next_frame = next_frame_time.duration_since(&now);
-            warn!("Game Timer did not advance a FrameIndex since the current FrameIndex is ahead of the index calculated from the current time.  Current: {:?}, Calculated: {:?}, Time until next frame: {:?}", self.current_frame_index, frame_index, time_until_next_frame);
+            warn!(
+                "Game Timer did not advance a FrameIndex since the current FrameIndex is ahead of the index calculated from the current time.  Current: {:?}, Calculated: {:?}, Time until next frame: {:?}",
+                self.current_frame_index, frame_index, time_until_next_frame
+            );
             return None;
         } else if frame_index > self.current_frame_index.next() {
-            warn!("Game Timer advanced more than a single FrameIndex.  Current: {:?}, Advanced To: {:?}", self.current_frame_index, frame_index);
+            warn!(
+                "Game Timer advanced more than a single FrameIndex.  Current: {:?}, Advanced To: {:?}",
+                self.current_frame_index, frame_index
+            );
         }
 
         self.current_frame_index = frame_index;

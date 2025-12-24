@@ -2,8 +2,8 @@ use std::{
     env,
     fs,
     panic::{
-        catch_unwind,
         UnwindSafe,
+        catch_unwind,
     },
     path::{
         Path,

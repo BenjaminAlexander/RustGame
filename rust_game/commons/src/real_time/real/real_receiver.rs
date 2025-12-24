@@ -62,12 +62,12 @@ mod tests {
     use crate::{
         logging::setup_test_logging,
         real_time::{
+            SendMetaData,
             real::{
                 RealFactory,
                 RealReceiver,
                 RealSender,
             },
-            SendMetaData,
         },
         time::TimeDuration,
     };

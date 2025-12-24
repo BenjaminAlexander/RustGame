@@ -2,14 +2,14 @@ use commons::time::TimeValue;
 use log::warn;
 
 use crate::{
+    InitialInformation,
+    StateReceiver,
+    StateReceiverError,
     game_time::StartTime,
     smooth::{
         Smooth,
         SmoothArguments,
     },
-    InitialInformation,
-    StateReceiver,
-    StateReceiverError,
 };
 
 /// A [SmoothReceiver] uses a [StateReceiver] and a [Smooth] implementation to

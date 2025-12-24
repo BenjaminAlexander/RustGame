@@ -3,8 +3,8 @@ use crate::real_time::net::tcp::{
     TcpReader,
     TcpStream,
 };
-use crate::real_time::simulation::net::tcp::ChannelTcpWriter;
 use crate::real_time::simulation::SingleThreadedReceiver;
+use crate::real_time::simulation::net::tcp::ChannelTcpWriter;
 use crate::real_time::{
     EventHandleResult,
     HandleEvent,

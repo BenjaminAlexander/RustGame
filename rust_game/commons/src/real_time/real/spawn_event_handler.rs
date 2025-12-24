@@ -66,7 +66,7 @@ fn run_event_handling_loop<T: HandleEvent>(
         wait_or_try = match control_flow {
             ControlFlow::Continue(event_handle_result) => event_handle_result,
             ControlFlow::Break(receive_meta_data) => {
-                return message_handler.on_stop_remote(receive_meta_data)
+                return message_handler.on_stop_remote(receive_meta_data);
             }
         }
     }

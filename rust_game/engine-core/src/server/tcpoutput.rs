@@ -3,8 +3,8 @@ use crate::interface::{
     InitialInformation,
 };
 use crate::messaging::ToClientMessageTCP;
-use crate::server::tcpoutput::Event::SendInitialInformation;
 use crate::server::ServerConfig;
+use crate::server::tcpoutput::Event::SendInitialInformation;
 use commons::real_time::net::tcp::TcpStream;
 use commons::real_time::{
     EventHandleResult,

@@ -33,7 +33,7 @@ pub trait ObserveFrames: 'static + Send {
     /// Called when an [Input](super::FrameInput) is declared authoritatively missing
     /// by the server.  This is only called on the server.
     fn input_authoritatively_missing(&self, input_coordinates: InputCoordinates)
-        -> ControlFlow<()>;
+    -> ControlFlow<()>;
 
     /// Called when a new State is available.  This is called both when new
     /// states are calculated and when authoritative states are inserted into

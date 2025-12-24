@@ -10,8 +10,8 @@ use crate::messaging::{
     UdpToClientMessage,
 };
 use crate::server::remoteudppeer::RemoteUdpPeer;
-use commons::real_time::net::udp::UdpSocket;
 use commons::real_time::net::MAX_UDP_DATAGRAM_SIZE;
+use commons::real_time::net::udp::UdpSocket;
 use commons::real_time::{
     EventHandleResult,
     EventHandlerBuilder,

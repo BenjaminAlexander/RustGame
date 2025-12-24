@@ -1,14 +1,14 @@
 use commons::{
     logging::LoggingConfigBuilder,
     real_time::{
-        net::udp::UdpReadHandlerBuilder,
         Factory,
+        net::udp::UdpReadHandlerBuilder,
     },
     test_utils::AsyncExpects,
 };
 use log::{
-    info,
     LevelFilter,
+    info,
 };
 use std::{
     net::SocketAddr,

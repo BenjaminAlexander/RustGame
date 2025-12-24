@@ -5,8 +5,8 @@ use serde::{
 };
 
 use crate::{
-    game_time::FrameDuration,
     FrameIndex,
+    game_time::FrameDuration,
 };
 
 /// The time of occurance for frame index 0.  On clients, this time can float around to slave the client's clock to the server's clock.

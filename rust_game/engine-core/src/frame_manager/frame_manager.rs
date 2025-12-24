@@ -1,3 +1,4 @@
+use crate::FrameIndex;
 use crate::frame_manager::frame::{
     ClientProvidedInput,
     Frame,
@@ -11,7 +12,6 @@ use crate::interface::{
     GameTrait,
     InitialInformation,
 };
-use crate::FrameIndex;
 use commons::real_time::{
     EventHandleResult,
     EventHandlerBuilder,

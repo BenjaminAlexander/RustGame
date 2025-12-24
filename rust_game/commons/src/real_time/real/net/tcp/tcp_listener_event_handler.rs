@@ -1,17 +1,17 @@
 use crate::real_time::event_or_stop_thread::EventOrStopThread;
+use crate::real_time::net::NET_POLLING_PERIOD;
 use crate::real_time::net::tcp::{
     HandleTcpConnection,
     TcpReader,
     TcpStream,
 };
-use crate::real_time::net::NET_POLLING_PERIOD;
-use crate::real_time::real::net::tcp::RealTcpStream;
 use crate::real_time::real::RealReceiver;
+use crate::real_time::real::net::tcp::RealTcpStream;
 use crate::real_time::{
-    real,
     EventHandleResult,
     HandleEvent,
     ReceiveMetaData,
+    real,
 };
 use log::error;
 use std::io::{
@@ -146,8 +146,8 @@ mod tests {
     use crate::{
         logging::LoggingConfigBuilder,
         real_time::net::{
-            tcp::TcpConnectionHandler,
             LOCAL_EPHEMERAL_SOCKET_ADDR_V4,
+            tcp::TcpConnectionHandler,
         },
     };
 

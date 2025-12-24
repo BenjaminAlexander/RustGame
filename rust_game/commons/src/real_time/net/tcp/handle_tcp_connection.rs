@@ -4,8 +4,8 @@ use std::{
 };
 
 use crate::real_time::net::tcp::{
-    tcp_stream::TcpStream,
     TcpReader,
+    tcp_stream::TcpStream,
 };
 
 pub trait HandleTcpConnection: Send + 'static {

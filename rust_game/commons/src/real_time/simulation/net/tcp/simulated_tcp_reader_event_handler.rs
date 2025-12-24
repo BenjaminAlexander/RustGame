@@ -1,7 +1,7 @@
 use crate::real_time::event_or_stop_thread::EventOrStopThread;
 use crate::real_time::net::tcp::HandleTcpRead;
-use crate::real_time::simulation::receiver_link::ReceiveOrDisconnected;
 use crate::real_time::simulation::SingleThreadedReceiver;
+use crate::real_time::simulation::receiver_link::ReceiveOrDisconnected;
 use crate::real_time::{
     EventHandleResult,
     EventHandlerBuilder,

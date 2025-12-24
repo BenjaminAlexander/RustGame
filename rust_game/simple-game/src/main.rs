@@ -13,9 +13,9 @@ use engine_core::{
     Server,
 };
 use log::{
+    LevelFilter,
     error,
     info,
-    LevelFilter,
 };
 use std::backtrace::Backtrace;
 use std::io::stdin;

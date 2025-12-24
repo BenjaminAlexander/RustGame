@@ -1,6 +1,6 @@
 use rmp_serde::encode::Error as EncodeError;
-use serde::de::DeserializeOwned;
 use serde::Serialize;
+use serde::de::DeserializeOwned;
 use std::io::Error;
 use std::net::SocketAddr;
 
