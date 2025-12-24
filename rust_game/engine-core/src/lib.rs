@@ -1,3 +1,4 @@
+#![deny(rustdoc::broken_intra_doc_links)]
 mod aggregate_input;
 mod client;
 mod frame_manager;

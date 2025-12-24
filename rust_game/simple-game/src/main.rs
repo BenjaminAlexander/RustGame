@@ -1,3 +1,4 @@
+#![deny(rustdoc::broken_intra_doc_links)]
 use crate::simplegameimpl::SimpleGameImpl;
 use crate::simpleinput::SimpleInput;
 use crate::simpleinputevent::SimpleInputEvent;

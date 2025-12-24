@@ -23,7 +23,7 @@ pub struct Frame<Game: GameTrait> {
     need_to_compute_next_state: bool,
 }
 
-/// An enum that describes the provenance of a [GameTrait::ClientInput]
+/// An enum that describes the provenance of a [GameTrait::InputAggregate]
 #[derive(Clone, Debug, Default)]
 pub enum Input<T> {
     /// [Input::Pending] signifies that an input from a client isn't yet known but may
@@ -47,7 +47,7 @@ impl<T> Input<T> {
         }
     }
 
-    /// Returns Some [GameTrait::ClientInput] if one is present
+    /// Returns Some [GameTrait::InputAggregate] if one is present
     pub fn input(&self) -> Option<&T> {
         match self {
             Input::Pending => None,

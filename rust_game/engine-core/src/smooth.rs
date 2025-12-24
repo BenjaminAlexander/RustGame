@@ -9,7 +9,7 @@ pub struct SmoothArguments<'a, T: Smooth + ?Sized> {
     /// but in some circumstances this result can actually be after.  In the case 
     /// where [SmoothArguments::last_result] is after [SmoothArguments::future_state], 
     /// [SmoothArguments::weight] will be negetive.
-    pub last_result: &'a T::SmoothResult,
+    pub last_result: &'a T::SmoothedState,
 
     /// A future known state.
     /// 
@@ -20,7 +20,7 @@ pub struct SmoothArguments<'a, T: Smooth + ?Sized> {
     pub future_state: &'a <T::Game as GameTrait>::State,
 
     /// The weight between [SmoothArguments::last_result] and [SmoothArguments::future_state] 
-    /// that the new [Smooth::SmoothResult] should be created at. 
+    /// that the new [Smooth::SmoothedState] should be created at. 
     ///  
     /// * A value of 0.0 indicates that the new result should be equivalent to 
     /// [SmoothArguments::last_result].  
@@ -38,22 +38,22 @@ pub struct SmoothArguments<'a, T: Smooth + ?Sized> {
 }
 
 /// Implement this trait to smoothly correct errors between the last 
-/// [Smooth::SmoothResult] and a future [GameTrait::State].
+/// [Smooth::SmoothedState] and a future [GameTrait::State].
 pub trait Smooth {
     type Game: GameTrait;
-    type SmoothResult;
+    type SmoothedState;
 
-    /// Convert a [GameTrait::State] to a [Smooth::SmoothResult].  This function 
-    /// is used to produce the very first [Smooth::SmoothResult].
-    fn to_smooth_result(state: &<Self::Game as GameTrait>::State) -> Self::SmoothResult;
+    /// Convert a [GameTrait::State] to a [Smooth::SmoothedState].  This function 
+    /// is used to produce the very first [Smooth::SmoothedState].
+    fn to_smooth_result(state: &<Self::Game as GameTrait>::State) -> Self::SmoothedState;
 
-    /// Calculate a new [Smooth::SmoothResult] at [SmoothArguments::weight] between 
+    /// Calculate a new [Smooth::SmoothedState] at [SmoothArguments::weight] between 
     /// [SmoothArguments::last_result] and [SmoothArguments::future_state].
     /// 
     /// [SmoothArguments::last_result] and [SmoothArguments::future_state] can be 
     /// thought of as two points.  A sensable implementation of smooth can be 
     /// thought of as performing a linear interpolation/extrapolation between/from
     /// those two points.  [SmoothArguments::weight] is the ratio between or past 
-    /// either point where the returned [Smooth::SmoothResult] should be located.
-    fn smooth(arg: &SmoothArguments<Self>) -> Self::SmoothResult;
+    /// either point where the returned [Smooth::SmoothedState] should be located.
+    fn smooth(arg: &SmoothArguments<Self>) -> Self::SmoothedState;
 }

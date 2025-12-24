@@ -6,13 +6,13 @@ pub struct SimpleSmooth;
 
 impl Smooth for SimpleSmooth {
     type Game = SimpleGameImpl;
-    type SmoothResult = SimpleState;
+    type SmoothedState = SimpleState;
 
-    fn to_smooth_result(state: &SimpleState) -> Self::SmoothResult {
+    fn to_smooth_result(state: &SimpleState) -> Self::SmoothedState {
         state.clone()
     }
 
-    fn smooth(arg: &SmoothArguments<Self>) -> Self::SmoothResult {
+    fn smooth(arg: &SmoothArguments<Self>) -> Self::SmoothedState {
         SimpleState::interpolate(arg.last_result, arg.future_state, arg.weight)
     }
 }
