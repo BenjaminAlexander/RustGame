@@ -322,7 +322,7 @@ impl<ManagerObserver: ObserveFrames> HandleEvent for EventHandler<ManagerObserve
                         panic!("This should never be authoritative");
                     }
 
-                    match previous_input.input() {
+                    match previous_input.get_input() {
                         Some(previous_input) => {
                             let previous_coordinates = InputCoordinates::new(self.current_frame_index, current_coordinates.get_player_index());
                             let result = self.manager_observer.input_authoritative(previous_coordinates, previous_input.clone());

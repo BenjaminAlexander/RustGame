@@ -11,10 +11,16 @@ pub trait ObserveFrames: 'static + Send {
     /// or client-only logic.
     const IS_SERVER: bool;
 
-    /// Called when an [Input](super::FrameInput) was received as non-authoritative 
-    /// but is declared authoritative by the server because the client did not 
-    /// submit an authoritative input in a timely manner.  This is only called 
-    /// on the server.
+    /// Called when a non-authoritative [GameTrait::InputAggregate] in the 
+    /// [FrameManager](super::FrameManager) is ready to be converted to an authoritative
+    /// one.  
+    /// 
+    /// On the server, this happens when the last non-authoritative input is declared 
+    /// authoritative because the client did not submit an authoritative input in a 
+    /// timely manner.
+    /// 
+    /// On the client, this happens when the current [FrameIndex](crate::FrameIndex) 
+    /// is advanced and the last input must be sent to the server as authoritative.
     fn input_authoritative(
         &self,
         input_coordinates: InputCoordinates,

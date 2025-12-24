@@ -48,7 +48,7 @@ impl<Game: GameTrait> FrameInput<Game> {
     }
 
     /// Returns Some [GameTrait::InputAggregate] if one is present
-    pub fn input(&self) -> Option<&Game::InputAggregate> {
+    pub fn get_input(&self) -> Option<&Game::InputAggregate> {
         match self {
             FrameInput::Pending => None,
             FrameInput::Present(present) => present.input(),

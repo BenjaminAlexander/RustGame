@@ -28,7 +28,7 @@ impl<'a, 'b, Game: GameTrait> UpdateArg<'a, Game> {
         };
     }
 
-    pub fn get_input(&self, player_index: usize) -> &FrameInput<Game> {
+    pub fn get_frame_input(&self, player_index: usize) -> &FrameInput<Game> {
         return &self.inputs[player_index];
     }
 
