@@ -62,7 +62,6 @@ impl<Game: GameTrait> ObserveFrames for ClientManagerObserver<Game> {
             return ControlFlow::Break(());
         }
 
-        warn!("Sent InputMessage to Udp Output");
         ControlFlow::Continue(())
     }
 }
