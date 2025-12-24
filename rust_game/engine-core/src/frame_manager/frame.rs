@@ -17,7 +17,7 @@ use std::ops::ControlFlow;
 /// [FrameManager](crate::frame_manager::FrameManager) to calculate new [States](GameTrait::State).
 pub struct Frame<Game: GameTrait> {
     frame_index: FrameIndex,
-    state: Option<State<Game::State>>,
+    state: Option<FrameState<Game>>,
     inputs: Vec<Input<Game::InputAggregate>>,
     authoritative_input_count: usize,
     need_to_compute_next_state: bool,
@@ -156,34 +156,34 @@ impl<T> ClientProvidedInput<T> {
 
 /// An enum describing the provenance of a [GameTrait::State].
 #[derive(Debug)]
-pub enum State<T> {
+pub enum FrameState<Game: GameTrait> {
 
     /// The state has been calculated from another authoritative State and a
     /// complete set of authoritative inputs, or has been received from the
     /// server.
-    Authoritative(T),
+    Authoritative(Game::State),
 
     /// The state has been calculated from either a non-authoritative State or
     /// at least one non-authoritative input
-    NonAuthoritative(T),
+    NonAuthoritative(Game::State),
 }
 
-impl<T> State<T> {
+impl<Game: GameTrait> FrameState<Game> {
 
     /// Returns true if this state was computed from an previous authoritative state 
     /// and a complete set of authoritative inputs for the clients.
     pub fn is_authoritative(&self) -> bool {
         match self {
-            State::Authoritative(_) => true,
-            State::NonAuthoritative(_) => false,
+            FrameState::Authoritative(_) => true,
+            FrameState::NonAuthoritative(_) => false,
         }
     }
 
     /// Gets the state
-    pub fn get_state(&self) -> &T {
+    pub fn get_state(&self) -> &Game::State {
         match self {
-            State::Authoritative(state) => state,
-            State::NonAuthoritative(state) => state,
+            FrameState::Authoritative(state) => state,
+            FrameState::NonAuthoritative(state) => state,
         }
     }
 }
@@ -277,9 +277,9 @@ impl<Game: GameTrait> Frame<Game> {
         let old_state_is_authoritative = self.is_state_authoritative();
 
         self.state = Some(if is_authoritative {
-            State::Authoritative(state.clone())
+            FrameState::Authoritative(state.clone())
         } else {
-            State::NonAuthoritative(state.clone())
+            FrameState::NonAuthoritative(state.clone())
         });
 
         if old_state_is_authoritative {
@@ -327,8 +327,8 @@ impl<Game: GameTrait> Frame<Game> {
     pub fn is_state_authoritative(&self) -> bool {
         match self.state {
             None => false,
-            Some(State::Authoritative(_)) => true,
-            Some(State::NonAuthoritative(_)) => false,
+            Some(FrameState::Authoritative(_)) => true,
+            Some(FrameState::NonAuthoritative(_)) => false,
         }
     }
 }

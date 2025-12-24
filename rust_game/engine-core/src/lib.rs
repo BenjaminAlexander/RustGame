@@ -12,7 +12,7 @@ mod state_channel;
 
 pub use self::aggregate_input::AggregateInput;
 pub use self::frame_manager::Input;
-pub use self::frame_manager::State;
+pub use self::frame_manager::FrameState;
 pub use self::game_time::FrameIndex;
 pub use self::smooth::Smooth;
 pub use self::smooth::SmoothArguments;
