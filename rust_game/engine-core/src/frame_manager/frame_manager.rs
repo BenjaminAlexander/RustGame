@@ -87,7 +87,7 @@ impl<Game: GameTrait> FrameManager<Game> {
     /// Inserts a [PresentInput] with a [GameTrait::ClientInput] into the [Frame] at
     /// [InputCoordinates].  If the [FrameIndex] is too far in the past, it input will
     /// be ignored.
-    pub fn insert_input(&self, coordinates: InputCoordinates, input: PresentInput<Game::InputAggregate>) -> Result<(), ()> {
+    pub fn insert_input(&self, coordinates: InputCoordinates, input: PresentInput<Game>) -> Result<(), ()> {
         let event = Event::Input{
             coordinates,
             input
@@ -112,7 +112,7 @@ enum Event<Game: GameTrait> {
     },
     Input {
         coordinates: InputCoordinates,
-        input: PresentInput<Game::InputAggregate>
+        input: PresentInput<Game>
     },
     State {
         frame_index: FrameIndex,
@@ -222,7 +222,7 @@ impl<ManagerObserver: ObserveFrames> EventHandler<ManagerObserver> {
 
     fn set_input(&mut self,
         coordinates: &InputCoordinates,
-        input: PresentInput<<<ManagerObserver as ObserveFrames>::Game as GameTrait>::InputAggregate>,
+        input: PresentInput<<ManagerObserver as ObserveFrames>::Game>,
     ) {
         #[cfg(debug_assertions)]
         match (&input, ManagerObserver::IS_SERVER) {
