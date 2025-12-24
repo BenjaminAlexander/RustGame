@@ -13,52 +13,52 @@ use crate::{
 use std::mem::take;
 use std::ops::ControlFlow;
 
-/// A Frame is a [State], set of [Inputs](Input), and some metadata used by the
+/// A Frame is a [FrameState], set of [Inputs](FrameInput), and some metadata used by the
 /// [FrameManager](crate::frame_manager::FrameManager) to calculate new [States](GameTrait::State).
 pub struct Frame<Game: GameTrait> {
     frame_index: FrameIndex,
     state: Option<FrameState<Game>>,
-    inputs: Vec<Input<Game>>,
+    inputs: Vec<FrameInput<Game>>,
     authoritative_input_count: usize,
     need_to_compute_next_state: bool,
 }
 
 /// An enum that describes the provenance of a [GameTrait::InputAggregate]
 #[derive(Clone, Debug, Default)]
-pub enum Input<Game: GameTrait> {
-    /// [Input::Pending] signifies that an input from a client isn't yet known but may
+pub enum FrameInput<Game: GameTrait> {
+    /// [FrameInput::Pending] signifies that an input from a client isn't yet known but may
     /// become known in the future.  If no [ClientProvidedInput] is received in 
     /// a timely manner, the server will upgrate this to 
     /// [PresentInput::AuthoritativeMissing] and distribute it to the clients.
     #[default]
     Pending,
 
-    /// [Input::Present] signifies that something, even if it is non-authoritative, 
+    /// [FrameInput::Present] signifies that something, even if it is non-authoritative, 
     /// is known about the client's input.
     Present(PresentInput<Game>),
 }
 
-impl<Game: GameTrait> Input<Game> {
+impl<Game: GameTrait> FrameInput<Game> {
     /// Returns true if the status of the input is authoritatively known.
     pub fn is_authoritative(&self) -> bool {
         match self {
-            Input::Pending => false,
-            Input::Present(present) => present.is_authoritative(),
+            FrameInput::Pending => false,
+            FrameInput::Present(present) => present.is_authoritative(),
         }
     }
 
     /// Returns Some [GameTrait::InputAggregate] if one is present
     pub fn input(&self) -> Option<&Game::InputAggregate> {
         match self {
-            Input::Pending => None,
-            Input::Present(present) => present.input(),
+            FrameInput::Pending => None,
+            FrameInput::Present(present) => present.input(),
         }
     }
 
     pub fn type_as_str(&self) -> &str {
         match self {
-            Input::Pending => "Pending",
-            Input::Present(present_input) => present_input.type_as_str(),
+            FrameInput::Pending => "Pending",
+            FrameInput::Present(present_input) => present_input.type_as_str(),
         }
     }
 }
@@ -124,7 +124,7 @@ pub enum ClientProvidedInput<Game: GameTrait> {
     /// accepted it and redistributed it back to the clients.
     /// 
     /// [ClientProvidedInput::Authoritative] inputs are always sent directly to 
-    /// the server.  Clients will insert the same [GameTrait::ClientInput] into 
+    /// the server.  Clients will insert the same [GameTrait::InputAggregate] into 
     /// their [super::FrameManager] as a [ClientProvidedInput::NonAuthoritative].
     /// The server will redistribute the authoritative input to all clients if it 
     /// is received in a timely manner.
@@ -191,7 +191,7 @@ impl<Game: GameTrait> FrameState<Game> {
 
 impl<Game: GameTrait> Frame<Game> {
     pub fn blank(step_index: FrameIndex, player_count: usize) -> Self {
-        let inputs = vec![Input::Pending; player_count];
+        let inputs = vec![FrameInput::Pending; player_count];
 
         return Self {
             frame_index: step_index,
@@ -218,7 +218,7 @@ impl<Game: GameTrait> Frame<Game> {
         }
 
         //TODO: migrate to 2024 edition and use a chain if let
-        if let Input::Present(PresentInput::ClientProvided(_)) = current_input {
+        if let FrameInput::Present(PresentInput::ClientProvided(_)) = current_input {
             if let PresentInput::AuthoritativeMissing = input {
                 warn!("Local input was rejected by the server");
             }
@@ -228,11 +228,11 @@ impl<Game: GameTrait> Frame<Game> {
             self.authoritative_input_count = self.authoritative_input_count + 1;
         }
 
-        *current_input = Input::Present(input);
+        *current_input = FrameInput::Present(input);
         self.need_to_compute_next_state = true;
     }
 
-    pub fn get_input(&self, player_index: usize) -> &Input<Game> {
+    pub fn get_input(&self, player_index: usize) -> &FrameInput<Game> {
         &self.inputs[player_index]
     }
 
@@ -242,17 +242,17 @@ impl<Game: GameTrait> Frame<Game> {
     ) -> ControlFlow<()> {
         for (player_index, input_enum) in &mut self.inputs.iter_mut().enumerate() {
             match take(input_enum) {
-                Input::Pending => {
+                FrameInput::Pending => {
                     self.authoritative_input_count = self.authoritative_input_count + 1;
-                    *input_enum = Input::Present(PresentInput::AuthoritativeMissing);
+                    *input_enum = FrameInput::Present(PresentInput::AuthoritativeMissing);
                     self.need_to_compute_next_state = true;
 
                     //TODO: Make a way to timeout all of a player's inputs immediatly when they disconnect.
                     observer.input_authoritatively_missing(InputCoordinates::new(self.frame_index, player_index))?;
                 },
-                Input::Present(PresentInput::ClientProvided(ClientProvidedInput::NonAuthoritative(input))) => {
+                FrameInput::Present(PresentInput::ClientProvided(ClientProvidedInput::NonAuthoritative(input))) => {
                     self.authoritative_input_count = self.authoritative_input_count + 1;
-                    *input_enum = Input::Present(PresentInput::ClientProvided(ClientProvidedInput::Authoritative(input.clone())));
+                    *input_enum = FrameInput::Present(PresentInput::ClientProvided(ClientProvidedInput::Authoritative(input.clone())));
                     self.need_to_compute_next_state = true;
 
                     //TODO: Make a way to timeout all of a player's inputs immediatly when they disconnect.

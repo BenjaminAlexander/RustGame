@@ -12,10 +12,7 @@ pub trait GameTrait: 'static + Send + Sized + Clone {
     type InputEvent: Send + 'static;
     type InputAggregate: Serialize + DeserializeOwned + Clone + Debug + Send + 'static;
 
-    type InputAggregator: AggregateInput<
-        InputEvent = Self::InputEvent,
-        InputAggregate = Self::InputAggregate,
-    >;
+    type InputAggregator: AggregateInput<Game = Self>;
 
     const TCP_PORT: u16;
     const UDP_PORT: u16;

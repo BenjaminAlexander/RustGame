@@ -1,5 +1,5 @@
 pub use self::frame::ClientProvidedInput;
-pub use self::frame::Input;
+pub use self::frame::FrameInput;
 pub use self::frame::PresentInput;
 pub use self::frame::FrameState;
 pub use self::frame_manager::FrameManager;

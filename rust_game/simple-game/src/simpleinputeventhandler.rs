@@ -1,3 +1,4 @@
+use crate::simplegameimpl::SimpleGameImpl;
 use crate::simpleinput::SimpleInput;
 use crate::simpleinputevent::SimpleInputEvent;
 use commons::geometry::twod::Vector2;
@@ -23,9 +24,7 @@ pub struct SimpleInputEventHandler {
 }
 
 impl AggregateInput for SimpleInputEventHandler {
-    type InputEvent = SimpleInputEvent;
-
-    type InputAggregate = SimpleInput;
+    type Game = SimpleGameImpl;
 
     fn new() -> Self {
         Self {
@@ -39,7 +38,7 @@ impl AggregateInput for SimpleInputEventHandler {
         }
     }
 
-    fn aggregate_input_event(&mut self, fractional_frame_duration: f64, input_event: Self::InputEvent) -> Option<SimpleInput> {
+    fn aggregate_input_event(&mut self, fractional_frame_duration: f64, input_event: SimpleInputEvent) -> Option<SimpleInput> {
         match input_event.get_piston_input() {
             PistonInput::Button(arg) => {
                 self.accumulate_button(fractional_frame_duration, arg);

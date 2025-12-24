@@ -22,9 +22,9 @@ use std::collections::vec_deque::VecDeque;
 use std::ops::ControlFlow;
 
 /// The [FrameManager] manages [Frames](Frame) and calculates new
-/// [states](GameTrait::State) from [Inputs](Input) in another thread.
+/// [states](GameTrait::State) from [Inputs](GameTrait::InputAggregate) in another thread.
 ///
-/// The [FrameManager] inserts [Inputs](Input) from local and remote clients as
+/// The [FrameManager] inserts [Inputs](GameTrait::InputAggregate) from local and remote clients as
 /// well as authoritative [States](GameTrait::State) from the server into a vector
 /// of [Frames](Frame).  When there are no queued events, the [FrameManager] will
 /// iterate over the Frames, calculating new States, up to the current
@@ -84,7 +84,7 @@ impl<Game: GameTrait> FrameManager<Game> {
         self.sender.send_event(event).map_err(unit_error)
     }
 
-    /// Inserts a [PresentInput] with a [GameTrait::ClientInput] into the [Frame] at
+    /// Inserts a [PresentInput] with a [GameTrait::InputAggregate] into the [Frame] at
     /// [InputCoordinates].  If the [FrameIndex] is too far in the past, it input will
     /// be ignored.
     pub fn insert_input(&self, coordinates: InputCoordinates, input: PresentInput<Game>) -> Result<(), ()> {

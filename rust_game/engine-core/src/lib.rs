@@ -11,14 +11,21 @@ mod smooth_receiver;
 mod state_channel;
 
 pub use self::aggregate_input::AggregateInput;
-pub use self::frame_manager::Input;
-pub use self::frame_manager::FrameState;
+pub use self::frame_manager::{
+    FrameInput,
+    FrameState,
+    ClientProvidedInput,
+    PresentInput
+};
 pub use self::game_time::FrameIndex;
 pub use self::smooth::Smooth;
 pub use self::smooth::SmoothArguments;
 pub use self::smooth_receiver::SmoothReceiver;
-pub use self::state_channel::StateReceiver;
-pub use self::state_channel::StateReceiverError;
+pub use self::state_channel::{
+    StateReceiver,
+    StateReceiverError,
+    MostRecentState
+};
 pub use interface::Client;
 pub use interface::GameTrait;
 pub use interface::InitialInformation;
