@@ -5,7 +5,9 @@ use crate::game_time::{
     PingResponse,
 };
 use crate::messaging::{
-    FragmentAssembler, MessageFragment, UdpToClientMessage
+    FragmentAssembler,
+    MessageFragment,
+    UdpToClientMessage,
 };
 use crate::GameTrait;
 use commons::real_time::net::udp::HandleUdpRead;

@@ -1,4 +1,7 @@
-use crate::frame_manager::{FrameIndexAndState, InputCoordinates};
+use crate::frame_manager::{
+    FrameIndexAndState,
+    InputCoordinates,
+};
 use crate::interface::GameTrait;
 use std::ops::ControlFlow;
 
@@ -11,28 +14,26 @@ pub trait ObserveFrames: 'static + Send {
     /// or client-only logic.
     const IS_SERVER: bool;
 
-    /// Called when a non-authoritative [GameTrait::InputAggregate] in the 
+    /// Called when a non-authoritative [GameTrait::InputAggregate] in the
     /// [FrameManager](super::FrameManager) is ready to be converted to an authoritative
     /// one.  
-    /// 
-    /// On the server, this happens when the last non-authoritative input is declared 
-    /// authoritative because the client did not submit an authoritative input in a 
+    ///
+    /// On the server, this happens when the last non-authoritative input is declared
+    /// authoritative because the client did not submit an authoritative input in a
     /// timely manner.
-    /// 
-    /// On the client, this happens when the current [FrameIndex](crate::FrameIndex) 
+    ///
+    /// On the client, this happens when the current [FrameIndex](crate::FrameIndex)
     /// is advanced and the last input must be sent to the server as authoritative.
     fn input_authoritative(
         &self,
         input_coordinates: InputCoordinates,
-        input: <Self::Game as GameTrait>::InputAggregate
+        input: <Self::Game as GameTrait>::InputAggregate,
     ) -> ControlFlow<()>;
 
     /// Called when an [Input](super::FrameInput) is declared authoritatively missing
     /// by the server.  This is only called on the server.
-    fn input_authoritatively_missing(
-        &self,
-        input_coordinates: InputCoordinates,
-    ) -> ControlFlow<()>;
+    fn input_authoritatively_missing(&self, input_coordinates: InputCoordinates)
+        -> ControlFlow<()>;
 
     /// Called when a new State is available.  This is called both when new
     /// states are calculated and when authoritative states are inserted into

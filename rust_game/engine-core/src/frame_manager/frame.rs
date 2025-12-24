@@ -1,7 +1,14 @@
 use log::warn;
-use serde::{Deserialize, Serialize};
+use serde::{
+    Deserialize,
+    Serialize,
+};
 
-use crate::frame_manager::{FrameIndexAndState, InputCoordinates, ObserveFrames};
+use crate::frame_manager::{
+    FrameIndexAndState,
+    InputCoordinates,
+    ObserveFrames,
+};
 use crate::interface::{
     GameTrait,
     UpdateArg,
@@ -27,13 +34,13 @@ pub struct Frame<Game: GameTrait> {
 #[derive(Clone, Debug, Default)]
 pub enum FrameInput<Game: GameTrait> {
     /// [FrameInput::Pending] signifies that an input from a client isn't yet known but may
-    /// become known in the future.  If no [ClientProvidedInput] is received in 
-    /// a timely manner, the server will upgrate this to 
+    /// become known in the future.  If no [ClientProvidedInput] is received in
+    /// a timely manner, the server will upgrate this to
     /// [PresentInput::AuthoritativeMissing] and distribute it to the clients.
     #[default]
     Pending,
 
-    /// [FrameInput::Present] signifies that something, even if it is non-authoritative, 
+    /// [FrameInput::Present] signifies that something, even if it is non-authoritative,
     /// is known about the client's input.
     Present(PresentInput<Game>),
 }
@@ -67,7 +74,6 @@ impl<Game: GameTrait> FrameInput<Game> {
 #[derive(Serialize, Deserialize, Debug, Clone)]
 #[serde(bound = "")]
 pub enum PresentInput<Game: GameTrait> {
-
     /// The client has submitted an input.
     ClientProvided(ClientProvidedInput<Game>),
 
@@ -103,30 +109,29 @@ impl<Game: GameTrait> PresentInput<Game> {
 /// An enum representing the different ways a client can provide an input
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub enum ClientProvidedInput<Game: GameTrait> {
-
-    /// The Input has been received from the client.  This input can be superseded 
-    /// by the client submitting another, more current input.  Also, this input 
-    /// can still potentially be rejected by the server if the client's message 
+    /// The Input has been received from the client.  This input can be superseded
+    /// by the client submitting another, more current input.  Also, this input
+    /// can still potentially be rejected by the server if the client's message
     /// is dropped or is late.
-    /// 
-    /// The client will always insert [ClientProvidedInput::NonAuthoritative] into 
-    /// its own [super::FrameManager].  Clients do not know if their inputs will 
-    /// make it to the server in time to be accepted.  This is the case even when 
-    /// the client has made a [ClientProvidedInput::Authoritative] submission to 
+    ///
+    /// The client will always insert [ClientProvidedInput::NonAuthoritative] into
+    /// its own [super::FrameManager].  Clients do not know if their inputs will
+    /// make it to the server in time to be accepted.  This is the case even when
+    /// the client has made a [ClientProvidedInput::Authoritative] submission to
     /// the server.
-    /// 
-    /// If the server does not receive a [ClientProvidedInput::Authoritative] in time, 
-    /// the server will upgrade the last [ClientProvidedInput::NonAuthoritative] it 
+    ///
+    /// If the server does not receive a [ClientProvidedInput::Authoritative] in time,
+    /// the server will upgrade the last [ClientProvidedInput::NonAuthoritative] it
     /// received to be authoritative and redistribute it to the clients.
     NonAuthoritative(Game::InputAggregate),
 
-    /// The Input has been sent from the client to the server and the server has 
+    /// The Input has been sent from the client to the server and the server has
     /// accepted it and redistributed it back to the clients.
-    /// 
-    /// [ClientProvidedInput::Authoritative] inputs are always sent directly to 
-    /// the server.  Clients will insert the same [GameTrait::InputAggregate] into 
+    ///
+    /// [ClientProvidedInput::Authoritative] inputs are always sent directly to
+    /// the server.  Clients will insert the same [GameTrait::InputAggregate] into
     /// their [super::FrameManager] as a [ClientProvidedInput::NonAuthoritative].
-    /// The server will redistribute the authoritative input to all clients if it 
+    /// The server will redistribute the authoritative input to all clients if it
     /// is received in a timely manner.
     Authoritative(Game::InputAggregate),
 }
@@ -158,7 +163,6 @@ impl<Game: GameTrait> ClientProvidedInput<Game> {
 /// An enum describing the provenance of a [GameTrait::State].
 #[derive(Debug)]
 pub enum FrameState<Game: GameTrait> {
-
     /// The state has been calculated from another authoritative State and a
     /// complete set of authoritative inputs, or has been received from the
     /// server.
@@ -170,8 +174,7 @@ pub enum FrameState<Game: GameTrait> {
 }
 
 impl<Game: GameTrait> FrameState<Game> {
-
-    /// Returns true if this state was computed from an previous authoritative state 
+    /// Returns true if this state was computed from an previous authoritative state
     /// and a complete set of authoritative inputs for the clients.
     pub fn is_authoritative(&self) -> bool {
         match self {
@@ -202,8 +205,7 @@ impl<Game: GameTrait> Frame<Game> {
         };
     }
 
-    pub fn set_input(&mut self, player_index: usize, input: PresentInput<Game>) {  
-        
+    pub fn set_input(&mut self, player_index: usize, input: PresentInput<Game>) {
         let current_input = &mut self.inputs[player_index];
 
         if current_input.is_authoritative() {
@@ -236,10 +238,7 @@ impl<Game: GameTrait> Frame<Game> {
         &self.inputs[player_index]
     }
 
-    pub fn close_frame(
-        &mut self,
-        observer: &impl ObserveFrames<Game = Game>,
-    ) -> ControlFlow<()> {
+    pub fn close_frame(&mut self, observer: &impl ObserveFrames<Game = Game>) -> ControlFlow<()> {
         for (player_index, input_enum) in &mut self.inputs.iter_mut().enumerate() {
             match take(input_enum) {
                 FrameInput::Pending => {
@@ -248,16 +247,26 @@ impl<Game: GameTrait> Frame<Game> {
                     self.need_to_compute_next_state = true;
 
                     //TODO: Make a way to timeout all of a player's inputs immediatly when they disconnect.
-                    observer.input_authoritatively_missing(InputCoordinates::new(self.frame_index, player_index))?;
-                },
-                FrameInput::Present(PresentInput::ClientProvided(ClientProvidedInput::NonAuthoritative(input))) => {
+                    observer.input_authoritatively_missing(InputCoordinates::new(
+                        self.frame_index,
+                        player_index,
+                    ))?;
+                }
+                FrameInput::Present(PresentInput::ClientProvided(
+                    ClientProvidedInput::NonAuthoritative(input),
+                )) => {
                     self.authoritative_input_count = self.authoritative_input_count + 1;
-                    *input_enum = FrameInput::Present(PresentInput::ClientProvided(ClientProvidedInput::Authoritative(input.clone())));
+                    *input_enum = FrameInput::Present(PresentInput::ClientProvided(
+                        ClientProvidedInput::Authoritative(input.clone()),
+                    ));
                     self.need_to_compute_next_state = true;
 
                     //TODO: Make a way to timeout all of a player's inputs immediatly when they disconnect.
-                    observer.input_authoritative(InputCoordinates::new(self.frame_index, player_index), input.clone())?;
-                },
+                    observer.input_authoritative(
+                        InputCoordinates::new(self.frame_index, player_index),
+                        input.clone(),
+                    )?;
+                }
                 taken_input_enum => *input_enum = taken_input_enum,
             };
         }

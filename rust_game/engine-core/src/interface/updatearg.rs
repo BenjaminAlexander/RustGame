@@ -1,4 +1,7 @@
-use crate::frame_manager::{FrameInput, FrameState};
+use crate::frame_manager::{
+    FrameInput,
+    FrameState,
+};
 use crate::game_time::FrameIndex;
 use crate::interface::game::GameTrait;
 use crate::interface::InitialInformation;

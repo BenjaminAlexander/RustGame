@@ -27,6 +27,7 @@ use std::{
 
 mod bullet;
 mod character;
+mod simple_smooth;
 mod simplegameimpl;
 mod simpleinput;
 mod simpleinputevent;
@@ -34,7 +35,6 @@ mod simpleinputeventhandler;
 mod simpleserverinput;
 mod simplestate;
 mod simplewindow;
-mod simple_smooth;
 
 pub fn main() {
     let mut run_client = None;

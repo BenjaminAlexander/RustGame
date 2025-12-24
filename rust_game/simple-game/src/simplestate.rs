@@ -88,19 +88,14 @@ impl SimpleState {
         }
     }
 
-    pub fn interpolate(
-        first: &Self,
-        second: &Self,
-        weight: f64,
-    ) -> Self {
+    pub fn interpolate(first: &Self, second: &Self, weight: f64) -> Self {
         let mut second_clone = second.clone();
 
         for i in 0..second_clone.player_characters.len() {
             if let Some(first_character) = first.player_characters.get(i) {
-                let new_position = first_character.get_position().lerp(
-                    second_clone.player_characters[i].get_position(),
-                    weight,
-                );
+                let new_position = first_character
+                    .get_position()
+                    .lerp(second_clone.player_characters[i].get_position(), weight);
                 second_clone.player_characters[i].set_position(new_position);
             }
         }

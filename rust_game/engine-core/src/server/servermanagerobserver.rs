@@ -1,4 +1,10 @@
-use crate::frame_manager::{ClientProvidedInput, FrameIndexAndState, InputCoordinates, ObserveFrames, PresentInput};
+use crate::frame_manager::{
+    ClientProvidedInput,
+    FrameIndexAndState,
+    InputCoordinates,
+    ObserveFrames,
+    PresentInput,
+};
 use crate::messaging::ToClientInputMessage;
 use crate::server::udpoutput::UdpOutput;
 use crate::state_channel::StateSender;
@@ -69,11 +75,11 @@ impl<Game: GameTrait> ObserveFrames for ServerManagerObserver<Game> {
 
         ControlFlow::Continue(())
     }
-    
+
     fn input_authoritative(
         &self,
         input_coordinates: InputCoordinates,
-        input: <Self::Game as GameTrait>::InputAggregate
+        input: <Self::Game as GameTrait>::InputAggregate,
     ) -> ControlFlow<()> {
         for udp_output in self.udp_outputs.iter() {
             let result = udp_output.send_input_message(ToClientInputMessage::new(

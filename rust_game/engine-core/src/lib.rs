@@ -12,19 +12,19 @@ mod state_channel;
 
 pub use self::aggregate_input::AggregateInput;
 pub use self::frame_manager::{
+    ClientProvidedInput,
     FrameInput,
     FrameState,
-    ClientProvidedInput,
-    PresentInput
+    PresentInput,
 };
 pub use self::game_time::FrameIndex;
 pub use self::smooth::Smooth;
 pub use self::smooth::SmoothArguments;
 pub use self::smooth_receiver::SmoothReceiver;
 pub use self::state_channel::{
+    MostRecentState,
     StateReceiver,
     StateReceiverError,
-    MostRecentState
 };
 pub use interface::Client;
 pub use interface::GameTrait;

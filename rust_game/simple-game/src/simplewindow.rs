@@ -2,7 +2,10 @@ use crate::simple_smooth::SimpleSmooth;
 use crate::simplegameimpl::SimpleGameImpl;
 use crate::simpleinputevent::SimpleInputEvent;
 use engine_core::{
-    Client, SmoothReceiver, StateReceiver, StateReceiverError
+    Client,
+    SmoothReceiver,
+    StateReceiver,
+    StateReceiverError,
 };
 use glutin_window::GlutinWindow as Window;
 use graphics::*;

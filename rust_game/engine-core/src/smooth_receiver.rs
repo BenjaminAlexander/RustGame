@@ -1,13 +1,22 @@
 use commons::time::TimeValue;
 use log::warn;
 
-use crate::{InitialInformation, StateReceiver, StateReceiverError, game_time::StartTime, smooth::{SmoothArguments, Smooth}};
+use crate::{
+    game_time::StartTime,
+    smooth::{
+        Smooth,
+        SmoothArguments,
+    },
+    InitialInformation,
+    StateReceiver,
+    StateReceiverError,
+};
 
-/// A [SmoothReceiver] uses a [StateReceiver] and a [Smooth] implementation to 
+/// A [SmoothReceiver] uses a [StateReceiver] and a [Smooth] implementation to
 /// perform smoothing of corrections and updates to the game's state.
 pub struct SmoothReceiver<T: Smooth> {
     state_receiver: StateReceiver<T::Game>,
-    last_result: Option<SmoothedStateAndTimeValue<T>>
+    last_result: Option<SmoothedStateAndTimeValue<T>>,
 }
 
 struct SmoothedStateAndTimeValue<T: Smooth> {
@@ -24,11 +33,10 @@ pub struct SmoothedState<'a, T: Smooth> {
     pub current_time: &'a TimeValue,
 
     /// The most recent smoothed state
-    pub current_state: &'a T::SmoothedState
+    pub current_state: &'a T::SmoothedState,
 }
 
 impl<T: Smooth> SmoothReceiver<T> {
-
     /// Creates a new Smooth Receiver
     pub fn new(state_receiver: StateReceiver<T::Game>) -> Self {
         Self {
@@ -39,27 +47,31 @@ impl<T: Smooth> SmoothReceiver<T> {
 
     /// Gets the most recent smoothed state if it is available
     pub fn get_smoothed_state(&mut self) -> Result<SmoothedState<T>, StateReceiverError> {
-
         let current_states = self.state_receiver.get_most_recent_state()?;
 
         let now = current_states.time_source.now();
 
         let result = match &self.last_result {
             Some(last_result_and_time) => {
-
                 let future_frame_time = current_states.start_time.get_frame_time_of_occurence(
-                    current_states.initial_information.get_server_config().get_frame_duration(),
-                    &current_states.next_frame.get_frame_index()
+                    current_states
+                        .initial_information
+                        .get_server_config()
+                        .get_frame_duration(),
+                    &current_states.next_frame.get_frame_index(),
                 );
 
                 let duration = future_frame_time.duration_since(&last_result_and_time.time_value);
-                
+
                 let partial_duration = now.duration_since(&last_result_and_time.time_value);
 
                 let weight = partial_duration.as_secs_f64() / duration.as_secs_f64();
 
                 if weight < 0.0 {
-                    warn!("Negetive smoothing weight {:?}\nLast Result: {:?}\nFuture State: {:?}", weight, last_result_and_time.time_value, future_frame_time);
+                    warn!(
+                        "Negetive smoothing weight {:?}\nLast Result: {:?}\nFuture State: {:?}",
+                        weight, last_result_and_time.time_value, future_frame_time
+                    );
                 }
 
                 if cfg!(feature = "no-smoothing") {
@@ -73,7 +85,7 @@ impl<T: Smooth> SmoothReceiver<T> {
 
                     T::smooth(&arg)
                 }
-            },
+            }
             None => T::to_smooth_result(current_states.next_frame.get_state()),
         };
 
@@ -92,9 +104,7 @@ impl<T: Smooth> SmoothReceiver<T> {
             current_time: &last_result.time_value,
             current_state: &last_result.smoothed_state,
         };
-        
+
         return Ok(smoothed_state);
-
     }
-
 }

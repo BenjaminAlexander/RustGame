@@ -38,7 +38,11 @@ impl AggregateInput for SimpleInputEventHandler {
         }
     }
 
-    fn aggregate_input_event(&mut self, fractional_frame_duration: f64, input_event: SimpleInputEvent) -> Option<SimpleInput> {
+    fn aggregate_input_event(
+        &mut self,
+        fractional_frame_duration: f64,
+        input_event: SimpleInputEvent,
+    ) -> Option<SimpleInput> {
         match input_event.get_piston_input() {
             PistonInput::Button(arg) => {
                 self.accumulate_button(fractional_frame_duration, arg);
@@ -119,7 +123,7 @@ impl SimpleInputEventHandler {
 struct MoveButtonTracker {
     state: ButtonState,
     since: f64,
-    total_down_time: f64
+    total_down_time: f64,
 }
 
 impl MoveButtonTracker {
@@ -127,7 +131,7 @@ impl MoveButtonTracker {
         Self {
             state: ButtonState::Release,
             since: 0.0,
-            total_down_time: 0.0
+            total_down_time: 0.0,
         }
     }
 
@@ -149,7 +153,7 @@ impl MoveButtonTracker {
         if self.state == ButtonState::Press {
             total += 1.0 - self.since;
         }
-        
+
         total
     }
 

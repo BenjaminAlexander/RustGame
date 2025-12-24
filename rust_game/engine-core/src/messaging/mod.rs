@@ -2,7 +2,7 @@ pub use self::fragmentassembler::FragmentAssembler;
 pub use self::fragmenter::Fragmenter;
 pub use self::inputmessage::{
     ToClientInputMessage,
-    ToServerInputMessage
+    ToServerInputMessage,
 };
 pub use self::messagefragment::MessageFragment;
 pub use self::toclientmessagetcp::ToClientMessageTCP;

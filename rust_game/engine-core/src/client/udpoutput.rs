@@ -12,7 +12,13 @@ use crate::FrameIndex;
 use commons::real_time::net::udp::UdpSocket;
 use commons::real_time::net::MAX_UDP_DATAGRAM_SIZE;
 use commons::real_time::{
-    EventHandleResult, EventHandlerBuilder, EventSender, Factory, HandleEvent, ReceiveMetaData, TimeSource
+    EventHandleResult,
+    EventHandlerBuilder,
+    EventSender,
+    Factory,
+    HandleEvent,
+    ReceiveMetaData,
+    TimeSource,
 };
 use commons::utils::unit_error;
 use log::error;
@@ -26,7 +32,7 @@ enum UdpOutputEvent<Game: GameTrait> {
 
 #[derive(Clone)]
 pub struct UdpOutput<Game: GameTrait> {
-    sender: EventSender<UdpOutputEvent<Game>>
+    sender: EventSender<UdpOutputEvent<Game>>,
 }
 
 impl<Game: GameTrait> UdpOutput<Game> {
@@ -50,17 +56,14 @@ impl<Game: GameTrait> UdpOutput<Game> {
             //TODO: make max datagram size more configurable
             fragmenter: Fragmenter::new(MAX_UDP_DATAGRAM_SIZE),
             initial_information,
-            non_authoritative_input: None
+            non_authoritative_input: None,
         };
 
         //TODO: unwrap after try_clone is not good
-        let sender = EventHandlerBuilder::new_thread(
-            factory,
-            "ClientUdpOutput".to_string(),
-            event_handler,
-        )?;
+        let sender =
+            EventHandlerBuilder::new_thread(factory, "ClientUdpOutput".to_string(), event_handler)?;
 
-        Ok(Self{sender})
+        Ok(Self { sender })
     }
 
     pub fn advance_frame_index(&self, frame_index: FrameIndex) -> Result<(), ()> {
@@ -83,18 +86,21 @@ struct EventHandler<Game: GameTrait> {
     next_ping: FrameIndex,
     fragmenter: Fragmenter,
     initial_information: InitialInformation<Game>,
-    non_authoritative_input: Option<ToServerInputMessage<Game>>
+    non_authoritative_input: Option<ToServerInputMessage<Game>>,
 }
 
 impl<Game: GameTrait> EventHandler<Game> {
     fn on_input_message(&mut self, input_message: ToServerInputMessage<Game>) -> EventHandleResult {
         if input_message.get_input().is_authoritative() {
-
-            // If the authoritative input is as new or newer than the pending 
-            // non-authoritative one, don't bother to send the non-authoritative 
+            // If the authoritative input is as new or newer than the pending
+            // non-authoritative one, don't bother to send the non-authoritative
             // one
             if let Some(non_authoritative_message) = &self.non_authoritative_input {
-                if input_message.get_input_coordinates().get_frame_index() >= non_authoritative_message.get_input_coordinates().get_frame_index() {
+                if input_message.get_input_coordinates().get_frame_index()
+                    >= non_authoritative_message
+                        .get_input_coordinates()
+                        .get_frame_index()
+                {
                     self.non_authoritative_input = None;
                 }
             }
@@ -103,11 +109,14 @@ impl<Game: GameTrait> EventHandler<Game> {
             if self.send_message(&message).is_err() {
                 return EventHandleResult::StopThread;
             }
-            
         } else {
-
             match &self.non_authoritative_input {
-                Some(pending) if pending.get_input_coordinates().get_frame_index() <= input_message.get_input_coordinates().get_frame_index() => self.non_authoritative_input = Some(input_message),
+                Some(pending)
+                    if pending.get_input_coordinates().get_frame_index()
+                        <= input_message.get_input_coordinates().get_frame_index() =>
+                {
+                    self.non_authoritative_input = Some(input_message)
+                }
                 None => self.non_authoritative_input = Some(input_message),
                 _ => {
                     #[cfg(debug_assertions)]
@@ -132,15 +141,17 @@ impl<Game: GameTrait> EventHandler<Game> {
                 );
             }
 
-            let result = self.socket.send_to(fragment.get_whole_buf(), &self.server_address);
+            let result = self
+                .socket
+                .send_to(fragment.get_whole_buf(), &self.server_address);
 
             if let Err(err) = result {
                 error!("Error sending a UDP message.\n{:?}", err);
-                return Err(())
+                return Err(());
             }
         }
 
-        return Ok(())
+        return Ok(());
     }
 
     fn on_frame_index(&mut self, frame_index: FrameIndex) -> EventHandleResult {
@@ -157,7 +168,7 @@ impl<Game: GameTrait> EventHandler<Game> {
 
         let ping_request = UdpToServerMessage::PingRequest(ping_request);
         if self.send_message(&ping_request).is_err() {
-            return EventHandleResult::StopThread
+            return EventHandleResult::StopThread;
         }
 
         return EventHandleResult::TryForNextEvent;

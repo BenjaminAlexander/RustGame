@@ -1,5 +1,12 @@
-use crate::frame_manager::frame::{ClientProvidedInput, Frame, PresentInput};
-use crate::frame_manager::{InputCoordinates, ObserveFrames};
+use crate::frame_manager::frame::{
+    ClientProvidedInput,
+    Frame,
+    PresentInput,
+};
+use crate::frame_manager::{
+    InputCoordinates,
+    ObserveFrames,
+};
 use crate::interface::{
     GameTrait,
     InitialInformation,
@@ -68,9 +75,9 @@ impl<Game: GameTrait> FrameManager<Game> {
 
     /// Advances the current [FrameIndex] of the [FrameManager] on the client.  
     /// The [FrameManager] will compute frames up to `frame_index + 1`.
-    /// 
-    /// This will notify the observer of the final completed [GameTrait::InputEvent] 
-    /// from last current frame index for the local player.  It will also insert a peak 
+    ///
+    /// This will notify the observer of the final completed [GameTrait::InputEvent]
+    /// from last current frame index for the local player.  It will also insert a peak
     /// (non-final) input for the local playyer into the new current frame.
     pub fn client_advance_frame_index(
         &self,
@@ -87,11 +94,12 @@ impl<Game: GameTrait> FrameManager<Game> {
     /// Inserts a [PresentInput] with a [GameTrait::InputAggregate] into the [Frame] at
     /// [InputCoordinates].  If the [FrameIndex] is too far in the past, it input will
     /// be ignored.
-    pub fn insert_input(&self, coordinates: InputCoordinates, input: PresentInput<Game>) -> Result<(), ()> {
-        let event = Event::Input{
-            coordinates,
-            input
-        };
+    pub fn insert_input(
+        &self,
+        coordinates: InputCoordinates,
+        input: PresentInput<Game>,
+    ) -> Result<(), ()> {
+        let event = Event::Input { coordinates, input };
         self.sender.send_event(event).map_err(unit_error)
     }
 
@@ -112,7 +120,7 @@ enum Event<Game: GameTrait> {
     },
     Input {
         coordinates: InputCoordinates,
-        input: PresentInput<Game>
+        input: PresentInput<Game>,
     },
     State {
         frame_index: FrameIndex,
@@ -182,7 +190,6 @@ impl<ManagerObserver: ObserveFrames> EventHandler<ManagerObserver> {
         return Some(index_to_get);
     }
 
-
     fn on_none_pending(&mut self) -> EventHandleResult {
         // Expand Frame queue to hold up current + 1
         self.get_frame_queue_index(self.current_frame_index.next());
@@ -220,15 +227,18 @@ impl<ManagerObserver: ObserveFrames> EventHandler<ManagerObserver> {
         return EventHandleResult::WaitForNextEvent;
     }
 
-    fn set_input(&mut self,
+    fn set_input(
+        &mut self,
         coordinates: &InputCoordinates,
         input: PresentInput<<ManagerObserver as ObserveFrames>::Game>,
     ) {
         #[cfg(debug_assertions)]
         match (&input, ManagerObserver::IS_SERVER) {
-            (PresentInput::AuthoritativeMissing, true) => panic!("The server received an authoritative missing message"),
+            (PresentInput::AuthoritativeMissing, true) => {
+                panic!("The server received an authoritative missing message")
+            }
             _ => {}
-        }     
+        }
 
         if let Some(index) = self.get_frame_queue_index(coordinates.get_frame_index()) {
             self.frames[index].set_input(coordinates.get_player_index(), input);
@@ -276,7 +286,6 @@ impl<ManagerObserver: ObserveFrames> HandleEvent for EventHandler<ManagerObserve
     fn on_event(&mut self, _: ReceiveMetaData, event: Self::Event) -> EventHandleResult {
         match event {
             Event::ServerAdvanceFrameIndex(frame_index) => {
-
                 #[cfg(debug_assertions)]
                 if !ManagerObserver::IS_SERVER {
                     panic!("This message is for the server frame manager only");
@@ -295,8 +304,11 @@ impl<ManagerObserver: ObserveFrames> HandleEvent for EventHandler<ManagerObserve
                     while index < self.frames.len()
                         && self.frames[index].get_frame_index() < last_open_frame_index
                     {
-                        if self.frames[index].close_frame(&self.manager_observer).is_break() {
-                            return EventHandleResult::StopThread
+                        if self.frames[index]
+                            .close_frame(&self.manager_observer)
+                            .is_break()
+                        {
+                            return EventHandleResult::StopThread;
                         }
                         index += 1;
                     }
@@ -306,7 +318,6 @@ impl<ManagerObserver: ObserveFrames> HandleEvent for EventHandler<ManagerObserve
                 current_coordinates,
                 peak_of_current_frame_input,
             } => {
-
                 #[cfg(debug_assertions)]
                 if ManagerObserver::IS_SERVER {
                     panic!("This message is for the client frame manager only");
@@ -315,7 +326,8 @@ impl<ManagerObserver: ObserveFrames> HandleEvent for EventHandler<ManagerObserve
                 //let previous_coordinates = current_coordinates;
 
                 if let Some(index) = self.get_frame_queue_index(self.current_frame_index) {
-                    let previous_input = self.frames[index].get_input(current_coordinates.get_player_index());
+                    let previous_input =
+                        self.frames[index].get_input(current_coordinates.get_player_index());
 
                     #[cfg(debug_assertions)]
                     if previous_input.is_authoritative() {
@@ -324,31 +336,39 @@ impl<ManagerObserver: ObserveFrames> HandleEvent for EventHandler<ManagerObserve
 
                     match previous_input.get_input() {
                         Some(previous_input) => {
-                            let previous_coordinates = InputCoordinates::new(self.current_frame_index, current_coordinates.get_player_index());
-                            let result = self.manager_observer.input_authoritative(previous_coordinates, previous_input.clone());
+                            let previous_coordinates = InputCoordinates::new(
+                                self.current_frame_index,
+                                current_coordinates.get_player_index(),
+                            );
+                            let result = self
+                                .manager_observer
+                                .input_authoritative(previous_coordinates, previous_input.clone());
                             if result.is_break() {
                                 return EventHandleResult::StopThread;
                             }
-                        },
-                        None => {
+                        }
+                        None =>
+                        {
                             #[cfg(debug_assertions)]
                             if current_coordinates.get_frame_index() > FrameIndex::zero() {
                                 error!("There should always be an input");
                             }
-                        },
+                        }
                     }
                 } else {
                     error!("There should always be a previous frame");
                 }
 
                 self.set_input(
-                    &current_coordinates, 
-                    PresentInput::ClientProvided(ClientProvidedInput::NonAuthoritative(peak_of_current_frame_input))
+                    &current_coordinates,
+                    PresentInput::ClientProvided(ClientProvidedInput::NonAuthoritative(
+                        peak_of_current_frame_input,
+                    )),
                 );
 
                 self.current_frame_index = current_coordinates.get_frame_index();
             }
-            Event::Input{coordinates, input} => self.set_input(&coordinates, input),
+            Event::Input { coordinates, input } => self.set_input(&coordinates, input),
             Event::State { frame_index, state } => {
                 let result = self.on_state_message(frame_index, state);
                 if result.is_break() {
