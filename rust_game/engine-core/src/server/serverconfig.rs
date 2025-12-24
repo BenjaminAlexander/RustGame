@@ -23,9 +23,9 @@ pub struct ServerConfig {
 impl ServerConfig {
     pub fn new<Game: Play>(factory: &Factory) -> Self {
         let now = factory.get_time_source().now();
-        let frame_duration = FrameDuration::new(Game::STEP_PERIOD);
+        let frame_duration = FrameDuration::new(Game::FRAME_DURATION);
         let input_grace_period_frames =
-            frame_duration.to_frame_count(&(Game::GRACE_PERIOD + Game::STEP_PERIOD)) as usize;
+            frame_duration.to_frame_count(&(Game::CLIENT_INPUT_GRACE_PERIOD + Game::FRAME_DURATION)) as usize;
 
         return Self {
             start_time: StartTime::new(now),

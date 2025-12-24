@@ -27,10 +27,9 @@ impl Play for SimpleGameImpl {
     const UDP_PORT: u16 = 3457;
     //One sec 1_000_000_000
     //60hz 16_666_666
-    const STEP_PERIOD: TimeDuration = TimeDuration::new(5, 0);
-    const GRACE_PERIOD: TimeDuration = TimeDuration::new(1, 0);
+    const FRAME_DURATION: TimeDuration = TimeDuration::new(5, 0);
+    const CLIENT_INPUT_GRACE_PERIOD: TimeDuration = TimeDuration::new(1, 0);
     const PING_PERIOD: TimeDuration = TimeDuration::new(1, 0);
-    const CLOCK_AVERAGE_SIZE: usize = 100;
 
     fn get_initial_state(player_count: usize) -> Self::State {
         Self::State::new(player_count)

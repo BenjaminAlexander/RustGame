@@ -1,13 +1,10 @@
 use crate::Play;
 
-/// Defines how the client will aggregate a steam of input events
-/// occuring at any time into an input aggregate at each frame index.
-///
-/// An input event is an event that can be submitted to the client at any time
-/// during the sequence of frames.  
-///
-/// An input aggregate is the aggregation of all input events that occur between
-/// the time a frame occurs and the next frame.
+/// Defines how the client will aggregate [InputEvents][Play::InputEvent].
+/// 
+/// The client receives input events in a stream.  These events are received at 
+/// any time between frames and must be aggregated into [InputAggregates][Play::InputAggregate] 
+/// that occur at the same time as a frame.
 ///
 /// Any time a input event is received, the aggregator should return a new
 /// aggregate if the value of the aggregate is changed from its previously
