@@ -2,7 +2,6 @@ use crate::simpleinput::SimpleInput;
 use crate::simpleinputevent::SimpleInputEvent;
 use commons::geometry::twod::Vector2;
 use engine_core::AggregateInput;
-use log::info;
 use piston::input::Input as PistonInput;
 use piston::{
     Button,
@@ -40,7 +39,7 @@ impl AggregateInput for SimpleInputEventHandler {
         }
     }
 
-    fn aggregate_input_event(&mut self, fractional_frame_duration: f64, input_event: Self::InputEvent) {
+    fn aggregate_input_event(&mut self, fractional_frame_duration: f64, input_event: Self::InputEvent) -> Option<SimpleInput> {
         match input_event.get_piston_input() {
             PistonInput::Button(arg) => {
                 self.accumulate_button(fractional_frame_duration, arg);
@@ -55,27 +54,18 @@ impl AggregateInput for SimpleInputEventHandler {
             PistonInput::FileDrag(_) => {}
             PistonInput::Close(_) => {}
         }
+
+        Some(self.get_current_aggregate())
     }
 
-    fn peak_input(&self) -> Self::InputAggregate {
-        let x = self.d.get_total_down_time() - self.a.get_total_down_time();
-        let y = self.s.get_total_down_time() - self.w.get_total_down_time();
-
-        let velocity = Vector2::new(x, y);
-
-        info!("V: {:?}", velocity);
-
-        let input = SimpleInput::new(self.aim_point, velocity, self.should_fire);
-
-        return input;
-    }
-
-    fn reset_for_new_frame(&mut self) {
+    fn start_next_frame(&mut self) -> SimpleInput {
         self.should_fire = false;
         self.a.reset_for_new_frame();
         self.d.reset_for_new_frame();
         self.s.reset_for_new_frame();
         self.w.reset_for_new_frame();
+
+        self.get_current_aggregate()
     }
 }
 
@@ -113,6 +103,17 @@ impl SimpleInputEventHandler {
             },
             _ => {}
         }
+    }
+
+    fn get_current_aggregate(&self) -> SimpleInput {
+        let x = self.d.get_total_down_time() - self.a.get_total_down_time();
+        let y = self.s.get_total_down_time() - self.w.get_total_down_time();
+
+        let velocity = Vector2::new(x, y);
+
+        let input = SimpleInput::new(self.aim_point, velocity, self.should_fire);
+
+        return input;
     }
 }
 

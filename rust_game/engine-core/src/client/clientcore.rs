@@ -32,8 +32,9 @@ use commons::real_time::{
     HandleEvent,
     ReceiveMetaData,
 };
+use commons::time::TimeValue;
 use log::{
-    info, trace, warn
+    trace, warn
 };
 use std::net::{
     Ipv4Addr,
@@ -61,6 +62,7 @@ pub struct ClientCore<Game: GameTrait> {
 //TODO: don't start client core before hello
 struct RunningState<Game: GameTrait> {
     current_frame_index: FrameIndex,
+    time_of_current_frame: TimeValue,
     frame_manager: FrameManager<Game>,
     input_aggregator: Game::InputAggregator,
     timer_service: TimerService<(), ClientGameTimerObserver<Game>>,
@@ -169,9 +171,10 @@ impl<Game: GameTrait> ClientCore<Game> {
             .unwrap(),
         )
         .unwrap();
-    
+
         self.running_state = Some(RunningState {
             current_frame_index: FrameIndex::zero(),
+            time_of_current_frame: self.factory.get_time_source().now(),
             frame_manager,
             input_aggregator: Game::InputAggregator::new(),
             timer_service,
@@ -192,42 +195,41 @@ impl<Game: GameTrait> ClientCore<Game> {
 
             let now = self.factory.get_time_source().now();
 
-            let fractional_frame_duration = running_state.game_timer.get_start_time().get_fractional_frame_index(
-                running_state.initial_information.get_server_config().get_frame_duration(), 
-                &now
-            ).fract().min(1.0).max(0.0);
+            // Calculating the fractional time based on the local time of occurance
+            // of the current frame ensures the fractional time is always increasing.
+            let duration_since_current_frame = now.duration_since(&running_state.time_of_current_frame);
+            let fractional_frame_duration = (duration_since_current_frame.as_secs_f64() / running_state.initial_information.get_server_config().get_frame_duration().get_frame_duration().as_secs_f64()).min(1.0).max(0.0);
 
-            info!("Frac {:?}", fractional_frame_duration);
-
-            running_state
+            let input_option = running_state
                 .input_aggregator
                 .aggregate_input_event(fractional_frame_duration, input_event);
 
-            //TODO: Can this peak code be consolidate with the one from new frame index logic?
-            let peaked_input = ClientProvidedInput::NonAuthoritative(running_state.input_aggregator.peak_input());
+            if let Some(input) = input_option {
+                //TODO: Can this peak code be consolidate with the one from new frame index logic?
+                let client_provided_input = ClientProvidedInput::NonAuthoritative(input);
 
-            let input_coordinates = InputCoordinates::new(running_state.current_frame_index, running_state.initial_information.get_player_index());
+                let input_coordinates = InputCoordinates::new(running_state.current_frame_index, running_state.initial_information.get_player_index());
 
-            let message = ToServerInputMessage::<Game>::new(
-                input_coordinates,
-                peaked_input.clone(),
-            );
+                let message = ToServerInputMessage::<Game>::new(
+                    input_coordinates,
+                    client_provided_input.clone(),
+                );
 
-            let send_result = running_state.udp_output.send_input(message.clone());
+                let send_result = running_state.udp_output.send_input(message.clone());
 
-            if send_result.is_err() {
-                warn!("Failed to send InputMessage to Udp Output");
-                return EventHandleResult::StopThread;
-            }
+                if send_result.is_err() {
+                    warn!("Failed to send InputMessage to Udp Output");
+                    return EventHandleResult::StopThread;
+                }
 
-            let send_result = running_state.frame_manager.insert_input(input_coordinates, PresentInput::ClientProvided(peaked_input));
+                let send_result = running_state.frame_manager.insert_input(input_coordinates, PresentInput::ClientProvided(client_provided_input));
 
-            if send_result.is_err() {
-                warn!("Failed to send InputMessage to Game Manager");
-                return EventHandleResult::StopThread;
+                if send_result.is_err() {
+                    warn!("Failed to send InputMessage to Game Manager");
+                    return EventHandleResult::StopThread;
+                }
             }
         }
-        //Else: No-op, just discard the input
 
         return EventHandleResult::TryForNextEvent;
     }
@@ -254,13 +256,14 @@ impl<Game: GameTrait> ClientCore<Game> {
             trace!("TimeMessage step_index: {:?}", frame_index);
 
             running_state.current_frame_index = frame_index;
+            running_state.time_of_current_frame = self.factory.get_time_source().now();
 
             let current_input_coordinates = InputCoordinates::new(
                 running_state.current_frame_index, 
                 running_state.initial_information.get_player_index()
             );
-            running_state.input_aggregator.reset_for_new_frame();
-            let peaked_input = running_state.input_aggregator.peak_input();
+            
+            let peaked_input = running_state.input_aggregator.start_next_frame();
 
             let message = ToServerInputMessage::<Game>::new(
                 current_input_coordinates,
