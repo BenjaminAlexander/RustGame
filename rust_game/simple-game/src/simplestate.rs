@@ -1,8 +1,8 @@
+use crate::SimpleGameImpl;
 use crate::bullet::Bullet;
 use crate::character::Character;
 use crate::simpleserverinput::SimplServerInputEvent;
 use crate::simpleserverinput::SimpleServerInput;
-use crate::SimpleGameImpl;
 use commons::geometry::twod::Vector2;
 use commons::time::TimeDuration;
 use engine_core::{

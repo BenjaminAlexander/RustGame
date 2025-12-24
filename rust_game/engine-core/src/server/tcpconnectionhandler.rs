@@ -1,5 +1,5 @@
-use crate::server::ServerCore;
 use crate::GameTrait;
+use crate::server::ServerCore;
 use commons::real_time::net::tcp::{
     HandleTcpConnection,
     TcpReader,

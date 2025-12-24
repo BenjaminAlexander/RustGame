@@ -145,15 +145,15 @@ impl<T> Clone for ReceiverLink<T> {
 #[cfg(test)]
 mod tests {
     use std::sync::{
-        mpsc::TryRecvError,
         Arc,
         Mutex,
+        mpsc::TryRecvError,
     };
 
     use crate::real_time::simulation::{
-        receiver_link::ReceiveOrDisconnected,
         SingleThreadedFactory,
         SingleThreadedReceiver,
+        receiver_link::ReceiveOrDisconnected,
     };
 
     #[test]

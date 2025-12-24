@@ -1,3 +1,4 @@
+use crate::GameTrait;
 use crate::client::udpoutput::UdpOutput;
 use crate::frame_manager::{
     ClientProvidedInput,
@@ -7,7 +8,6 @@ use crate::frame_manager::{
 };
 use crate::messaging::ToServerInputMessage;
 use crate::state_channel::StateSender;
-use crate::GameTrait;
 use log::warn;
 use std::ops::ControlFlow;
 

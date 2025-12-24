@@ -1,8 +1,8 @@
 use crate::AggregateInput;
 use crate::UpdateArg;
 use commons::time::TimeDuration;
-use serde::de::DeserializeOwned;
 use serde::Serialize;
+use serde::de::DeserializeOwned;
 use std::fmt::Debug;
 
 //TODO: can Serialize + DeserializeOwned be removed

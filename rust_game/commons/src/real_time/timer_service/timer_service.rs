@@ -75,13 +75,16 @@ impl<T: TimerCreationCallBack, U: TimerCallBack> IdleTimerService<T, U> {
 
     fn move_timer(&mut self, timer_id: &TimerId) -> Option<Timer<U>> {
         trace!("Moving Timer: {:?}", timer_id);
-        if let Some(timer) = self.unscheduled_timers.remove(timer_id) {
-            return Some(timer);
-        } else {
-            for i in 0..self.timers.len() {
-                if let Some(timer) = self.timers.get(i) {
-                    if timer.get_id() == timer_id {
-                        return Some(self.timers.remove(i).unwrap());
+        match self.unscheduled_timers.remove(timer_id) {
+            Some(timer) => {
+                return Some(timer);
+            }
+            _ => {
+                for i in 0..self.timers.len() {
+                    if let Some(timer) = self.timers.get(i) {
+                        if timer.get_id() == timer_id {
+                            return Some(self.timers.remove(i).unwrap());
+                        }
                     }
                 }
             }
@@ -124,7 +127,11 @@ impl<T: TimerCreationCallBack, U: TimerCallBack> IdleTimerService<T, U> {
                 if duration_to_wait.is_positive() {
                     return EventHandleResult::WaitForNextEventOrTimeout(duration_to_wait);
                 } else {
-                    warn!("Timers that should be triggered were left in the queue!  TimerID: {:?} Duration Until Trigger: {:?}", timer.get_id(), duration_to_wait);
+                    warn!(
+                        "Timers that should be triggered were left in the queue!  TimerID: {:?} Duration Until Trigger: {:?}",
+                        timer.get_id(),
+                        duration_to_wait
+                    );
                     return self.trigger_timers(time_source);
                 }
             } else {
@@ -148,11 +155,14 @@ impl<T: TimerCreationCallBack, U: TimerCallBack> IdleTimerService<T, U> {
     }
 
     fn reschedule_timer(&mut self, timer_id: &TimerId, schedule: Schedule) {
-        if let Some(mut timer) = self.move_timer(timer_id) {
-            timer.set_schedule(schedule);
-            self.insert(timer);
-        } else {
-            warn!("TimerID {:?} does not exist.", timer_id)
+        match self.move_timer(timer_id) {
+            Some(mut timer) => {
+                timer.set_schedule(schedule);
+                self.insert(timer);
+            }
+            _ => {
+                warn!("TimerID {:?} does not exist.", timer_id)
+            }
         }
     }
 

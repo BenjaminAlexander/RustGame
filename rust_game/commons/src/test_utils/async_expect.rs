@@ -83,7 +83,7 @@ impl AsyncExpects {
     pub fn new_expect_async_join<T: Send + 'static>(
         &self,
         description: &str,
-    ) -> impl FnOnce(T) + Send + 'static {
+    ) -> impl FnOnce(T) + Send + 'static + use<T> {
         let expect = self.new_async_expect(description, ());
 
         return move |_| {

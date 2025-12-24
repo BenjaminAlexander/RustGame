@@ -1,10 +1,10 @@
 use crate::real_time::event_or_stop_thread::EventOrStopThread;
+use crate::real_time::simulation::SingleThreadedFactory;
 use crate::real_time::simulation::receiver_link::{
     ReceiveOrDisconnected,
     ReceiverLink,
 };
 use crate::real_time::simulation::single_threaded_receiver::SingleThreadedReceiver;
-use crate::real_time::simulation::SingleThreadedFactory;
 use crate::real_time::{
     EventHandleResult,
     HandleEvent,
@@ -100,13 +100,16 @@ impl<T: HandleEvent, U: FnOnce(T::ThreadReturn) + Send + 'static> EventHandlerHo
         func: impl FnOnce(EventHandlerHolderInternal<T, U>) -> Option<EventHandlerHolderInternal<T, U>>,
     ) {
         let mut guard = self.internal.lock().unwrap();
-        if let Some(internal) = guard.take() {
-            trace!("Event Handler is still running");
-            if let Some(internal) = func(internal) {
-                *guard = Some(internal);
+        match guard.take() {
+            Some(internal) => {
+                trace!("Event Handler is still running");
+                if let Some(internal) = func(internal) {
+                    *guard = Some(internal);
+                }
             }
-        } else {
-            trace!("Event Handler is not running");
+            _ => {
+                trace!("Event Handler is not running");
+            }
         }
     }
 }

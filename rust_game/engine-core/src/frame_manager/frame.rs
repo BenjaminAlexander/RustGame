@@ -161,6 +161,7 @@ impl<Game: GameTrait> ClientProvidedInput<Game> {
 }
 
 /// An enum describing the provenance of a [GameTrait::State].
+/// TODO: use Arc for states
 #[derive(Debug)]
 pub enum FrameState<Game: GameTrait> {
     /// The state has been calculated from another authoritative State and a
@@ -210,7 +211,7 @@ impl<Game: GameTrait> Frame<Game> {
 
         if current_input.is_authoritative() {
             warn!(
-                "Received a duplicate input where an authoritative one has already been received, ignorning it. Player: {:?}\n{:?}\nCurrent: {:}\nIgnored: {:?}", 
+                "Received a duplicate input where an authoritative one has already been received, ignorning it. Player: {:?}\n{:?}\nCurrent: {:}\nIgnored: {:?}",
                 player_index,
                 self.frame_index,
                 current_input.type_as_str(),

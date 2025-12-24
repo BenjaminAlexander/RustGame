@@ -1,6 +1,6 @@
 use crate::real_time::event_or_stop_thread::EventOrStopThread;
-use crate::real_time::net::udp::HandleUdpRead;
 use crate::real_time::net::MAX_UDP_DATAGRAM_SIZE;
+use crate::real_time::net::udp::HandleUdpRead;
 use crate::real_time::real::net::udp::RealUdpSocket;
 use crate::real_time::real::{
     self,

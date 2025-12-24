@@ -94,11 +94,7 @@ impl Character {
         let is_local_player = local_player_index == self.player_index;
 
         let color = if self.health > 0 {
-            if is_local_player {
-                BLUE
-            } else {
-                RED
-            }
+            if is_local_player { BLUE } else { RED }
         } else {
             GREEN
         };

@@ -5,12 +5,12 @@ use serde::{
 };
 
 use crate::{
+    FrameIndex,
+    GameTrait,
     game_time::{
         FrameDuration,
         StartTime,
     },
-    FrameIndex,
-    GameTrait,
 };
 
 #[derive(Serialize, Deserialize, Clone, Debug, Copy)]

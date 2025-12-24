@@ -1,3 +1,4 @@
+use crate::FrameIndex;
 use crate::game_time::PingRequest;
 use crate::interface::{
     GameTrait,
@@ -8,9 +9,8 @@ use crate::messaging::{
     ToServerInputMessage,
     UdpToServerMessage,
 };
-use crate::FrameIndex;
-use commons::real_time::net::udp::UdpSocket;
 use commons::real_time::net::MAX_UDP_DATAGRAM_SIZE;
+use commons::real_time::net::udp::UdpSocket;
 use commons::real_time::{
     EventHandleResult,
     EventHandlerBuilder,

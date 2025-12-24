@@ -1,3 +1,4 @@
+use crate::GameTrait;
 use crate::messaging::{
     FragmentAssembler,
     MessageFragment,
@@ -5,7 +6,6 @@ use crate::messaging::{
 };
 use crate::server::clientaddress::ClientAddress;
 use crate::server::remoteudppeer::RemoteUdpPeer;
-use crate::GameTrait;
 use commons::real_time::TimeSource;
 use log::{
     info,

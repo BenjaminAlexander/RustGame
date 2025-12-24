@@ -4,8 +4,8 @@ use std::{
 };
 
 use log::{
-    error,
     LevelFilter,
+    error,
 };
 
 use crate::logging::LoggingConfigBuilder;

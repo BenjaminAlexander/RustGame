@@ -3,8 +3,8 @@ use crate::frame_manager::{
     FrameState,
 };
 use crate::game_time::FrameIndex;
-use crate::interface::game::GameTrait;
 use crate::interface::InitialInformation;
+use crate::interface::game::GameTrait;
 use commons::time::TimeDuration;
 
 #[derive(Debug)]

@@ -1,3 +1,4 @@
+use crate::FrameIndex;
 use crate::frame_manager::{
     FrameManager,
     PresentInput,
@@ -23,7 +24,6 @@ use crate::server::{
     TcpConnectionHandler,
 };
 use crate::state_channel::StateSender;
-use crate::FrameIndex;
 use commons::real_time::net::tcp::{
     TcpListenerBuilder,
     TcpReader,

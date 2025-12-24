@@ -1,6 +1,6 @@
 use crate::real_time::{
-    event_or_stop_thread::EventOrStopThread,
     Sender,
+    event_or_stop_thread::EventOrStopThread,
 };
 
 pub struct EventSender<T: Send> {

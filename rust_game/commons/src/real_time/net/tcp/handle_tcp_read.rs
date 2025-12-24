@@ -1,5 +1,5 @@
-use serde::de::DeserializeOwned;
 use serde::Serialize;
+use serde::de::DeserializeOwned;
 use std::ops::ControlFlow;
 
 pub trait HandleTcpRead: Send + 'static {

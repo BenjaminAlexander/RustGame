@@ -1,8 +1,8 @@
 use log::warn;
 use rmp_serde::decode::Error as DecodeError;
 use serde::{
-    de::DeserializeOwned,
     Serialize,
+    de::DeserializeOwned,
 };
 use std::{
     cmp::min,
