@@ -6,7 +6,7 @@ use serde::{
 
 use crate::{
     FrameIndex,
-    GameTrait,
+    Play,
     game_time::{
         FrameDuration,
         StartTime,
@@ -21,7 +21,7 @@ pub struct ServerConfig {
 }
 
 impl ServerConfig {
-    pub fn new<Game: GameTrait>(factory: &Factory) -> Self {
+    pub fn new<Game: Play>(factory: &Factory) -> Self {
         let now = factory.get_time_source().now();
         let frame_duration = FrameDuration::new(Game::STEP_PERIOD);
         let input_grace_period_frames =

@@ -3,7 +3,7 @@ use crate::simplegameimpl::SimpleGameImpl;
 use commons::geometry::twod::Vector2;
 use commons::time::TimeDuration;
 use engine_core::{
-    GameTrait,
+    Play,
     UpdateArg,
 };
 use graphics::rectangle;

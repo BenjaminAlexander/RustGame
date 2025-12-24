@@ -1,10 +1,9 @@
 use crate::{
-    frame_manager::{
+    Play, frame_manager::{
         ClientProvidedInput,
         InputCoordinates,
         PresentInput,
-    },
-    interface::GameTrait,
+    }
 };
 use serde::{
     Deserialize,
@@ -13,12 +12,12 @@ use serde::{
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 #[serde(bound = "")]
-pub struct ToServerInputMessage<Game: GameTrait> {
+pub struct ToServerInputMessage<Game: Play> {
     input_coordinates: InputCoordinates,
     input: ClientProvidedInput<Game>,
 }
 
-impl<Game: GameTrait> ToServerInputMessage<Game> {
+impl<Game: Play> ToServerInputMessage<Game> {
     pub fn new(input_coordinates: InputCoordinates, input: ClientProvidedInput<Game>) -> Self {
         Self {
             input_coordinates,
@@ -41,12 +40,12 @@ impl<Game: GameTrait> ToServerInputMessage<Game> {
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 #[serde(bound = "")]
-pub struct ToClientInputMessage<Game: GameTrait> {
+pub struct ToClientInputMessage<Game: Play> {
     input_coordinates: InputCoordinates,
     input: PresentInput<Game>,
 }
 
-impl<Game: GameTrait> ToClientInputMessage<Game> {
+impl<Game: Play> ToClientInputMessage<Game> {
     pub fn new(input_coordinates: InputCoordinates, input: PresentInput<Game>) -> Self {
         Self {
             input_coordinates,

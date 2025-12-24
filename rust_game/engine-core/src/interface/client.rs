@@ -3,7 +3,7 @@ use crate::client::{
     ClientCoreEvent,
 };
 use crate::{
-    GameTrait,
+    Play,
     StateReceiver,
 };
 use commons::real_time::{
@@ -14,11 +14,11 @@ use commons::real_time::{
 use std::net::Ipv4Addr;
 use std::str::FromStr;
 
-pub struct Client<Game: GameTrait> {
+pub struct Client<Game: Play> {
     core_sender: EventSender<ClientCoreEvent<Game>>,
 }
 
-impl<Game: GameTrait> Client<Game> {
+impl<Game: Play> Client<Game> {
     pub fn new(factory: Factory) -> (Self, StateReceiver<Game>) {
         let client_core_thread_builder = EventHandlerBuilder::<ClientCore<Game>>::new(&factory);
 

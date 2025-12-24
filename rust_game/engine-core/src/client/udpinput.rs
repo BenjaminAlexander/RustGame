@@ -1,4 +1,4 @@
-use crate::GameTrait;
+use crate::Play;
 use crate::client::ClientCoreEvent;
 use crate::frame_manager::FrameManager;
 use crate::game_time::{
@@ -23,14 +23,14 @@ use std::io;
 use std::net::SocketAddr;
 use std::ops::ControlFlow;
 
-pub struct UdpInput<Game: GameTrait> {
+pub struct UdpInput<Game: Play> {
     time_source: TimeSource,
     fragment_assembler: FragmentAssembler,
     core_sender: EventSender<ClientCoreEvent<Game>>,
     frame_manager: FrameManager<Game>,
 }
 
-impl<Game: GameTrait> UdpInput<Game> {
+impl<Game: Play> UdpInput<Game> {
     pub fn new(
         time_source: TimeSource,
         core_sender: EventSender<ClientCoreEvent<Game>>,
@@ -90,7 +90,7 @@ impl<Game: GameTrait> UdpInput<Game> {
     }
 }
 
-impl<Game: GameTrait> HandleUdpRead for UdpInput<Game> {
+impl<Game: Play> HandleUdpRead for UdpInput<Game> {
     fn on_read(&mut self, peer_addr: SocketAddr, buf: &[u8]) -> ControlFlow<()> {
         let fragment = MessageFragment::from_vec(buf.to_vec());
 

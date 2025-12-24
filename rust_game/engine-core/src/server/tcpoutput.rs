@@ -1,5 +1,5 @@
+use crate::Play;
 use crate::interface::{
-    GameTrait,
     InitialInformation,
 };
 use crate::messaging::ToClientMessageTCP;
@@ -19,11 +19,11 @@ use log::debug;
 use std::io::Error;
 use std::marker::PhantomData;
 
-pub struct TcpOutput<Game: GameTrait> {
+pub struct TcpOutput<Game: Play> {
     sender: EventSender<Event<Game>>,
 }
 
-impl<Game: GameTrait> TcpOutput<Game> {
+impl<Game: Play> TcpOutput<Game> {
     pub fn new(
         factory: &Factory,
         player_index: usize,
@@ -50,17 +50,17 @@ impl<Game: GameTrait> TcpOutput<Game> {
     }
 }
 
-enum Event<Game: GameTrait> {
+enum Event<Game: Play> {
     SendInitialInformation(ServerConfig, usize, Game::State),
 }
 
-struct EventHandler<Game: GameTrait> {
+struct EventHandler<Game: Play> {
     player_index: usize,
     tcp_stream: TcpStream,
     phantom: PhantomData<Game>,
 }
 
-impl<Game: GameTrait> EventHandler<Game> {
+impl<Game: Play> EventHandler<Game> {
     pub fn new(player_index: usize, tcp_stream: TcpStream) -> Self {
         return EventHandler {
             player_index,
@@ -92,7 +92,7 @@ impl<Game: GameTrait> EventHandler<Game> {
     }
 }
 
-impl<Game: GameTrait> HandleEvent for EventHandler<Game> {
+impl<Game: Play> HandleEvent for EventHandler<Game> {
     type Event = Event<Game>;
     type ThreadReturn = ();
 

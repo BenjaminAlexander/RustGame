@@ -1,7 +1,6 @@
-use crate::FrameIndex;
+use crate::{FrameIndex, Play};
 use crate::game_time::PingRequest;
 use crate::interface::{
-    GameTrait,
     InitialInformation,
 };
 use crate::messaging::{
@@ -25,17 +24,17 @@ use log::error;
 use std::io::Error;
 use std::net::SocketAddr;
 
-enum UdpOutputEvent<Game: GameTrait> {
+enum UdpOutputEvent<Game: Play> {
     InputMessageEvent(ToServerInputMessage<Game>),
     FrameIndex(FrameIndex),
 }
 
 #[derive(Clone)]
-pub struct UdpOutput<Game: GameTrait> {
+pub struct UdpOutput<Game: Play> {
     sender: EventSender<UdpOutputEvent<Game>>,
 }
 
-impl<Game: GameTrait> UdpOutput<Game> {
+impl<Game: Play> UdpOutput<Game> {
     pub fn new(
         factory: &Factory,
         server_address: SocketAddr,
@@ -78,7 +77,7 @@ impl<Game: GameTrait> UdpOutput<Game> {
     }
 }
 
-struct EventHandler<Game: GameTrait> {
+struct EventHandler<Game: Play> {
     time_source: TimeSource,
     server_address: SocketAddr,
     socket: UdpSocket,
@@ -89,7 +88,7 @@ struct EventHandler<Game: GameTrait> {
     non_authoritative_input: Option<ToServerInputMessage<Game>>,
 }
 
-impl<Game: GameTrait> EventHandler<Game> {
+impl<Game: Play> EventHandler<Game> {
     fn on_input_message(&mut self, input_message: ToServerInputMessage<Game>) -> EventHandleResult {
         if input_message.get_input().is_authoritative() {
             // If the authoritative input is as new or newer than the pending
@@ -175,7 +174,7 @@ impl<Game: GameTrait> EventHandler<Game> {
     }
 }
 
-impl<Game: GameTrait> HandleEvent for EventHandler<Game> {
+impl<Game: Play> HandleEvent for EventHandler<Game> {
     type Event = UdpOutputEvent<Game>;
     type ThreadReturn = ();
 

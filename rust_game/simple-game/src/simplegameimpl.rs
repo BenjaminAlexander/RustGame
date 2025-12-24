@@ -6,7 +6,7 @@ use crate::{
     TimeDuration,
 };
 use engine_core::{
-    GameTrait,
+    Play,
     UpdateArg,
 };
 use serde::{
@@ -17,7 +17,7 @@ use serde::{
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct SimpleGameImpl {}
 
-impl GameTrait for SimpleGameImpl {
+impl Play for SimpleGameImpl {
     type State = SimpleState;
     type InputAggregate = SimpleInput;
     type InputEvent = SimpleInputEvent;

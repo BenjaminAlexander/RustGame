@@ -1,20 +1,19 @@
-use crate::frame_manager::{
+use crate::{Play, frame_manager::{
     FrameIndexAndState,
     InputCoordinates,
-};
-use crate::interface::GameTrait;
+}};
 use std::ops::ControlFlow;
 
 /// A trait to observe the [FrameManager](super::frame_manager::FrameManager)
 pub trait ObserveFrames: 'static + Send {
-    type Game: GameTrait;
+    type Game: Play;
 
     /// Flag to indicate this oberver is the server.  This causes the
     /// [FrameManager](super::frame_manager::FrameManager) to execute server-only
     /// or client-only logic.
     const IS_SERVER: bool;
 
-    /// Called when a non-authoritative [GameTrait::InputAggregate] in the
+    /// Called when a non-authoritative [Play::InputAggregate] in the
     /// [FrameManager](super::FrameManager) is ready to be converted to an authoritative
     /// one.  
     ///
@@ -27,7 +26,7 @@ pub trait ObserveFrames: 'static + Send {
     fn input_authoritative(
         &self,
         input_coordinates: InputCoordinates,
-        input: <Self::Game as GameTrait>::InputAggregate,
+        input: <Self::Game as Play>::InputAggregate,
     ) -> ControlFlow<()>;
 
     /// Called when an [Input](super::FrameInput) is declared authoritatively missing

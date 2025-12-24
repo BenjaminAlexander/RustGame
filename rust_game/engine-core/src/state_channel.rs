@@ -1,9 +1,9 @@
 use std::sync::mpsc::TryRecvError;
 
+use crate::Play;
 use crate::frame_manager::FrameIndexAndState;
 use crate::game_time::StartTime;
 use crate::interface::{
-    GameTrait,
     InitialInformation,
 };
 use commons::real_time::{
@@ -15,7 +15,7 @@ use commons::real_time::{
 use commons::utils::unit_error;
 use log::info;
 
-enum Message<Game: GameTrait> {
+enum Message<Game: Play> {
     InitialInformation(InitialInformation<Game>),
     State(FrameIndexAndState<Game>),
     StartTime(StartTime),
@@ -33,7 +33,7 @@ pub enum StateReceiverError {
 }
 
 /// A struct containing the most recent state calculated by the game.
-pub struct MostRecentState<'a, Game: GameTrait> {
+pub struct MostRecentState<'a, Game: Play> {
     pub time_source: &'a TimeSource,
     pub start_time: &'a StartTime,
     pub initial_information: &'a InitialInformation<Game>,
@@ -48,7 +48,7 @@ pub struct MostRecentState<'a, Game: GameTrait> {
 /// [StateReceiver] receives new states as they are calculated and tracks the
 /// most recent state.  This typically means that the [StateReceiver] has one
 /// state occuring slightly in the future.
-pub struct StateReceiver<Game: GameTrait> {
+pub struct StateReceiver<Game: Play> {
     time_source: TimeSource,
     receiver: Receiver<Message<Game>>,
     start_time: Option<StartTime>,
@@ -56,7 +56,7 @@ pub struct StateReceiver<Game: GameTrait> {
     initial_information: Option<InitialInformation<Game>>,
 }
 
-impl<Game: GameTrait> StateReceiver<Game> {
+impl<Game: Play> StateReceiver<Game> {
     pub(crate) fn new(factory: &Factory) -> (StateSender<Game>, Self) {
         let (sender, receiver) = factory.new_channel();
 
@@ -138,11 +138,11 @@ impl<Game: GameTrait> StateReceiver<Game> {
 }
 
 #[derive(Clone)]
-pub(crate) struct StateSender<Game: GameTrait> {
+pub(crate) struct StateSender<Game: Play> {
     sender: Sender<Message<Game>>,
 }
 
-impl<Game: GameTrait> StateSender<Game> {
+impl<Game: Play> StateSender<Game> {
     pub(crate) fn send_initial_information(
         &self,
         initial_information: InitialInformation<Game>,

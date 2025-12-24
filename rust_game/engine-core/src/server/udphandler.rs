@@ -1,4 +1,4 @@
-use crate::GameTrait;
+use crate::Play;
 use crate::messaging::{
     FragmentAssembler,
     MessageFragment,
@@ -22,7 +22,7 @@ use std::net::{
 };
 
 //TODO: This struct could be combined with server udp input
-pub struct UdpHandler<Game: GameTrait> {
+pub struct UdpHandler<Game: Play> {
     time_source: TimeSource,
     remote_peers: Vec<Option<RemoteUdpPeer>>,
     client_addresses: Vec<Option<ClientAddress>>,
@@ -33,7 +33,7 @@ pub struct UdpHandler<Game: GameTrait> {
     phantom: PhantomData<Game>,
 }
 
-impl<Game: GameTrait> UdpHandler<Game> {
+impl<Game: Play> UdpHandler<Game> {
     pub fn new(time_source: TimeSource) -> Self {
         return Self {
             time_source,

@@ -1,9 +1,9 @@
+use crate::Play;
 use crate::frame_manager::FrameIndexAndState;
 use crate::game_time::{
     PingRequest,
     PingResponse,
 };
-use crate::interface::GameTrait;
 use crate::messaging::{
     Fragmenter,
     ToClientInputMessage,
@@ -33,11 +33,11 @@ use std::marker::PhantomData;
 use std::ops::ControlFlow;
 
 #[derive(Clone)]
-pub struct UdpOutput<Game: GameTrait> {
+pub struct UdpOutput<Game: Play> {
     sender: EventSender<Event<Game>>,
 }
 
-impl<Game: GameTrait> UdpOutput<Game> {
+impl<Game: Play> UdpOutput<Game> {
     pub fn new(
         factory: Factory,
         player_index: usize,
@@ -87,7 +87,7 @@ impl<Game: GameTrait> UdpOutput<Game> {
     }
 }
 
-enum Event<Game: GameTrait> {
+enum Event<Game: Play> {
     RemotePeer(RemoteUdpPeer),
     PingRequest {
         time_received: TimeValue,
@@ -97,7 +97,7 @@ enum Event<Game: GameTrait> {
     SendCompletedStep(FrameIndexAndState<Game>),
 }
 
-struct EventHandler<Game: GameTrait> {
+struct EventHandler<Game: Play> {
     time_source: TimeSource,
     player_index: usize,
     socket: UdpSocket,
@@ -106,7 +106,7 @@ struct EventHandler<Game: GameTrait> {
     phantom: PhantomData<Game>,
 }
 
-impl<Game: GameTrait> EventHandler<Game> {
+impl<Game: Play> EventHandler<Game> {
     pub fn new(
         time_source: TimeSource,
         player_index: usize,
@@ -195,7 +195,7 @@ impl<Game: GameTrait> EventHandler<Game> {
     }
 }
 
-impl<Game: GameTrait> HandleEvent for EventHandler<Game> {
+impl<Game: Play> HandleEvent for EventHandler<Game> {
     type Event = Event<Game>;
     type ThreadReturn = ();
 

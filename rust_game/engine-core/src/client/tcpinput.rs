@@ -1,4 +1,4 @@
-use crate::GameTrait;
+use crate::Play;
 use crate::client::ClientCoreEvent::OnInitialInformation;
 use crate::client::clientcore::ClientCoreEvent;
 use crate::messaging::ToClientMessageTCP;
@@ -12,13 +12,13 @@ use log::{
 use std::ops::ControlFlow;
 use std::ops::ControlFlow::*;
 
-pub struct TcpInput<Game: GameTrait> {
+pub struct TcpInput<Game: Play> {
     player_index: Option<usize>,
     client_core_sender: EventSender<ClientCoreEvent<Game>>,
     state_sender: StateSender<Game>,
 }
 
-impl<Game: GameTrait> TcpInput<Game> {
+impl<Game: Play> TcpInput<Game> {
     pub fn new(
         client_core_sender: EventSender<ClientCoreEvent<Game>>,
         state_sender: StateSender<Game>,
@@ -31,7 +31,7 @@ impl<Game: GameTrait> TcpInput<Game> {
     }
 }
 
-impl<Game: GameTrait> HandleTcpRead for TcpInput<Game> {
+impl<Game: Play> HandleTcpRead for TcpInput<Game> {
     type ReadType = ToClientMessageTCP<Game>;
 
     fn on_read(&mut self, message: Self::ReadType) -> ControlFlow<()> {

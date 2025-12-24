@@ -1,11 +1,10 @@
-use crate::FrameIndex;
+use crate::{FrameIndex, Play};
 use crate::frame_manager::{
     FrameManager,
     PresentInput,
 };
 use crate::game_time::GameTimerScheduler;
 use crate::interface::{
-    GameTrait,
     InitialInformation,
 };
 use crate::messaging::{
@@ -59,11 +58,11 @@ use std::net::{
 use std::str::FromStr;
 
 #[derive(Clone)]
-pub struct ServerCore<Game: GameTrait> {
+pub struct ServerCore<Game: Play> {
     sender: EventSender<ServerCoreEvent<Game>>,
 }
 
-impl<Game: GameTrait> ServerCore<Game> {
+impl<Game: Play> ServerCore<Game> {
     pub fn new(factory: Factory, state_sender: StateSender<Game>) -> Result<Self, Error> {
         let builder = EventHandlerBuilder::new(&factory);
 
@@ -105,7 +104,7 @@ impl<Game: GameTrait> ServerCore<Game> {
     }
 }
 
-impl<Game: GameTrait> TimerCallBack for ServerCore<Game> {
+impl<Game: Play> TimerCallBack for ServerCore<Game> {
     fn tick(&mut self) {
         let send_result = self.sender.send_event(ServerCoreEvent::GameTimerTick);
 
@@ -118,14 +117,14 @@ impl<Game: GameTrait> TimerCallBack for ServerCore<Game> {
     }
 }
 
-enum ServerCoreEvent<Game: GameTrait> {
+enum ServerCoreEvent<Game: Play> {
     StartGameEvent,
     TcpConnectionEvent(TcpStream, TcpReader),
     GameTimerTick,
     InputMessage(ToServerInputMessage<Game>),
 }
 
-struct ServerCoreEventHandler<Game: GameTrait> {
+struct ServerCoreEventHandler<Game: Play> {
     factory: Factory,
     server_core: ServerCore<Game>,
     state_sender: StateSender<Game>,
@@ -136,18 +135,18 @@ struct ServerCoreEventHandler<Game: GameTrait> {
 }
 
 #[derive(Default)]
-enum State<Game: GameTrait> {
+enum State<Game: Play> {
     Listening(ListeningCore<Game>),
     Running(RunningCore<Game>),
     #[default]
     Default,
 }
 
-struct ListeningCore<Game: GameTrait> {
+struct ListeningCore<Game: Play> {
     udp_handler: UdpHandler<Game>,
 }
 
-struct RunningCore<Game: GameTrait> {
+struct RunningCore<Game: Play> {
     server_config: ServerConfig,
     _timer_service: TimerService<(), ServerCore<Game>>,
     game_timer: GameTimerScheduler,
@@ -156,7 +155,7 @@ struct RunningCore<Game: GameTrait> {
     frame_manager: FrameManager<Game>,
 }
 
-impl<Game: GameTrait> HandleEvent for ServerCoreEventHandler<Game> {
+impl<Game: Play> HandleEvent for ServerCoreEventHandler<Game> {
     type Event = ServerCoreEvent<Game>;
     type ThreadReturn = ();
 
@@ -176,7 +175,7 @@ impl<Game: GameTrait> HandleEvent for ServerCoreEventHandler<Game> {
     }
 }
 
-impl<Game: GameTrait> ServerCoreEventHandler<Game> {
+impl<Game: Play> ServerCoreEventHandler<Game> {
     pub fn new(
         factory: Factory,
         server_core: ServerCore<Game>,

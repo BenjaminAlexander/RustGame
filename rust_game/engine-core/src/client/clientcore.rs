@@ -1,3 +1,4 @@
+use crate::Play;
 use crate::aggregate_input::AggregateInput;
 use crate::client::clientgametimeobserver::ClientGameTimerObserver;
 use crate::client::clientmanagerobserver::ClientManagerObserver;
@@ -17,7 +18,6 @@ use crate::game_time::{
     GameTimerScheduler,
 };
 use crate::interface::{
-    GameTrait,
     InitialInformation,
 };
 use crate::messaging::ToServerInputMessage;
@@ -48,14 +48,14 @@ use std::net::{
     SocketAddrV4,
 };
 
-pub enum ClientCoreEvent<Game: GameTrait> {
+pub enum ClientCoreEvent<Game: Play> {
     OnInitialInformation(InitialInformation<Game>),
     OnInputEvent(Game::InputEvent),
     GameTimerTick,
     CompletedPing(CompletedPing),
 }
 
-pub struct ClientCore<Game: GameTrait> {
+pub struct ClientCore<Game: Play> {
     factory: Factory,
     sender: EventSender<ClientCoreEvent<Game>>,
     server_ip: Ipv4Addr,
@@ -66,7 +66,7 @@ pub struct ClientCore<Game: GameTrait> {
 }
 
 //TODO: don't start client core before hello
-struct RunningState<Game: GameTrait> {
+struct RunningState<Game: Play> {
     current_frame_index: FrameIndex,
     time_of_current_frame: TimeValue,
     frame_manager: FrameManager<Game>,
@@ -78,7 +78,7 @@ struct RunningState<Game: GameTrait> {
     initial_information: InitialInformation<Game>,
 }
 
-impl<Game: GameTrait> ClientCore<Game> {
+impl<Game: Play> ClientCore<Game> {
     pub fn new(
         factory: Factory,
         server_ip: Ipv4Addr,
@@ -343,7 +343,7 @@ impl<Game: GameTrait> ClientCore<Game> {
     }
 }
 
-impl<Game: GameTrait> HandleEvent for ClientCore<Game> {
+impl<Game: Play> HandleEvent for ClientCore<Game> {
     type Event = ClientCoreEvent<Game>;
     type ThreadReturn = ();
 

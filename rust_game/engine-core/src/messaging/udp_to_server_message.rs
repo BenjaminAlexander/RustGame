@@ -1,6 +1,5 @@
 use crate::{
-    game_time::PingRequest,
-    interface::GameTrait,
+    Play, game_time::PingRequest
 };
 use serde::{
     Deserialize,
@@ -11,13 +10,13 @@ use super::ToServerInputMessage;
 
 #[derive(Serialize, Deserialize, Debug)]
 #[serde(bound = "")]
-pub enum UdpToServerMessage<Game: GameTrait> {
+pub enum UdpToServerMessage<Game: Play> {
     //TODO: see if these can be borrowed
     PingRequest(PingRequest),
     Input(ToServerInputMessage<Game>),
 }
 
-impl<Game: GameTrait> UdpToServerMessage<Game> {
+impl<Game: Play> UdpToServerMessage<Game> {
     pub fn get_player_index(&self) -> usize {
         return match self {
             UdpToServerMessage::Input(input_message) => {

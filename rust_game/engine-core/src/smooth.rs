@@ -1,4 +1,4 @@
-use crate::GameTrait;
+use crate::Play;
 
 /// The arguments for [Smooth::smooth]
 pub struct SmoothArguments<'a, T: Smooth + ?Sized> {
@@ -16,7 +16,7 @@ pub struct SmoothArguments<'a, T: Smooth + ?Sized> {
     /// but in some circumstances this state can actually be before.  In the case
     /// where [SmoothArguments::future_state] is before [SmoothArguments::last_result],
     /// [SmoothArguments::weight] will be negetive.
-    pub future_state: &'a <T::Game as GameTrait>::State,
+    pub future_state: &'a <T::Game as Play>::State,
 
     /// The weight between [SmoothArguments::last_result] and [SmoothArguments::future_state]
     /// that the new [Smooth::SmoothedState] should be created at.
@@ -37,14 +37,14 @@ pub struct SmoothArguments<'a, T: Smooth + ?Sized> {
 }
 
 /// Implement this trait to smoothly correct errors between the last
-/// [Smooth::SmoothedState] and a future [GameTrait::State].
+/// [Smooth::SmoothedState] and a future [Play::State].
 pub trait Smooth {
-    type Game: GameTrait;
+    type Game: Play;
     type SmoothedState;
 
-    /// Convert a [GameTrait::State] to a [Smooth::SmoothedState].  This function
+    /// Convert a [Play::State] to a [Smooth::SmoothedState].  This function
     /// is used to produce the very first [Smooth::SmoothedState].
-    fn to_smooth_result(state: &<Self::Game as GameTrait>::State) -> Self::SmoothedState;
+    fn to_smooth_result(state: &<Self::Game as Play>::State) -> Self::SmoothedState;
 
     /// Calculate a new [Smooth::SmoothedState] at [SmoothArguments::weight] between
     /// [SmoothArguments::last_result] and [SmoothArguments::future_state].

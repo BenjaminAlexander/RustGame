@@ -1,14 +1,14 @@
+use crate::Play;
 use crate::frame_manager::{
     FrameInput,
     FrameState,
 };
 use crate::game_time::FrameIndex;
 use crate::interface::InitialInformation;
-use crate::interface::game::GameTrait;
 use commons::time::TimeDuration;
 
 #[derive(Debug)]
-pub struct UpdateArg<'a, Game: GameTrait> {
+pub struct UpdateArg<'a, Game: Play> {
     initial_information: &'a InitialInformation<Game>,
     //TODO: rename
     step: FrameIndex,
@@ -16,7 +16,7 @@ pub struct UpdateArg<'a, Game: GameTrait> {
     inputs: &'a Vec<FrameInput<Game>>,
 }
 
-impl<'a, 'b, Game: GameTrait> UpdateArg<'a, Game> {
+impl<'a, 'b, Game: Play> UpdateArg<'a, Game> {
     pub fn new(
         initial_information: &'a InitialInformation<Game>,
         step: FrameIndex,

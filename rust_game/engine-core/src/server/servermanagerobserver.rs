@@ -1,4 +1,4 @@
-use crate::GameTrait;
+use crate::Play;
 use crate::frame_manager::{
     ClientProvidedInput,
     FrameIndexAndState,
@@ -12,12 +12,12 @@ use crate::state_channel::StateSender;
 use log::warn;
 use std::ops::ControlFlow;
 
-pub struct ServerManagerObserver<Game: GameTrait> {
+pub struct ServerManagerObserver<Game: Play> {
     udp_outputs: Vec<UdpOutput<Game>>,
     state_sender: StateSender<Game>,
 }
 
-impl<Game: GameTrait> ServerManagerObserver<Game> {
+impl<Game: Play> ServerManagerObserver<Game> {
     pub fn new(udp_outputs: Vec<UdpOutput<Game>>, state_sender: StateSender<Game>) -> Self {
         return Self {
             udp_outputs,
@@ -26,7 +26,7 @@ impl<Game: GameTrait> ServerManagerObserver<Game> {
     }
 }
 
-impl<Game: GameTrait> ObserveFrames for ServerManagerObserver<Game> {
+impl<Game: Play> ObserveFrames for ServerManagerObserver<Game> {
     type Game = Game;
 
     const IS_SERVER: bool = true;
@@ -79,7 +79,7 @@ impl<Game: GameTrait> ObserveFrames for ServerManagerObserver<Game> {
     fn input_authoritative(
         &self,
         input_coordinates: InputCoordinates,
-        input: <Self::Game as GameTrait>::InputAggregate,
+        input: <Self::Game as Play>::InputAggregate,
     ) -> ControlFlow<()> {
         for udp_output in self.udp_outputs.iter() {
             let result = udp_output.send_input_message(ToClientInputMessage::new(

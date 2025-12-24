@@ -4,6 +4,7 @@ mod client;
 mod frame_manager;
 mod game_time;
 mod interface;
+mod play;
 mod messaging;
 mod server;
 mod smooth;
@@ -18,6 +19,7 @@ pub use self::frame_manager::{
     PresentInput,
 };
 pub use self::game_time::FrameIndex;
+pub use self::play::Play;
 pub use self::smooth::Smooth;
 pub use self::smooth::SmoothArguments;
 pub use self::smooth_receiver::SmoothReceiver;
@@ -27,7 +29,6 @@ pub use self::state_channel::{
     StateReceiverError,
 };
 pub use interface::Client;
-pub use interface::GameTrait;
 pub use interface::InitialInformation;
 pub use interface::InterpolationArg;
 pub use interface::Server;

@@ -1,16 +1,16 @@
 use crate::{
-    GameTrait,
+    Play,
     StateReceiver,
     server::ServerCore,
 };
 use commons::real_time::Factory;
 
-pub struct Server<Game: GameTrait> {
+pub struct Server<Game: Play> {
     server_core: ServerCore<Game>,
     render_receiver_option: Option<StateReceiver<Game>>,
 }
 
-impl<Game: GameTrait> Server<Game> {
+impl<Game: Play> Server<Game> {
     pub fn new(factory: Factory) -> Result<Self, ()> {
         let (render_receiver_sender, render_receiver) = StateReceiver::new(&factory);
 

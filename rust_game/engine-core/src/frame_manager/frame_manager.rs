@@ -1,4 +1,4 @@
-use crate::FrameIndex;
+use crate::{FrameIndex, Play};
 use crate::frame_manager::frame::{
     ClientProvidedInput,
     Frame,
@@ -9,7 +9,6 @@ use crate::frame_manager::{
     ObserveFrames,
 };
 use crate::interface::{
-    GameTrait,
     InitialInformation,
 };
 use commons::real_time::{
@@ -29,10 +28,10 @@ use std::collections::vec_deque::VecDeque;
 use std::ops::ControlFlow;
 
 /// The [FrameManager] manages [Frames](Frame) and calculates new
-/// [states](GameTrait::State) from [Inputs](GameTrait::InputAggregate) in another thread.
+/// [states](Play::State) from [Inputs](Play::InputAggregate) in another thread.
 ///
-/// The [FrameManager] inserts [Inputs](GameTrait::InputAggregate) from local and remote clients as
-/// well as authoritative [States](GameTrait::State) from the server into a vector
+/// The [FrameManager] inserts [Inputs](Play::InputAggregate) from local and remote clients as
+/// well as authoritative [States](Play::State) from the server into a vector
 /// of [Frames](Frame).  When there are no queued events, the [FrameManager] will
 /// iterate over the Frames, calculating new States, up to the current
 /// [FrameIndex] + 1.
@@ -40,11 +39,11 @@ use std::ops::ControlFlow;
 /// New States and Inputs which are declared authoritatively missing can be observerd
 /// by implementing [ObserveFrames].
 #[derive(Clone)]
-pub struct FrameManager<Game: GameTrait> {
+pub struct FrameManager<Game: Play> {
     sender: EventSender<Event<Game>>,
 }
 
-impl<Game: GameTrait> FrameManager<Game> {
+impl<Game: Play> FrameManager<Game> {
     /// Starts a new [FrameManager]
     pub fn new<T: ObserveFrames<Game = Game>>(
         factory: &Factory,
@@ -76,7 +75,7 @@ impl<Game: GameTrait> FrameManager<Game> {
     /// Advances the current [FrameIndex] of the [FrameManager] on the client.  
     /// The [FrameManager] will compute frames up to `frame_index + 1`.
     ///
-    /// This will notify the observer of the final completed [GameTrait::InputEvent]
+    /// This will notify the observer of the final completed [Play::InputEvent]
     /// from last current frame index for the local player.  It will also insert a peak
     /// (non-final) input for the local playyer into the new current frame.
     pub fn client_advance_frame_index(
@@ -91,7 +90,7 @@ impl<Game: GameTrait> FrameManager<Game> {
         self.sender.send_event(event).map_err(unit_error)
     }
 
-    /// Inserts a [PresentInput] with a [GameTrait::InputAggregate] into the [Frame] at
+    /// Inserts a [PresentInput] with a [Play::InputAggregate] into the [Frame] at
     /// [InputCoordinates].  If the [FrameIndex] is too far in the past, it input will
     /// be ignored.
     pub fn insert_input(
@@ -103,7 +102,7 @@ impl<Game: GameTrait> FrameManager<Game> {
         self.sender.send_event(event).map_err(unit_error)
     }
 
-    /// Inserts a [State](GameTrait::State) into the [Frame] at [FrameIndex].  
+    /// Inserts a [State](Play::State) into the [Frame] at [FrameIndex].  
     /// If the [FrameIndex] is too far in the past, it state will be ignored.
     pub fn insert_state(&self, frame_index: FrameIndex, state: Game::State) -> Result<(), ()> {
         let event = Event::State { frame_index, state };
@@ -112,7 +111,7 @@ impl<Game: GameTrait> FrameManager<Game> {
     }
 }
 
-enum Event<Game: GameTrait> {
+enum Event<Game: Play> {
     ServerAdvanceFrameIndex(FrameIndex),
     ClientAdvanceFrameIndex {
         current_coordinates: InputCoordinates,
@@ -248,7 +247,7 @@ impl<ManagerObserver: ObserveFrames> EventHandler<ManagerObserver> {
     fn on_state_message(
         &mut self,
         frame_index: FrameIndex,
-        state: <<ManagerObserver as ObserveFrames>::Game as GameTrait>::State,
+        state: <<ManagerObserver as ObserveFrames>::Game as Play>::State,
     ) -> ControlFlow<()> {
         #[cfg(debug_assertions)]
         if ManagerObserver::IS_SERVER {

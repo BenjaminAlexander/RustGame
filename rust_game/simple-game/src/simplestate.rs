@@ -6,7 +6,7 @@ use crate::simpleserverinput::SimpleServerInput;
 use commons::geometry::twod::Vector2;
 use commons::time::TimeDuration;
 use engine_core::{
-    GameTrait,
+    Play,
     InitialInformation,
     UpdateArg,
 };

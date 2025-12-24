@@ -1,4 +1,4 @@
-use crate::GameTrait;
+use crate::Play;
 use crate::game_time::PingRequest;
 use crate::messaging::{
     ToServerInputMessage,
@@ -31,7 +31,7 @@ pub struct UdpInput {
 }
 
 impl UdpInput {
-    pub fn new<Game: GameTrait>(
+    pub fn new<Game: Play>(
         factory: &Factory,
         server_core: ServerCore<Game>,
         udp_socket: &UdpSocket,
@@ -56,14 +56,14 @@ impl UdpInput {
     }
 }
 
-struct ReadHandler<Game: GameTrait> {
+struct ReadHandler<Game: Play> {
     time_source: TimeSource,
     server_core: ServerCore<Game>,
     udp_handler: UdpHandler<Game>,
     udp_output_senders: Vec<UdpOutput<Game>>,
 }
 
-impl<Game: GameTrait> ReadHandler<Game> {
+impl<Game: Play> ReadHandler<Game> {
     pub fn new(
         time_source: TimeSource,
         server_core: ServerCore<Game>,
@@ -112,7 +112,7 @@ impl<Game: GameTrait> ReadHandler<Game> {
     }
 }
 
-impl<Game: GameTrait> HandleUdpRead for ReadHandler<Game> {
+impl<Game: Play> HandleUdpRead for ReadHandler<Game> {
     fn on_read(&mut self, peer_addr: SocketAddr, buf: &[u8]) -> ControlFlow<()> {
         let (remote_udp_peer_option, message_option) =
             self.udp_handler.on_udp_packet(buf, peer_addr);

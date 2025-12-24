@@ -1,4 +1,4 @@
-use crate::GameTrait;
+use crate::Play;
 use crate::server::ServerCore;
 use commons::real_time::net::tcp::{
     HandleTcpConnection,
@@ -12,17 +12,17 @@ use log::{
 use std::ops::ControlFlow;
 use std::ops::ControlFlow::*;
 
-pub struct TcpConnectionHandler<Game: GameTrait> {
+pub struct TcpConnectionHandler<Game: Play> {
     server_core: ServerCore<Game>,
 }
 
-impl<Game: GameTrait> TcpConnectionHandler<Game> {
+impl<Game: Play> TcpConnectionHandler<Game> {
     pub fn new(server_core: ServerCore<Game>) -> Self {
         return Self { server_core };
     }
 }
 
-impl<Game: GameTrait> HandleTcpConnection for TcpConnectionHandler<Game> {
+impl<Game: Play> HandleTcpConnection for TcpConnectionHandler<Game> {
     fn on_connection(&mut self, tcp_stream: TcpStream, tcp_reader: TcpReader) -> ControlFlow<()> {
         info!("New TCP connection from {:?}", tcp_stream.get_peer_addr());
 

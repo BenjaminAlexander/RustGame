@@ -1,5 +1,4 @@
-use crate::interface::GameTrait;
-use crate::interface::InitialInformation;
+use crate::{Play, interface::InitialInformation};
 use serde::{
     Deserialize,
     Serialize,
@@ -7,7 +6,7 @@ use serde::{
 
 #[derive(Serialize, Deserialize, Debug)]
 #[serde(bound = "")]
-pub enum ToClientMessageTCP<Game: GameTrait> {
+pub enum ToClientMessageTCP<Game: Play> {
     //TODO: see if these can be borrowed
     InitialInformation(InitialInformation<Game>),
 }
