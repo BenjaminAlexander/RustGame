@@ -140,7 +140,7 @@ impl<ManagerObserver: ObserveFrames> EventHandler<ManagerObserver> {
         manager_observer: ManagerObserver,
         initial_information: InitialInformation<ManagerObserver::Game>,
     ) -> Result<Self, ()> {
-        let state = initial_information.get_state().clone();
+        let state = initial_information.get_initial_state().clone();
 
         let mut manager = Self {
             current_frame_index: FrameIndex::zero(),

@@ -7,7 +7,7 @@ use crate::{
 };
 use engine_core::{
     Play,
-    UpdateArg,
+    CurrentFrame,
 };
 use serde::{
     Deserialize,
@@ -24,18 +24,16 @@ impl Play for SimpleGameImpl {
     type InputAggregator = SimpleInputEventHandler;
 
     const TCP_PORT: u16 = 3456;
-    const UDP_PORT: u16 = 3457;
+    const UDP_PORT: u16 = 3456;
     //One sec 1_000_000_000
     //60hz 16_666_666
     const FRAME_DURATION: TimeDuration = TimeDuration::new(5, 0);
-    const CLIENT_INPUT_GRACE_PERIOD: TimeDuration = TimeDuration::new(1, 0);
-    const PING_PERIOD: TimeDuration = TimeDuration::new(1, 0);
 
     fn get_initial_state(player_count: usize) -> Self::State {
         Self::State::new(player_count)
     }
 
-    fn get_next_state(arg: &UpdateArg<Self>) -> Self::State {
+    fn next_state(arg: &CurrentFrame<Self>) -> Self::State {
         return SimpleState::get_next_state(arg);
     }
 }

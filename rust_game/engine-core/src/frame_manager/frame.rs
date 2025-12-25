@@ -9,12 +9,8 @@ use crate::frame_manager::{
     InputCoordinates,
     ObserveFrames,
 };
-use crate::interface::{
-    UpdateArg,
-};
 use crate::{
-    FrameIndex,
-    InitialInformation, Play,
+    CurrentFrame, FrameIndex, InitialInformation, Play
 };
 use std::mem::take;
 use std::ops::ControlFlow;
@@ -29,7 +25,9 @@ pub struct Frame<Game: Play> {
     need_to_compute_next_state: bool,
 }
 
-/// Describes the provenance of a [InputAggregate][Play::InputAggregate]
+/// Contains a [InputAggregate][Play::InputAggregate] if it is present and describes its provenance
+/// 
+/// This includes the condition where the game is still waiting for the input.
 #[derive(Clone, Debug, Default)]
 pub enum FrameInput<T> {
     /// [FrameInput::Pending] signifies that an input from a client isn't yet known but may
@@ -69,7 +67,11 @@ impl<T> FrameInput<T> {
     }
 }
 
-/// Describes the different ways a client's input can be known
+/// Contains a [InputAggregate][Play::InputAggregate] if it is present and 
+/// describes its provenance
+/// 
+/// This enum only describes conditions where some information is known about 
+/// the input, even if the only thing known is that it is authoritatively missing.
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub enum PresentInput<T> {
     /// The client has submitted an input.
@@ -104,7 +106,7 @@ impl<T> PresentInput<T> {
     }
 }
 
-/// Describes the different ways a client can provide an input
+/// Contains a [InputAggregate][Play::InputAggregate] and describes its provenance
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub enum ClientProvidedInput<T> {
     /// The Input has been received from the client.  This input can be superseded
@@ -158,7 +160,7 @@ impl<T> ClientProvidedInput<T> {
     }
 }
 
-/// Describes the provenance of a [State][Play::State].
+/// Contains a [State][Play::State] and describes its provenance
 /// 
 /// TODO: use Arc for states
 #[derive(Debug)]
@@ -321,9 +323,9 @@ impl<Game: Play> Frame<Game> {
 
         let is_next_state_authoritative = self.are_inputs_complete() && state.is_authoritative();
 
-        let arg = UpdateArg::new(initial_information, self.frame_index, state, &self.inputs);
+        let arg = CurrentFrame::new(initial_information, self.frame_index, state, &self.inputs);
 
-        let next_state = Game::get_next_state(&arg);
+        let next_state = Game::next_state(&arg);
 
         self.need_to_compute_next_state = false;
 

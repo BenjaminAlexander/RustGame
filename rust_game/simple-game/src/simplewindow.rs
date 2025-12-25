@@ -36,12 +36,12 @@ pub struct SimpleWindow {
 impl SimpleWindow {
     pub fn new(
         window_name: String,
-        render_receiver: StateReceiver<SimpleGameImpl>,
+        state_receiver: StateReceiver<SimpleGameImpl>,
         client_option: Option<Client<SimpleGameImpl>>,
     ) -> Self {
         return Self {
             window_name,
-            render_receiver: SmoothReceiver::new(render_receiver),
+            render_receiver: SmoothReceiver::new(state_receiver),
             client_option,
             mouse_position: [0.0, 0.0],
         };
@@ -121,7 +121,7 @@ impl SimpleWindow {
 
         if let Some(client) = self.client_option.as_ref() {
             client
-                .send_client_input_event(SimpleInputEvent::new(input))
+                .send_input_event(SimpleInputEvent::new(input))
                 .unwrap();
         }
     }

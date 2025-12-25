@@ -8,7 +8,7 @@ use commons::time::TimeDuration;
 use engine_core::{
     Play,
     InitialInformation,
-    UpdateArg,
+    CurrentFrame,
 };
 use graphics::Context;
 use opengl_graphics::GlGraphics;
@@ -39,12 +39,12 @@ impl SimpleState {
         return new;
     }
 
-    pub fn get_server_input(arg: &UpdateArg<SimpleGameImpl>) -> SimpleServerInput {
+    pub fn get_server_input(arg: &CurrentFrame<SimpleGameImpl>) -> SimpleServerInput {
         let mut server_input = SimpleServerInput::new();
 
         for character in &arg.get_frame_state().get_state().player_characters {
             for bullet in &arg.get_frame_state().get_state().bullets {
-                if character.is_hit(bullet, arg.get_current_duration_since_start()) {
+                if character.is_hit(bullet, arg.get_next_frame_duration_since_start()) {
                     server_input.add_event(SimplServerInputEvent::CharacterHit {
                         index: character.get_player_index(),
                     });
@@ -55,13 +55,13 @@ impl SimpleState {
         return server_input;
     }
 
-    pub fn get_next_state(arg: &UpdateArg<SimpleGameImpl>) -> SimpleState {
+    pub fn get_next_state(arg: &CurrentFrame<SimpleGameImpl>) -> SimpleState {
         let mut new = arg.get_frame_state().get_state().clone();
         new.update(arg);
         return new;
     }
 
-    fn update(&mut self, arg: &UpdateArg<SimpleGameImpl>) {
+    fn update(&mut self, arg: &CurrentFrame<SimpleGameImpl>) {
         //TODO: This should probably check the authoritativeness of the input to do server-only logic
         let server_input = Self::get_server_input(arg);
         server_input.apply_to_state(self);

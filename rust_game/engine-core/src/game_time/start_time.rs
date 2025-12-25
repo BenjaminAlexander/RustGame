@@ -9,12 +9,14 @@ use crate::{
     game_time::FrameDuration,
 };
 
-/// The time of occurance for frame index 0.  On clients, this time can float around to slave the client's clock to the server's clock.
+/// The time of occurance for frame index 0
+/// 
+/// On clients, this time can float around to slave the client's clock to the server's clock.
 #[derive(Serialize, Deserialize, Clone, Debug, Copy)]
 pub struct StartTime(TimeValue);
 
 impl StartTime {
-    pub fn new(start_time: TimeValue) -> Self {
+    pub(crate) fn new(start_time: TimeValue) -> Self {
         Self(start_time)
     }
 
@@ -49,6 +51,7 @@ impl StartTime {
         )
     }
 
+    /// Returns the [TimeValue] of the start time
     pub fn get_time_value(&self) -> &TimeValue {
         &self.0
     }

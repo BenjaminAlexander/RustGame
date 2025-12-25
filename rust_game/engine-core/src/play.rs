@@ -1,5 +1,5 @@
 use crate::AggregateInput;
-use crate::UpdateArg;
+use crate::CurrentFrame;
 use commons::time::TimeDuration;
 use serde::Serialize;
 use serde::de::DeserializeOwned;
@@ -40,14 +40,14 @@ pub trait Play: 'static + Send + Clone {
     /// [frame durations][Play::FRAME_DURATION].  That number of frame durations is 
     /// the amount of time after client inputs are due to the server that the 
     /// server will still accept an input.  
-    const CLIENT_INPUT_GRACE_PERIOD: TimeDuration;
+    const CLIENT_INPUT_GRACE_PERIOD: TimeDuration = TimeDuration::new(1, 0);
 
     /// This duration is converted to an integer count of 
     /// [frame durations][Play::FRAME_DURATION].  That number of frame durations 
     /// is the period between the client's ping of the server.  This ping is used 
     /// to determine the latency between the client and server and synchronize 
     /// their clocks.
-    const PING_PERIOD: TimeDuration;
+    const PING_PERIOD: TimeDuration = TimeDuration::new(1, 0);
 
     /// The number of client-server clock offsets to average when synchronizing 
     /// the client's clock.
@@ -61,9 +61,9 @@ pub trait Play: 'static + Send + Clone {
     /// Returns the initial state of the game base on the number of players
     fn get_initial_state(player_count: usize) -> Self::State;
 
-    /// Gets the next state of the game based on the previous [state][Play::State] 
+    /// Calculates and returns the next state of the game based on the previous [state][Play::State] 
     /// and a set of [inputs][Play::InputAggregate].
     /// 
     /// This function implements the main update logic of the game.
-    fn get_next_state(arg: &UpdateArg<Self>) -> Self::State;
+    fn next_state(arg: &CurrentFrame<Self>) -> Self::State;
 }

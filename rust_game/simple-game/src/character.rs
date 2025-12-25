@@ -4,7 +4,7 @@ use commons::geometry::twod::Vector2;
 use commons::time::TimeDuration;
 use engine_core::{
     Play,
-    UpdateArg,
+    CurrentFrame,
 };
 use graphics::rectangle;
 use graphics::*;
@@ -59,7 +59,7 @@ impl Character {
         }
     }
 
-    pub fn move_character(&mut self, arg: &UpdateArg<SimpleGameImpl>) {
+    pub fn move_character(&mut self, arg: &CurrentFrame<SimpleGameImpl>) {
         if let Some(input) = arg.get_frame_input(self.player_index).get_input() {
             self.velocity = input.get_velocity();
         }
@@ -68,7 +68,7 @@ impl Character {
             self.position + self.velocity * SimpleGameImpl::FRAME_DURATION.as_secs_f64() * 500.0;
     }
 
-    pub fn get_fired_bullet(&self, arg: &UpdateArg<SimpleGameImpl>) -> Option<Bullet> {
+    pub fn get_fired_bullet(&self, arg: &CurrentFrame<SimpleGameImpl>) -> Option<Bullet> {
         if let Some(input) = arg.get_frame_input(self.player_index).get_input() {
             if input.should_fire() {
                 return Some(Bullet::new(

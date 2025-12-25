@@ -6,7 +6,7 @@ use serde::{
 
 use crate::FrameIndex;
 
-/// The [`TimeDuration`] between frames
+/// The time duration between frames
 #[derive(Serialize, Deserialize, Clone, Debug, Copy)]
 pub struct FrameDuration(TimeDuration);
 

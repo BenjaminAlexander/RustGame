@@ -14,11 +14,15 @@ use commons::real_time::{
 use std::net::Ipv4Addr;
 use std::str::FromStr;
 
+/// A sender to a locally running client
 pub struct Client<Game: Play> {
     core_sender: EventSender<ClientCoreEvent<Game>>,
 }
 
 impl<Game: Play> Client<Game> {
+
+    /// Starts a new locally running client.  The client will immediately attempt 
+    /// to connect to the server.
     pub fn new(factory: Factory) -> (Self, StateReceiver<Game>) {
         let client_core_thread_builder = EventHandlerBuilder::<ClientCore<Game>>::new(&factory);
 
@@ -43,7 +47,8 @@ impl<Game: Play> Client<Game> {
         return (client, render_receiver);
     }
 
-    pub fn send_client_input_event(
+    /// Sends a new [InputEvent][Play::InputEvent] to the local client
+    pub fn send_input_event(
         &self,
         client_input_event: Game::InputEvent,
     ) -> Result<(), Game::InputEvent> {

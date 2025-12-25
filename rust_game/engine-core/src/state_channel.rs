@@ -32,21 +32,45 @@ pub enum StateReceiverError {
     StateNoYetAvailable,
 }
 
-/// A struct containing the most recent state calculated by the game.
+/// A struct containing the most recent [State][Play::State] calculated by the game.
 pub struct MostRecentState<'a, Game: Play> {
-    pub time_source: &'a TimeSource,
-    pub start_time: &'a StartTime,
-    pub initial_information: &'a InitialInformation<Game>,
-
-    /// This is the newest state that has been received from the game.  Typically,
-    /// the time of occurance of this state will be slightly in the future from
-    /// now.
-    pub next_frame: &'a FrameIndexAndState<Game>,
+    time_source: &'a TimeSource,
+    start_time: &'a StartTime,
+    initial_information: &'a InitialInformation<Game>,
+    next_frame: &'a FrameIndexAndState<Game>,
 }
 
-/// The [StateReceiver] is the receiver for states produced by the game.  The
-/// [StateReceiver] receives new states as they are calculated and tracks the
-/// most recent state.  This typically means that the [StateReceiver] has one
+impl<'a, Game: Play> MostRecentState<'a, Game> {
+
+    /// Returns the [TimeSource] used by the game
+    pub fn get_time_source(&self) -> &'a TimeSource {
+        self.time_source
+    }
+
+    /// Returns the local [StartTime] of the game
+    pub fn get_start_time(&self) -> &'a StartTime {
+        self.start_time
+    }
+
+    /// Returns the [InitialInformation] used by the game
+    pub fn get_initial_information(&self) -> &'a InitialInformation<Game> {
+        self.initial_information
+    }
+
+    /// Returns the newest [FrameIndex][super::FrameIndex] and [State][Play::State] 
+    /// that has been received from the game.
+    /// 
+    /// Typically, the time of occurance of this state will be slightly in the
+    /// future from now.
+    pub fn get_frame_index_and_state(&self) -> &'a FrameIndexAndState<Game> {
+        self.next_frame
+    }
+}
+
+/// A receiver for states produced by the game
+/// 
+/// The [StateReceiver] receives new states as they are calculated and tracks 
+/// the most recent state.  This typically means that the [StateReceiver] has one
 /// state occuring slightly in the future.
 pub struct StateReceiver<Game: Play> {
     time_source: TimeSource,

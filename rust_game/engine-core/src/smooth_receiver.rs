@@ -49,16 +49,16 @@ impl<T: Smooth> SmoothReceiver<T> {
     pub fn get_smoothed_state(&mut self) -> Result<SmoothedState<'_, T>, StateReceiverError> {
         let current_states = self.state_receiver.get_most_recent_state()?;
 
-        let now = current_states.time_source.now();
+        let now = current_states.get_time_source().now();
 
         let result = match &self.last_result {
             Some(last_result_and_time) => {
-                let future_frame_time = current_states.start_time.get_frame_time_of_occurence(
+                let future_frame_time = current_states.get_start_time().get_frame_time_of_occurence(
                     current_states
-                        .initial_information
+                        .get_initial_information()
                         .get_server_config()
                         .get_frame_duration(),
-                    &current_states.next_frame.get_frame_index(),
+                    &current_states.get_frame_index_and_state().get_frame_index(),
                 );
 
                 let duration = future_frame_time.duration_since(&last_result_and_time.time_value);
@@ -75,18 +75,18 @@ impl<T: Smooth> SmoothReceiver<T> {
                 }
 
                 if cfg!(feature = "no-smoothing") {
-                    T::to_smooth_result(current_states.next_frame.get_state())
+                    T::to_smooth_result(current_states.get_frame_index_and_state().get_state())
                 } else {
                     let arg = SmoothArguments {
                         last_result: &last_result_and_time.smoothed_state,
-                        future_state: current_states.next_frame.get_state(),
+                        future_state: current_states.get_frame_index_and_state().get_state(),
                         weight,
                     };
 
                     T::smooth(&arg)
                 }
             }
-            None => T::to_smooth_result(current_states.next_frame.get_state()),
+            None => T::to_smooth_result(current_states.get_frame_index_and_state().get_state()),
         };
 
         let result_and_time = SmoothedStateAndTimeValue {
@@ -99,8 +99,8 @@ impl<T: Smooth> SmoothReceiver<T> {
         let last_result = &self.last_result.as_ref().unwrap();
 
         let smoothed_state = SmoothedState {
-            start_time: current_states.start_time,
-            initial_information: current_states.initial_information,
+            start_time: current_states.get_start_time(),
+            initial_information: current_states.get_initial_information(),
             current_time: &last_result.time_value,
             current_state: &last_result.smoothed_state,
         };

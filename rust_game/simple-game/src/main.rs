@@ -101,7 +101,7 @@ pub fn main() {
 
         client_window.run();
     } else {
-        let mut server = Server::<SimpleGameImpl>::new(factory.clone()).unwrap();
+        let (server, state_receiver) = Server::<SimpleGameImpl>::new(factory.clone()).unwrap();
 
         info!("Hit enter to start the game.");
         let stdin = stdin();
@@ -113,7 +113,7 @@ pub fn main() {
         server.start_game().unwrap();
 
         let server_window =
-            SimpleWindow::new(window_name, server.take_render_receiver().unwrap(), None);
+            SimpleWindow::new(window_name, state_receiver, None);
 
         server_window.run();
     }
