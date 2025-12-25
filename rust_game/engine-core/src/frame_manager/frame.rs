@@ -23,15 +23,15 @@ use std::ops::ControlFlow;
 /// [FrameManager](crate::frame_manager::FrameManager) to calculate new [States](Play::State).
 pub struct Frame<Game: Play> {
     frame_index: FrameIndex,
-    state: Option<FrameState<Game>>,
-    inputs: Vec<FrameInput<Game>>,
+    state: Option<FrameState<Game::State>>,
+    inputs: Vec<FrameInput<Game::InputAggregate>>,
     authoritative_input_count: usize,
     need_to_compute_next_state: bool,
 }
 
-/// An enum that describes the provenance of a [Play::InputAggregate]
+/// Describes the provenance of a [InputAggregate][Play::InputAggregate]
 #[derive(Clone, Debug, Default)]
-pub enum FrameInput<Game: Play> {
+pub enum FrameInput<T> {
     /// [FrameInput::Pending] signifies that an input from a client isn't yet known but may
     /// become known in the future.  If no [ClientProvidedInput] is received in
     /// a timely manner, the server will upgrate this to
@@ -41,10 +41,10 @@ pub enum FrameInput<Game: Play> {
 
     /// [FrameInput::Present] signifies that something, even if it is non-authoritative,
     /// is known about the client's input.
-    Present(PresentInput<Game>),
+    Present(PresentInput<T>),
 }
 
-impl<Game: Play> FrameInput<Game> {
+impl<T> FrameInput<T> {
     /// Returns true if the status of the input is authoritatively known.
     pub fn is_authoritative(&self) -> bool {
         match self {
@@ -54,7 +54,7 @@ impl<Game: Play> FrameInput<Game> {
     }
 
     /// Returns Some [Play::InputAggregate] if one is present
-    pub fn get_input(&self) -> Option<&Game::InputAggregate> {
+    pub fn get_input(&self) -> Option<&T> {
         match self {
             FrameInput::Pending => None,
             FrameInput::Present(present) => present.input(),
@@ -69,19 +69,18 @@ impl<Game: Play> FrameInput<Game> {
     }
 }
 
-/// An enum representing the different ways a client's input can be known
+/// Describes the different ways a client's input can be known
 #[derive(Serialize, Deserialize, Debug, Clone)]
-#[serde(bound = "")]
-pub enum PresentInput<Game: Play> {
+pub enum PresentInput<T> {
     /// The client has submitted an input.
-    ClientProvided(ClientProvidedInput<Game>),
+    ClientProvided(ClientProvidedInput<T>),
 
     /// The client never submitted an input in a timely manner and the server
     /// has authoritatively decided that the client cannot submit an input in the future
     AuthoritativeMissing,
 }
 
-impl<Game: Play> PresentInput<Game> {
+impl<T> PresentInput<T> {
     /// Returns true if the status of the input is authoritatively known.
     pub fn is_authoritative(&self) -> bool {
         match self {
@@ -90,7 +89,7 @@ impl<Game: Play> PresentInput<Game> {
         }
     }
 
-    pub fn input(&self) -> Option<&Game::InputAggregate> {
+    pub fn input(&self) -> Option<&T> {
         match self {
             PresentInput::ClientProvided(client_provided) => Some(client_provided.input()),
             PresentInput::AuthoritativeMissing => None,
@@ -105,9 +104,9 @@ impl<Game: Play> PresentInput<Game> {
     }
 }
 
-/// An enum representing the different ways a client can provide an input
+/// Describes the different ways a client can provide an input
 #[derive(Serialize, Deserialize, Debug, Clone)]
-pub enum ClientProvidedInput<Game: Play> {
+pub enum ClientProvidedInput<T> {
     /// The Input has been received from the client.  This input can be superseded
     /// by the client submitting another, more current input.  Also, this input
     /// can still potentially be rejected by the server if the client's message
@@ -122,7 +121,7 @@ pub enum ClientProvidedInput<Game: Play> {
     /// If the server does not receive a [ClientProvidedInput::Authoritative] in time,
     /// the server will upgrade the last [ClientProvidedInput::NonAuthoritative] it
     /// received to be authoritative and redistribute it to the clients.
-    NonAuthoritative(Game::InputAggregate),
+    NonAuthoritative(T),
 
     /// The Input has been sent from the client to the server and the server has
     /// accepted it and redistributed it back to the clients.
@@ -132,10 +131,10 @@ pub enum ClientProvidedInput<Game: Play> {
     /// their local game as a [ClientProvidedInput::NonAuthoritative].
     /// The server will redistribute the authoritative input to all clients if it
     /// is received in a timely manner.
-    Authoritative(Game::InputAggregate),
+    Authoritative(T),
 }
 
-impl<Game: Play> ClientProvidedInput<Game> {
+impl<T> ClientProvidedInput<T> {
     /// Returns true if the status of the input is authoritatively known.
     pub fn is_authoritative(&self) -> bool {
         match self {
@@ -144,7 +143,7 @@ impl<Game: Play> ClientProvidedInput<Game> {
         }
     }
 
-    pub fn input(&self) -> &Game::InputAggregate {
+    pub fn input(&self) -> &T {
         match self {
             ClientProvidedInput::NonAuthoritative(input) => input,
             ClientProvidedInput::Authoritative(input) => input,
@@ -159,21 +158,22 @@ impl<Game: Play> ClientProvidedInput<Game> {
     }
 }
 
-/// An enum describing the provenance of a [Play::State].
+/// Describes the provenance of a [State][Play::State].
+/// 
 /// TODO: use Arc for states
 #[derive(Debug)]
-pub enum FrameState<Game: Play> {
+pub enum FrameState<T> {
     /// The state has been calculated from another authoritative State and a
     /// complete set of authoritative inputs, or has been received from the
     /// server.
-    Authoritative(Game::State),
+    Authoritative(T),
 
     /// The state has been calculated from either a non-authoritative State or
     /// at least one non-authoritative input
-    NonAuthoritative(Game::State),
+    NonAuthoritative(T),
 }
 
-impl<Game: Play> FrameState<Game> {
+impl<T> FrameState<T> {
     /// Returns true if this state was computed from an previous authoritative state
     /// and a complete set of authoritative inputs for the clients.
     pub fn is_authoritative(&self) -> bool {
@@ -184,7 +184,7 @@ impl<Game: Play> FrameState<Game> {
     }
 
     /// Gets the state
-    pub fn get_state(&self) -> &Game::State {
+    pub fn get_state(&self) -> &T {
         match self {
             FrameState::Authoritative(state) => state,
             FrameState::NonAuthoritative(state) => state,
@@ -205,7 +205,7 @@ impl<Game: Play> Frame<Game> {
         };
     }
 
-    pub fn set_input(&mut self, player_index: usize, input: PresentInput<Game>) {
+    pub fn set_input(&mut self, player_index: usize, input: PresentInput<Game::InputAggregate>) {
         let current_input = &mut self.inputs[player_index];
 
         if current_input.is_authoritative() {
@@ -234,7 +234,7 @@ impl<Game: Play> Frame<Game> {
         self.need_to_compute_next_state = true;
     }
 
-    pub fn get_input(&self, player_index: usize) -> &FrameInput<Game> {
+    pub fn get_input(&self, player_index: usize) -> &FrameInput<Game::InputAggregate> {
         &self.inputs[player_index]
     }
 

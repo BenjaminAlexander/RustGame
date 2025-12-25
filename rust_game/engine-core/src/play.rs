@@ -5,7 +5,7 @@ use serde::Serialize;
 use serde::de::DeserializeOwned;
 use std::fmt::Debug;
 
-/// Defines the logic of a game.
+/// Defines the logic of a game
 pub trait Play: 'static + Send + Clone {
 
     /// A state of the game at a frame.

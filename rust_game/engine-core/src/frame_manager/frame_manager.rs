@@ -96,7 +96,7 @@ impl<Game: Play> FrameManager<Game> {
     pub fn insert_input(
         &self,
         coordinates: InputCoordinates,
-        input: PresentInput<Game>,
+        input: PresentInput<Game::InputAggregate>,
     ) -> Result<(), ()> {
         let event = Event::Input { coordinates, input };
         self.sender.send_event(event).map_err(unit_error)
@@ -119,7 +119,7 @@ enum Event<Game: Play> {
     },
     Input {
         coordinates: InputCoordinates,
-        input: PresentInput<Game>,
+        input: PresentInput<Game::InputAggregate>,
     },
     State {
         frame_index: FrameIndex,
@@ -229,7 +229,7 @@ impl<ManagerObserver: ObserveFrames> EventHandler<ManagerObserver> {
     fn set_input(
         &mut self,
         coordinates: &InputCoordinates,
-        input: PresentInput<<ManagerObserver as ObserveFrames>::Game>,
+        input: PresentInput<<<ManagerObserver as ObserveFrames>::Game as Play>::InputAggregate>,
     ) {
         #[cfg(debug_assertions)]
         match (&input, ManagerObserver::IS_SERVER) {

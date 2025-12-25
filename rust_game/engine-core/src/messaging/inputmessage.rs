@@ -14,11 +14,11 @@ use serde::{
 #[serde(bound = "")]
 pub struct ToServerInputMessage<Game: Play> {
     input_coordinates: InputCoordinates,
-    input: ClientProvidedInput<Game>,
+    input: ClientProvidedInput<Game::InputAggregate>,
 }
 
 impl<Game: Play> ToServerInputMessage<Game> {
-    pub fn new(input_coordinates: InputCoordinates, input: ClientProvidedInput<Game>) -> Self {
+    pub fn new(input_coordinates: InputCoordinates, input: ClientProvidedInput<Game::InputAggregate>) -> Self {
         Self {
             input_coordinates,
             input,
@@ -29,11 +29,11 @@ impl<Game: Play> ToServerInputMessage<Game> {
         &self.input_coordinates
     }
 
-    pub fn get_input(&self) -> &ClientProvidedInput<Game> {
+    pub fn get_input(&self) -> &ClientProvidedInput<Game::InputAggregate> {
         &self.input
     }
 
-    pub fn take(self) -> (InputCoordinates, ClientProvidedInput<Game>) {
+    pub fn take(self) -> (InputCoordinates, ClientProvidedInput<Game::InputAggregate>) {
         (self.input_coordinates, self.input)
     }
 }
@@ -42,18 +42,18 @@ impl<Game: Play> ToServerInputMessage<Game> {
 #[serde(bound = "")]
 pub struct ToClientInputMessage<Game: Play> {
     input_coordinates: InputCoordinates,
-    input: PresentInput<Game>,
+    input: PresentInput<Game::InputAggregate>,
 }
 
 impl<Game: Play> ToClientInputMessage<Game> {
-    pub fn new(input_coordinates: InputCoordinates, input: PresentInput<Game>) -> Self {
+    pub fn new(input_coordinates: InputCoordinates, input: PresentInput<Game::InputAggregate>) -> Self {
         Self {
             input_coordinates,
             input,
         }
     }
 
-    pub fn take(self) -> (InputCoordinates, PresentInput<Game>) {
+    pub fn take(self) -> (InputCoordinates, PresentInput<Game::InputAggregate>) {
         (self.input_coordinates, self.input)
     }
 }

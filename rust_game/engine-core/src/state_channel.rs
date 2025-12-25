@@ -23,7 +23,7 @@ enum Message<Game: Play> {
 
 /// An error describing why a [MostRecentState] is not available
 pub enum StateReceiverError {
-    /// The channel has been disconnected and no new states will be received.  
+    /// The channel has been disconnected and no new states will be received.
     /// This will occur when the game stops.
     Disconnected,
 

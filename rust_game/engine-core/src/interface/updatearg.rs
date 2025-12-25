@@ -11,16 +11,16 @@ use commons::time::TimeDuration;
 pub struct UpdateArg<'a, Game: Play> {
     initial_information: &'a InitialInformation<Game>,
     frame_index: FrameIndex,
-    frame_state: &'a FrameState<Game>,
-    frame_inputs: &'a Vec<FrameInput<Game>>,
+    frame_state: &'a FrameState<Game::State>,
+    frame_inputs: &'a Vec<FrameInput<Game::InputAggregate>>,
 }
 
 impl<'a, 'b, Game: Play> UpdateArg<'a, Game> {
     pub fn new(
         initial_information: &'a InitialInformation<Game>,
         step: FrameIndex,
-        state: &'a FrameState<Game>,
-        inputs: &'a Vec<FrameInput<Game>>,
+        state: &'a FrameState<Game::State>,
+        inputs: &'a Vec<FrameInput<Game::InputAggregate>>,
     ) -> Self {
         return Self {
             initial_information,
@@ -30,7 +30,7 @@ impl<'a, 'b, Game: Play> UpdateArg<'a, Game> {
         };
     }
 
-    pub fn get_frame_input(&self, player_index: usize) -> &FrameInput<Game> {
+    pub fn get_frame_input(&self, player_index: usize) -> &FrameInput<Game::InputAggregate> {
         return &self.frame_inputs[player_index];
     }
 
@@ -38,7 +38,7 @@ impl<'a, 'b, Game: Play> UpdateArg<'a, Game> {
         return self.frame_index;
     }
 
-    pub fn get_frame_state(&self) -> &'a FrameState<Game> {
+    pub fn get_frame_state(&self) -> &'a FrameState<Game::State> {
         return self.frame_state;
     }
 
@@ -48,17 +48,7 @@ impl<'a, 'b, Game: Play> UpdateArg<'a, Game> {
             .initial_information
             .get_server_config()
             .get_frame_duration()
-            .get_frame_duration()
-            .mul_f64(self.frame_index.usize() as f64);
+            .duration_from_start(&self.frame_index);
     }
 
-    //TODO: refactor to not use usize
-    pub fn get_next_step_duration_since_start(&self) -> TimeDuration {
-        return self
-            .initial_information
-            .get_server_config()
-            .get_frame_duration()
-            .get_frame_duration()
-            .mul_f64(self.frame_index.next().usize() as f64);
-    }
 }

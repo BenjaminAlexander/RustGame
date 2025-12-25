@@ -1,6 +1,6 @@
 use crate::Play;
 
-/// Defines how the client will aggregate [InputEvents][Play::InputEvent].
+/// Defines how the client will aggregate [InputEvents][Play::InputEvent]
 /// 
 /// The client receives input events in a stream.  These events are received at 
 /// any time between frames and must be aggregated into [InputAggregates][Play::InputAggregate] 
