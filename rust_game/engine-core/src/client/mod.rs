@@ -1,7 +1,7 @@
 mod clientcore;
 mod clientmanagerobserver;
 mod tcp_input;
-mod tcpoutput;
+mod tcp_output;
 mod udp_output;
 mod udpinput;
 

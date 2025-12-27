@@ -2,7 +2,7 @@ use crate::Play;
 use crate::aggregate_input::AggregateInput;
 use crate::client::clientmanagerobserver::ClientManagerObserver;
 use crate::client::tcp_input::TcpInput;
-use crate::client::tcpoutput::TcpOutput;
+use crate::client::tcp_output::TcpOutput;
 use crate::client::udp_output::UdpOutput;
 use crate::client::udpinput::UdpInput;
 use crate::frame_manager::{
@@ -116,22 +116,9 @@ struct EventHandler<Game: Play> {
     client_core: ClientCore<Game>,
     server_ip: Ipv4Addr,
     tcp_input: TcpInput,
-    tcp_output_sender: EventSender<()>,
+    tcp_output: TcpOutput,
     state_sender: StateSender<Game>,
     running_state: Option<RunningState<Game>>,
-}
-
-//TODO: don't start client core before hello
-struct RunningState<Game: Play> {
-    current_frame_index: FrameIndex,
-    time_of_current_frame: TimeValue,
-    frame_manager: FrameManager<Game>,
-    input_aggregator: Game::InputAggregator,
-    timer_service: TimerService<(), ClientCore<Game>>,
-    game_timer: GameTimerScheduler,
-    udp_input_sender: EventHandlerStopper,
-    udp_output: UdpOutput<Game>,
-    initial_information: InitialInformation<Game>,
 }
 
 impl<Game: Play> EventHandler<Game> {
@@ -145,7 +132,7 @@ impl<Game: Play> EventHandler<Game> {
         let socket_addr_v4 = SocketAddrV4::new(server_ip.clone(), Game::TCP_PORT);
         let socket_addr = SocketAddr::from(socket_addr_v4);
 
-        let (tcp_sender, tcp_reader) = factory.connect_tcp(socket_addr).unwrap();
+        let (tcp_stream, tcp_reader) = factory.connect_tcp(socket_addr).unwrap();
 
         let tcp_input = TcpInput::new(
             &factory,
@@ -154,19 +141,14 @@ impl<Game: Play> EventHandler<Game> {
             state_sender.clone(),
         )?;
 
-        let tcp_output_sender = EventHandlerBuilder::new_thread(
-            &factory,
-            "ClientTcpOutput".to_string(),
-            TcpOutput::new(tcp_sender),
-        )
-        .unwrap();
+        let tcp_output = TcpOutput::new(&factory, tcp_stream)?;
 
         return Ok(Self {
             factory,
             client_core,
             server_ip,
             tcp_input,
-            tcp_output_sender,
+            tcp_output,
             state_sender,
             running_state: None,
         });
@@ -416,5 +398,42 @@ impl<Game: Play> HandleEvent for EventHandler<Game> {
         if self.tcp_input.stop().is_err() {
             debug!("Error when sending stop to TCP Input");
         }
+
+        if self.tcp_output.stop().is_err() {
+            debug!("Error when sending stop to TCP Output");
+        }
+
+        if let Some(running_state) = self.running_state {
+            running_state.stop();
+        }
+    }
+}
+
+//TODO: don't start client core before hello
+struct RunningState<Game: Play> {
+    current_frame_index: FrameIndex,
+    time_of_current_frame: TimeValue,
+    frame_manager: FrameManager<Game>,
+    input_aggregator: Game::InputAggregator,
+    timer_service: TimerService<(), ClientCore<Game>>,
+    game_timer: GameTimerScheduler,
+    udp_input_sender: EventHandlerStopper,
+    udp_output: UdpOutput<Game>,
+    initial_information: InitialInformation<Game>,
+}
+
+impl<Game: Play> RunningState<Game> {
+    fn stop(&self) {
+        if self.frame_manager.stop().is_err() {
+            debug!("Error when sending stop to FrameManager");
+        }
+
+        if self.timer_service.stop().is_err() {
+            debug!("Error when sending stop to Time Service");
+        }
+
+        //TODO: stop udp_input_sender
+
+        //TODO: stop udp_output
     }
 }
