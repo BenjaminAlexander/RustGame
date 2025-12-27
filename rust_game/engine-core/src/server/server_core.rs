@@ -1,3 +1,4 @@
+use crate::server::tcp_connection_handler::TcpListener;
 use crate::{FrameIndex, Play};
 use crate::frame_manager::{
     FrameManager,
@@ -18,13 +19,9 @@ use crate::server::tcp_output::TcpOutput;
 use crate::server::udp_handler::UdpHandler;
 use crate::server::udp_input::UdpInput;
 use crate::server::udp_output::UdpOutput;
-use crate::server::{
-    ServerConfig,
-    TcpConnectionHandler,
-};
+use crate::server::ServerConfig;
 use crate::state_channel::StateSender;
 use commons::real_time::net::tcp::{
-    TcpListenerBuilder,
     TcpReader,
     TcpStream,
 };
@@ -36,7 +33,6 @@ use commons::real_time::timer_service::{
 use commons::real_time::{
     EventHandleResult,
     EventHandlerBuilder,
-    EventHandlerStopper,
     EventSender,
     Factory,
     HandleEvent,
@@ -128,8 +124,7 @@ struct ServerCoreEventHandler<Game: Play> {
     factory: Factory,
     server_core: ServerCore<Game>,
     state_sender: StateSender<Game>,
-    /// TODO: Don't expose EventHandlerStopper
-    tcp_listener_sender: EventHandlerStopper,
+    tcp_listener: TcpListener,
     tcp_inputs: Vec<TcpInput>,
     tcp_outputs: Vec<TcpOutput<Game>>,
     state: State<Game>,
@@ -190,20 +185,13 @@ impl<Game: Play> ServerCoreEventHandler<Game> {
         let socket_addr_v4 = SocketAddrV4::new(Ipv4Addr::new(127, 0, 0, 1), Game::TCP_PORT);
         let socket_addr = SocketAddr::from(socket_addr_v4);
 
-        //TODO: maybe use a builder and spawn all the threads together
-        // This spawns the tcp listener thread before the core thread is spawned
-        let tcp_listener_sender = TcpListenerBuilder::new_thread(
-            &factory,
-            "ServerTcpListener".to_string(),
-            socket_addr,
-            TcpConnectionHandler::<Game>::new(server_core.clone()),
-        )?;
+        let tcp_listener = TcpListener::new(&factory, socket_addr, server_core.clone())?;
 
         Ok(Self {
             factory,
             server_core,
             state_sender,
-            tcp_listener_sender,
+            tcp_listener,
             tcp_inputs: Vec::new(),
             tcp_outputs: Vec::new(),
             state: State::Listening(listening_core),

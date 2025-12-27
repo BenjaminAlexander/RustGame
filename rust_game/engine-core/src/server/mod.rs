@@ -1,6 +1,5 @@
 pub use self::server_config::ServerConfig;
 pub use self::server_core::ServerCore;
-pub use crate::server::tcp_connection_handler::TcpConnectionHandler;
 
 mod player_address;
 mod player_udp_address;

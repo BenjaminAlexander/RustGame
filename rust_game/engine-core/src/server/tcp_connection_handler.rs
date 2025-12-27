@@ -1,18 +1,36 @@
 use crate::Play;
 use crate::server::ServerCore;
+use commons::real_time::{EventHandlerStopper, Factory};
 use commons::real_time::net::tcp::{
-    HandleTcpConnection,
-    TcpReader,
-    TcpStream,
+    HandleTcpConnection, TcpListenerBuilder, TcpReader, TcpStream
 };
 use log::{
     info,
     warn,
 };
+use std::io::Error;
+use std::net::SocketAddr;
 use std::ops::ControlFlow;
 use std::ops::ControlFlow::*;
 
-pub struct TcpConnectionHandler<Game: Play> {
+pub struct TcpListener {
+    sender: EventHandlerStopper
+}
+
+impl TcpListener {
+    pub fn new<Game: Play>(factory: &Factory, socket_addr: SocketAddr, server_core: ServerCore<Game>) -> Result<Self, Error> {
+        let sender = TcpListenerBuilder::new_thread(
+            &factory,
+            "ServerTcpListener".to_string(),
+            socket_addr,
+            TcpConnectionHandler::<Game>::new(server_core),
+        )?;
+
+        Ok(Self{sender})
+    }
+}
+
+struct TcpConnectionHandler<Game: Play> {
     server_core: ServerCore<Game>,
 }
 
