@@ -11,13 +11,13 @@ use crate::messaging::{
     ToClientInputMessage,
     ToServerInputMessage,
 };
-use crate::server::clientaddress::ClientAddress;
-use crate::server::servermanagerobserver::ServerManagerObserver;
-use crate::server::tcpinput::TcpInput;
-use crate::server::tcpoutput::TcpOutput;
-use crate::server::udphandler::UdpHandler;
-use crate::server::udpinput::UdpInput;
-use crate::server::udpoutput::UdpOutput;
+use crate::server::player_address::PlayerAddress;
+use crate::server::server_frame_observer::ServerFrameObserver;
+use crate::server::tcp_input::TcpInput;
+use crate::server::tcp_output::TcpOutput;
+use crate::server::udp_handler::UdpHandler;
+use crate::server::udp_input::UdpInput;
+use crate::server::udp_output::UdpOutput;
 use crate::server::{
     ServerConfig,
     TcpConnectionHandler,
@@ -128,6 +128,7 @@ struct ServerCoreEventHandler<Game: Play> {
     factory: Factory,
     server_core: ServerCore<Game>,
     state_sender: StateSender<Game>,
+    /// TODO: Don't expose EventHandlerStopper
     tcp_listener_sender: EventHandlerStopper,
     tcp_inputs: Vec<TcpInput>,
     tcp_outputs: Vec<TcpOutput<Game>>,
@@ -330,7 +331,7 @@ impl<Game: Play> ServerCoreEventHandler<Game> {
         }
 
         let server_manager_observer =
-            ServerManagerObserver::<Game>::new(udp_outputs.clone(), self.state_sender.clone());
+            ServerFrameObserver::<Game>::new(udp_outputs.clone(), self.state_sender.clone());
 
         let frame_manager = FrameManager::new(
             &self.factory,
@@ -377,7 +378,7 @@ impl<Game: Play> ServerCoreEventHandler<Game> {
 
         let player_index = self.tcp_inputs.len();
 
-        let client_address = ClientAddress::new(player_index, tcp_stream.get_peer_addr().ip());
+        let client_address = PlayerAddress::new(player_index, tcp_stream.get_peer_addr().ip());
         listening_core.udp_handler.on_client_address(client_address);
 
         match TcpInput::new(&self.factory, player_index, tcp_reader) {

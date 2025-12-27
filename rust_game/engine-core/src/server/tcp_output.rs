@@ -4,7 +4,7 @@ use crate::interface::{
 };
 use crate::messaging::ToClientMessageTCP;
 use crate::server::ServerConfig;
-use crate::server::tcpoutput::Event::SendInitialInformation;
+use crate::server::tcp_output::Event::SendInitialInformation;
 use commons::real_time::net::tcp::TcpStream;
 use commons::real_time::{
     EventHandleResult,
@@ -20,6 +20,7 @@ use std::io::Error;
 use std::marker::PhantomData;
 
 pub struct TcpOutput<Game: Play> {
+    //TODO: add stop
     sender: EventSender<Event<Game>>,
 }
 

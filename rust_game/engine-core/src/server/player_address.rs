@@ -1,12 +1,12 @@
 use std::net::IpAddr;
 
 #[derive(Clone, Debug, Eq, Hash, PartialEq)]
-pub struct ClientAddress {
+pub struct PlayerAddress {
     player_index: usize,
     ip_address: IpAddr,
 }
 
-impl ClientAddress {
+impl PlayerAddress {
     pub fn new(player_index: usize, ip_address: IpAddr) -> Self {
         return Self {
             player_index,

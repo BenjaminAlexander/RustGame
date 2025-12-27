@@ -13,7 +13,7 @@ use std::io::Error;
 use std::ops::ControlFlow;
 
 pub struct TcpInput {
-    _stopper: EventHandlerStopper,
+    stopper: EventHandlerStopper,
 }
 
 impl TcpInput {
@@ -29,7 +29,7 @@ impl TcpInput {
             ReadHandler,
         )?;
 
-        Ok(TcpInput { _stopper: stopper })
+        Ok(TcpInput { stopper })
     }
 }
 

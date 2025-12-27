@@ -5,8 +5,8 @@ use crate::messaging::{
     UdpToServerMessage,
 };
 use crate::server::ServerCore;
-use crate::server::udphandler::UdpHandler;
-use crate::server::udpoutput::UdpOutput;
+use crate::server::udp_handler::UdpHandler;
+use crate::server::udp_output::UdpOutput;
 use commons::real_time::net::udp::{
     HandleUdpRead,
     UdpReadHandlerBuilder,
@@ -27,7 +27,7 @@ use std::net::SocketAddr;
 use std::ops::ControlFlow;
 
 pub struct UdpInput {
-    _stopper: EventHandlerStopper,
+    stopper: EventHandlerStopper,
 }
 
 impl UdpInput {
@@ -52,7 +52,7 @@ impl UdpInput {
             udp_input,
         )?;
 
-        Ok(Self { _stopper: stopper })
+        Ok(Self { stopper })
     }
 }
 

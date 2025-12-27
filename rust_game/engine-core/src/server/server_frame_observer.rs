@@ -7,17 +7,17 @@ use crate::frame_manager::{
     PresentInput,
 };
 use crate::messaging::ToClientInputMessage;
-use crate::server::udpoutput::UdpOutput;
+use crate::server::udp_output::UdpOutput;
 use crate::state_channel::StateSender;
 use log::warn;
 use std::ops::ControlFlow;
 
-pub struct ServerManagerObserver<Game: Play> {
+pub struct ServerFrameObserver<Game: Play> {
     udp_outputs: Vec<UdpOutput<Game>>,
     state_sender: StateSender<Game>,
 }
 
-impl<Game: Play> ServerManagerObserver<Game> {
+impl<Game: Play> ServerFrameObserver<Game> {
     pub fn new(udp_outputs: Vec<UdpOutput<Game>>, state_sender: StateSender<Game>) -> Self {
         return Self {
             udp_outputs,
@@ -26,7 +26,7 @@ impl<Game: Play> ServerManagerObserver<Game> {
     }
 }
 
-impl<Game: Play> ObserveFrames for ServerManagerObserver<Game> {
+impl<Game: Play> ObserveFrames for ServerFrameObserver<Game> {
     type Game = Game;
 
     const IS_SERVER: bool = true;

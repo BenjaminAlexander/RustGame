@@ -1,12 +1,12 @@
 use std::net::SocketAddr;
 
 #[derive(Clone, Debug)]
-pub struct RemoteUdpPeer {
+pub struct PlayerUdpAddress {
     player_index: usize,
     remote_peer: SocketAddr,
 }
 
-impl RemoteUdpPeer {
+impl PlayerUdpAddress {
     pub fn new(player_index: usize, remote_peer: SocketAddr) -> Self {
         return Self {
             player_index,

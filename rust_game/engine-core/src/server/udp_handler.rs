@@ -4,8 +4,8 @@ use crate::messaging::{
     MessageFragment,
     UdpToServerMessage,
 };
-use crate::server::clientaddress::ClientAddress;
-use crate::server::remoteudppeer::RemoteUdpPeer;
+use crate::server::player_address::PlayerAddress;
+use crate::server::player_udp_address::PlayerUdpAddress;
 use commons::real_time::TimeSource;
 use log::{
     info,
@@ -24,8 +24,8 @@ use std::net::{
 //TODO: This struct could be combined with server udp input
 pub struct UdpHandler<Game: Play> {
     time_source: TimeSource,
-    remote_peers: Vec<Option<RemoteUdpPeer>>,
-    client_addresses: Vec<Option<ClientAddress>>,
+    remote_peers: Vec<Option<PlayerUdpAddress>>,
+    client_addresses: Vec<Option<PlayerAddress>>,
     client_ip_set: HashSet<IpAddr>,
 
     //TODO: timeout fragments or fragment assemblers
@@ -46,7 +46,7 @@ impl<Game: Play> UdpHandler<Game> {
         };
     }
 
-    pub fn on_client_address(&mut self, client_address: ClientAddress) {
+    pub fn on_client_address(&mut self, client_address: PlayerAddress) {
         self.client_ip_set.insert(client_address.get_ip_address());
 
         let index = client_address.get_player_index();
@@ -66,7 +66,7 @@ impl<Game: Play> UdpHandler<Game> {
         &mut self,
         buf: &[u8],
         source: SocketAddr,
-    ) -> (Option<RemoteUdpPeer>, Option<UdpToServerMessage<Game>>) {
+    ) -> (Option<PlayerUdpAddress>, Option<UdpToServerMessage<Game>>) {
         //TODO: check source against valid sources
 
         if !self.client_ip_set.contains(&source.ip()) {
@@ -109,7 +109,7 @@ impl<Game: Play> UdpHandler<Game> {
         &mut self,
         message: &UdpToServerMessage<Game>,
         source: SocketAddr,
-    ) -> Option<RemoteUdpPeer> {
+    ) -> Option<PlayerUdpAddress> {
         let player_index = message.get_player_index();
 
         let source_is_valid = match self.client_addresses.get(player_index) {
@@ -135,12 +135,12 @@ impl<Game: Play> UdpHandler<Game> {
         &mut self,
         player_index: usize,
         remote_peer: SocketAddr,
-    ) -> Option<RemoteUdpPeer> {
+    ) -> Option<PlayerUdpAddress> {
         while self.remote_peers.len() <= player_index {
             self.remote_peers.push(None);
         }
 
-        let remote_peer = RemoteUdpPeer::new(player_index, remote_peer);
+        let remote_peer = PlayerUdpAddress::new(player_index, remote_peer);
 
         match &self.remote_peers[player_index] {
             None => {

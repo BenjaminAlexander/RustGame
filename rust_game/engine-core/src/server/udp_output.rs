@@ -9,7 +9,7 @@ use crate::messaging::{
     ToClientInputMessage,
     UdpToClientMessage,
 };
-use crate::server::remoteudppeer::RemoteUdpPeer;
+use crate::server::player_udp_address::PlayerUdpAddress;
 use commons::real_time::net::MAX_UDP_DATAGRAM_SIZE;
 use commons::real_time::net::udp::UdpSocket;
 use commons::real_time::{
@@ -71,7 +71,7 @@ impl<Game: Play> UdpOutput<Game> {
         self.sender.send_event(event).map_err(unit_error)
     }
 
-    pub fn set_remote_peer(&self, remote_udp_peer: RemoteUdpPeer) -> Result<(), ()> {
+    pub fn set_remote_peer(&self, remote_udp_peer: PlayerUdpAddress) -> Result<(), ()> {
         let event = Event::RemotePeer(remote_udp_peer);
         self.sender.send_event(event).map_err(unit_error)
     }
@@ -88,7 +88,7 @@ impl<Game: Play> UdpOutput<Game> {
 }
 
 enum Event<Game: Play> {
-    RemotePeer(RemoteUdpPeer),
+    RemotePeer(PlayerUdpAddress),
     PingRequest {
         time_received: TimeValue,
         ping_request: PingRequest,
@@ -101,7 +101,7 @@ struct EventHandler<Game: Play> {
     time_source: TimeSource,
     player_index: usize,
     socket: UdpSocket,
-    remote_peer: Option<RemoteUdpPeer>,
+    remote_peer: Option<PlayerUdpAddress>,
     fragmenter: Fragmenter,
     phantom: PhantomData<Game>,
 }
@@ -124,7 +124,7 @@ impl<Game: Play> EventHandler<Game> {
         })
     }
 
-    fn on_remote_peer(&mut self, remote_peer: RemoteUdpPeer) -> EventHandleResult {
+    fn on_remote_peer(&mut self, remote_peer: PlayerUdpAddress) -> EventHandleResult {
         //TODO: could this be checked before calling udpoutput?
         if self.player_index == remote_peer.get_player_index() {
             info!("Setting remote peer: {:?}", remote_peer);
