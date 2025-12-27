@@ -1,64 +1,32 @@
-use crate::client::{
-    ClientCore,
-    ClientCoreEvent,
-};
+use crate::client::ClientCore;
 use crate::{
     Play,
     StateReceiver,
 };
-use commons::real_time::{
-    EventHandlerBuilder,
-    EventSender,
-    Factory,
-};
-use std::net::Ipv4Addr;
-use std::str::FromStr;
+use commons::real_time::Factory;
+use std::io::Error;
 
 /// A sender to a locally running client
 pub struct Client<Game: Play> {
-    core_sender: EventSender<ClientCoreEvent<Game>>,
+    client_core: ClientCore<Game>,
 }
 
 impl<Game: Play> Client<Game> {
 
     /// Starts a new locally running client.  The client will immediately attempt 
     /// to connect to the server.
-    pub fn new(factory: Factory) -> (Self, StateReceiver<Game>) {
-        let client_core_thread_builder = EventHandlerBuilder::<ClientCore<Game>>::new(&factory);
+    pub fn new(factory: Factory) -> Result<(Self, StateReceiver<Game>), Error> {
+        let (state_sender, state_receiver) = StateReceiver::<Game>::new(&factory);
 
-        let (render_receiver_sender, render_receiver) = StateReceiver::<Game>::new(&factory);
+        let client_core = ClientCore::new(factory, state_sender)?;
 
-        let core_sender = client_core_thread_builder.get_sender().clone();
+        let client = Self { client_core };
 
-        client_core_thread_builder
-            .spawn_thread(
-                "ClientCore".to_string(),
-                ClientCore::<Game>::new(
-                    factory,
-                    Ipv4Addr::from_str("127.0.0.1").unwrap(),
-                    core_sender.clone(),
-                    render_receiver_sender,
-                ),
-            )
-            .unwrap();
-
-        let client = Self { core_sender };
-
-        return (client, render_receiver);
+        Ok((client, state_receiver))
     }
 
     /// Sends a new [InputEvent][Play::InputEvent] to the local client
-    pub fn send_input_event(
-        &self,
-        client_input_event: Game::InputEvent,
-    ) -> Result<(), Game::InputEvent> {
-        return match self
-            .core_sender
-            .send_event(ClientCoreEvent::OnInputEvent(client_input_event))
-        {
-            Ok(()) => Ok(()),
-            Err(ClientCoreEvent::OnInputEvent(client_input_event)) => Err(client_input_event),
-            _ => panic!("This should never happen."),
-        };
+    pub fn send_input_event(&self, input_event: Game::InputEvent) -> Result<(), ()> {
+        self.client_core.input_event(input_event)
     }
 }

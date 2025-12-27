@@ -1,3 +1,5 @@
+use std::io::Error;
+
 use crate::{
     Play,
     StateReceiver,
@@ -14,10 +16,10 @@ impl<Game: Play> Server<Game> {
 
     /// Starts a new locally running server.  The server immediately starts listening 
     /// for and accepting connections from clients. 
-    pub fn new(factory: Factory) -> Result<(Self, StateReceiver<Game>), ()> {
+    pub fn new(factory: Factory) -> Result<(Self, StateReceiver<Game>), Error> {
         let (state_sender, state_receiver) = StateReceiver::new(&factory);
 
-        let server_core = ServerCore::new(factory.clone(), state_sender).unwrap();
+        let server_core = ServerCore::new(factory.clone(), state_sender)?;
 
         let server = Self {
             server_core

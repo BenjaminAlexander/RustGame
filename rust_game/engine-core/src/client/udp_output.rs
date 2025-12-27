@@ -24,14 +24,14 @@ use log::error;
 use std::io::Error;
 use std::net::SocketAddr;
 
-enum UdpOutputEvent<Game: Play> {
+enum Event<Game: Play> {
     InputMessageEvent(ToServerInputMessage<Game>),
     FrameIndex(FrameIndex),
 }
 
 #[derive(Clone)]
 pub struct UdpOutput<Game: Play> {
-    sender: EventSender<UdpOutputEvent<Game>>,
+    sender: EventSender<Event<Game>>,
 }
 
 impl<Game: Play> UdpOutput<Game> {
@@ -66,14 +66,18 @@ impl<Game: Play> UdpOutput<Game> {
     }
 
     pub fn advance_frame_index(&self, frame_index: FrameIndex) -> Result<(), ()> {
-        let event = UdpOutputEvent::FrameIndex(frame_index);
+        let event = Event::FrameIndex(frame_index);
         self.sender.send_event(event).map_err(unit_error)
     }
 
     //TODO: add method/logic for non-authoritative inputs
     pub fn send_input(&self, input: ToServerInputMessage<Game>) -> Result<(), ()> {
-        let event = UdpOutputEvent::InputMessageEvent(input);
+        let event = Event::InputMessageEvent(input);
         self.sender.send_event(event).map_err(unit_error)
+    }
+
+    pub fn stop(&self) -> Result<(), ()> {
+        self.sender.send_stop_thread()
     }
 }
 
@@ -175,15 +179,15 @@ impl<Game: Play> EventHandler<Game> {
 }
 
 impl<Game: Play> HandleEvent for EventHandler<Game> {
-    type Event = UdpOutputEvent<Game>;
+    type Event = Event<Game>;
     type ThreadReturn = ();
 
     fn on_event(&mut self, _: ReceiveMetaData, event: Self::Event) -> EventHandleResult {
         match event {
-            UdpOutputEvent::InputMessageEvent(input_message) => {
+            Event::InputMessageEvent(input_message) => {
                 self.on_input_message(input_message)
             }
-            UdpOutputEvent::FrameIndex(frame_index) => self.on_frame_index(frame_index),
+            Event::FrameIndex(frame_index) => self.on_frame_index(frame_index),
         }
     }
     fn on_channel_empty(&mut self) -> EventHandleResult {

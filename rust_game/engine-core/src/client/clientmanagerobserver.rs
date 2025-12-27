@@ -1,5 +1,5 @@
 use crate::Play;
-use crate::client::udpoutput::UdpOutput;
+use crate::client::udp_output::UdpOutput;
 use crate::frame_manager::{
     ClientProvidedInput,
     FrameIndexAndState,

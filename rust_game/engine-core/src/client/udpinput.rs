@@ -1,5 +1,5 @@
 use crate::Play;
-use crate::client::ClientCoreEvent;
+use crate::client::ClientCore;
 use crate::frame_manager::FrameManager;
 use crate::game_time::{
     CompletedPing,
@@ -11,10 +11,7 @@ use crate::messaging::{
     UdpToClientMessage,
 };
 use commons::real_time::net::udp::HandleUdpRead;
-use commons::real_time::{
-    EventSender,
-    TimeSource,
-};
+use commons::real_time::TimeSource;
 use log::{
     error,
     warn,
@@ -26,20 +23,20 @@ use std::ops::ControlFlow;
 pub struct UdpInput<Game: Play> {
     time_source: TimeSource,
     fragment_assembler: FragmentAssembler,
-    core_sender: EventSender<ClientCoreEvent<Game>>,
+    client_core: ClientCore<Game>,
     frame_manager: FrameManager<Game>,
 }
 
 impl<Game: Play> UdpInput<Game> {
     pub fn new(
         time_source: TimeSource,
-        core_sender: EventSender<ClientCoreEvent<Game>>,
+        client_core: ClientCore<Game>,
         frame_manager: FrameManager<Game>,
     ) -> io::Result<Self> {
         return Ok(Self {
             //TODO: make this more configurable
             fragment_assembler: FragmentAssembler::new(time_source.clone(), 5),
-            core_sender,
+            client_core,
             frame_manager,
             time_source,
         });
@@ -47,12 +44,12 @@ impl<Game: Play> UdpInput<Game> {
 
     fn on_ping_response(&mut self, ping_response: PingResponse) -> ControlFlow<()> {
         let completed_ping = CompletedPing::new(ping_response, self.time_source.now());
-        match self
-            .core_sender
-            .send_event(ClientCoreEvent::CompletedPing(completed_ping))
-        {
+
+        let result = self.client_core.handle_complete_ping(completed_ping);
+
+        match result {
             Ok(()) => ControlFlow::Continue(()),
-            Err(_) => {
+            Err(()) => {
                 error!("Error sending completed ping");
                 ControlFlow::Break(())
             }

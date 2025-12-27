@@ -1,11 +1,10 @@
 use crate::Play;
 use crate::aggregate_input::AggregateInput;
-use crate::client::clientgametimeobserver::ClientGameTimerObserver;
 use crate::client::clientmanagerobserver::ClientManagerObserver;
 use crate::client::tcpinput::TcpInput;
 use crate::client::tcpoutput::TcpOutput;
 use crate::client::udpinput::UdpInput;
-use crate::client::udpoutput::UdpOutput;
+use crate::client::udp_output::UdpOutput;
 use crate::frame_manager::{
     ClientProvidedInput,
     FrameManager,
@@ -25,8 +24,7 @@ use crate::state_channel::StateSender;
 use commons::real_time::net::tcp::TcpReadHandlerBuilder;
 use commons::real_time::net::udp::UdpReadHandlerBuilder;
 use commons::real_time::timer_service::{
-    IdleTimerService,
-    TimerService,
+    IdleTimerService, TimerCallBack, TimerService
 };
 use commons::real_time::{
     EventHandleResult,
@@ -38,26 +36,81 @@ use commons::real_time::{
     ReceiveMetaData,
 };
 use commons::time::TimeValue;
+use commons::utils::unit_error;
 use log::{
     trace,
     warn,
 };
+use std::io::Error;
 use std::net::{
     Ipv4Addr,
     SocketAddr,
     SocketAddrV4,
 };
+use std::str::FromStr;
 
-pub enum ClientCoreEvent<Game: Play> {
+#[derive(Clone)]
+pub struct ClientCore<Game: Play> {
+    sender: EventSender<Event<Game>>
+}
+
+impl<Game: Play> ClientCore<Game> {
+    pub fn new(factory: Factory, state_sender: StateSender<Game>) -> Result<Self, Error> {
+        let builder = EventHandlerBuilder::new(&factory);
+
+        let sender = builder.get_sender().clone();
+
+        let client_core = Self { sender };
+
+        builder.spawn_thread(
+            "ClientCore".to_string(),
+            EventHandler::<Game>::new(
+                factory,
+                Ipv4Addr::from_str("127.0.0.1").unwrap(),
+                client_core.clone(),
+                state_sender,
+            ),
+        )?;
+
+        Ok(client_core)
+    }
+
+    //TODO: rename as handle_
+    pub fn input_event(&self, input_event: Game::InputEvent) -> Result<(), ()> {
+        let event = Event::OnInputEvent(input_event);
+        self.sender.send_event(event).map_err(unit_error)
+    }
+
+    pub fn set_initial_information(&self, initial_information: InitialInformation<Game>) -> Result<(), ()> {
+        let event = Event::OnInitialInformation(initial_information);
+        self.sender.send_event(event).map_err(unit_error)
+    }
+
+    pub fn handle_complete_ping(&self, completed_ping: CompletedPing) -> Result<(), ()> {
+        let event = Event::CompletedPing(completed_ping);
+        self.sender.send_event(event).map_err(unit_error)
+    }
+}
+
+impl<Game: Play> TimerCallBack for ClientCore<Game> {
+    fn tick(&mut self) {
+        let send_result = self.sender.send_event(Event::GameTimerTick);
+        if send_result.is_err() {
+            warn!("Failed to send GameTimerTick to the Core")
+        }
+    }
+}
+
+enum Event<Game: Play> {
     OnInitialInformation(InitialInformation<Game>),
     OnInputEvent(Game::InputEvent),
     GameTimerTick,
     CompletedPing(CompletedPing),
 }
 
-pub struct ClientCore<Game: Play> {
+struct EventHandler<Game: Play> {
     factory: Factory,
-    sender: EventSender<ClientCoreEvent<Game>>,
+    client_core: ClientCore<Game>,
     server_ip: Ipv4Addr,
     tcp_input_sender: EventHandlerStopper,
     tcp_output_sender: EventSender<()>,
@@ -71,18 +124,18 @@ struct RunningState<Game: Play> {
     time_of_current_frame: TimeValue,
     frame_manager: FrameManager<Game>,
     input_aggregator: Game::InputAggregator,
-    timer_service: TimerService<(), ClientGameTimerObserver<Game>>,
+    timer_service: TimerService<(), ClientCore<Game>>,
     game_timer: GameTimerScheduler,
     udp_input_sender: EventHandlerStopper,
     udp_output: UdpOutput<Game>,
     initial_information: InitialInformation<Game>,
 }
 
-impl<Game: Play> ClientCore<Game> {
+impl<Game: Play> EventHandler<Game> {
     pub fn new(
         factory: Factory,
         server_ip: Ipv4Addr,
-        sender: EventSender<ClientCoreEvent<Game>>,
+        client_core: ClientCore<Game>,
         state_sender: StateSender<Game>,
     ) -> Self {
         let socket_addr_v4 = SocketAddrV4::new(server_ip.clone(), Game::TCP_PORT);
@@ -90,7 +143,7 @@ impl<Game: Play> ClientCore<Game> {
 
         let (tcp_sender, tcp_receiver) = factory.connect_tcp(socket_addr).unwrap();
 
-        let tcp_input = TcpInput::<Game>::new(sender.clone(), state_sender.clone());
+        let tcp_input = TcpInput::<Game>::new(client_core.clone(), state_sender.clone());
 
         let tcp_input_sender = TcpReadHandlerBuilder::new_thread(
             &factory,
@@ -109,7 +162,7 @@ impl<Game: Play> ClientCore<Game> {
 
         return Self {
             factory,
-            sender,
+            client_core,
             server_ip,
             tcp_input_sender,
             tcp_output_sender,
@@ -159,7 +212,7 @@ impl<Game: Play> ClientCore<Game> {
             &mut idle_timer_service,
             initial_information.get_server_config(),
             Game::CLOCK_AVERAGE_SIZE,
-            ClientGameTimerObserver::new(self.sender.clone()),
+            self.client_core.clone(),
         );
 
         let timer_service = idle_timer_service.start(&self.factory).unwrap();
@@ -170,7 +223,7 @@ impl<Game: Play> ClientCore<Game> {
             udp_socket,
             UdpInput::<Game>::new(
                 self.factory.get_time_source().clone(),
-                self.sender.clone(),
+                self.client_core.clone(),
                 frame_manager.clone(),
             )
             .unwrap(),
@@ -343,26 +396,26 @@ impl<Game: Play> ClientCore<Game> {
     }
 }
 
-impl<Game: Play> HandleEvent for ClientCore<Game> {
-    type Event = ClientCoreEvent<Game>;
+impl<Game: Play> HandleEvent for EventHandler<Game> {
+    type Event = Event<Game>;
     type ThreadReturn = ();
 
     fn on_event(&mut self, _: ReceiveMetaData, event: Self::Event) -> EventHandleResult {
         return match event {
-            ClientCoreEvent::OnInitialInformation(initial_information) => {
+            Event::OnInitialInformation(initial_information) => {
                 self.on_initial_information(initial_information)
             }
-            ClientCoreEvent::OnInputEvent(client_input_event) => {
+            Event::OnInputEvent(client_input_event) => {
                 self.on_input_event(client_input_event)
             }
-            ClientCoreEvent::GameTimerTick => self.on_game_timer_tick(),
-            ClientCoreEvent::CompletedPing(completed_ping) => {
+            Event::GameTimerTick => self.on_game_timer_tick(),
+            Event::CompletedPing(completed_ping) => {
                 self.on_completed_ping(completed_ping)
             }
         };
     }
 
-    fn on_stop_self(self) -> Self::ThreadReturn {
-        return ();
+    fn on_stop_self(self) {
+        
     }
 }

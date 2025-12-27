@@ -95,7 +95,7 @@ pub fn main() {
     let factory = Factory::new();
 
     if let Some(true) = run_client {
-        let (client, render_receiver) = Client::<SimpleGameImpl>::new(factory.clone());
+        let (client, render_receiver) = Client::<SimpleGameImpl>::new(factory.clone()).unwrap();
 
         let client_window = SimpleWindow::new(window_name, render_receiver, Some(client));
 

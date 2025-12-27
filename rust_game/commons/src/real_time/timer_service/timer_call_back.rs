@@ -1,6 +1,11 @@
 use std::ops::DerefMut;
 
 pub trait TimerCallBack: Send + 'static {
+
+    //TODO: tick should be passed something that can
+    // * Reschedule the timer
+    // * Get the current time
+    // * Get the time this was scheduled for
     fn tick(&mut self);
 }
 

@@ -1,12 +1,8 @@
 mod clientcore;
-mod clientgametimeobserver;
 mod clientmanagerobserver;
 mod tcpinput;
 mod tcpoutput;
 mod udpinput;
-mod udpoutput;
+mod udp_output;
 
-pub use self::clientcore::{
-    ClientCore,
-    ClientCoreEvent,
-};
+pub use self::clientcore::ClientCore;
