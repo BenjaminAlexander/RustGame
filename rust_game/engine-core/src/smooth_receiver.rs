@@ -94,6 +94,10 @@ impl<T: Smooth> SmoothReceiver<T> {
             time_value: now,
         };
 
+        //TODO: Is always assigning the previous result here the right thing to do?
+        //      If the last smooth result is too close or even the same future state, 
+        //      the interpolation/extrapolation could be meaningless, or suffer from 
+        //      some strangeness from doing math with numbers that are too small
         self.last_result = Some(result_and_time);
 
         let last_result = &self.last_result.as_ref().unwrap();
