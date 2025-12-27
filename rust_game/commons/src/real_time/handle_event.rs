@@ -1,3 +1,5 @@
+use std::ops::ControlFlow;
+
 use crate::{
     real_time::ReceiveMetaData,
     time::TimeDuration,
@@ -9,6 +11,15 @@ pub enum EventHandleResult {
     WaitForNextEventOrTimeout(TimeDuration),
     TryForNextEvent,
     StopThread,
+}
+
+impl From<ControlFlow<()>> for EventHandleResult {
+    fn from(value: ControlFlow<()>) -> Self {
+        match value {
+            ControlFlow::Continue(()) => EventHandleResult::TryForNextEvent,
+            ControlFlow::Break(()) => EventHandleResult::StopThread,
+        }
+    }
 }
 
 pub trait HandleEvent: Send + Sized + 'static {

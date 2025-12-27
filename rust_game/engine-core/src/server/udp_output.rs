@@ -140,16 +140,13 @@ impl<Game: Play> EventHandler<Game> {
 
     fn on_completed_step(&mut self, state_message: FrameIndexAndState<Game>) -> EventHandleResult {
         let message = UdpToClientMessage::<Game>::StateMessage(state_message);
-        self.send_message(&message);
-        return EventHandleResult::TryForNextEvent;
+        EventHandleResult::from(self.send_message(&message))
     }
 
     //TODO: stash non-authoritative inputs and only send them if there is nothing else valuable to send
     fn on_input_message(&mut self, input_message: ToClientInputMessage<Game>) -> EventHandleResult {
         let message = UdpToClientMessage::<Game>::InputMessage(input_message);
-        self.send_message(&message);
-
-        return EventHandleResult::TryForNextEvent;
+        EventHandleResult::from(self.send_message(&message))
     }
 
     fn send_ping_response(
@@ -159,10 +156,7 @@ impl<Game: Play> EventHandler<Game> {
     ) -> EventHandleResult {
         let ping_response = PingResponse::new(ping_request, time_received, self.time_source.now());
         let ping_response = UdpToClientMessage::PingResponse(ping_response);
-        match self.send_message(&ping_response) {
-            ControlFlow::Continue(()) => EventHandleResult::TryForNextEvent,
-            ControlFlow::Break(()) => EventHandleResult::StopThread,
-        }
+        EventHandleResult::from(self.send_message(&ping_response))
     }
 
     fn send_message(&mut self, message: &UdpToClientMessage<Game>) -> ControlFlow<()> {

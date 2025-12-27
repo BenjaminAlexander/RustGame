@@ -20,8 +20,6 @@ use log::{
 use std::backtrace::Backtrace;
 use std::io::stdin;
 use std::path::PathBuf;
-use std::thread::sleep;
-use std::time::Duration;
 use std::{
     panic,
     process,
@@ -120,8 +118,5 @@ pub fn main() {
         server_window.run();
 
         server.stop().unwrap();
-
-        //TODO: remove
-        sleep(Duration::from_secs(60))
     }
 }
