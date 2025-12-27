@@ -1,4 +1,4 @@
-use crate::server::tcp_connection_handler::TcpListener;
+use crate::server::tcp_listener::TcpListener;
 use crate::{FrameIndex, Play};
 use crate::frame_manager::{
     FrameManager,
@@ -40,9 +40,7 @@ use commons::real_time::{
 };
 use commons::utils::unit_error;
 use log::{
-    error,
-    info,
-    warn,
+    debug, error, info, warn
 };
 use std::io::Error;
 use std::mem::take;
@@ -67,7 +65,7 @@ impl<Game: Play> ServerCore<Game> {
         };
 
         let event_handler =
-            ServerCoreEventHandler::new(factory, server_core.clone(), state_sender.clone())?;
+            EventHandler::new(factory, server_core.clone(), state_sender.clone())?;
 
         builder.spawn_thread("ServerCore".to_string(), event_handler)?;
 
@@ -78,6 +76,10 @@ impl<Game: Play> ServerCore<Game> {
         self.sender
             .send_event(ServerCoreEvent::StartGameEvent)
             .map_err(unit_error)
+    }
+
+    pub fn stop(&self) -> Result<(), ()> {
+        self.sender.send_stop_thread()
     }
 
     pub fn handle_tcp_connection(
@@ -120,18 +122,18 @@ enum ServerCoreEvent<Game: Play> {
     InputMessage(ToServerInputMessage<Game>),
 }
 
-struct ServerCoreEventHandler<Game: Play> {
+struct EventHandler<Game: Play> {
     factory: Factory,
     server_core: ServerCore<Game>,
     state_sender: StateSender<Game>,
     tcp_listener: TcpListener,
     tcp_inputs: Vec<TcpInput>,
     tcp_outputs: Vec<TcpOutput<Game>>,
-    state: State<Game>,
+    core_state: CoreState<Game>,
 }
 
 #[derive(Default)]
-enum State<Game: Play> {
+enum CoreState<Game: Play> {
     Listening(ListeningCore<Game>),
     Running(RunningCore<Game>),
     #[default]
@@ -144,14 +146,36 @@ struct ListeningCore<Game: Play> {
 
 struct RunningCore<Game: Play> {
     server_config: ServerConfig,
-    _timer_service: TimerService<(), ServerCore<Game>>,
+    timer_service: TimerService<(), ServerCore<Game>>,
     game_timer: GameTimerScheduler,
-    _udp_input: UdpInput,
-    udp_output_senders: Vec<UdpOutput<Game>>,
+    udp_input: UdpInput,
+    udp_outputs: Vec<UdpOutput<Game>>,
     frame_manager: FrameManager<Game>,
 }
 
-impl<Game: Play> HandleEvent for ServerCoreEventHandler<Game> {
+impl<Game: Play> RunningCore<Game> {
+    fn stop(self) {
+        if self.timer_service.stop().is_err() {
+            debug!("Error when sending stop to TimerService");
+        }
+
+        if self.udp_input.stop().is_err() {
+            debug!("Error when sending stop to UDP Input");
+        }
+
+        for udp_output in self.udp_outputs {
+            if udp_output.stop().is_err() {
+                debug!("Error when sending stop to UDP Output");
+            }
+        }
+
+        if self.frame_manager.stop().is_err() {
+            debug!("Error when sending stop to FrameManager");
+        }
+    }
+}
+
+impl<Game: Play> HandleEvent for EventHandler<Game> {
     type Event = ServerCoreEvent<Game>;
     type ThreadReturn = ();
 
@@ -166,12 +190,30 @@ impl<Game: Play> HandleEvent for ServerCoreEventHandler<Game> {
         }
     }
 
-    fn on_stop_self(self) -> Self::ThreadReturn {
-        ()
+    fn on_stop_self(self) {
+        if self.tcp_listener.stop().is_err() {
+            debug!("Error when sending stop to TCP Listener");
+        }
+
+        for tcp_input in self.tcp_inputs {
+            if tcp_input.stop().is_err() {
+                debug!("Error when sending stop to TCP Input");
+            }
+        }
+
+        for tcp_output in self.tcp_outputs {
+            if tcp_output.stop().is_err() {
+                debug!("Error when sending stop to TCP Output");
+            }
+        }
+
+        if let CoreState::Running(running_core) = self.core_state {
+            running_core.stop()
+        }
     }
 }
 
-impl<Game: Play> ServerCoreEventHandler<Game> {
+impl<Game: Play> EventHandler<Game> {
     pub fn new(
         factory: Factory,
         server_core: ServerCore<Game>,
@@ -194,13 +236,13 @@ impl<Game: Play> ServerCoreEventHandler<Game> {
             tcp_listener,
             tcp_inputs: Vec::new(),
             tcp_outputs: Vec::new(),
-            state: State::Listening(listening_core),
+            core_state: CoreState::Listening(listening_core),
         })
     }
 
     fn start_game(&mut self) -> EventHandleResult {
-        let listening_core = match take(&mut self.state) {
-            State::Listening(listening_core) => listening_core,
+        let listening_core = match take(&mut self.core_state) {
+            CoreState::Listening(listening_core) => listening_core,
             _ => {
                 warn!("The ServerCore is not in the expected state");
                 return EventHandleResult::TryForNextEvent;
@@ -328,12 +370,12 @@ impl<Game: Play> ServerCoreEventHandler<Game> {
         )
         .unwrap();
 
-        self.state = State::Running(RunningCore {
+        self.core_state = CoreState::Running(RunningCore {
             server_config,
-            _timer_service: timer_service,
+            timer_service,
             game_timer,
-            _udp_input: udp_input,
-            udp_output_senders: udp_outputs,
+            udp_input,
+            udp_outputs,
             frame_manager,
         });
 
@@ -351,8 +393,8 @@ impl<Game: Play> ServerCoreEventHandler<Game> {
         tcp_stream: TcpStream,
         tcp_reader: TcpReader,
     ) -> EventHandleResult {
-        let listening_core = match &mut self.state {
-            State::Listening(listening_core) => listening_core,
+        let listening_core = match &mut self.core_state {
+            CoreState::Listening(listening_core) => listening_core,
             _ => {
                 info!(
                     "TcpStream connected after the core has stated and will be dropped. {:?}",
@@ -389,8 +431,8 @@ impl<Game: Play> ServerCoreEventHandler<Game> {
     }
 
     fn on_game_timer_tick(&mut self) -> EventHandleResult {
-        let frame_index = match &mut self.state {
-            State::Running(running_core) => match running_core.game_timer.try_advance_frame_index()
+        let frame_index = match &mut self.core_state {
+            CoreState::Running(running_core) => match running_core.game_timer.try_advance_frame_index()
             {
                 Some(time_message) => time_message,
                 None => return EventHandleResult::TryForNextEvent,
@@ -405,8 +447,8 @@ impl<Game: Play> ServerCoreEventHandler<Game> {
     }
 
     fn send_new_frame_index(&mut self, frame_index: FrameIndex) -> EventHandleResult {
-        let running_core = match &mut self.state {
-            State::Running(running_core) => running_core,
+        let running_core = match &mut self.core_state {
+            CoreState::Running(running_core) => running_core,
             _ => {
                 warn!("ServerCore is not running");
                 return EventHandleResult::TryForNextEvent;
@@ -429,8 +471,8 @@ impl<Game: Play> ServerCoreEventHandler<Game> {
     fn on_input_message(&self, input_message: ToServerInputMessage<Game>) -> EventHandleResult {
         //TODO: is game started?
 
-        let running_core = match &self.state {
-            State::Running(running_core) => running_core,
+        let running_core = match &self.core_state {
+            CoreState::Running(running_core) => running_core,
             _ => {
                 warn!("ServerCore is not running");
                 return EventHandleResult::TryForNextEvent;
@@ -457,7 +499,7 @@ impl<Game: Play> ServerCoreEventHandler<Game> {
 
             let to_client_message = ToClientInputMessage::new(input_coordinates, present_input);
 
-            for (index, udp_output) in running_core.udp_output_senders.iter().enumerate() {
+            for (index, udp_output) in running_core.udp_outputs.iter().enumerate() {
                 // don't send non-authoritative inputs back to the original client
                 if !is_input_authoritative && index == input_coordinates.get_player_index() {
                     continue;

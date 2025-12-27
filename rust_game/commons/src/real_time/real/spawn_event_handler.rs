@@ -13,7 +13,7 @@ use crate::real_time::{
     ReceiveMetaData,
 };
 use crate::time::TimeDuration;
-use log::info;
+use log::{debug, info};
 
 type EventReceiver<T> = RealReceiver<EventOrStopThread<T>>;
 
@@ -30,7 +30,7 @@ pub fn spawn_event_handler<T: HandleEvent>(
 
         let return_value = run_event_handling_loop(receiver, event_handler);
 
-        info!(
+        debug!(
             "Thread function complete. Invoking callback: {}",
             thread_name
         );

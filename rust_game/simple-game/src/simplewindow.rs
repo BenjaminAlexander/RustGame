@@ -1,3 +1,6 @@
+use std::thread::sleep;
+use std::time::Duration;
+
 use crate::simple_smooth::SimpleSmooth;
 use crate::simplegameimpl::SimpleGameImpl;
 use crate::simpleinputevent::SimpleInputEvent;
@@ -47,7 +50,7 @@ impl SimpleWindow {
         };
     }
 
-    pub fn run(mut self) -> () {
+    pub fn run(mut self) {
         // Change this to OpenGL::V2_1 if not working.
         let opengl = OpenGL::V3_2;
 
@@ -73,7 +76,6 @@ impl SimpleWindow {
             }
         }
         info!("Done");
-        return ();
     }
 
     fn render(&mut self, gl_graphics: &mut GlGraphics, args: &RenderArgs) {

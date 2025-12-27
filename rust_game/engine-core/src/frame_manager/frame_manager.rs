@@ -109,6 +109,11 @@ impl<Game: Play> FrameManager<Game> {
 
         self.sender.send_event(event).map_err(unit_error)
     }
+
+    /// Stops the [FrameManager's][FrameManager] thread which calculates new States
+    pub fn stop(&self) -> Result<(), ()> {
+        self.sender.send_stop_thread()
+    }
 }
 
 enum Event<Game: Play> {

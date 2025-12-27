@@ -54,6 +54,10 @@ impl UdpInput {
 
         Ok(Self { stopper })
     }
+
+    pub fn stop(&self) -> Result<(), ()> {
+        self.stopper.send_stop_thread()
+    }
 }
 
 struct ReadHandler<Game: Play> {

@@ -85,6 +85,10 @@ impl<Game: Play> UdpOutput<Game> {
         let event = Event::SendCompletedStep(step_message);
         self.sender.send_event(event).map_err(unit_error)
     }
+
+    pub fn stop(&self) -> Result<(), ()> {
+        self.sender.send_stop_thread()
+    }
 }
 
 enum Event<Game: Play> {

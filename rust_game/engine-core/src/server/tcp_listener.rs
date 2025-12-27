@@ -28,6 +28,10 @@ impl TcpListener {
 
         Ok(Self{sender})
     }
+
+    pub fn stop(&self) -> Result<(), ()> {
+        self.sender.send_stop_thread()
+    }
 }
 
 struct TcpConnectionHandler<Game: Play> {

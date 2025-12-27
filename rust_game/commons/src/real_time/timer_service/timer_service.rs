@@ -221,7 +221,9 @@ impl<T: TimerCreationCallBack, U: TimerCallBack> TimerService<T, U> {
         );
     }
 
-    //TODO: add stop function
+    pub fn stop(&self) -> Result<(), ()> {
+        self.sender.send_stop_thread()
+    }
 }
 
 /// The set of events that can be sent to the [`TimerService`]'s thread.

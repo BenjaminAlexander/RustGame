@@ -31,4 +31,8 @@ impl<Game: Play> Server<Game> {
     pub fn start_game(&self) -> Result<(), ()> {
         self.server_core.start_game()
     }
+
+    pub fn stop(&self) -> Result<(), ()> {
+        self.server_core.stop()
+    }
 }

@@ -31,6 +31,10 @@ impl TcpInput {
 
         Ok(TcpInput { stopper })
     }
+
+    pub fn stop(&self) -> Result<(), ()> {
+        self.stopper.send_stop_thread()
+    }
 }
 
 pub struct ReadHandler;
