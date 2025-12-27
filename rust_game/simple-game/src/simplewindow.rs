@@ -82,7 +82,7 @@ impl SimpleWindow {
         let result = self.render_receiver.get_smoothed_state();
         let current_states = match result {
             Ok(current_states) => Some(current_states),
-            Err(StateReceiverError::StateNoYetAvailable) => None,
+            Err(StateReceiverError::NotYetAvailable) => None,
             Err(StateReceiverError::Disconnected) => panic!("Receiver Disconnected"),
         };
 

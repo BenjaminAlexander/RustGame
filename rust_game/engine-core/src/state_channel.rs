@@ -29,7 +29,7 @@ pub enum StateReceiverError {
 
     /// The channel is connect but not all necessary information or a state has
     /// been received.  This can occur breifly immediatly after the game starts.
-    StateNoYetAvailable,
+    NotYetAvailable,
 }
 
 /// A struct containing the most recent [State][Play::State] calculated by the game.
@@ -38,6 +38,7 @@ pub struct MostRecentState<'a, Game: Play> {
     start_time: &'a StartTime,
     initial_information: &'a InitialInformation<Game>,
     next_frame: &'a FrameIndexAndState<Game>,
+    is_state_new: bool
 }
 
 impl<'a, Game: Play> MostRecentState<'a, Game> {
@@ -64,6 +65,12 @@ impl<'a, Game: Play> MostRecentState<'a, Game> {
     /// future from now.
     pub fn get_frame_index_and_state(&self) -> &'a FrameIndexAndState<Game> {
         self.next_frame
+    }
+
+    /// Returns true if this is the first time this state has been returned by
+    /// the [StateReceiver]
+    pub fn is_state_new(&self) -> bool {
+        self.is_state_new
     }
 }
 
@@ -99,12 +106,18 @@ impl<Game: Play> StateReceiver<Game> {
 
     /// Gets the most recent state, if it is available
     pub fn get_most_recent_state(&mut self) -> Result<MostRecentState<'_, Game>, StateReceiverError> {
+
+        let mut is_state_new = false;
+
         loop {
             match self.receiver.try_recv() {
                 Ok(Message::InitialInformation(initial_information)) => {
                     self.on_initial_information(initial_information)
                 }
-                Ok(Message::State(step_message)) => self.on_step_message(step_message),
+                Ok(Message::State(frame_index_and_state)) => {
+                    self.on_frame_index_and_state(frame_index_and_state);
+                    is_state_new = true;
+                },
                 Ok(Message::StartTime(start_time)) => self.on_start_time(start_time),
                 Err(TryRecvError::Empty) => break,
                 Err(TryRecvError::Disconnected) => {
@@ -116,17 +129,17 @@ impl<Game: Play> StateReceiver<Game> {
 
         let start_time = match &self.start_time {
             Some(start_time) => start_time,
-            None => return Err(StateReceiverError::StateNoYetAvailable),
+            None => return Err(StateReceiverError::NotYetAvailable),
         };
 
         let initial_information = match &self.initial_information {
             Some(initial_information) => initial_information,
-            None => return Err(StateReceiverError::StateNoYetAvailable),
+            None => return Err(StateReceiverError::NotYetAvailable),
         };
 
         let next_frame = match &self.next_frame {
             Some(second_step) => second_step,
-            None => return Err(StateReceiverError::StateNoYetAvailable),
+            None => return Err(StateReceiverError::NotYetAvailable),
         };
 
         return Ok(MostRecentState {
@@ -134,6 +147,7 @@ impl<Game: Play> StateReceiver<Game> {
             start_time,
             initial_information,
             next_frame,
+            is_state_new
         });
     }
 
@@ -141,7 +155,7 @@ impl<Game: Play> StateReceiver<Game> {
         self.initial_information = Some(initial_information);
     }
 
-    fn on_step_message(&mut self, frame_index_and_state: FrameIndexAndState<Game>) {
+    fn on_frame_index_and_state(&mut self, frame_index_and_state: FrameIndexAndState<Game>) {
         let next_frame = match &mut self.next_frame {
             Some(next_frame) => next_frame,
             None => {

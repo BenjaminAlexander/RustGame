@@ -1,5 +1,5 @@
 use commons::time::TimeValue;
-use log::warn;
+use log::debug;
 
 use crate::{
     InitialInformation,
@@ -16,6 +16,13 @@ use crate::{
 /// perform smoothing of corrections and updates to the game's state.
 pub struct SmoothReceiver<T: Smooth> {
     state_receiver: StateReceiver<T::Game>,
+
+    /// This is the first point used in the smoothing.  Smoothing is a blend of
+    /// this point and the most recent state.
+    basis: Option<SmoothedStateAndTimeValue<T>>,
+
+    /// The most recent smoothing result.  This result is tracked to reset
+    /// [SmoothReceiver::basis] when a new state is received.
     last_result: Option<SmoothedStateAndTimeValue<T>>,
 }
 
@@ -41,6 +48,7 @@ impl<T: Smooth> SmoothReceiver<T> {
     pub fn new(state_receiver: StateReceiver<T::Game>) -> Self {
         Self {
             state_receiver,
+            basis: None,
             last_result: None,
         }
     }
@@ -49,9 +57,18 @@ impl<T: Smooth> SmoothReceiver<T> {
     pub fn get_smoothed_state(&mut self) -> Result<SmoothedState<'_, T>, StateReceiverError> {
         let current_states = self.state_receiver.get_most_recent_state()?;
 
+        // If this is the first time we're seeing this state, reset the basis of
+        // the smoothing.
+        //
+        // If we've seen this state before, continue using the current basis
+        // instead of exactly the previous result.
+        if self.basis.is_none() || (current_states.is_state_new() && self.last_result.is_some()) {
+            self.basis = self.last_result.take();
+        }
+
         let now = current_states.get_time_source().now();
 
-        let result = match &self.last_result {
+        let result = match &self.basis {
             Some(last_result_and_time) => {
                 let future_frame_time = current_states.get_start_time().get_frame_time_of_occurence(
                     current_states
@@ -68,7 +85,7 @@ impl<T: Smooth> SmoothReceiver<T> {
                 let weight = partial_duration.as_secs_f64() / duration.as_secs_f64();
 
                 if weight < 0.0 {
-                    warn!(
+                    debug!(
                         "Negetive smoothing weight {:?}\nLast Result: {:?}\nFuture State: {:?}",
                         weight, last_result_and_time.time_value, future_frame_time
                     );
@@ -94,10 +111,6 @@ impl<T: Smooth> SmoothReceiver<T> {
             time_value: now,
         };
 
-        //TODO: Is always assigning the previous result here the right thing to do?
-        //      If the last smooth result is too close or even the same future state, 
-        //      the interpolation/extrapolation could be meaningless, or suffer from 
-        //      some strangeness from doing math with numbers that are too small
         self.last_result = Some(result_and_time);
 
         let last_result = &self.last_result.as_ref().unwrap();
