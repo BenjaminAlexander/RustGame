@@ -1,7 +1,7 @@
 use crate::Play;
 use crate::aggregate_input::AggregateInput;
 use crate::client::clientmanagerobserver::ClientManagerObserver;
-use crate::client::tcpinput::TcpInput;
+use crate::client::tcp_input::TcpInput;
 use crate::client::tcpoutput::TcpOutput;
 use crate::client::udpinput::UdpInput;
 use crate::client::udp_output::UdpOutput;
@@ -21,7 +21,6 @@ use crate::interface::{
 };
 use crate::messaging::ToServerInputMessage;
 use crate::state_channel::StateSender;
-use commons::real_time::net::tcp::TcpReadHandlerBuilder;
 use commons::real_time::net::udp::UdpReadHandlerBuilder;
 use commons::real_time::timer_service::{
     IdleTimerService, TimerCallBack, TimerService
@@ -38,8 +37,7 @@ use commons::real_time::{
 use commons::time::TimeValue;
 use commons::utils::unit_error;
 use log::{
-    trace,
-    warn,
+    debug, trace, warn
 };
 use std::io::Error;
 use std::net::{
@@ -69,7 +67,7 @@ impl<Game: Play> ClientCore<Game> {
                 Ipv4Addr::from_str("127.0.0.1").unwrap(),
                 client_core.clone(),
                 state_sender,
-            ),
+            )?,
         )?;
 
         Ok(client_core)
@@ -112,7 +110,7 @@ struct EventHandler<Game: Play> {
     factory: Factory,
     client_core: ClientCore<Game>,
     server_ip: Ipv4Addr,
-    tcp_input_sender: EventHandlerStopper,
+    tcp_input: TcpInput,
     tcp_output_sender: EventSender<()>,
     state_sender: StateSender<Game>,
     running_state: Option<RunningState<Game>>,
@@ -132,26 +130,24 @@ struct RunningState<Game: Play> {
 }
 
 impl<Game: Play> EventHandler<Game> {
+
+    //TODO: remove
     pub fn new(
         factory: Factory,
         server_ip: Ipv4Addr,
         client_core: ClientCore<Game>,
         state_sender: StateSender<Game>,
-    ) -> Self {
+    ) -> Result<Self, Error> {
         let socket_addr_v4 = SocketAddrV4::new(server_ip.clone(), Game::TCP_PORT);
         let socket_addr = SocketAddr::from(socket_addr_v4);
 
-        let (tcp_sender, tcp_receiver) = factory.connect_tcp(socket_addr).unwrap();
+        let (tcp_sender, tcp_reader) = factory.connect_tcp(socket_addr).unwrap();
 
-        let tcp_input = TcpInput::<Game>::new(client_core.clone(), state_sender.clone());
-
-        let tcp_input_sender = TcpReadHandlerBuilder::new_thread(
-            &factory,
-            "ClientTcpInput".to_string(),
-            tcp_receiver,
-            tcp_input,
-        )
-        .unwrap();
+        let tcp_input = TcpInput::new(
+            &factory, tcp_reader, 
+            client_core.clone(), 
+            state_sender.clone()
+        )?;
 
         let tcp_output_sender = EventHandlerBuilder::new_thread(
             &factory,
@@ -160,15 +156,15 @@ impl<Game: Play> EventHandler<Game> {
         )
         .unwrap();
 
-        return Self {
+        return Ok(Self {
             factory,
             client_core,
             server_ip,
-            tcp_input_sender,
+            tcp_input,
             tcp_output_sender,
             state_sender,
             running_state: None,
-        };
+        });
     }
 
     fn on_initial_information(
@@ -416,6 +412,8 @@ impl<Game: Play> HandleEvent for EventHandler<Game> {
     }
 
     fn on_stop_self(self) {
-        
+        if self.tcp_input.stop().is_err() {
+            debug!("Error when sending stop to TCP Input");
+        }
     }
 }
