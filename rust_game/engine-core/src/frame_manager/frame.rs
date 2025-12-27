@@ -10,7 +10,10 @@ use crate::frame_manager::{
     ObserveFrames,
 };
 use crate::{
-    CurrentFrame, FrameIndex, InitialInformation, Play
+    CurrentFrame,
+    FrameIndex,
+    InitialInformation,
+    Play,
 };
 use std::mem::take;
 use std::ops::ControlFlow;
@@ -26,7 +29,7 @@ pub struct Frame<Game: Play> {
 }
 
 /// Contains a [InputAggregate][Play::InputAggregate] if it is present and describes its provenance
-/// 
+///
 /// This includes the condition where the game is still waiting for the input.
 #[derive(Clone, Debug, Default)]
 pub enum FrameInput<T> {
@@ -67,10 +70,10 @@ impl<T> FrameInput<T> {
     }
 }
 
-/// Contains a [InputAggregate][Play::InputAggregate] if it is present and 
+/// Contains a [InputAggregate][Play::InputAggregate] if it is present and
 /// describes its provenance
-/// 
-/// This enum only describes conditions where some information is known about 
+///
+/// This enum only describes conditions where some information is known about
 /// the input, even if the only thing known is that it is authoritatively missing.
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub enum PresentInput<T> {
@@ -161,7 +164,7 @@ impl<T> ClientProvidedInput<T> {
 }
 
 /// Contains a [State][Play::State] and describes its provenance
-/// 
+///
 /// TODO: use Arc for states
 #[derive(Debug)]
 pub enum FrameState<T> {

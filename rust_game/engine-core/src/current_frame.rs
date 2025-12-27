@@ -68,5 +68,4 @@ impl<'a, 'b, Game: Play> CurrentFrame<'a, Game> {
             .get_frame_duration()
             .duration_from_start(&self.frame_index.next());
     }
-
 }

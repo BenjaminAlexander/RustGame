@@ -1,26 +1,27 @@
-use crate::server::tcp_listener::TcpListener;
-use crate::{FrameIndex, Play};
 use crate::frame_manager::{
     FrameManager,
     PresentInput,
 };
 use crate::game_time::GameTimerScheduler;
-use crate::interface::{
-    InitialInformation,
-};
+use crate::interface::InitialInformation;
 use crate::messaging::{
     ToClientInputMessage,
     ToServerInputMessage,
 };
+use crate::server::ServerConfig;
 use crate::server::player_address::PlayerAddress;
 use crate::server::server_frame_observer::ServerFrameObserver;
 use crate::server::tcp_input::TcpInput;
+use crate::server::tcp_listener::TcpListener;
 use crate::server::tcp_output::TcpOutput;
 use crate::server::udp_handler::UdpHandler;
 use crate::server::udp_input::UdpInput;
 use crate::server::udp_output::UdpOutput;
-use crate::server::ServerConfig;
 use crate::state_channel::StateSender;
+use crate::{
+    FrameIndex,
+    Play,
+};
 use commons::real_time::net::tcp::{
     TcpReader,
     TcpStream,
@@ -40,7 +41,10 @@ use commons::real_time::{
 };
 use commons::utils::unit_error;
 use log::{
-    debug, error, info, warn
+    debug,
+    error,
+    info,
+    warn,
 };
 use std::io::Error;
 use std::mem::take;
@@ -64,8 +68,7 @@ impl<Game: Play> ServerCore<Game> {
             sender: builder.get_sender().clone(),
         };
 
-        let event_handler =
-            EventHandler::new(factory, server_core.clone(), state_sender.clone())?;
+        let event_handler = EventHandler::new(factory, server_core.clone(), state_sender.clone())?;
 
         builder.spawn_thread("ServerCore".to_string(), event_handler)?;
 
@@ -432,11 +435,12 @@ impl<Game: Play> EventHandler<Game> {
 
     fn on_game_timer_tick(&mut self) -> EventHandleResult {
         let frame_index = match &mut self.core_state {
-            CoreState::Running(running_core) => match running_core.game_timer.try_advance_frame_index()
-            {
-                Some(time_message) => time_message,
-                None => return EventHandleResult::TryForNextEvent,
-            },
+            CoreState::Running(running_core) => {
+                match running_core.game_timer.try_advance_frame_index() {
+                    Some(time_message) => time_message,
+                    None => return EventHandleResult::TryForNextEvent,
+                }
+            }
             _ => {
                 warn!("ServerCore is not running");
                 return EventHandleResult::TryForNextEvent;

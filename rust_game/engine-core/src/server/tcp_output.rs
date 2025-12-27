@@ -1,7 +1,5 @@
 use crate::Play;
-use crate::interface::{
-    InitialInformation,
-};
+use crate::interface::InitialInformation;
 use crate::messaging::ToClientMessageTCP;
 use crate::server::ServerConfig;
 use crate::server::tcp_output::Event::SendInitialInformation;

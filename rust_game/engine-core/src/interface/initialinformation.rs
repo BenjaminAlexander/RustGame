@@ -1,4 +1,8 @@
-use crate::{Play, game_time::FrameDuration, server::ServerConfig};
+use crate::{
+    Play,
+    game_time::FrameDuration,
+    server::ServerConfig,
+};
 use serde::{
     Deserialize,
     Serialize,

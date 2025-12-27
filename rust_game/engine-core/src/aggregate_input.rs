@@ -1,9 +1,9 @@
 use crate::Play;
 
 /// Defines how the client will aggregate [InputEvents][Play::InputEvent]
-/// 
-/// The client receives input events in a stream.  These events are received at 
-/// any time between frames and must be aggregated into [InputAggregates][Play::InputAggregate] 
+///
+/// The client receives input events in a stream.  These events are received at
+/// any time between frames and must be aggregated into [InputAggregates][Play::InputAggregate]
 /// that occur at the same time as a frame.
 ///
 /// Any time a input event is received, the aggregator should return a new

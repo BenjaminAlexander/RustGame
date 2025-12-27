@@ -2,7 +2,7 @@ mod clientcore;
 mod clientmanagerobserver;
 mod tcp_input;
 mod tcpoutput;
-mod udpinput;
 mod udp_output;
+mod udpinput;
 
 pub use self::clientcore::ClientCore;

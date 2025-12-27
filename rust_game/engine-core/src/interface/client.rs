@@ -12,8 +12,7 @@ pub struct Client<Game: Play> {
 }
 
 impl<Game: Play> Client<Game> {
-
-    /// Starts a new locally running client.  The client will immediately attempt 
+    /// Starts a new locally running client.  The client will immediately attempt
     /// to connect to the server.
     pub fn new(factory: Factory) -> Result<(Self, StateReceiver<Game>), Error> {
         let (state_sender, state_receiver) = StateReceiver::<Game>::new(&factory);

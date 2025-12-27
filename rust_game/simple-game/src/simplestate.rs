@@ -6,9 +6,9 @@ use crate::simpleserverinput::SimpleServerInput;
 use commons::geometry::twod::Vector2;
 use commons::time::TimeDuration;
 use engine_core::{
-    Play,
-    InitialInformation,
     CurrentFrame,
+    InitialInformation,
+    Play,
 };
 use graphics::Context;
 use opengl_graphics::GlGraphics;

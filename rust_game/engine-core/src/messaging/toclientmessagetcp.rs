@@ -1,4 +1,7 @@
-use crate::{Play, interface::InitialInformation};
+use crate::{
+    Play,
+    interface::InitialInformation,
+};
 use serde::{
     Deserialize,
     Serialize,

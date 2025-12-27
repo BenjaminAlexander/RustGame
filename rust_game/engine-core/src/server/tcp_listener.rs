@@ -1,8 +1,14 @@
 use crate::Play;
 use crate::server::ServerCore;
-use commons::real_time::{EventHandlerStopper, Factory};
 use commons::real_time::net::tcp::{
-    HandleTcpConnection, TcpListenerBuilder, TcpReader, TcpStream
+    HandleTcpConnection,
+    TcpListenerBuilder,
+    TcpReader,
+    TcpStream,
+};
+use commons::real_time::{
+    EventHandlerStopper,
+    Factory,
 };
 use log::{
     info,
@@ -14,11 +20,15 @@ use std::ops::ControlFlow;
 use std::ops::ControlFlow::*;
 
 pub struct TcpListener {
-    sender: EventHandlerStopper
+    sender: EventHandlerStopper,
 }
 
 impl TcpListener {
-    pub fn new<Game: Play>(factory: &Factory, socket_addr: SocketAddr, server_core: ServerCore<Game>) -> Result<Self, Error> {
+    pub fn new<Game: Play>(
+        factory: &Factory,
+        socket_addr: SocketAddr,
+        server_core: ServerCore<Game>,
+    ) -> Result<Self, Error> {
         let sender = TcpListenerBuilder::new_thread(
             &factory,
             "ServerTcpListener".to_string(),
@@ -26,7 +36,7 @@ impl TcpListener {
             TcpConnectionHandler::<Game>::new(server_core),
         )?;
 
-        Ok(Self{sender})
+        Ok(Self { sender })
     }
 
     pub fn stop(&self) -> Result<(), ()> {

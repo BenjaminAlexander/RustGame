@@ -3,8 +3,8 @@ use crate::aggregate_input::AggregateInput;
 use crate::client::clientmanagerobserver::ClientManagerObserver;
 use crate::client::tcp_input::TcpInput;
 use crate::client::tcpoutput::TcpOutput;
-use crate::client::udpinput::UdpInput;
 use crate::client::udp_output::UdpOutput;
+use crate::client::udpinput::UdpInput;
 use crate::frame_manager::{
     ClientProvidedInput,
     FrameManager,
@@ -16,14 +16,14 @@ use crate::game_time::{
     FrameIndex,
     GameTimerScheduler,
 };
-use crate::interface::{
-    InitialInformation,
-};
+use crate::interface::InitialInformation;
 use crate::messaging::ToServerInputMessage;
 use crate::state_channel::StateSender;
 use commons::real_time::net::udp::UdpReadHandlerBuilder;
 use commons::real_time::timer_service::{
-    IdleTimerService, TimerCallBack, TimerService
+    IdleTimerService,
+    TimerCallBack,
+    TimerService,
 };
 use commons::real_time::{
     EventHandleResult,
@@ -37,7 +37,9 @@ use commons::real_time::{
 use commons::time::TimeValue;
 use commons::utils::unit_error;
 use log::{
-    debug, trace, warn
+    debug,
+    trace,
+    warn,
 };
 use std::io::Error;
 use std::net::{
@@ -49,7 +51,7 @@ use std::str::FromStr;
 
 #[derive(Clone)]
 pub struct ClientCore<Game: Play> {
-    sender: EventSender<Event<Game>>
+    sender: EventSender<Event<Game>>,
 }
 
 impl<Game: Play> ClientCore<Game> {
@@ -79,7 +81,10 @@ impl<Game: Play> ClientCore<Game> {
         self.sender.send_event(event).map_err(unit_error)
     }
 
-    pub fn set_initial_information(&self, initial_information: InitialInformation<Game>) -> Result<(), ()> {
+    pub fn set_initial_information(
+        &self,
+        initial_information: InitialInformation<Game>,
+    ) -> Result<(), ()> {
         let event = Event::OnInitialInformation(initial_information);
         self.sender.send_event(event).map_err(unit_error)
     }
@@ -130,7 +135,6 @@ struct RunningState<Game: Play> {
 }
 
 impl<Game: Play> EventHandler<Game> {
-
     //TODO: remove
     pub fn new(
         factory: Factory,
@@ -144,9 +148,10 @@ impl<Game: Play> EventHandler<Game> {
         let (tcp_sender, tcp_reader) = factory.connect_tcp(socket_addr).unwrap();
 
         let tcp_input = TcpInput::new(
-            &factory, tcp_reader, 
-            client_core.clone(), 
-            state_sender.clone()
+            &factory,
+            tcp_reader,
+            client_core.clone(),
+            state_sender.clone(),
         )?;
 
         let tcp_output_sender = EventHandlerBuilder::new_thread(
@@ -401,13 +406,9 @@ impl<Game: Play> HandleEvent for EventHandler<Game> {
             Event::OnInitialInformation(initial_information) => {
                 self.on_initial_information(initial_information)
             }
-            Event::OnInputEvent(client_input_event) => {
-                self.on_input_event(client_input_event)
-            }
+            Event::OnInputEvent(client_input_event) => self.on_input_event(client_input_event),
             Event::GameTimerTick => self.on_game_timer_tick(),
-            Event::CompletedPing(completed_ping) => {
-                self.on_completed_ping(completed_ping)
-            }
+            Event::CompletedPing(completed_ping) => self.on_completed_ping(completed_ping),
         };
     }
 

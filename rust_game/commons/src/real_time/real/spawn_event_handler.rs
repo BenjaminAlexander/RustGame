@@ -13,7 +13,10 @@ use crate::real_time::{
     ReceiveMetaData,
 };
 use crate::time::TimeDuration;
-use log::{debug, info};
+use log::{
+    debug,
+    info,
+};
 
 type EventReceiver<T> = RealReceiver<EventOrStopThread<T>>;
 

@@ -70,13 +70,14 @@ impl<T: Smooth> SmoothReceiver<T> {
 
         let result = match &self.basis {
             Some(last_result_and_time) => {
-                let future_frame_time = current_states.get_start_time().get_frame_time_of_occurence(
-                    current_states
-                        .get_initial_information()
-                        .get_server_config()
-                        .get_frame_duration(),
-                    &current_states.get_frame_index_and_state().get_frame_index(),
-                );
+                let future_frame_time =
+                    current_states.get_start_time().get_frame_time_of_occurence(
+                        current_states
+                            .get_initial_information()
+                            .get_server_config()
+                            .get_frame_duration(),
+                        &current_states.get_frame_index_and_state().get_frame_index(),
+                    );
 
                 let duration = future_frame_time.duration_since(&last_result_and_time.time_value);
 

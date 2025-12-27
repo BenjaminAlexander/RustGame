@@ -3,8 +3,8 @@ use crate::simplegameimpl::SimpleGameImpl;
 use commons::geometry::twod::Vector2;
 use commons::time::TimeDuration;
 use engine_core::{
-    Play,
     CurrentFrame,
+    Play,
 };
 use graphics::rectangle;
 use graphics::*;

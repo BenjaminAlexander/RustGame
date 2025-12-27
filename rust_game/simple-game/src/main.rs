@@ -112,8 +112,7 @@ pub fn main() {
 
         server.start_game().unwrap();
 
-        let server_window =
-            SimpleWindow::new(window_name, state_receiver, None);
+        let server_window = SimpleWindow::new(window_name, state_receiver, None);
 
         server_window.run();
 

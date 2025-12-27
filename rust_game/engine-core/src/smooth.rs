@@ -36,7 +36,7 @@ pub struct SmoothArguments<'a, T: Smooth + ?Sized> {
     pub weight: f64,
 }
 
-/// Defines how errors between the last [SmoothedState][Smooth::SmoothedState] 
+/// Defines how errors between the last [SmoothedState][Smooth::SmoothedState]
 /// and a future [State][Play::State] are corrected
 pub trait Smooth {
     type Game: Play;

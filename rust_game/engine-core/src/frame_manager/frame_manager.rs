@@ -1,4 +1,3 @@
-use crate::{FrameIndex, Play};
 use crate::frame_manager::frame::{
     ClientProvidedInput,
     Frame,
@@ -8,8 +7,10 @@ use crate::frame_manager::{
     InputCoordinates,
     ObserveFrames,
 };
-use crate::interface::{
-    InitialInformation,
+use crate::interface::InitialInformation;
+use crate::{
+    FrameIndex,
+    Play,
 };
 use commons::real_time::{
     EventHandleResult,

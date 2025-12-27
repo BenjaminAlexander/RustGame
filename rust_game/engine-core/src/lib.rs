@@ -1,5 +1,4 @@
 #![doc = include_str!("../README.md")]
-
 #![deny(rustdoc::broken_intra_doc_links)]
 mod aggregate_input;
 mod client;
@@ -25,7 +24,7 @@ pub use self::frame_manager::{
 pub use self::game_time::{
     FrameDuration,
     FrameIndex,
-    StartTime
+    StartTime,
 };
 pub use self::play::Play;
 pub use self::smooth::Smooth;

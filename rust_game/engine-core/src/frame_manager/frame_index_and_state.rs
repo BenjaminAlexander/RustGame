@@ -1,7 +1,8 @@
 use std::cmp::Ordering;
 
 use crate::{
-    Play, game_time::FrameIndex
+    Play,
+    game_time::FrameIndex,
 };
 use serde::{
     Deserialize,

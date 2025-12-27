@@ -1,12 +1,13 @@
-use crate::{FrameIndex, Play};
 use crate::game_time::PingRequest;
-use crate::interface::{
-    InitialInformation,
-};
+use crate::interface::InitialInformation;
 use crate::messaging::{
     Fragmenter,
     ToServerInputMessage,
     UdpToServerMessage,
+};
+use crate::{
+    FrameIndex,
+    Play,
 };
 use commons::real_time::net::MAX_UDP_DATAGRAM_SIZE;
 use commons::real_time::net::udp::UdpSocket;
@@ -184,9 +185,7 @@ impl<Game: Play> HandleEvent for EventHandler<Game> {
 
     fn on_event(&mut self, _: ReceiveMetaData, event: Self::Event) -> EventHandleResult {
         match event {
-            Event::InputMessageEvent(input_message) => {
-                self.on_input_message(input_message)
-            }
+            Event::InputMessageEvent(input_message) => self.on_input_message(input_message),
             Event::FrameIndex(frame_index) => self.on_frame_index(frame_index),
         }
     }

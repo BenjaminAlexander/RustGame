@@ -2,8 +2,15 @@ use crate::Play;
 use crate::client::ClientCore;
 use crate::messaging::ToClientMessageTCP;
 use crate::state_channel::StateSender;
-use commons::real_time::{EventHandlerStopper, Factory};
-use commons::real_time::net::tcp::{HandleTcpRead, TcpReadHandlerBuilder, TcpReader};
+use commons::real_time::net::tcp::{
+    HandleTcpRead,
+    TcpReadHandlerBuilder,
+    TcpReader,
+};
+use commons::real_time::{
+    EventHandlerStopper,
+    Factory,
+};
 use log::{
     info,
     warn,
@@ -13,11 +20,10 @@ use std::ops::ControlFlow;
 use std::ops::ControlFlow::*;
 
 pub struct TcpInput {
-    stopper: EventHandlerStopper
+    stopper: EventHandlerStopper,
 }
 
 impl TcpInput {
-
     pub fn new<Game: Play>(
         factory: &Factory,
         tcp_reader: TcpReader,
@@ -37,7 +43,7 @@ impl TcpInput {
             tcp_read_handler,
         )?;
 
-        Ok(Self{stopper})
+        Ok(Self { stopper })
     }
 
     pub fn stop(&self) -> Result<(), ()> {
@@ -64,7 +70,9 @@ impl<Game: Play> HandleTcpRead for TcpReadHandler<Game> {
 
                 self.player_index = Some(initial_information_message.get_player_index());
 
-                let send_result = self.client_core.set_initial_information(initial_information_message.clone());
+                let send_result = self
+                    .client_core
+                    .set_initial_information(initial_information_message.clone());
 
                 if send_result.is_err() {
                     warn!("Failed to send InitialInformation to Core");

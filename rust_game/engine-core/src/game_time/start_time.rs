@@ -10,7 +10,7 @@ use crate::{
 };
 
 /// The time of occurance for frame index 0
-/// 
+///
 /// On clients, this time can float around to slave the client's clock to the server's clock.
 #[derive(Serialize, Deserialize, Clone, Debug, Copy)]
 pub struct StartTime(TimeValue);

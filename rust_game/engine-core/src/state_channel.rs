@@ -3,9 +3,7 @@ use std::sync::mpsc::TryRecvError;
 use crate::Play;
 use crate::frame_manager::FrameIndexAndState;
 use crate::game_time::StartTime;
-use crate::interface::{
-    InitialInformation,
-};
+use crate::interface::InitialInformation;
 use commons::real_time::{
     Factory,
     Receiver,
@@ -38,11 +36,10 @@ pub struct MostRecentState<'a, Game: Play> {
     start_time: &'a StartTime,
     initial_information: &'a InitialInformation<Game>,
     next_frame: &'a FrameIndexAndState<Game>,
-    is_state_new: bool
+    is_state_new: bool,
 }
 
 impl<'a, Game: Play> MostRecentState<'a, Game> {
-
     /// Returns the [TimeSource] used by the game
     pub fn get_time_source(&self) -> &'a TimeSource {
         self.time_source
@@ -58,9 +55,9 @@ impl<'a, Game: Play> MostRecentState<'a, Game> {
         self.initial_information
     }
 
-    /// Returns the newest [FrameIndex][super::FrameIndex] and [State][Play::State] 
+    /// Returns the newest [FrameIndex][super::FrameIndex] and [State][Play::State]
     /// that has been received from the game.
-    /// 
+    ///
     /// Typically, the time of occurance of this state will be slightly in the
     /// future from now.
     pub fn get_frame_index_and_state(&self) -> &'a FrameIndexAndState<Game> {
@@ -75,8 +72,8 @@ impl<'a, Game: Play> MostRecentState<'a, Game> {
 }
 
 /// A receiver for states produced by the game
-/// 
-/// The [StateReceiver] receives new states as they are calculated and tracks 
+///
+/// The [StateReceiver] receives new states as they are calculated and tracks
 /// the most recent state.  This typically means that the [StateReceiver] has one
 /// state occuring slightly in the future.
 pub struct StateReceiver<Game: Play> {
@@ -105,8 +102,9 @@ impl<Game: Play> StateReceiver<Game> {
     }
 
     /// Gets the most recent state, if it is available
-    pub fn get_most_recent_state(&mut self) -> Result<MostRecentState<'_, Game>, StateReceiverError> {
-
+    pub fn get_most_recent_state(
+        &mut self,
+    ) -> Result<MostRecentState<'_, Game>, StateReceiverError> {
         let mut is_state_new = false;
 
         loop {
@@ -117,7 +115,7 @@ impl<Game: Play> StateReceiver<Game> {
                 Ok(Message::State(frame_index_and_state)) => {
                     self.on_frame_index_and_state(frame_index_and_state);
                     is_state_new = true;
-                },
+                }
                 Ok(Message::StartTime(start_time)) => self.on_start_time(start_time),
                 Err(TryRecvError::Empty) => break,
                 Err(TryRecvError::Disconnected) => {
@@ -147,7 +145,7 @@ impl<Game: Play> StateReceiver<Game> {
             start_time,
             initial_information,
             next_frame,
-            is_state_new
+            is_state_new,
         });
     }
 
