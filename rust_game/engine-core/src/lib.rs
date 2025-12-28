@@ -16,6 +16,7 @@ mod state_channel;
 pub use {
     self::{
         aggregate_input::AggregateInput,
+        client::Client,
         current_frame::CurrentFrame,
         frame_manager::{
             ClientProvidedInput,
@@ -41,7 +42,6 @@ pub use {
         },
     },
     interface::{
-        Client,
         InitialInformation,
         Server,
     },
