@@ -4,7 +4,7 @@ use crate::client::clientmanagerobserver::ClientManagerObserver;
 use crate::client::tcp_input::TcpInput;
 use crate::client::tcp_output::TcpOutput;
 use crate::client::udp_output::UdpOutput;
-use crate::client::udpinput::UdpInput;
+use crate::client::udp_input::UdpInput;
 use crate::frame_manager::{
     ClientProvidedInput,
     FrameManager,
@@ -19,7 +19,6 @@ use crate::game_time::{
 use crate::interface::InitialInformation;
 use crate::messaging::ToServerInputMessage;
 use crate::state_channel::StateSender;
-use commons::real_time::net::udp::UdpReadHandlerBuilder;
 use commons::real_time::timer_service::{
     IdleTimerService,
     TimerCallBack,
@@ -28,7 +27,6 @@ use commons::real_time::timer_service::{
 use commons::real_time::{
     EventHandleResult,
     EventHandlerBuilder,
-    EventHandlerStopper,
     EventSender,
     Factory,
     HandleEvent,
@@ -200,18 +198,18 @@ impl<Game: Play> EventHandler<Game> {
 
         let timer_service = idle_timer_service.start(&self.factory).unwrap();
 
-        let udp_input_sender = UdpReadHandlerBuilder::new_thread(
-            &self.factory,
-            "ClientUdpInput".to_string(),
-            udp_socket,
-            UdpInput::<Game>::new(
-                self.factory.get_time_source().clone(),
-                self.client_core.clone(),
-                frame_manager.clone(),
-            )
-            .unwrap(),
-        )
-        .unwrap();
+        let udp_input = match UdpInput::new(
+            &self.factory, 
+            udp_socket, 
+            self.client_core.clone(), 
+            frame_manager.clone()
+        ) {
+            Ok(udp_input) => udp_input,
+            Err(err) => {
+                warn!("Error creating UdpInput: {:?}", err);
+                return EventHandleResult::StopThread;
+            },
+        };
 
         self.running_state = Some(RunningState {
             current_frame_index: FrameIndex::zero(),
@@ -220,7 +218,7 @@ impl<Game: Play> EventHandler<Game> {
             input_aggregator: Game::InputAggregator::new(),
             timer_service,
             game_timer,
-            udp_input_sender,
+            udp_input,
             udp_output,
             initial_information,
         });
@@ -417,7 +415,7 @@ struct RunningState<Game: Play> {
     input_aggregator: Game::InputAggregator,
     timer_service: TimerService<(), ClientCore<Game>>,
     game_timer: GameTimerScheduler,
-    udp_input_sender: EventHandlerStopper,
+    udp_input: UdpInput,
     udp_output: UdpOutput<Game>,
     initial_information: InitialInformation<Game>,
 }
@@ -432,8 +430,12 @@ impl<Game: Play> RunningState<Game> {
             debug!("Error when sending stop to Time Service");
         }
 
-        //TODO: stop udp_input_sender
+        if self.udp_input.stop().is_err() {
+            debug!("Error when sending stop to Udp Input");
+        }
 
-        //TODO: stop udp_output
+        if self.udp_output.stop().is_err() {
+            debug!("Error when sending stop to Udp Output");
+        }
     }
 }

@@ -10,38 +10,64 @@ use crate::messaging::{
     MessageFragment,
     UdpToClientMessage,
 };
-use commons::real_time::TimeSource;
-use commons::real_time::net::udp::HandleUdpRead;
+use commons::real_time::{EventHandlerStopper, Factory, TimeSource};
+use commons::real_time::net::udp::{HandleUdpRead, UdpReadHandlerBuilder, UdpSocket};
 use log::{
     error,
     warn,
 };
-use std::io;
+use std::io::Error;
 use std::net::SocketAddr;
 use std::ops::ControlFlow;
 
-pub struct UdpInput<Game: Play> {
+pub struct UdpInput {
+    stopper: EventHandlerStopper
+}
+
+impl UdpInput {
+    pub fn new<Game: Play>(
+        factory: &Factory,
+        udp_socket: UdpSocket,
+        client_core: ClientCore<Game>,
+        frame_manager: FrameManager<Game>,
+    ) -> Result<Self, Error> {
+
+        let time_source = factory.get_time_source();
+
+        let udp_read_handler = UdpReadHandler {
+            fragment_assembler: FragmentAssembler::new(
+                time_source.clone(), 
+                //TODO: make this more configurable
+                5
+            ),
+            client_core,
+            frame_manager,
+            time_source: time_source.clone(),
+        };
+
+        let stopper = UdpReadHandlerBuilder::new_thread(
+            factory,
+            "ClientUdpInput".to_string(),
+            udp_socket,
+            udp_read_handler,
+        )?;
+
+        Ok(Self{stopper})
+    }
+
+    pub fn stop(&self) -> Result<(), ()> {
+        self.stopper.send_stop_thread()
+    }
+}
+
+struct UdpReadHandler<Game: Play> {
     time_source: TimeSource,
     fragment_assembler: FragmentAssembler,
     client_core: ClientCore<Game>,
     frame_manager: FrameManager<Game>,
 }
 
-impl<Game: Play> UdpInput<Game> {
-    pub fn new(
-        time_source: TimeSource,
-        client_core: ClientCore<Game>,
-        frame_manager: FrameManager<Game>,
-    ) -> io::Result<Self> {
-        return Ok(Self {
-            //TODO: make this more configurable
-            fragment_assembler: FragmentAssembler::new(time_source.clone(), 5),
-            client_core,
-            frame_manager,
-            time_source,
-        });
-    }
-
+impl<Game: Play> UdpReadHandler<Game> {
     fn on_ping_response(&mut self, ping_response: PingResponse) -> ControlFlow<()> {
         let completed_ping = CompletedPing::new(ping_response, self.time_source.now());
 
@@ -87,7 +113,8 @@ impl<Game: Play> UdpInput<Game> {
     }
 }
 
-impl<Game: Play> HandleUdpRead for UdpInput<Game> {
+impl<Game: Play> HandleUdpRead for UdpReadHandler<Game> {
+    //TODO: check peer address against server address
     fn on_read(&mut self, peer_addr: SocketAddr, buf: &[u8]) -> ControlFlow<()> {
         let fragment = MessageFragment::from_vec(buf.to_vec());
 
