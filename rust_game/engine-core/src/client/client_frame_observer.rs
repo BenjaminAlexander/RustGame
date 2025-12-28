@@ -11,12 +11,12 @@ use crate::state_channel::StateSender;
 use log::warn;
 use std::ops::ControlFlow;
 
-pub struct ClientManagerObserver<Game: Play> {
+pub struct ClientFrameObserver<Game: Play> {
     state_sender: StateSender<Game>,
     udp_output: UdpOutput<Game>,
 }
 
-impl<Game: Play> ClientManagerObserver<Game> {
+impl<Game: Play> ClientFrameObserver<Game> {
     pub fn new(state_sender: StateSender<Game>, udp_output: UdpOutput<Game>) -> Self {
         Self {
             state_sender,
@@ -25,7 +25,7 @@ impl<Game: Play> ClientManagerObserver<Game> {
     }
 }
 
-impl<Game: Play> ObserveFrames for ClientManagerObserver<Game> {
+impl<Game: Play> ObserveFrames for ClientFrameObserver<Game> {
     type Game = Game;
 
     const IS_SERVER: bool = false;

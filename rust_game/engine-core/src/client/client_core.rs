@@ -1,6 +1,6 @@
 use crate::Play;
 use crate::aggregate_input::AggregateInput;
-use crate::client::clientmanagerobserver::ClientManagerObserver;
+use crate::client::client_frame_observer::ClientFrameObserver;
 use crate::client::tcp_input::TcpInput;
 use crate::client::tcp_output::TcpOutput;
 use crate::client::udp_input::UdpInput;
@@ -181,7 +181,7 @@ impl<Game: Play> EventHandler<Game> {
 
         //TODO: maybe consolidate building of the manager into its own method
         let client_manager_observer =
-            ClientManagerObserver::<Game>::new(self.state_sender.clone(), udp_output.clone());
+            ClientFrameObserver::<Game>::new(self.state_sender.clone(), udp_output.clone());
 
         let frame_manager = FrameManager::new(
             &self.factory,
