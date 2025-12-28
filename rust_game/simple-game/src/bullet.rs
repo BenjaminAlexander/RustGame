@@ -1,16 +1,22 @@
-use crate::SimpleGameImpl;
-use commons::geometry::twod::Vector2;
-use commons::time::TimeDuration;
-use engine_core::{
-    FrameIndex,
-    Play,
-};
-use graphics::rectangle;
-use graphics::*;
-use opengl_graphics::GlGraphics;
-use serde::{
-    Deserialize,
-    Serialize,
+use {
+    crate::SimpleGameImpl,
+    commons::{
+        geometry::twod::Vector2,
+        time::TimeDuration,
+    },
+    engine_core::{
+        FrameIndex,
+        Play,
+    },
+    graphics::{
+        rectangle,
+        *,
+    },
+    opengl_graphics::GlGraphics,
+    serde::{
+        Deserialize,
+        Serialize,
+    },
 };
 
 const MAX_RANGE: f64 = 5000 as f64;

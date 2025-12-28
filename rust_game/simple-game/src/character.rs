@@ -1,17 +1,25 @@
-use crate::bullet::Bullet;
-use crate::simplegameimpl::SimpleGameImpl;
-use commons::geometry::twod::Vector2;
-use commons::time::TimeDuration;
-use engine_core::{
-    CurrentFrame,
-    Play,
-};
-use graphics::rectangle;
-use graphics::*;
-use opengl_graphics::GlGraphics;
-use serde::{
-    Deserialize,
-    Serialize,
+use {
+    crate::{
+        bullet::Bullet,
+        simplegameimpl::SimpleGameImpl,
+    },
+    commons::{
+        geometry::twod::Vector2,
+        time::TimeDuration,
+    },
+    engine_core::{
+        CurrentFrame,
+        Play,
+    },
+    graphics::{
+        rectangle,
+        *,
+    },
+    opengl_graphics::GlGraphics,
+    serde::{
+        Deserialize,
+        Serialize,
+    },
 };
 
 #[derive(Serialize, Deserialize, Debug, Clone)]

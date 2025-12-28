@@ -1,9 +1,15 @@
-use crate::AggregateInput;
-use crate::CurrentFrame;
-use commons::time::TimeDuration;
-use serde::Serialize;
-use serde::de::DeserializeOwned;
-use std::fmt::Debug;
+use {
+    crate::{
+        AggregateInput,
+        CurrentFrame,
+    },
+    commons::time::TimeDuration,
+    serde::{
+        Serialize,
+        de::DeserializeOwned,
+    },
+    std::fmt::Debug,
+};
 
 /// Defines the logic of a game
 pub trait Play: 'static + Send + Clone {

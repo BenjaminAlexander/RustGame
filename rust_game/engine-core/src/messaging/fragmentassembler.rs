@@ -1,7 +1,11 @@
-use crate::messaging::MessageFragment;
-use commons::real_time::TimeSource;
-use commons::time::TimeValue;
-use std::collections::HashMap;
+use {
+    crate::messaging::MessageFragment,
+    commons::{
+        real_time::TimeSource,
+        time::TimeValue,
+    },
+    std::collections::HashMap,
+};
 
 pub struct FragmentAssembler {
     time_source: TimeSource,

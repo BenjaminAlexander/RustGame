@@ -1,16 +1,20 @@
-use num::traits::Pow;
-use serde::{
-    Deserialize,
-    Serialize,
-};
-use std::hash::{
-    Hash,
-    Hasher,
-};
-use std::ops::{
-    Add,
-    Mul,
-    Sub,
+use {
+    num::traits::Pow,
+    serde::{
+        Deserialize,
+        Serialize,
+    },
+    std::{
+        hash::{
+            Hash,
+            Hasher,
+        },
+        ops::{
+            Add,
+            Mul,
+            Sub,
+        },
+    },
 };
 
 #[derive(Serialize, Deserialize, Debug, Clone, Copy)]

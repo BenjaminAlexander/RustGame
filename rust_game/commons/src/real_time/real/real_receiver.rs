@@ -1,12 +1,16 @@
-use crate::real_time::{
-    ReceiveMetaData,
-    SendMetaData,
-    TimeSource,
-};
-use crate::time::TimeDuration;
-use std::sync::mpsc::{
-    self,
-    TryRecvError,
+use {
+    crate::{
+        real_time::{
+            ReceiveMetaData,
+            SendMetaData,
+            TimeSource,
+        },
+        time::TimeDuration,
+    },
+    std::sync::mpsc::{
+        self,
+        TryRecvError,
+    },
 };
 
 pub struct RealReceiver<T: Send> {
@@ -54,22 +58,23 @@ impl<T: Send> RealReceiver<T> {
 #[cfg(test)]
 mod tests {
 
-    use std::sync::mpsc::{
-        self,
-        RecvTimeoutError,
-    };
-
-    use crate::{
-        logging::setup_test_logging,
-        real_time::{
-            SendMetaData,
-            real::{
-                RealFactory,
-                RealReceiver,
-                RealSender,
+    use {
+        crate::{
+            logging::setup_test_logging,
+            real_time::{
+                SendMetaData,
+                real::{
+                    RealFactory,
+                    RealReceiver,
+                    RealSender,
+                },
             },
+            time::TimeDuration,
         },
-        time::TimeDuration,
+        std::sync::mpsc::{
+            self,
+            RecvTimeoutError,
+        },
     };
 
     #[test]

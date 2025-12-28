@@ -1,21 +1,26 @@
-use std::ops::ControlFlow;
-use std::sync::mpsc::{
-    self,
-    TryRecvError,
-};
-use std::thread::Builder;
-
-use crate::real_time::event_or_stop_thread::EventOrStopThread;
-use crate::real_time::real::RealReceiver;
-use crate::real_time::{
-    EventHandleResult,
-    HandleEvent,
-    ReceiveMetaData,
-};
-use crate::time::TimeDuration;
-use log::{
-    debug,
-    info,
+use {
+    crate::{
+        real_time::{
+            EventHandleResult,
+            HandleEvent,
+            ReceiveMetaData,
+            event_or_stop_thread::EventOrStopThread,
+            real::RealReceiver,
+        },
+        time::TimeDuration,
+    },
+    log::{
+        debug,
+        info,
+    },
+    std::{
+        ops::ControlFlow,
+        sync::mpsc::{
+            self,
+            TryRecvError,
+        },
+        thread::Builder,
+    },
 };
 
 type EventReceiver<T> = RealReceiver<EventOrStopThread<T>>;

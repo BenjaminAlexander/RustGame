@@ -1,12 +1,15 @@
-use serde::{
-    Deserialize,
-    Serialize,
+use {
+    crate::{
+        Play,
+        frame_manager::FrameIndexAndState,
+        game_time::PingResponse,
+        messaging::ToClientInputMessage,
+    },
+    serde::{
+        Deserialize,
+        Serialize,
+    },
 };
-
-use crate::Play;
-use crate::frame_manager::FrameIndexAndState;
-use crate::game_time::PingResponse;
-use crate::messaging::ToClientInputMessage;
 
 #[derive(Serialize, Deserialize, Debug)]
 #[serde(bound = "")]

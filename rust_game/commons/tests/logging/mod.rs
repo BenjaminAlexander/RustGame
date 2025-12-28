@@ -1,10 +1,12 @@
-use commons::{
-    logging::LoggingConfigBuilder,
-    test_utils::with_test_temp_dir,
-};
-use log::{
-    LevelFilter,
-    info,
+use {
+    commons::{
+        logging::LoggingConfigBuilder,
+        test_utils::with_test_temp_dir,
+    },
+    log::{
+        LevelFilter,
+        info,
+    },
 };
 
 #[test]

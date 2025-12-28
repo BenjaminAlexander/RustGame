@@ -1,28 +1,32 @@
-use crate::simple_smooth::SimpleSmooth;
-use crate::simplegameimpl::SimpleGameImpl;
-use crate::simpleinputevent::SimpleInputEvent;
-use engine_core::{
-    Client,
-    SmoothReceiver,
-    StateReceiver,
-    StateReceiverError,
-};
-use glutin_window::GlutinWindow as Window;
-use graphics::*;
-use log::info;
-use opengl_graphics::{
-    GlGraphics,
-    OpenGL,
-};
-use piston::input::Input as PistonInput;
-use piston::{
-    Event,
-    EventSettings,
-    Events,
-    Motion,
-    RenderArgs,
-    RenderEvent,
-    WindowSettings,
+use {
+    crate::{
+        simple_smooth::SimpleSmooth,
+        simplegameimpl::SimpleGameImpl,
+        simpleinputevent::SimpleInputEvent,
+    },
+    engine_core::{
+        Client,
+        SmoothReceiver,
+        StateReceiver,
+        StateReceiverError,
+    },
+    glutin_window::GlutinWindow as Window,
+    graphics::*,
+    log::info,
+    opengl_graphics::{
+        GlGraphics,
+        OpenGL,
+    },
+    piston::{
+        Event,
+        EventSettings,
+        Events,
+        Motion,
+        RenderArgs,
+        RenderEvent,
+        WindowSettings,
+        input::Input as PistonInput,
+    },
 };
 
 pub struct SimpleWindow {

@@ -1,23 +1,31 @@
-use crate::Play;
-use crate::client::ClientCore;
-use crate::messaging::ToClientMessageTCP;
-use crate::state_channel::StateSender;
-use commons::real_time::net::tcp::{
-    HandleTcpRead,
-    TcpReadHandlerBuilder,
-    TcpReader,
+use {
+    crate::{
+        Play,
+        client::ClientCore,
+        messaging::ToClientMessageTCP,
+        state_channel::StateSender,
+    },
+    commons::real_time::{
+        EventHandlerStopper,
+        Factory,
+        net::tcp::{
+            HandleTcpRead,
+            TcpReadHandlerBuilder,
+            TcpReader,
+        },
+    },
+    log::{
+        info,
+        warn,
+    },
+    std::{
+        io::Error,
+        ops::{
+            ControlFlow,
+            ControlFlow::*,
+        },
+    },
 };
-use commons::real_time::{
-    EventHandlerStopper,
-    Factory,
-};
-use log::{
-    info,
-    warn,
-};
-use std::io::Error;
-use std::ops::ControlFlow;
-use std::ops::ControlFlow::*;
 
 pub struct TcpInput {
     stopper: EventHandlerStopper,

@@ -1,16 +1,19 @@
-use commons::real_time::net::tcp::{
-    HandleTcpRead,
-    TcpReadHandlerBuilder,
-    TcpReader,
+use {
+    crate::messaging::ToServerMessageTCP,
+    commons::real_time::{
+        EventHandlerStopper,
+        Factory,
+        net::tcp::{
+            HandleTcpRead,
+            TcpReadHandlerBuilder,
+            TcpReader,
+        },
+    },
+    std::{
+        io::Error,
+        ops::ControlFlow,
+    },
 };
-use commons::real_time::{
-    EventHandlerStopper,
-    Factory,
-};
-
-use crate::messaging::ToServerMessageTCP;
-use std::io::Error;
-use std::ops::ControlFlow;
 
 pub struct TcpInput {
     stopper: EventHandlerStopper,

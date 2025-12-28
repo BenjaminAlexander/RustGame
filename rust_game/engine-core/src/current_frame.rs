@@ -1,11 +1,15 @@
-use crate::Play;
-use crate::frame_manager::{
-    FrameInput,
-    FrameState,
+use {
+    crate::{
+        Play,
+        frame_manager::{
+            FrameInput,
+            FrameState,
+        },
+        game_time::FrameIndex,
+        interface::InitialInformation,
+    },
+    commons::time::TimeDuration,
 };
-use crate::game_time::FrameIndex;
-use crate::interface::InitialInformation;
-use commons::time::TimeDuration;
 
 /// The current frame from which to calculate the next frame
 #[derive(Debug)]

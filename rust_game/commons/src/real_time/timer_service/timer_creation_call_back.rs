@@ -1,8 +1,8 @@
-use std::ops::Deref;
-
-use log::trace;
-
-use crate::real_time::timer_service::TimerId;
+use {
+    crate::real_time::timer_service::TimerId,
+    log::trace,
+    std::ops::Deref,
+};
 
 pub trait TimerCreationCallBack: Send + 'static {
     fn timer_created(&self, timer_id: &TimerId);

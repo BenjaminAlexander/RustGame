@@ -1,17 +1,22 @@
-use std::sync::mpsc::TryRecvError;
-
-use crate::Play;
-use crate::frame_manager::FrameIndexAndState;
-use crate::game_time::StartTime;
-use crate::interface::InitialInformation;
-use commons::real_time::{
-    Factory,
-    Receiver,
-    Sender,
-    TimeSource,
+use {
+    crate::{
+        Play,
+        frame_manager::FrameIndexAndState,
+        game_time::StartTime,
+        interface::InitialInformation,
+    },
+    commons::{
+        real_time::{
+            Factory,
+            Receiver,
+            Sender,
+            TimeSource,
+        },
+        utils::unit_error,
+    },
+    log::info,
+    std::sync::mpsc::TryRecvError,
 };
-use commons::utils::unit_error;
-use log::info;
 
 enum Message<Game: Play> {
     InitialInformation(InitialInformation<Game>),

@@ -1,14 +1,18 @@
-use crate::real_time::net::udp::HandleUdpRead;
-use crate::real_time::simulation::net::network_simulator::NetworkSimulator;
-use crate::real_time::{
-    EventHandleResult,
-    HandleEvent,
-    ReceiveMetaData,
-};
-use std::net::SocketAddr;
-use std::ops::ControlFlow::{
-    Break,
-    Continue,
+use {
+    crate::real_time::{
+        EventHandleResult,
+        HandleEvent,
+        ReceiveMetaData,
+        net::udp::HandleUdpRead,
+        simulation::net::network_simulator::NetworkSimulator,
+    },
+    std::{
+        net::SocketAddr,
+        ops::ControlFlow::{
+            Break,
+            Continue,
+        },
+    },
 };
 
 pub struct SimulatedUdpReadEventHandler<T: HandleUdpRead> {

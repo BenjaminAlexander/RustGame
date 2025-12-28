@@ -1,18 +1,19 @@
-use std::{
-    io::Error,
-    net::SocketAddr,
-};
-
-use crate::real_time::{
-    EventHandlerStopper,
-    EventSender,
-    Factory,
-    Receiver,
-    event_or_stop_thread::EventOrStopThread,
-    net::tcp::handle_tcp_connection::HandleTcpConnection,
-    real::net::tcp::TcpListenerEventHandler,
-    receiver::ReceiverImplementation,
-    simulation::net::NetworkSimulator,
+use {
+    crate::real_time::{
+        EventHandlerStopper,
+        EventSender,
+        Factory,
+        Receiver,
+        event_or_stop_thread::EventOrStopThread,
+        net::tcp::handle_tcp_connection::HandleTcpConnection,
+        real::net::tcp::TcpListenerEventHandler,
+        receiver::ReceiverImplementation,
+        simulation::net::NetworkSimulator,
+    },
+    std::{
+        io::Error,
+        net::SocketAddr,
+    },
 };
 
 pub struct TcpListenerBuilder {

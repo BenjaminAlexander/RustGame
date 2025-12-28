@@ -1,11 +1,13 @@
-use crate::geometry::twod::{
-    Intersection,
-    Line2,
-    Vector2,
-};
-use serde::{
-    Deserialize,
-    Serialize,
+use {
+    crate::geometry::twod::{
+        Intersection,
+        Line2,
+        Vector2,
+    },
+    serde::{
+        Deserialize,
+        Serialize,
+    },
 };
 
 #[derive(Serialize, Deserialize, Debug, Clone, Copy)]

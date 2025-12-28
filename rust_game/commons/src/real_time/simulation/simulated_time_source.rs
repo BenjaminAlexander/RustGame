@@ -1,9 +1,10 @@
-use std::sync::{
-    Arc,
-    Mutex,
+use {
+    crate::time::TimeValue,
+    std::sync::{
+        Arc,
+        Mutex,
+    },
 };
-
-use crate::time::TimeValue;
 
 #[derive(Clone)]
 pub struct SimulatedTimeSource {

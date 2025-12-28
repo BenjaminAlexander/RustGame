@@ -1,18 +1,20 @@
-use commons::{
-    logging::LoggingConfigBuilder,
-    real_time::{
-        Factory,
-        net::udp::UdpReadHandlerBuilder,
+use {
+    commons::{
+        logging::LoggingConfigBuilder,
+        real_time::{
+            Factory,
+            net::udp::UdpReadHandlerBuilder,
+        },
+        test_utils::AsyncExpects,
     },
-    test_utils::AsyncExpects,
-};
-use log::{
-    LevelFilter,
-    info,
-};
-use std::{
-    net::SocketAddr,
-    ops::ControlFlow,
+    log::{
+        LevelFilter,
+        info,
+    },
+    std::{
+        net::SocketAddr,
+        ops::ControlFlow,
+    },
 };
 
 const A_NUMBER: u8 = 42;

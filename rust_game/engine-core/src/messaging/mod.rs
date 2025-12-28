@@ -1,14 +1,16 @@
-pub use self::fragmentassembler::FragmentAssembler;
-pub use self::fragmenter::Fragmenter;
-pub use self::inputmessage::{
-    ToClientInputMessage,
-    ToServerInputMessage,
+pub use self::{
+    fragmentassembler::FragmentAssembler,
+    fragmenter::Fragmenter,
+    inputmessage::{
+        ToClientInputMessage,
+        ToServerInputMessage,
+    },
+    messagefragment::MessageFragment,
+    toclientmessagetcp::ToClientMessageTCP,
+    toservermessagetcp::ToServerMessageTCP,
+    udp_to_client_message::UdpToClientMessage,
+    udp_to_server_message::UdpToServerMessage,
 };
-pub use self::messagefragment::MessageFragment;
-pub use self::toclientmessagetcp::ToClientMessageTCP;
-pub use self::toservermessagetcp::ToServerMessageTCP;
-pub use self::udp_to_client_message::UdpToClientMessage;
-pub use self::udp_to_server_message::UdpToServerMessage;
 
 mod fragmentassembler;
 mod fragmenter;

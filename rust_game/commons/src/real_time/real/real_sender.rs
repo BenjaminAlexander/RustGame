@@ -1,10 +1,12 @@
-use crate::real_time::{
-    SendMetaData,
-    TimeSource,
-};
-use std::sync::mpsc::{
-    self,
-    SendError,
+use {
+    crate::real_time::{
+        SendMetaData,
+        TimeSource,
+    },
+    std::sync::mpsc::{
+        self,
+        SendError,
+    },
 };
 
 pub struct RealSender<T: Send> {

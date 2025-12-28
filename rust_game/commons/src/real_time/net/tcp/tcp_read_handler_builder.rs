@@ -1,19 +1,20 @@
-use std::io::Error;
-
-use crate::real_time::{
-    EventHandlerStopper,
-    EventSender,
-    Factory,
-    Receiver,
-    event_or_stop_thread::EventOrStopThread,
-    net::tcp::{
-        TcpReader,
-        handle_tcp_read::HandleTcpRead,
-        tcp_reader::TcpReaderImplementation,
+use {
+    crate::real_time::{
+        EventHandlerStopper,
+        EventSender,
+        Factory,
+        Receiver,
+        event_or_stop_thread::EventOrStopThread,
+        net::tcp::{
+            TcpReader,
+            handle_tcp_read::HandleTcpRead,
+            tcp_reader::TcpReaderImplementation,
+        },
+        real::net::tcp::RealTcpReaderEventHandler,
+        receiver::ReceiverImplementation,
+        simulation::net::tcp::SimulatedTcpReaderEventHandler,
     },
-    real::net::tcp::RealTcpReaderEventHandler,
-    receiver::ReceiverImplementation,
-    simulation::net::tcp::SimulatedTcpReaderEventHandler,
+    std::io::Error,
 };
 
 pub struct TcpReadHandlerBuilder {

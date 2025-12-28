@@ -16,15 +16,19 @@ pub mod net;
 pub mod simulation;
 pub mod timer_service;
 
-pub use self::event_handler_builder::EventHandlerBuilder;
-pub use self::event_handler_stopper::EventHandlerStopper;
-pub use self::event_sender::EventSender;
-pub use self::factory::Factory;
-pub use self::handle_event::EventHandleResult;
-pub use self::handle_event::HandleEvent;
-pub use self::receive_meta_data::ReceiveMetaData;
-pub use self::receiver::Receiver;
-pub use self::send_meta_data::SendMetaData;
-pub use self::sender::Sender;
-pub use self::single_thread_executor::SingleThreadExecutor;
-pub use self::time_source::TimeSource;
+pub use self::{
+    event_handler_builder::EventHandlerBuilder,
+    event_handler_stopper::EventHandlerStopper,
+    event_sender::EventSender,
+    factory::Factory,
+    handle_event::{
+        EventHandleResult,
+        HandleEvent,
+    },
+    receive_meta_data::ReceiveMetaData,
+    receiver::Receiver,
+    send_meta_data::SendMetaData,
+    sender::Sender,
+    single_thread_executor::SingleThreadExecutor,
+    time_source::TimeSource,
+};

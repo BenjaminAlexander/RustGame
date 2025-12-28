@@ -1,17 +1,19 @@
-use crate::{
-    SimpleInput,
-    SimpleInputEvent,
-    SimpleInputEventHandler,
-    SimpleState,
-    TimeDuration,
-};
-use engine_core::{
-    CurrentFrame,
-    Play,
-};
-use serde::{
-    Deserialize,
-    Serialize,
+use {
+    crate::{
+        SimpleInput,
+        SimpleInputEvent,
+        SimpleInputEventHandler,
+        SimpleState,
+        TimeDuration,
+    },
+    engine_core::{
+        CurrentFrame,
+        Play,
+    },
+    serde::{
+        Deserialize,
+        Serialize,
+    },
 };
 
 #[derive(Serialize, Deserialize, Debug, Clone)]

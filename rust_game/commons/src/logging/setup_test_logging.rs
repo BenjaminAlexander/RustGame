@@ -1,14 +1,14 @@
-use std::{
-    backtrace::Backtrace,
-    panic,
+use {
+    crate::logging::LoggingConfigBuilder,
+    log::{
+        LevelFilter,
+        error,
+    },
+    std::{
+        backtrace::Backtrace,
+        panic,
+    },
 };
-
-use log::{
-    LevelFilter,
-    error,
-};
-
-use crate::logging::LoggingConfigBuilder;
 
 pub fn setup_test_logging() {
     let orig_hook = panic::take_hook();

@@ -1,7 +1,9 @@
-use crate::simplestate::SimpleState;
-use serde::{
-    Deserialize,
-    Serialize,
+use {
+    crate::simplestate::SimpleState,
+    serde::{
+        Deserialize,
+        Serialize,
+    },
 };
 
 #[derive(Serialize, Deserialize, Debug, Clone)]

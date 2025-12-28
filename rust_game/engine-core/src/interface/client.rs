@@ -1,10 +1,12 @@
-use crate::client::ClientCore;
-use crate::{
-    Play,
-    StateReceiver,
+use {
+    crate::{
+        Play,
+        StateReceiver,
+        client::ClientCore,
+    },
+    commons::real_time::Factory,
+    std::io::Error,
 };
-use commons::real_time::Factory;
-use std::io::Error;
 
 /// A sender to a locally running client
 #[derive(Clone)]

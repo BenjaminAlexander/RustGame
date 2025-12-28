@@ -1,17 +1,18 @@
-use std::{
-    env,
-    fs,
-    panic::{
-        UnwindSafe,
-        catch_unwind,
-    },
-    path::{
-        Path,
-        PathBuf,
+use {
+    rand::Rng,
+    std::{
+        env,
+        fs,
+        panic::{
+            UnwindSafe,
+            catch_unwind,
+        },
+        path::{
+            Path,
+            PathBuf,
+        },
     },
 };
-
-use rand::Rng;
 
 fn create_test_tmp_dir_path() -> PathBuf {
     let mut rng = rand::thread_rng();

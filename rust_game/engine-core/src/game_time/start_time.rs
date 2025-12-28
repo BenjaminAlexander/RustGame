@@ -1,12 +1,13 @@
-use commons::time::TimeValue;
-use serde::{
-    Deserialize,
-    Serialize,
-};
-
-use crate::{
-    FrameIndex,
-    game_time::FrameDuration,
+use {
+    crate::{
+        FrameIndex,
+        game_time::FrameDuration,
+    },
+    commons::time::TimeValue,
+    serde::{
+        Deserialize,
+        Serialize,
+    },
 };
 
 /// The time of occurance for frame index 0

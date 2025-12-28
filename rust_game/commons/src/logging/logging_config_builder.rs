@@ -1,19 +1,27 @@
-use log::*;
-use log4rs::Handle;
-use log4rs::append::console::ConsoleAppender;
-use log4rs::append::file::FileAppender;
-use log4rs::config::runtime::{
-    ConfigBuilder,
-    RootBuilder,
+use {
+    log::*,
+    log4rs::{
+        Handle,
+        append::{
+            console::ConsoleAppender,
+            file::FileAppender,
+        },
+        config::{
+            Appender,
+            Config,
+            Root,
+            runtime::{
+                ConfigBuilder,
+                RootBuilder,
+            },
+        },
+        encode::pattern::PatternEncoder,
+    },
+    std::{
+        path::Path,
+        sync::Mutex,
+    },
 };
-use log4rs::config::{
-    Appender,
-    Config,
-    Root,
-};
-use log4rs::encode::pattern::PatternEncoder;
-use std::path::Path;
-use std::sync::Mutex;
 
 const CONSOLE_APPENDER: &str = "console_appender";
 const FILE_APPENDER: &str = "file_appender";

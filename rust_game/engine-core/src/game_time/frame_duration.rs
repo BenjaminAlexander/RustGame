@@ -1,10 +1,11 @@
-use commons::time::TimeDuration;
-use serde::{
-    Deserialize,
-    Serialize,
+use {
+    crate::FrameIndex,
+    commons::time::TimeDuration,
+    serde::{
+        Deserialize,
+        Serialize,
+    },
 };
-
-use crate::FrameIndex;
 
 /// The time duration between frames
 #[derive(Serialize, Deserialize, Clone, Debug, Copy)]

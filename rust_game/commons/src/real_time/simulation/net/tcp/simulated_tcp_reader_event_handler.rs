@@ -1,20 +1,26 @@
-use crate::real_time::event_or_stop_thread::EventOrStopThread;
-use crate::real_time::net::tcp::HandleTcpRead;
-use crate::real_time::simulation::SingleThreadedReceiver;
-use crate::real_time::simulation::receiver_link::ReceiveOrDisconnected;
-use crate::real_time::{
-    EventHandleResult,
-    EventHandlerBuilder,
-    HandleEvent,
-    ReceiveMetaData,
-};
-use std::io::{
-    Cursor,
-    Error,
-};
-use std::ops::ControlFlow::{
-    Break,
-    Continue,
+use {
+    crate::real_time::{
+        EventHandleResult,
+        EventHandlerBuilder,
+        HandleEvent,
+        ReceiveMetaData,
+        event_or_stop_thread::EventOrStopThread,
+        net::tcp::HandleTcpRead,
+        simulation::{
+            SingleThreadedReceiver,
+            receiver_link::ReceiveOrDisconnected,
+        },
+    },
+    std::{
+        io::{
+            Cursor,
+            Error,
+        },
+        ops::ControlFlow::{
+            Break,
+            Continue,
+        },
+    },
 };
 
 pub struct SimulatedTcpReaderEventHandler<T: HandleTcpRead> {

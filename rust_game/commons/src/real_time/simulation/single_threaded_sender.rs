@@ -1,9 +1,10 @@
-use std::sync::{
-    Arc,
-    Mutex,
+use {
+    crate::real_time::simulation::sender_link::SenderLink,
+    std::sync::{
+        Arc,
+        Mutex,
+    },
 };
-
-use crate::real_time::simulation::sender_link::SenderLink;
 
 pub struct SingleThreadedSender<T: Send> {
     link: Arc<Mutex<SenderLink<T>>>,

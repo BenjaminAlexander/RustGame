@@ -2,4 +2,5 @@ imports_layout = "Vertical"
 use_field_init_shorthand = true
 # use: cargo +nightly fmt
 unstable_features = true
-#group_imports = "StdExternalCrate"
+group_imports = "StdExternalCrate"
+imports_granularity = "One"

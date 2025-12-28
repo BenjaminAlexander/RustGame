@@ -1,11 +1,13 @@
-use crate::{
-    Play,
-    game_time::FrameDuration,
-    server::ServerConfig,
-};
-use serde::{
-    Deserialize,
-    Serialize,
+use {
+    crate::{
+        Play,
+        game_time::FrameDuration,
+        server::ServerConfig,
+    },
+    serde::{
+        Deserialize,
+        Serialize,
+    },
 };
 
 /// A collection of information that is known before the game starts

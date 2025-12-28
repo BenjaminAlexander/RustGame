@@ -1,11 +1,15 @@
-pub use self::frame::ClientProvidedInput;
-pub use self::frame::FrameInput;
-pub use self::frame::FrameState;
-pub use self::frame::PresentInput;
-pub use self::frame_index_and_state::FrameIndexAndState;
-pub use self::frame_manager::FrameManager;
-pub use self::input_coordinates::InputCoordinates;
-pub use self::observe_frames::ObserveFrames;
+pub use self::{
+    frame::{
+        ClientProvidedInput,
+        FrameInput,
+        FrameState,
+        PresentInput,
+    },
+    frame_index_and_state::FrameIndexAndState,
+    frame_manager::FrameManager,
+    input_coordinates::InputCoordinates,
+    observe_frames::ObserveFrames,
+};
 
 mod frame;
 mod frame_index_and_state;

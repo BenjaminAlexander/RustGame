@@ -1,9 +1,10 @@
-use std::net::{
-    Ipv4Addr,
-    SocketAddrV4,
+use {
+    crate::time::TimeDuration,
+    std::net::{
+        Ipv4Addr,
+        SocketAddrV4,
+    },
 };
-
-use crate::time::TimeDuration;
 
 pub const MAX_UDP_DATAGRAM_SIZE: usize = 1500;
 

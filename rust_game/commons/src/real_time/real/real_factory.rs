@@ -1,27 +1,35 @@
-use crate::real_time::factory::FactoryImplementation;
-use crate::real_time::net::tcp::{
-    TcpReader,
-    TcpStream,
+use {
+    crate::real_time::{
+        Factory,
+        Receiver,
+        SendMetaData,
+        Sender,
+        TimeSource,
+        factory::FactoryImplementation,
+        net::{
+            tcp::{
+                TcpReader,
+                TcpStream,
+            },
+            udp::UdpSocket,
+        },
+        real::{
+            RealReceiver,
+            RealSender,
+            net::{
+                tcp::RealTcpStream,
+                udp::RealUdpSocket,
+            },
+        },
+        receiver::ReceiverImplementation,
+        sender::SenderImplementation,
+    },
+    std::{
+        io::Error,
+        net::SocketAddr,
+        sync::mpsc,
+    },
 };
-use crate::real_time::net::udp::UdpSocket;
-use crate::real_time::real::net::tcp::RealTcpStream;
-use crate::real_time::real::net::udp::RealUdpSocket;
-use crate::real_time::real::{
-    RealReceiver,
-    RealSender,
-};
-use crate::real_time::receiver::ReceiverImplementation;
-use crate::real_time::sender::SenderImplementation;
-use crate::real_time::{
-    Factory,
-    Receiver,
-    SendMetaData,
-    Sender,
-    TimeSource,
-};
-use std::io::Error;
-use std::net::SocketAddr;
-use std::sync::mpsc;
 
 #[derive(Clone)]
 pub struct RealFactory {

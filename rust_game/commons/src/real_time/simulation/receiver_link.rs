@@ -1,17 +1,21 @@
-use crate::real_time::{
-    ReceiveMetaData,
-    SendMetaData,
-    TimeSource,
-};
-use log::{
-    error,
-    warn,
-};
-use std::collections::VecDeque;
-use std::sync::mpsc::TryRecvError;
-use std::sync::{
-    Arc,
-    Mutex,
+use {
+    crate::real_time::{
+        ReceiveMetaData,
+        SendMetaData,
+        TimeSource,
+    },
+    log::{
+        error,
+        warn,
+    },
+    std::{
+        collections::VecDeque,
+        sync::{
+            Arc,
+            Mutex,
+            mpsc::TryRecvError,
+        },
+    },
 };
 
 pub struct ReceiverLink<T> {
@@ -144,16 +148,17 @@ impl<T> Clone for ReceiverLink<T> {
 
 #[cfg(test)]
 mod tests {
-    use std::sync::{
-        Arc,
-        Mutex,
-        mpsc::TryRecvError,
-    };
-
-    use crate::real_time::simulation::{
-        SingleThreadedFactory,
-        SingleThreadedReceiver,
-        receiver_link::ReceiveOrDisconnected,
+    use {
+        crate::real_time::simulation::{
+            SingleThreadedFactory,
+            SingleThreadedReceiver,
+            receiver_link::ReceiveOrDisconnected,
+        },
+        std::sync::{
+            Arc,
+            Mutex,
+            mpsc::TryRecvError,
+        },
     };
 
     #[test]

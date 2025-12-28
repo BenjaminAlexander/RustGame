@@ -1,6 +1,10 @@
-use serde::Serialize;
-use serde::de::DeserializeOwned;
-use std::ops::ControlFlow;
+use {
+    serde::{
+        Serialize,
+        de::DeserializeOwned,
+    },
+    std::ops::ControlFlow,
+};
 
 pub trait HandleTcpRead: Send + 'static {
     type ReadType: Serialize + DeserializeOwned;

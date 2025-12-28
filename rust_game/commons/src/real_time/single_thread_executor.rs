@@ -1,15 +1,17 @@
-use crate::real_time::{
-    EventHandleResult,
-    EventHandlerBuilder,
-    EventSender,
-    Factory,
-    HandleEvent,
-    ReceiveMetaData,
-};
-use std::sync::{
-    Arc,
-    Condvar,
-    Mutex,
+use {
+    crate::real_time::{
+        EventHandleResult,
+        EventHandlerBuilder,
+        EventSender,
+        Factory,
+        HandleEvent,
+        ReceiveMetaData,
+    },
+    std::sync::{
+        Arc,
+        Condvar,
+        Mutex,
+    },
 };
 
 type Runnable = Box<dyn FnOnce() + Send>;

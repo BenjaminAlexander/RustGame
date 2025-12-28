@@ -1,10 +1,12 @@
-use commons::{
-    logging::LoggingConfigBuilder,
-    real_time::SingleThreadExecutor,
-    test_utils::AsyncExpects,
+use {
+    commons::{
+        logging::LoggingConfigBuilder,
+        real_time::SingleThreadExecutor,
+        test_utils::AsyncExpects,
+    },
+    log::LevelFilter,
+    std::panic::catch_unwind,
 };
-use log::LevelFilter;
-use std::panic::catch_unwind;
 
 #[test]
 fn test_async_expect() {

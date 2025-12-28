@@ -1,30 +1,38 @@
-use crate::real_time::event_or_stop_thread::EventOrStopThread;
-use crate::real_time::net::NET_POLLING_PERIOD;
-use crate::real_time::net::tcp::{
-    HandleTcpConnection,
-    TcpReader,
-    TcpStream,
-};
-use crate::real_time::real::RealReceiver;
-use crate::real_time::real::net::tcp::RealTcpStream;
-use crate::real_time::{
-    EventHandleResult,
-    HandleEvent,
-    ReceiveMetaData,
-    real,
-};
-use log::error;
-use std::io::{
-    self,
-    Error,
-};
-use std::net::{
-    SocketAddr,
-    TcpListener,
-};
-use std::ops::ControlFlow::{
-    Break,
-    Continue,
+use {
+    crate::real_time::{
+        EventHandleResult,
+        HandleEvent,
+        ReceiveMetaData,
+        event_or_stop_thread::EventOrStopThread,
+        net::{
+            NET_POLLING_PERIOD,
+            tcp::{
+                HandleTcpConnection,
+                TcpReader,
+                TcpStream,
+            },
+        },
+        real::{
+            self,
+            RealReceiver,
+            net::tcp::RealTcpStream,
+        },
+    },
+    log::error,
+    std::{
+        io::{
+            self,
+            Error,
+        },
+        net::{
+            SocketAddr,
+            TcpListener,
+        },
+        ops::ControlFlow::{
+            Break,
+            Continue,
+        },
+    },
 };
 
 pub struct TcpListenerEventHandler<T: HandleTcpConnection> {
@@ -137,18 +145,18 @@ impl<T: HandleTcpConnection> HandleEvent for TcpListenerEventHandler<T> {
 
 #[cfg(test)]
 mod tests {
-    use std::net::TcpStream;
-
-    use io::ErrorKind;
-    use log::LevelFilter;
-
-    use super::*;
-    use crate::{
-        logging::LoggingConfigBuilder,
-        real_time::net::{
-            LOCAL_EPHEMERAL_SOCKET_ADDR_V4,
-            tcp::TcpConnectionHandler,
+    use {
+        super::*,
+        crate::{
+            logging::LoggingConfigBuilder,
+            real_time::net::{
+                LOCAL_EPHEMERAL_SOCKET_ADDR_V4,
+                tcp::TcpConnectionHandler,
+            },
         },
+        io::ErrorKind,
+        log::LevelFilter,
+        std::net::TcpStream,
     };
 
     #[test]

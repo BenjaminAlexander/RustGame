@@ -1,13 +1,14 @@
-use crate::{
-    Play,
-    game_time::PingRequest,
+use {
+    super::ToServerInputMessage,
+    crate::{
+        Play,
+        game_time::PingRequest,
+    },
+    serde::{
+        Deserialize,
+        Serialize,
+    },
 };
-use serde::{
-    Deserialize,
-    Serialize,
-};
-
-use super::ToServerInputMessage;
 
 #[derive(Serialize, Deserialize, Debug)]
 #[serde(bound = "")]

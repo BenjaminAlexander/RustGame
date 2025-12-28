@@ -1,5 +1,7 @@
-pub use self::server_config::ServerConfig;
-pub use self::server_core::ServerCore;
+pub use self::{
+    server_config::ServerConfig,
+    server_core::ServerCore,
+};
 
 mod player_address;
 mod player_udp_address;

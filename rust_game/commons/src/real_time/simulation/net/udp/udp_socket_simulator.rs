@@ -1,9 +1,13 @@
-use crate::real_time::simulation::net::host_simulator::HostSimulator;
-use std::io::Error;
-use std::net::SocketAddr;
-use std::sync::{
-    Arc,
-    Mutex,
+use {
+    crate::real_time::simulation::net::host_simulator::HostSimulator,
+    std::{
+        io::Error,
+        net::SocketAddr,
+        sync::{
+            Arc,
+            Mutex,
+        },
+    },
 };
 
 #[derive(Clone)]

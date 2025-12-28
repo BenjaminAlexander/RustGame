@@ -1,14 +1,18 @@
-use log::{
-    error,
-    info,
-};
-use std::fmt::Debug;
-use std::ops::Deref;
-use std::ptr::addr_eq;
-use std::sync::{
-    Arc,
-    Condvar,
-    Mutex,
+use {
+    log::{
+        error,
+        info,
+    },
+    std::{
+        fmt::Debug,
+        ops::Deref,
+        ptr::addr_eq,
+        sync::{
+            Arc,
+            Condvar,
+            Mutex,
+        },
+    },
 };
 
 //TODO: Add a wait_or_timeout variant to panic if expects are not met by a timeout

@@ -1,7 +1,9 @@
-use commons::geometry::twod::Vector2;
-use serde::{
-    Deserialize,
-    Serialize,
+use {
+    commons::geometry::twod::Vector2,
+    serde::{
+        Deserialize,
+        Serialize,
+    },
 };
 
 #[derive(Serialize, Deserialize, Debug, Clone)]

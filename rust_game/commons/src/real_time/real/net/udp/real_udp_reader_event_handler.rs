@@ -1,24 +1,30 @@
-use crate::real_time::event_or_stop_thread::EventOrStopThread;
-use crate::real_time::net::MAX_UDP_DATAGRAM_SIZE;
-use crate::real_time::net::udp::HandleUdpRead;
-use crate::real_time::real::net::udp::RealUdpSocket;
-use crate::real_time::real::{
-    self,
-    RealReceiver,
-};
-use crate::real_time::{
-    EventHandleResult,
-    HandleEvent,
-    ReceiveMetaData,
-};
-use log::warn;
-use std::io::{
-    Error,
-    ErrorKind,
-};
-use std::ops::ControlFlow::{
-    Break,
-    Continue,
+use {
+    crate::real_time::{
+        EventHandleResult,
+        HandleEvent,
+        ReceiveMetaData,
+        event_or_stop_thread::EventOrStopThread,
+        net::{
+            MAX_UDP_DATAGRAM_SIZE,
+            udp::HandleUdpRead,
+        },
+        real::{
+            self,
+            RealReceiver,
+            net::udp::RealUdpSocket,
+        },
+    },
+    log::warn,
+    std::{
+        io::{
+            Error,
+            ErrorKind,
+        },
+        ops::ControlFlow::{
+            Break,
+            Continue,
+        },
+    },
 };
 
 pub struct RealUdpReaderEventHandler<T: HandleUdpRead> {
@@ -97,20 +103,19 @@ impl<T: HandleUdpRead> HandleEvent for RealUdpReaderEventHandler<T> {
 #[cfg(test)]
 mod tests {
 
-    use std::{
-        io::Error,
-        net::SocketAddr,
-        ops::ControlFlow,
+    use {
+        super::*,
+        crate::{
+            logging::LoggingConfigBuilder,
+            real_time::net::LOCAL_EPHEMERAL_SOCKET_ADDR_V4,
+        },
+        log::LevelFilter,
+        std::{
+            io::Error,
+            net::SocketAddr,
+            ops::ControlFlow,
+        },
     };
-
-    use log::LevelFilter;
-
-    use crate::{
-        logging::LoggingConfigBuilder,
-        real_time::net::LOCAL_EPHEMERAL_SOCKET_ADDR_V4,
-    };
-
-    use super::*;
 
     #[test]
     fn test_handle_read_result() {

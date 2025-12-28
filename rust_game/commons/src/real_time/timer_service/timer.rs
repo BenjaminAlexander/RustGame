@@ -1,11 +1,17 @@
-use crate::real_time::timer_service::{
-    Schedule,
-    TimerCallBack,
-    TimerId,
+use {
+    crate::{
+        real_time::timer_service::{
+            Schedule,
+            TimerCallBack,
+            TimerId,
+        },
+        time::TimeValue,
+    },
+    std::{
+        cmp::Ordering,
+        ops::Add,
+    },
 };
-use crate::time::TimeValue;
-use std::cmp::Ordering;
-use std::ops::Add;
 
 pub struct Timer<T: TimerCallBack> {
     id: TimerId,

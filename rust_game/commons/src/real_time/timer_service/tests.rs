@@ -1,18 +1,25 @@
-use std::ops::Add;
-use std::sync::{
-    Arc,
-    Mutex,
+use {
+    crate::{
+        logging,
+        real_time::{
+            simulation::SingleThreadedFactory,
+            timer_service::{
+                IdleTimerService,
+                Schedule,
+                TimerId,
+            },
+        },
+        test_utils::Counter,
+        time::TimeDuration,
+    },
+    std::{
+        ops::Add,
+        sync::{
+            Arc,
+            Mutex,
+        },
+    },
 };
-
-use crate::logging;
-use crate::real_time::simulation::SingleThreadedFactory;
-use crate::real_time::timer_service::{
-    IdleTimerService,
-    Schedule,
-    TimerId,
-};
-use crate::test_utils::Counter;
-use crate::time::TimeDuration;
 
 #[test]
 fn timer_service_test() {

@@ -1,9 +1,10 @@
-use serde::{
-    Deserialize,
-    Serialize,
+use {
+    crate::FrameIndex,
+    serde::{
+        Deserialize,
+        Serialize,
+    },
 };
-
-use crate::FrameIndex;
 
 /// The coordinates of an input in the [FrameManager][super::FrameManager]
 #[derive(Serialize, Deserialize, Debug, Clone, Copy)]

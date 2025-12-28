@@ -1,20 +1,28 @@
-use crate::SimpleGameImpl;
-use crate::bullet::Bullet;
-use crate::character::Character;
-use crate::simpleserverinput::SimplServerInputEvent;
-use crate::simpleserverinput::SimpleServerInput;
-use commons::geometry::twod::Vector2;
-use commons::time::TimeDuration;
-use engine_core::{
-    CurrentFrame,
-    InitialInformation,
-    Play,
-};
-use graphics::Context;
-use opengl_graphics::GlGraphics;
-use serde::{
-    Deserialize,
-    Serialize,
+use {
+    crate::{
+        SimpleGameImpl,
+        bullet::Bullet,
+        character::Character,
+        simpleserverinput::{
+            SimplServerInputEvent,
+            SimpleServerInput,
+        },
+    },
+    commons::{
+        geometry::twod::Vector2,
+        time::TimeDuration,
+    },
+    engine_core::{
+        CurrentFrame,
+        InitialInformation,
+        Play,
+    },
+    graphics::Context,
+    opengl_graphics::GlGraphics,
+    serde::{
+        Deserialize,
+        Serialize,
+    },
 };
 
 #[derive(Serialize, Deserialize, Debug, Clone)]

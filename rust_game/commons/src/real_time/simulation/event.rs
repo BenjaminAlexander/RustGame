@@ -1,5 +1,7 @@
-use crate::time::TimeValue;
-use std::cmp::Ordering;
+use {
+    crate::time::TimeValue,
+    std::cmp::Ordering,
+};
 
 pub struct Event {
     time: TimeValue,

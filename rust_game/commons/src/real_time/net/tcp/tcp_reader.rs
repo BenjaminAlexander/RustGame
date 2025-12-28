@@ -1,5 +1,7 @@
-use crate::real_time::real::net::tcp::RealTcpStream;
-use crate::real_time::simulation::SingleThreadedReceiver;
+use crate::real_time::{
+    real::net::tcp::RealTcpStream,
+    simulation::SingleThreadedReceiver,
+};
 
 pub(super) enum TcpReaderImplementation {
     Real(RealTcpStream),

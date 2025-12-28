@@ -1,13 +1,14 @@
-use commons::time::{
-    TimeDuration,
-    TimeValue,
+use {
+    crate::game_time::StartTime,
+    commons::time::{
+        TimeDuration,
+        TimeValue,
+    },
+    serde::{
+        Deserialize,
+        Serialize,
+    },
 };
-use serde::{
-    Deserialize,
-    Serialize,
-};
-
-use crate::game_time::StartTime;
 
 /// Clients ping the server to measure the round trip time of UDP packets.  This
 /// measure is needed to correctly determine the offset between the server's clock

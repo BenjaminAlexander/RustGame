@@ -1,16 +1,20 @@
-use crate::simplegameimpl::SimpleGameImpl;
-use crate::simpleinput::SimpleInput;
-use crate::simpleinputevent::SimpleInputEvent;
-use commons::geometry::twod::Vector2;
-use engine_core::AggregateInput;
-use piston::input::Input as PistonInput;
-use piston::{
-    Button,
-    ButtonArgs,
-    ButtonState,
-    Key,
-    Motion,
-    MouseButton,
+use {
+    crate::{
+        simplegameimpl::SimpleGameImpl,
+        simpleinput::SimpleInput,
+        simpleinputevent::SimpleInputEvent,
+    },
+    commons::geometry::twod::Vector2,
+    engine_core::AggregateInput,
+    piston::{
+        Button,
+        ButtonArgs,
+        ButtonState,
+        Key,
+        Motion,
+        MouseButton,
+        input::Input as PistonInput,
+    },
 };
 
 pub struct SimpleInputEventHandler {

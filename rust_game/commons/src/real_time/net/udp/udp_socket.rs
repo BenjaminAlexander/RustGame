@@ -1,11 +1,12 @@
-use std::{
-    io::Error,
-    net::SocketAddr,
-};
-
-use crate::real_time::{
-    real::net::udp::RealUdpSocket,
-    simulation::net::udp::UdpSocketSimulator,
+use {
+    crate::real_time::{
+        real::net::udp::RealUdpSocket,
+        simulation::net::udp::UdpSocketSimulator,
+    },
+    std::{
+        io::Error,
+        net::SocketAddr,
+    },
 };
 
 pub(super) enum UdpSocketImplementation {

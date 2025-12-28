@@ -1,31 +1,37 @@
-use crate::real_time::timer_service::timer::Timer;
-use crate::real_time::timer_service::{
-    Schedule,
-    TimerCallBack,
-    TimerCreationCallBack,
-    TimerId,
+use {
+    crate::{
+        real_time::{
+            EventHandleResult,
+            EventHandlerBuilder,
+            EventSender,
+            Factory,
+            HandleEvent,
+            ReceiveMetaData,
+            TimeSource,
+            timer_service::{
+                Schedule,
+                TimerCallBack,
+                TimerCreationCallBack,
+                TimerId,
+                timer::Timer,
+            },
+        },
+        time::TimeValue,
+        utils::simplify_result,
+    },
+    log::{
+        trace,
+        warn,
+    },
+    std::{
+        collections::{
+            HashMap,
+            VecDeque,
+        },
+        io::Error,
+        marker::PhantomData,
+    },
 };
-use crate::real_time::{
-    EventHandleResult,
-    EventHandlerBuilder,
-    EventSender,
-    Factory,
-    HandleEvent,
-    ReceiveMetaData,
-    TimeSource,
-};
-use crate::time::TimeValue;
-use crate::utils::simplify_result;
-use log::{
-    trace,
-    warn,
-};
-use std::collections::{
-    HashMap,
-    VecDeque,
-};
-use std::io::Error;
-use std::marker::PhantomData;
 
 /// An idle [`TimerService`] that is not currently running.  Timers belonging to this service will not be called.
 ///

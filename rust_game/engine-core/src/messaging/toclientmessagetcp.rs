@@ -1,10 +1,12 @@
-use crate::{
-    Play,
-    interface::InitialInformation,
-};
-use serde::{
-    Deserialize,
-    Serialize,
+use {
+    crate::{
+        Play,
+        interface::InitialInformation,
+    },
+    serde::{
+        Deserialize,
+        Serialize,
+    },
 };
 
 #[derive(Serialize, Deserialize, Debug)]

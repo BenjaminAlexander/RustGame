@@ -1,11 +1,12 @@
-use std::io::Error;
-
-use crate::{
-    Play,
-    StateReceiver,
-    server::ServerCore,
+use {
+    crate::{
+        Play,
+        StateReceiver,
+        server::ServerCore,
+    },
+    commons::real_time::Factory,
+    std::io::Error,
 };
-use commons::real_time::Factory;
 
 /// A sender to a locally running server
 #[derive(Clone)]

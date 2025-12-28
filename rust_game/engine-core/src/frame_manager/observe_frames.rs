@@ -1,11 +1,13 @@
-use crate::{
-    Play,
-    frame_manager::{
-        FrameIndexAndState,
-        InputCoordinates,
+use {
+    crate::{
+        Play,
+        frame_manager::{
+            FrameIndexAndState,
+            InputCoordinates,
+        },
     },
+    std::ops::ControlFlow,
 };
-use std::ops::ControlFlow;
 
 /// A trait to observe the [FrameManager](super::frame_manager::FrameManager)
 pub trait ObserveFrames: 'static + Send {

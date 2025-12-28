@@ -1,13 +1,18 @@
-use rmp_serde::encode::Error as EncodeError;
-use serde::Serialize;
-use serde::de::DeserializeOwned;
-use std::io::{
-    Error,
-    ErrorKind,
+use {
+    crate::real_time::simulation::SingleThreadedSender,
+    rmp_serde::encode::Error as EncodeError,
+    serde::{
+        Serialize,
+        de::DeserializeOwned,
+    },
+    std::{
+        io::{
+            Error,
+            ErrorKind,
+        },
+        net::SocketAddr,
+    },
 };
-use std::net::SocketAddr;
-
-use crate::real_time::simulation::SingleThreadedSender;
 
 #[derive(Clone)]
 pub struct ChannelTcpWriter {

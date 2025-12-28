@@ -1,6 +1,7 @@
-use std::fmt::Debug;
-
-use log::error;
+use {
+    log::error,
+    std::fmt::Debug,
+};
 
 pub fn simplify_result<T, U>(result: Result<T, U>) -> Result<T, ()> {
     return match result {

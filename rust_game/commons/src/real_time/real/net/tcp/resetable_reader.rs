@@ -1,16 +1,18 @@
-use log::warn;
-use rmp_serde::decode::Error as DecodeError;
-use serde::{
-    Serialize,
-    de::DeserializeOwned,
-};
-use std::{
-    cmp::min,
-    io::{
-        BufReader,
-        ErrorKind,
-        Read,
-        Result,
+use {
+    log::warn,
+    rmp_serde::decode::Error as DecodeError,
+    serde::{
+        Serialize,
+        de::DeserializeOwned,
+    },
+    std::{
+        cmp::min,
+        io::{
+            BufReader,
+            ErrorKind,
+            Read,
+            Result,
+        },
     },
 };
 
@@ -120,9 +122,10 @@ impl<Reader: Read> Read for ResetableReader<Reader> {
 #[cfg(test)]
 mod tests {
 
-    use std::io::Cursor;
-
-    use super::*;
+    use {
+        super::*,
+        std::io::Cursor,
+    };
 
     #[test]
     fn test_no_bytes_needed() {

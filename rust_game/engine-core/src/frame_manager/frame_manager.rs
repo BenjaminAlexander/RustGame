@@ -1,32 +1,38 @@
-use crate::frame_manager::frame::{
-    ClientProvidedInput,
-    Frame,
-    PresentInput,
+use {
+    crate::{
+        FrameIndex,
+        Play,
+        frame_manager::{
+            InputCoordinates,
+            ObserveFrames,
+            frame::{
+                ClientProvidedInput,
+                Frame,
+                PresentInput,
+            },
+        },
+        interface::InitialInformation,
+    },
+    commons::{
+        real_time::{
+            EventHandleResult,
+            EventHandlerBuilder,
+            EventSender,
+            Factory,
+            HandleEvent,
+            ReceiveMetaData,
+        },
+        utils::{
+            log_error,
+            unit_error,
+        },
+    },
+    log::error,
+    std::{
+        collections::vec_deque::VecDeque,
+        ops::ControlFlow,
+    },
 };
-use crate::frame_manager::{
-    InputCoordinates,
-    ObserveFrames,
-};
-use crate::interface::InitialInformation;
-use crate::{
-    FrameIndex,
-    Play,
-};
-use commons::real_time::{
-    EventHandleResult,
-    EventHandlerBuilder,
-    EventSender,
-    Factory,
-    HandleEvent,
-    ReceiveMetaData,
-};
-use commons::utils::{
-    log_error,
-    unit_error,
-};
-use log::error;
-use std::collections::vec_deque::VecDeque;
-use std::ops::ControlFlow;
 
 /// The [FrameManager] manages [Frames](Frame) and calculates new
 /// [states](Play::State) from [Inputs](Play::InputAggregate) in another thread.

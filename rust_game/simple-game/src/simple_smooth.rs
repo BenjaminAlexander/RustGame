@@ -1,11 +1,12 @@
-use engine_core::{
-    Smooth,
-    SmoothArguments,
-};
-
-use crate::{
-    simplegameimpl::SimpleGameImpl,
-    simplestate::SimpleState,
+use {
+    crate::{
+        simplegameimpl::SimpleGameImpl,
+        simplestate::SimpleState,
+    },
+    engine_core::{
+        Smooth,
+        SmoothArguments,
+    },
 };
 
 pub struct SimpleSmooth;

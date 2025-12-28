@@ -1,8 +1,9 @@
-use std::ops::ControlFlow;
-
-use crate::{
-    real_time::ReceiveMetaData,
-    time::TimeDuration,
+use {
+    crate::{
+        real_time::ReceiveMetaData,
+        time::TimeDuration,
+    },
+    std::ops::ControlFlow,
 };
 
 #[must_use = "EventHandleResult must be used"]

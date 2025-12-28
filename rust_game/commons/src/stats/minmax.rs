@@ -1,18 +1,24 @@
-use crate::stats::minmax::MinMax::{
-    MinAndMax,
-    NoValues,
-    SingleValue,
+use {
+    crate::stats::minmax::{
+        MinMax::{
+            MinAndMax,
+            NoValues,
+            SingleValue,
+        },
+        MinMaxChange::{
+            FirstMinAndMax,
+            NewMax,
+            NewMin,
+        },
+    },
+    std::{
+        fmt::{
+            Display,
+            Formatter,
+        },
+        mem,
+    },
 };
-use crate::stats::minmax::MinMaxChange::{
-    FirstMinAndMax,
-    NewMax,
-    NewMin,
-};
-use std::fmt::{
-    Display,
-    Formatter,
-};
-use std::mem;
 
 #[derive(Debug)]
 pub enum MinMax<T> {

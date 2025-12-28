@@ -1,8 +1,9 @@
-use std::time::SystemTime;
-
-use crate::{
-    real_time::simulation::SimulatedTimeSource,
-    time::TimeValue,
+use {
+    crate::{
+        real_time::simulation::SimulatedTimeSource,
+        time::TimeValue,
+    },
+    std::time::SystemTime,
 };
 
 #[derive(Clone)]

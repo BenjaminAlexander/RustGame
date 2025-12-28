@@ -1,8 +1,9 @@
-use std::time::Duration;
-
-use commons::{
-    real_time::SingleThreadExecutor,
-    test_utils::AsyncExpects,
+use {
+    commons::{
+        real_time::SingleThreadExecutor,
+        test_utils::AsyncExpects,
+    },
+    std::time::Duration,
 };
 
 #[test]

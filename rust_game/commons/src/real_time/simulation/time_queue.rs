@@ -1,15 +1,23 @@
-use crate::real_time::simulation::SimulatedTimeSource;
-use crate::real_time::simulation::event::Event;
-use crate::time::{
-    TimeDuration,
-    TimeValue,
-};
-use log::warn;
-use std::collections::VecDeque;
-use std::ops::Add;
-use std::sync::{
-    Arc,
-    Mutex,
+use {
+    crate::{
+        real_time::simulation::{
+            SimulatedTimeSource,
+            event::Event,
+        },
+        time::{
+            TimeDuration,
+            TimeValue,
+        },
+    },
+    log::warn,
+    std::{
+        collections::VecDeque,
+        ops::Add,
+        sync::{
+            Arc,
+            Mutex,
+        },
+    },
 };
 
 #[derive(Clone)]

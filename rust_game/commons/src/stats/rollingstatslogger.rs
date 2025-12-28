@@ -1,12 +1,18 @@
-use crate::real_time::TimeSource;
-use crate::stats::RollingStats;
-use crate::time::{
-    TimeDuration,
-    TimeValue,
+use {
+    crate::{
+        real_time::TimeSource,
+        stats::RollingStats,
+        time::{
+            TimeDuration,
+            TimeValue,
+        },
+    },
+    log::info,
+    std::{
+        fmt::Write,
+        marker::PhantomData,
+    },
 };
-use log::info;
-use std::fmt::Write;
-use std::marker::PhantomData;
 
 pub struct RollingStatsLogger<T: Into<f64>> {
     time_source: TimeSource,

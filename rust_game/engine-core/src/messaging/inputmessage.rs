@@ -1,14 +1,16 @@
-use crate::{
-    Play,
-    frame_manager::{
-        ClientProvidedInput,
-        InputCoordinates,
-        PresentInput,
+use {
+    crate::{
+        Play,
+        frame_manager::{
+            ClientProvidedInput,
+            InputCoordinates,
+            PresentInput,
+        },
     },
-};
-use serde::{
-    Deserialize,
-    Serialize,
+    serde::{
+        Deserialize,
+        Serialize,
+    },
 };
 
 #[derive(Serialize, Deserialize, Debug, Clone)]

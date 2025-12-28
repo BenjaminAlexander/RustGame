@@ -1,15 +1,16 @@
-use commons::real_time::Factory;
-use serde::{
-    Deserialize,
-    Serialize,
-};
-
-use crate::{
-    FrameIndex,
-    Play,
-    game_time::{
-        FrameDuration,
-        StartTime,
+use {
+    crate::{
+        FrameIndex,
+        Play,
+        game_time::{
+            FrameDuration,
+            StartTime,
+        },
+    },
+    commons::real_time::Factory,
+    serde::{
+        Deserialize,
+        Serialize,
     },
 };
 

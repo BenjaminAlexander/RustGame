@@ -1,19 +1,25 @@
-use crate::real_time::net::tcp::{
-    HandleTcpConnection,
-    TcpReader,
-    TcpStream,
-};
-use crate::real_time::simulation::SingleThreadedReceiver;
-use crate::real_time::simulation::net::tcp::ChannelTcpWriter;
-use crate::real_time::{
-    EventHandleResult,
-    HandleEvent,
-    ReceiveMetaData,
-};
-use std::net::SocketAddr;
-use std::ops::ControlFlow::{
-    Break,
-    Continue,
+use {
+    crate::real_time::{
+        EventHandleResult,
+        HandleEvent,
+        ReceiveMetaData,
+        net::tcp::{
+            HandleTcpConnection,
+            TcpReader,
+            TcpStream,
+        },
+        simulation::{
+            SingleThreadedReceiver,
+            net::tcp::ChannelTcpWriter,
+        },
+    },
+    std::{
+        net::SocketAddr,
+        ops::ControlFlow::{
+            Break,
+            Continue,
+        },
+    },
 };
 
 pub enum TcpListenerEvent {

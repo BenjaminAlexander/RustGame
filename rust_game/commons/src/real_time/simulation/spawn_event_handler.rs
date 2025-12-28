@@ -1,20 +1,26 @@
-use crate::real_time::event_or_stop_thread::EventOrStopThread;
-use crate::real_time::simulation::SingleThreadedFactory;
-use crate::real_time::simulation::receiver_link::{
-    ReceiveOrDisconnected,
-    ReceiverLink,
-};
-use crate::real_time::simulation::single_threaded_receiver::SingleThreadedReceiver;
-use crate::real_time::{
-    EventHandleResult,
-    HandleEvent,
-    ReceiveMetaData,
-};
-use crate::time::TimeDuration;
-use log::trace;
-use std::sync::{
-    Arc,
-    Mutex,
+use {
+    crate::{
+        real_time::{
+            EventHandleResult,
+            HandleEvent,
+            ReceiveMetaData,
+            event_or_stop_thread::EventOrStopThread,
+            simulation::{
+                SingleThreadedFactory,
+                receiver_link::{
+                    ReceiveOrDisconnected,
+                    ReceiverLink,
+                },
+                single_threaded_receiver::SingleThreadedReceiver,
+            },
+        },
+        time::TimeDuration,
+    },
+    log::trace,
+    std::sync::{
+        Arc,
+        Mutex,
+    },
 };
 
 pub fn spawn_event_handler<T: HandleEvent, U: FnOnce(T::ThreadReturn) + Send + 'static>(

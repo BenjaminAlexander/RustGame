@@ -1,5 +1,7 @@
-use std::net::SocketAddr;
-use std::ops::ControlFlow;
+use std::{
+    net::SocketAddr,
+    ops::ControlFlow,
+};
 
 pub trait HandleUdpRead: Send + 'static {
     fn on_read(&mut self, peer_addr: SocketAddr, buf: &[u8]) -> ControlFlow<()>;

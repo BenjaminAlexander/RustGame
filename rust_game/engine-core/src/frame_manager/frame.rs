@@ -1,22 +1,25 @@
-use log::warn;
-use serde::{
-    Deserialize,
-    Serialize,
+use {
+    crate::{
+        CurrentFrame,
+        FrameIndex,
+        InitialInformation,
+        Play,
+        frame_manager::{
+            FrameIndexAndState,
+            InputCoordinates,
+            ObserveFrames,
+        },
+    },
+    log::warn,
+    serde::{
+        Deserialize,
+        Serialize,
+    },
+    std::{
+        mem::take,
+        ops::ControlFlow,
+    },
 };
-
-use crate::frame_manager::{
-    FrameIndexAndState,
-    InputCoordinates,
-    ObserveFrames,
-};
-use crate::{
-    CurrentFrame,
-    FrameIndex,
-    InitialInformation,
-    Play,
-};
-use std::mem::take;
-use std::ops::ControlFlow;
 
 /// A Frame is a [FrameState], set of [Inputs](FrameInput), and some metadata used by the
 /// [FrameManager](crate::frame_manager::FrameManager) to calculate new [States](Play::State).

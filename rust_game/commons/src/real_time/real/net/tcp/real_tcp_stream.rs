@@ -1,13 +1,19 @@
-use crate::real_time::net::NET_POLLING_PERIOD;
-use rmp_serde::encode::Error as EncodeError;
-use serde::Serialize;
-use serde::de::DeserializeOwned;
-use std::fmt::Debug;
-use std::io::{
-    Error,
-    Write,
+use {
+    crate::real_time::net::NET_POLLING_PERIOD,
+    rmp_serde::encode::Error as EncodeError,
+    serde::{
+        Serialize,
+        de::DeserializeOwned,
+    },
+    std::{
+        fmt::Debug,
+        io::{
+            Error,
+            Write,
+        },
+        net::SocketAddr,
+    },
 };
-use std::net::SocketAddr;
 
 #[derive(Debug)]
 pub struct RealTcpStream {

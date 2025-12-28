@@ -1,12 +1,13 @@
-use std::cmp::Ordering;
-
-use crate::{
-    Play,
-    game_time::FrameIndex,
-};
-use serde::{
-    Deserialize,
-    Serialize,
+use {
+    crate::{
+        Play,
+        game_time::FrameIndex,
+    },
+    serde::{
+        Deserialize,
+        Serialize,
+    },
+    std::cmp::Ordering,
 };
 
 #[derive(Serialize, Deserialize, Debug, Clone)]

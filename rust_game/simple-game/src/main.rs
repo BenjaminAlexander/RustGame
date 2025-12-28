@@ -1,28 +1,34 @@
 #![deny(rustdoc::broken_intra_doc_links)]
-use crate::simplegameimpl::SimpleGameImpl;
-use crate::simpleinput::SimpleInput;
-use crate::simpleinputevent::SimpleInputEvent;
-use crate::simpleinputeventhandler::SimpleInputEventHandler;
-use crate::simplestate::*;
-use crate::simplewindow::SimpleWindow;
-use commons::logging::LoggingConfigBuilder;
-use commons::real_time::Factory;
-use commons::time::TimeDuration;
-use engine_core::{
-    Client,
-    Server,
-};
-use log::{
-    LevelFilter,
-    error,
-    info,
-};
-use std::backtrace::Backtrace;
-use std::io::stdin;
-use std::path::PathBuf;
-use std::{
-    panic,
-    process,
+use {
+    crate::{
+        simplegameimpl::SimpleGameImpl,
+        simpleinput::SimpleInput,
+        simpleinputevent::SimpleInputEvent,
+        simpleinputeventhandler::SimpleInputEventHandler,
+        simplestate::*,
+        simplewindow::SimpleWindow,
+    },
+    commons::{
+        logging::LoggingConfigBuilder,
+        real_time::Factory,
+        time::TimeDuration,
+    },
+    engine_core::{
+        Client,
+        Server,
+    },
+    log::{
+        LevelFilter,
+        error,
+        info,
+    },
+    std::{
+        backtrace::Backtrace,
+        io::stdin,
+        panic,
+        path::PathBuf,
+        process,
+    },
 };
 
 mod bullet;

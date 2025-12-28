@@ -1,16 +1,20 @@
-use crate::Play;
-use crate::frame_manager::{
-    ClientProvidedInput,
-    FrameIndexAndState,
-    InputCoordinates,
-    ObserveFrames,
-    PresentInput,
+use {
+    crate::{
+        Play,
+        frame_manager::{
+            ClientProvidedInput,
+            FrameIndexAndState,
+            InputCoordinates,
+            ObserveFrames,
+            PresentInput,
+        },
+        messaging::ToClientInputMessage,
+        server::udp_output::UdpOutput,
+        state_channel::StateSender,
+    },
+    log::warn,
+    std::ops::ControlFlow,
 };
-use crate::messaging::ToClientInputMessage;
-use crate::server::udp_output::UdpOutput;
-use crate::state_channel::StateSender;
-use log::warn;
-use std::ops::ControlFlow;
 
 pub struct ServerFrameObserver<Game: Play> {
     udp_outputs: Vec<UdpOutput<Game>>,

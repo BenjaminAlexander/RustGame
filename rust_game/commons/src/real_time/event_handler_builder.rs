@@ -1,14 +1,15 @@
-use std::io::Error;
-
-use crate::real_time::{
-    EventSender,
-    Factory,
-    HandleEvent,
-    Receiver,
-    event_or_stop_thread::EventOrStopThread,
-    real,
-    receiver::ReceiverImplementation,
-    simulation,
+use {
+    crate::real_time::{
+        EventSender,
+        Factory,
+        HandleEvent,
+        Receiver,
+        event_or_stop_thread::EventOrStopThread,
+        real,
+        receiver::ReceiverImplementation,
+        simulation,
+    },
+    std::io::Error,
 };
 
 pub struct EventHandlerBuilder<T: HandleEvent> {

@@ -1,9 +1,10 @@
-use std::sync::mpsc::TryRecvError;
-
-use crate::real_time::{
-    ReceiveMetaData,
-    real::RealReceiver,
-    simulation::SingleThreadedReceiver,
+use {
+    crate::real_time::{
+        ReceiveMetaData,
+        real::RealReceiver,
+        simulation::SingleThreadedReceiver,
+    },
+    std::sync::mpsc::TryRecvError,
 };
 
 pub(super) enum ReceiverImplementation<T: Send> {

@@ -1,12 +1,18 @@
-use crate::real_time::ReceiveMetaData;
-use crate::real_time::simulation::SingleThreadedFactory;
-use crate::real_time::simulation::receiver_link::{
-    ReceiveOrDisconnected,
-    ReceiverLink,
+use {
+    crate::real_time::{
+        ReceiveMetaData,
+        simulation::{
+            SingleThreadedFactory,
+            receiver_link::{
+                ReceiveOrDisconnected,
+                ReceiverLink,
+            },
+            sender_link::SenderLink,
+            single_threaded_sender::SingleThreadedSender,
+        },
+    },
+    std::sync::mpsc::TryRecvError,
 };
-use crate::real_time::simulation::sender_link::SenderLink;
-use crate::real_time::simulation::single_threaded_sender::SingleThreadedSender;
-use std::sync::mpsc::TryRecvError;
 
 pub struct SingleThreadedReceiver<T: Send> {
     factory: SingleThreadedFactory,

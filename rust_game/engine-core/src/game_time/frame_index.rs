@@ -1,10 +1,12 @@
-use serde::{
-    Deserialize,
-    Serialize,
-};
-use std::ops::{
-    Add,
-    Sub,
+use {
+    serde::{
+        Deserialize,
+        Serialize,
+    },
+    std::ops::{
+        Add,
+        Sub,
+    },
 };
 
 /// The index of a frame

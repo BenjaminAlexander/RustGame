@@ -1,21 +1,31 @@
-use crate::Play;
-use crate::interface::InitialInformation;
-use crate::messaging::ToClientMessageTCP;
-use crate::server::ServerConfig;
-use crate::server::tcp_output::Event::SendInitialInformation;
-use commons::real_time::net::tcp::TcpStream;
-use commons::real_time::{
-    EventHandleResult,
-    EventHandlerBuilder,
-    EventSender,
-    Factory,
-    HandleEvent,
-    ReceiveMetaData,
+use {
+    crate::{
+        Play,
+        interface::InitialInformation,
+        messaging::ToClientMessageTCP,
+        server::{
+            ServerConfig,
+            tcp_output::Event::SendInitialInformation,
+        },
+    },
+    commons::{
+        real_time::{
+            EventHandleResult,
+            EventHandlerBuilder,
+            EventSender,
+            Factory,
+            HandleEvent,
+            ReceiveMetaData,
+            net::tcp::TcpStream,
+        },
+        utils::unit_error,
+    },
+    log::debug,
+    std::{
+        io::Error,
+        marker::PhantomData,
+    },
 };
-use commons::utils::unit_error;
-use log::debug;
-use std::io::Error;
-use std::marker::PhantomData;
 
 pub struct TcpOutput<Game: Play> {
     //TODO: add stop

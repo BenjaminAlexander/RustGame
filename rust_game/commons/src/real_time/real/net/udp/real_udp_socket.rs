@@ -1,8 +1,12 @@
-use crate::real_time::net::NET_POLLING_PERIOD;
-use std::io::Error;
-use std::net::{
-    SocketAddr,
-    UdpSocket,
+use {
+    crate::real_time::net::NET_POLLING_PERIOD,
+    std::{
+        io::Error,
+        net::{
+            SocketAddr,
+            UdpSocket,
+        },
+    },
 };
 
 pub struct RealUdpSocket {

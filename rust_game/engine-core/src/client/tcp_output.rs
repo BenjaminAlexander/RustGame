@@ -1,13 +1,14 @@
-use std::io::Error;
-
-use commons::real_time::{
-    EventHandleResult,
-    EventHandlerBuilder,
-    EventSender,
-    Factory,
-    HandleEvent,
-    ReceiveMetaData,
-    net::tcp::TcpStream,
+use {
+    commons::real_time::{
+        EventHandleResult,
+        EventHandlerBuilder,
+        EventSender,
+        Factory,
+        HandleEvent,
+        ReceiveMetaData,
+        net::tcp::TcpStream,
+    },
+    std::io::Error,
 };
 
 pub struct TcpOutput {

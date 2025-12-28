@@ -1,30 +1,38 @@
-use crate::Play;
-use crate::game_time::PingRequest;
-use crate::messaging::{
-    ToServerInputMessage,
-    UdpToServerMessage,
+use {
+    crate::{
+        Play,
+        game_time::PingRequest,
+        messaging::{
+            ToServerInputMessage,
+            UdpToServerMessage,
+        },
+        server::{
+            ServerCore,
+            udp_handler::UdpHandler,
+            udp_output::UdpOutput,
+        },
+    },
+    commons::real_time::{
+        EventHandlerStopper,
+        Factory,
+        TimeSource,
+        net::udp::{
+            HandleUdpRead,
+            UdpReadHandlerBuilder,
+            UdpSocket,
+        },
+    },
+    log::{
+        error,
+        info,
+        warn,
+    },
+    std::{
+        io::Error,
+        net::SocketAddr,
+        ops::ControlFlow,
+    },
 };
-use crate::server::ServerCore;
-use crate::server::udp_handler::UdpHandler;
-use crate::server::udp_output::UdpOutput;
-use commons::real_time::net::udp::{
-    HandleUdpRead,
-    UdpReadHandlerBuilder,
-    UdpSocket,
-};
-use commons::real_time::{
-    EventHandlerStopper,
-    Factory,
-    TimeSource,
-};
-use log::{
-    error,
-    info,
-    warn,
-};
-use std::io::Error;
-use std::net::SocketAddr;
-use std::ops::ControlFlow;
 
 pub struct UdpInput {
     stopper: EventHandlerStopper,

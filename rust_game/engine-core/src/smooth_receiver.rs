@@ -1,15 +1,16 @@
-use commons::time::TimeValue;
-use log::debug;
-
-use crate::{
-    InitialInformation,
-    StateReceiver,
-    StateReceiverError,
-    game_time::StartTime,
-    smooth::{
-        Smooth,
-        SmoothArguments,
+use {
+    crate::{
+        InitialInformation,
+        StateReceiver,
+        StateReceiverError,
+        game_time::StartTime,
+        smooth::{
+            Smooth,
+            SmoothArguments,
+        },
     },
+    commons::time::TimeValue,
+    log::debug,
 };
 
 /// A [SmoothReceiver] uses a [StateReceiver] and a [Smooth] implementation to

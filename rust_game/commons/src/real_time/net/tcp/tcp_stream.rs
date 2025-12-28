@@ -1,11 +1,18 @@
-use rmp_serde::encode::Error as EncodeError;
-use serde::Serialize;
-use serde::de::DeserializeOwned;
-use std::io::Error;
-use std::net::SocketAddr;
-
-use crate::real_time::real::net::tcp::RealTcpStream;
-use crate::real_time::simulation::net::tcp::ChannelTcpWriter;
+use {
+    crate::real_time::{
+        real::net::tcp::RealTcpStream,
+        simulation::net::tcp::ChannelTcpWriter,
+    },
+    rmp_serde::encode::Error as EncodeError,
+    serde::{
+        Serialize,
+        de::DeserializeOwned,
+    },
+    std::{
+        io::Error,
+        net::SocketAddr,
+    },
+};
 
 enum Implementation {
     Real(RealTcpStream),
