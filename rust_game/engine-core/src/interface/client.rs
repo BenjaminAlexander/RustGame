@@ -7,6 +7,7 @@ use commons::real_time::Factory;
 use std::io::Error;
 
 /// A sender to a locally running client
+#[derive(Clone)]
 pub struct Client<Game: Play> {
     client_core: ClientCore<Game>,
 }
@@ -27,5 +28,10 @@ impl<Game: Play> Client<Game> {
     /// Sends a new [InputEvent][Play::InputEvent] to the local client
     pub fn send_input_event(&self, input_event: Game::InputEvent) -> Result<(), ()> {
         self.client_core.input_event(input_event)
+    }
+
+    /// Stops the client
+    pub fn stop(&self) -> Result<(), ()> {
+        self.client_core.stop()
     }
 }

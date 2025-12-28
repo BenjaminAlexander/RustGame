@@ -8,6 +8,7 @@ use crate::{
 use commons::real_time::Factory;
 
 /// A sender to a locally running server
+#[derive(Clone)]
 pub struct Server<Game: Play> {
     server_core: ServerCore<Game>,
 }
@@ -31,6 +32,7 @@ impl<Game: Play> Server<Game> {
         self.server_core.start_game()
     }
 
+    /// Stops the server
     pub fn stop(&self) -> Result<(), ()> {
         self.server_core.stop()
     }

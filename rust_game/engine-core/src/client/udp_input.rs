@@ -10,8 +10,16 @@ use crate::messaging::{
     MessageFragment,
     UdpToClientMessage,
 };
-use commons::real_time::{EventHandlerStopper, Factory, TimeSource};
-use commons::real_time::net::udp::{HandleUdpRead, UdpReadHandlerBuilder, UdpSocket};
+use commons::real_time::net::udp::{
+    HandleUdpRead,
+    UdpReadHandlerBuilder,
+    UdpSocket,
+};
+use commons::real_time::{
+    EventHandlerStopper,
+    Factory,
+    TimeSource,
+};
 use log::{
     error,
     warn,
@@ -21,7 +29,7 @@ use std::net::SocketAddr;
 use std::ops::ControlFlow;
 
 pub struct UdpInput {
-    stopper: EventHandlerStopper
+    stopper: EventHandlerStopper,
 }
 
 impl UdpInput {
@@ -31,14 +39,13 @@ impl UdpInput {
         client_core: ClientCore<Game>,
         frame_manager: FrameManager<Game>,
     ) -> Result<Self, Error> {
-
         let time_source = factory.get_time_source();
 
         let udp_read_handler = UdpReadHandler {
             fragment_assembler: FragmentAssembler::new(
-                time_source.clone(), 
+                time_source.clone(),
                 //TODO: make this more configurable
-                5
+                5,
             ),
             client_core,
             frame_manager,
@@ -52,7 +59,7 @@ impl UdpInput {
             udp_read_handler,
         )?;
 
-        Ok(Self{stopper})
+        Ok(Self { stopper })
     }
 
     pub fn stop(&self) -> Result<(), ()> {

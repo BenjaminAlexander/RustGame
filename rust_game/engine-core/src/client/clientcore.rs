@@ -3,8 +3,8 @@ use crate::aggregate_input::AggregateInput;
 use crate::client::clientmanagerobserver::ClientManagerObserver;
 use crate::client::tcp_input::TcpInput;
 use crate::client::tcp_output::TcpOutput;
-use crate::client::udp_output::UdpOutput;
 use crate::client::udp_input::UdpInput;
+use crate::client::udp_output::UdpOutput;
 use crate::frame_manager::{
     ClientProvidedInput,
     FrameManager,
@@ -90,6 +90,10 @@ impl<Game: Play> ClientCore<Game> {
     pub fn handle_complete_ping(&self, completed_ping: CompletedPing) -> Result<(), ()> {
         let event = Event::CompletedPing(completed_ping);
         self.sender.send_event(event).map_err(unit_error)
+    }
+
+    pub fn stop(&self) -> Result<(), ()> {
+        self.sender.send_stop_thread()
     }
 }
 
@@ -199,16 +203,16 @@ impl<Game: Play> EventHandler<Game> {
         let timer_service = idle_timer_service.start(&self.factory).unwrap();
 
         let udp_input = match UdpInput::new(
-            &self.factory, 
-            udp_socket, 
-            self.client_core.clone(), 
-            frame_manager.clone()
+            &self.factory,
+            udp_socket,
+            self.client_core.clone(),
+            frame_manager.clone(),
         ) {
             Ok(udp_input) => udp_input,
             Err(err) => {
                 warn!("Error creating UdpInput: {:?}", err);
                 return EventHandleResult::StopThread;
-            },
+            }
         };
 
         self.running_state = Some(RunningState {
