@@ -1,6 +1,6 @@
 use crate::messaging::{
     MessageFragment,
-    messagefragment::FRAGMENT_HEADER_SIZE,
+    messagefragment::{FRAGMENT_HEADER_SIZE, fragment_payload_size},
 };
 
 pub struct Fragmenter {
@@ -16,7 +16,11 @@ impl Fragmenter {
         };
     }
 
-    pub fn make_fragments(&mut self, buf: Vec<u8>) -> Vec<MessageFragment> {
+    pub fn fragment_payload_size(&self) -> usize {
+        fragment_payload_size(self.max_datagram_size)
+    }
+
+    pub fn make_fragments(&mut self, buf: &Vec<u8>) -> Vec<MessageFragment> {
         let id = self.next_id;
 
         if self.next_id == u32::max_value() {
@@ -47,5 +51,87 @@ impl Fragmenter {
         }
 
         return fragments;
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use commons::real_time::TimeSource;
+
+    use crate::messaging::{FragmentAssembler, Fragmenter};
+
+    const DATAGRAM_SIZE: usize = 20;
+
+
+    fn make_message(length: usize) -> Vec<u8> {
+        let mut buf = Vec::with_capacity(length);
+        for i in 0..length {
+            buf.insert(i, i.try_into().unwrap());
+        }
+        buf
+    }
+
+    fn make_and_assemble_fragments(fragmenter: &mut Fragmenter, fragment_assembler: &mut FragmentAssembler) {
+        let message = make_message(fragmenter.fragment_payload_size() * 2);
+        let mut fragments = fragmenter.make_fragments(&message);
+
+        assert_eq!(2, fragments.len());
+
+        let first_fragment = fragments.remove(0);
+        let second_fragment = fragments.remove(0);
+
+        // Receive fragments out-of-order
+        let result = fragment_assembler.add_fragment(second_fragment);
+        assert!(matches!(result, None));
+
+        let received_message = fragment_assembler.add_fragment(first_fragment).unwrap();
+
+        assert_eq!(message, received_message);
+    }
+
+    #[test]
+    fn assemble_fragments() {
+        let time_source = TimeSource::new();
+
+        let mut fragmenter = Fragmenter::new(DATAGRAM_SIZE);
+        let mut fragment_assembler = FragmentAssembler::new(time_source, 2);
+
+        make_and_assemble_fragments(&mut fragmenter, &mut fragment_assembler);
+    }
+
+    #[test]
+    fn drop_oldest_fragment() {
+        
+        const MAX_MESSAGES: usize = 2;
+
+        let time_source = TimeSource::new();
+
+        let mut fragmenter = Fragmenter::new(DATAGRAM_SIZE);
+        let mut fragment_assembler = FragmentAssembler::new(time_source, MAX_MESSAGES);
+
+        let message = make_message(fragmenter.fragment_payload_size() * 2);
+        let mut fragments = fragmenter.make_fragments(&message);
+
+        assert_eq!(2, fragments.len());
+        let first_fragment = fragments.remove(0);
+        let second_fragment = fragments.remove(0);
+
+        let result = fragment_assembler.add_fragment(second_fragment);
+        assert!(matches!(result, None));
+
+        // Fragment enough messages so that the first one is dropped.
+        for _ in 0..MAX_MESSAGES {
+            let message = make_message(fragmenter.fragment_payload_size() * 2);
+            let mut fragments = fragmenter.make_fragments(&message);
+
+            // Only add one fragment from the message to fill up the assembler
+            // and cause it to drop the first one
+            let result = fragment_assembler.add_fragment(fragments.pop().unwrap());
+            assert!(matches!(result, None));
+        }
+
+        //Original fragment should be dropped, so this shouldn't return a message
+        let result = fragment_assembler.add_fragment(first_fragment);
+        assert!(matches!(result, None));
     }
 }

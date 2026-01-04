@@ -180,7 +180,7 @@ impl<Game: Play> EventHandler<Game> {
 
         //TODO: see if this can be write
         let buf = rmp_serde::to_vec(&message).unwrap();
-        let fragments = self.fragmenter.make_fragments(buf);
+        let fragments = self.fragmenter.make_fragments(&buf);
 
         for fragment in fragments {
             if fragment.get_whole_buf().len() > MAX_UDP_DATAGRAM_SIZE {

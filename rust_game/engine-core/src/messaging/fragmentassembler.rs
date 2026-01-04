@@ -29,6 +29,7 @@ impl FragmentAssembler {
 
         let id = fragment.get_id();
 
+        // TODO: see if this can be done without time values.  This requires iterating over the whole map, so just use an number to order them
         let partial = match self.messages.get_mut(&id) {
             None => {
                 while self.messages.len() >= self.max_messages {
