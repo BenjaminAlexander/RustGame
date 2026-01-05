@@ -230,7 +230,7 @@ impl<Game: Play> EventHandler<Game> {
         server_core: ServerCore<Game>,
         state_sender: StateSender<Game>,
     ) -> Result<Self, Error> {
-        let udp_handler = UdpHandler::<Game>::new(factory.get_time_source().clone());
+        let udp_handler = UdpHandler::<Game>::new();
 
         let listening_core = ListeningCore { udp_handler };
 

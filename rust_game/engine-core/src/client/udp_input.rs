@@ -49,7 +49,6 @@ impl UdpInput {
 
         let udp_read_handler = UdpReadHandler {
             fragment_assembler: FragmentAssembler::new(
-                time_source.clone(),
                 //TODO: make this more configurable
                 5,
             ),

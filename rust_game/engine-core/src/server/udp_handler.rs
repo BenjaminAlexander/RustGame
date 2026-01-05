@@ -11,7 +11,6 @@ use {
             player_udp_address::PlayerUdpAddress,
         },
     },
-    commons::real_time::TimeSource,
     log::{
         info,
         warn,
@@ -31,7 +30,6 @@ use {
 
 //TODO: This struct could be combined with server udp input
 pub struct UdpHandler<Game: Play> {
-    time_source: TimeSource,
     remote_peers: Vec<Option<PlayerUdpAddress>>,
     client_addresses: Vec<Option<PlayerAddress>>,
     client_ip_set: HashSet<IpAddr>,
@@ -42,9 +40,8 @@ pub struct UdpHandler<Game: Play> {
 }
 
 impl<Game: Play> UdpHandler<Game> {
-    pub fn new(time_source: TimeSource) -> Self {
+    pub fn new() -> Self {
         return Self {
-            time_source,
             remote_peers: Vec::new(),
             client_addresses: Vec::new(),
             client_ip_set: HashSet::new(),
@@ -104,7 +101,7 @@ impl<Game: Play> UdpHandler<Game> {
             None => {
                 //TODO: make max_messages more configurable
                 self.fragment_assemblers
-                    .insert(source, FragmentAssembler::new(self.time_source.clone(), 5));
+                    .insert(source, FragmentAssembler::new(5));
                 self.fragment_assemblers.get_mut(&source).unwrap()
             }
             Some(assembler) => assembler,

@@ -56,7 +56,6 @@ impl Fragmenter {
 
 #[cfg(test)]
 mod tests {
-    use commons::real_time::TimeSource;
 
     use crate::messaging::{FragmentAssembler, Fragmenter};
 
@@ -91,10 +90,8 @@ mod tests {
 
     #[test]
     fn assemble_fragments() {
-        let time_source = TimeSource::new();
-
         let mut fragmenter = Fragmenter::new(DATAGRAM_SIZE);
-        let mut fragment_assembler = FragmentAssembler::new(time_source, 2);
+        let mut fragment_assembler = FragmentAssembler::new(2);
 
         make_and_assemble_fragments(&mut fragmenter, &mut fragment_assembler);
     }
@@ -104,10 +101,8 @@ mod tests {
         
         const MAX_MESSAGES: usize = 2;
 
-        let time_source = TimeSource::new();
-
         let mut fragmenter = Fragmenter::new(DATAGRAM_SIZE);
-        let mut fragment_assembler = FragmentAssembler::new(time_source, MAX_MESSAGES);
+        let mut fragment_assembler = FragmentAssembler::new(MAX_MESSAGES);
 
         let message = make_message(fragmenter.fragment_payload_size() * 2);
         let mut fragments = fragmenter.make_fragments(&message);
