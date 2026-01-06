@@ -31,7 +31,6 @@ use {
         utils::unit_error,
     },
     log::{
-        error,
         info,
         warn,
     },
@@ -178,9 +177,7 @@ impl<Game: Play> EventHandler<Game> {
             }
         };
 
-        //TODO: see if this can be write
-        let buf = rmp_serde::to_vec(&message).unwrap();
-        let fragments = self.fragmenter.make_fragments(&buf);
+        let fragments = self.fragmenter.make_fragments(&message).unwrap();
 
         for fragment in fragments {
             if let Err(err) = self

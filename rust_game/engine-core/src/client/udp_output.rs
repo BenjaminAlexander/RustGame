@@ -169,10 +169,7 @@ impl Write for FallibleWriter {
 }
         
          */
-
-        //TODO: use write instead of to_vec
-        let buf = rmp_serde::to_vec(&message).unwrap();
-        let fragments = self.fragmenter.make_fragments(&buf);
+        let fragments = self.fragmenter.make_fragments(&message).unwrap();
 
         for fragment in fragments {
             let result = self
