@@ -183,13 +183,6 @@ impl<Game: Play> EventHandler<Game> {
         let fragments = self.fragmenter.make_fragments(&buf);
 
         for fragment in fragments {
-            if fragment.get_whole_buf().len() > MAX_UDP_DATAGRAM_SIZE {
-                error!(
-                    "Datagram is larger than MAX_UDP_DATAGRAM_SIZE: {:?}",
-                    fragment.get_whole_buf().len()
-                );
-            }
-
             if let Err(err) = self
                 .socket
                 .send_to(&fragment.get_whole_buf(), &remote_peer.get_socket_addr())

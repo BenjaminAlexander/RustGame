@@ -6,6 +6,7 @@ use {
 pub struct FragmentAssembler {
     max_messages: usize,
     messages: HashMap<u32, PartiallyAssembledFragment>,
+    newest_and_oldest_id: Option<(u32,u32)>
 }
 
 impl FragmentAssembler {
@@ -13,15 +14,38 @@ impl FragmentAssembler {
         return Self {
             max_messages,
             messages: HashMap::new(),
+            newest_and_oldest_id: None
         };
     }
 
-    fn decrement_sequence_received(&mut self, removed_sequence: usize) {
-        for (_, partial_message) in self.messages.iter_mut() {
-            if partial_message.get_sequence_received() > removed_sequence {
-                partial_message.decrement_sequence_received();
+    fn removed_partially_assembled_message(&mut self, id: &u32) -> PartiallyAssembledFragment {
+        let partially_assembled_message = self.messages.remove(id).unwrap();
+
+        if let Some(next_id) = partially_assembled_message.next_id {
+            self.messages.get_mut(&next_id).unwrap().previous_id = partially_assembled_message.previous_id;
+        }
+
+        if let Some(previous_id) = partially_assembled_message.previous_id {
+            self.messages.get_mut(&previous_id).unwrap().next_id = partially_assembled_message.next_id;
+        }
+
+        let (newest_id, oldest_id) = self.newest_and_oldest_id.unwrap();
+
+        if newest_id == *id {
+            if let Some(next_id) = partially_assembled_message.next_id {
+                self.newest_and_oldest_id = Some((next_id, oldest_id));
+            } else {
+                self.newest_and_oldest_id = None;
+            }
+        } else if oldest_id == *id {
+            if let Some(previous_id) = partially_assembled_message.previous_id {
+                self.newest_and_oldest_id = Some((newest_id, previous_id));
+            } else {
+                self.newest_and_oldest_id = None;
             }
         }
+
+        partially_assembled_message
     }
 
     pub fn add_fragment(&mut self, fragment: MessageFragment) -> Option<Vec<u8>> {
@@ -31,31 +55,26 @@ impl FragmentAssembler {
 
         let id = fragment.get_id();
 
-        // TODO: see if this can be done without time values.  This requires iterating over the whole map, so just use an number to order them
         let partial = match self.messages.get_mut(&id) {
             None => {
                 while self.messages.len() >= self.max_messages {
-                    let mut oldest_id_and_sequence: Option<(u32, usize)> = None;
-
-                    {
-                        for (id, partial) in self.messages.iter() {
-                            if let Some((_, current_sequence)) = oldest_id_and_sequence {
-                                if current_sequence > partial.get_sequence_received() {
-                                    oldest_id_and_sequence = Some((*id, partial.get_sequence_received()));
-                                }
-                            } else {
-                                oldest_id_and_sequence = Some((*id, partial.get_sequence_received()));
-                            }
-                        }
-                    }
-
-                    if let Some((id_to_remove, _)) = oldest_id_and_sequence {
-                        let removed_partial = self.messages.remove(&id_to_remove).unwrap();
-                        self.decrement_sequence_received(removed_partial.get_sequence_received());
-                    }
+                    let (_, oldest_id) = self.newest_and_oldest_id.unwrap();
+                    self.removed_partially_assembled_message(&oldest_id);
                 }
 
-                let partial_message = PartiallyAssembledFragment::new(self.messages.len(), fragment);
+                let next_id = match self.newest_and_oldest_id {
+                    Some((newest_id, oldest_id)) => {
+                        self.messages.get_mut(&newest_id).unwrap().previous_id = Some(id);
+                        self.newest_and_oldest_id = Some((id, oldest_id));
+                        Some(newest_id)
+                    },
+                    None => {
+                        self.newest_and_oldest_id = Some((id, id));
+                        None
+                    },
+                };
+
+                let partial_message = PartiallyAssembledFragment::new(next_id, fragment);
 
                 self.messages.insert(id, partial_message);
                 self.messages.get_mut(&id).unwrap()
@@ -67,11 +86,7 @@ impl FragmentAssembler {
         };
 
         if partial.has_all_fragments() {
-            let completed_message = self.messages.remove(&id).unwrap();
-            let sequence_received = completed_message.get_sequence_received();
-
-            self.decrement_sequence_received(sequence_received);
-
+            let completed_message = self.removed_partially_assembled_message(&id);
             let message = completed_message.get_full_message();
             return Some(message);
         } else {
@@ -80,20 +95,22 @@ impl FragmentAssembler {
     }
 }
 
+//TODO: rename to message
 struct PartiallyAssembledFragment {
     id: u32,
     count: u16,
     outstanding_fragments: u16,
     fragments: Vec<Option<MessageFragment>>,
+    
+    /// Points to an older partially assembled message
+    next_id: Option<u32>,
 
-    /// The sequence number, ordering the messages based on when the first
-    /// fragment was received.  This is used to drop the oldest partial message
-    /// when the assembler fills up to its max number of partial messages
-    sequence_received: usize,
+    /// Points to a newer partially assembled message
+    previous_id: Option<u32>,
 }
 
 impl PartiallyAssembledFragment {
-    pub fn new(sequence_received: usize, fragment: MessageFragment) -> Self {
+    pub fn new(next_id: Option<u32>, fragment: MessageFragment) -> Self {
         let mut vec = Vec::with_capacity(fragment.get_count() as usize);
 
         for _i in 0..fragment.get_count() {
@@ -105,7 +122,8 @@ impl PartiallyAssembledFragment {
             count: fragment.get_count(),
             outstanding_fragments: fragment.get_count(),
             fragments: vec,
-            sequence_received,
+            next_id,
+            previous_id: None
         };
 
         new.add_fragment(fragment);
@@ -133,6 +151,7 @@ impl PartiallyAssembledFragment {
             length = length + option.as_ref().unwrap().get_fragment_length();
         }
 
+        // TODO: re-use buffers from partially assembled fragments
         let mut buf = Vec::with_capacity(length);
 
         for option in self.fragments {
@@ -142,13 +161,4 @@ impl PartiallyAssembledFragment {
 
         return buf;
     }
-
-    fn get_sequence_received(&self) -> usize {
-        return self.sequence_received;
-    }
-
-    fn decrement_sequence_received(&mut self) {
-        self.sequence_received -= 1;
-    }
-
 }

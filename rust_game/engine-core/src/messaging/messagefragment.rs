@@ -3,11 +3,6 @@ const INDEX_INDEX: usize = ID_INDEX + size_of::<u32>();
 const COUNT_INDEX: usize = INDEX_INDEX + size_of::<u16>();
 pub const FRAGMENT_HEADER_SIZE: usize = COUNT_INDEX + size_of::<u16>();
 
-pub const fn fragment_payload_size(max_datagram_size: usize) -> usize {
-    max_datagram_size - FRAGMENT_HEADER_SIZE
-}
-
-//TODO: maybe re-implement this with serdes
 pub struct MessageFragment {
     buf: Vec<u8>,
 }

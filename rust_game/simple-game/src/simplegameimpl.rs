@@ -29,7 +29,7 @@ impl Play for SimpleGameImpl {
     const UDP_PORT: u16 = 3456;
     //One sec 1_000_000_000
     //60hz 16_666_666
-    const FRAME_DURATION: TimeDuration = TimeDuration::new(5, 0);
+    const FRAME_DURATION: TimeDuration = TimeDuration::new(0, 16_666_666);
 
     fn get_initial_state(player_count: usize) -> Self::State {
         Self::State::new(player_count)

@@ -97,6 +97,8 @@ impl<Game: Play> EventHandler<Game> {
 
         let message = ToClientMessageTCP::<Game>::InitialInformation(initial_information);
         self.tcp_stream.write(&message).unwrap();
+
+        //TODO: flush the stream when no events are pending
         self.tcp_stream.flush().unwrap();
 
         debug!("Sent InitialInformation");

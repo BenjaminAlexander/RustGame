@@ -1,6 +1,6 @@
 use crate::messaging::{
     MessageFragment,
-    messagefragment::{FRAGMENT_HEADER_SIZE, fragment_payload_size},
+    messagefragment::FRAGMENT_HEADER_SIZE,
 };
 
 pub struct Fragmenter {
@@ -14,10 +14,6 @@ impl Fragmenter {
             next_id: 0,
             max_datagram_size,
         };
-    }
-
-    pub fn fragment_payload_size(&self) -> usize {
-        fragment_payload_size(self.max_datagram_size)
     }
 
     pub fn make_fragments(&mut self, buf: &Vec<u8>) -> Vec<MessageFragment> {
@@ -50,6 +46,17 @@ impl Fragmenter {
             fragments.push(fragment);
         }
 
+        #[cfg(debug_assertions)]
+        for fragment in &fragments {
+            
+            if fragment.get_whole_buf().len() > self.max_datagram_size {
+                panic!(
+                    "Datagram is larger than MAX_UDP_DATAGRAM_SIZE: {:?}",
+                    fragment.get_whole_buf().len()
+                );
+            }
+        }
+
         return fragments;
     }
 }
@@ -57,10 +64,13 @@ impl Fragmenter {
 #[cfg(test)]
 mod tests {
 
-    use crate::messaging::{FragmentAssembler, Fragmenter};
+    use crate::messaging::{FragmentAssembler, Fragmenter, messagefragment::FRAGMENT_HEADER_SIZE};
 
     const DATAGRAM_SIZE: usize = 20;
 
+    const fn fragment_payload_size(max_datagram_size: usize) -> usize {
+        max_datagram_size - FRAGMENT_HEADER_SIZE
+    }
 
     fn make_message(length: usize) -> Vec<u8> {
         let mut buf = Vec::with_capacity(length);
@@ -71,7 +81,7 @@ mod tests {
     }
 
     fn make_and_assemble_fragments(fragmenter: &mut Fragmenter, fragment_assembler: &mut FragmentAssembler) {
-        let message = make_message(fragmenter.fragment_payload_size() * 2);
+        let message = make_message(fragment_payload_size(fragmenter.max_datagram_size) * 2);
         let mut fragments = fragmenter.make_fragments(&message);
 
         assert_eq!(2, fragments.len());
@@ -94,6 +104,7 @@ mod tests {
         let mut fragment_assembler = FragmentAssembler::new(2);
 
         make_and_assemble_fragments(&mut fragmenter, &mut fragment_assembler);
+        make_and_assemble_fragments(&mut fragmenter, &mut fragment_assembler);
     }
 
     #[test]
@@ -104,7 +115,7 @@ mod tests {
         let mut fragmenter = Fragmenter::new(DATAGRAM_SIZE);
         let mut fragment_assembler = FragmentAssembler::new(MAX_MESSAGES);
 
-        let message = make_message(fragmenter.fragment_payload_size() * 2);
+        let message = make_message(fragment_payload_size(fragmenter.max_datagram_size) * 2);
         let mut fragments = fragmenter.make_fragments(&message);
 
         assert_eq!(2, fragments.len());
@@ -116,7 +127,7 @@ mod tests {
 
         // Fragment enough messages so that the first one is dropped.
         for _ in 0..MAX_MESSAGES {
-            let message = make_message(fragmenter.fragment_payload_size() * 2);
+            let message = make_message(fragment_payload_size(fragmenter.max_datagram_size) * 2);
             let mut fragments = fragmenter.make_fragments(&message);
 
             // Only add one fragment from the message to fill up the assembler
