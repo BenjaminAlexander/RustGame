@@ -8,6 +8,7 @@ pub use self::{
     messagefragment::MessageFragment,
     toclientmessagetcp::ToClientMessageTCP,
     toservermessagetcp::ToServerMessageTCP,
+    udp_stream::UdpStream,
     udp_to_client_message::UdpToClientMessage,
     udp_to_server_message::UdpToServerMessage,
 };
@@ -18,5 +19,6 @@ mod inputmessage;
 mod messagefragment;
 mod toclientmessagetcp;
 mod toservermessagetcp;
+mod udp_stream;
 mod udp_to_client_message;
 mod udp_to_server_message;

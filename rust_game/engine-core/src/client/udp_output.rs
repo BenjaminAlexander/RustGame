@@ -5,9 +5,7 @@ use {
         game_time::PingRequest,
         interface::InitialInformation,
         messaging::{
-            Fragmenter,
-            ToServerInputMessage,
-            UdpToServerMessage,
+            ToServerInputMessage, UdpStream, UdpToServerMessage
         },
     },
     commons::{
@@ -26,7 +24,6 @@ use {
         },
         utils::unit_error,
     },
-    log::error,
     std::{
         io::Error,
         net::SocketAddr,
@@ -62,7 +59,7 @@ impl<Game: Play> UdpOutput<Game> {
             ping_period_frames,
             next_ping: FrameIndex::zero(),
             //TODO: make max datagram size more configurable
-            fragmenter: Fragmenter::new(MAX_UDP_DATAGRAM_SIZE),
+            udp_stream: UdpStream::new(MAX_UDP_DATAGRAM_SIZE),
             initial_information,
             non_authoritative_input: None,
         };
@@ -96,7 +93,7 @@ struct EventHandler<Game: Play> {
     socket: UdpSocket,
     ping_period_frames: usize,
     next_ping: FrameIndex,
-    fragmenter: Fragmenter,
+    udp_stream: UdpStream,
     initial_information: InitialInformation<Game>,
     non_authoritative_input: Option<ToServerInputMessage<Game>>,
 }
@@ -169,18 +166,7 @@ impl Write for FallibleWriter {
 }
         
          */
-        let fragments = self.fragmenter.make_fragments(&message).unwrap();
-
-        for fragment in fragments {
-            let result = self
-                .socket
-                .send_to(fragment.get_whole_buf(), &self.server_address);
-
-            if let Err(err) = result {
-                error!("Error sending a UDP message.\n{:?}", err);
-                return Err(());
-            }
-        }
+        self.udp_stream.send(&mut self.socket, &self.server_address, &message).unwrap();
 
         return Ok(());
     }

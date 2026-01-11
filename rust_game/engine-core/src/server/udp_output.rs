@@ -7,9 +7,7 @@ use {
             PingResponse,
         },
         messaging::{
-            Fragmenter,
-            ToClientInputMessage,
-            UdpToClientMessage,
+            ToClientInputMessage, UdpStream, UdpToClientMessage
         },
         server::player_udp_address::PlayerUdpAddress,
     },
@@ -115,7 +113,7 @@ struct EventHandler<Game: Play> {
     player_index: usize,
     socket: UdpSocket,
     remote_peer: Option<PlayerUdpAddress>,
-    fragmenter: Fragmenter,
+    udp_stream: UdpStream,
     phantom: PhantomData<Game>,
 }
 
@@ -131,7 +129,7 @@ impl<Game: Play> EventHandler<Game> {
             //TODO: move clone outside
             socket: socket.try_clone()?,
             //TODO: make max datagram size more configurable
-            fragmenter: Fragmenter::new(MAX_UDP_DATAGRAM_SIZE),
+            udp_stream: UdpStream::new(MAX_UDP_DATAGRAM_SIZE),
             phantom: PhantomData,
             time_source,
         })
@@ -177,18 +175,8 @@ impl<Game: Play> EventHandler<Game> {
             }
         };
 
-        let fragments = self.fragmenter.make_fragments(&message).unwrap();
-
-        for fragment in fragments {
-            if let Err(err) = self
-                .socket
-                .send_to(&fragment.get_whole_buf(), &remote_peer.get_socket_addr())
-            {
-                warn!("Error while sending: {:?}", err);
-                return ControlFlow::Break(());
-            }
-        }
-
+        self.udp_stream.send(&mut self.socket, &remote_peer.get_socket_addr(), &message).unwrap();
+        
         return ControlFlow::Continue(());
     }
 }
