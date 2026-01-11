@@ -1,3 +1,4 @@
+use log::warn;
 use rmp_serde::encode::Error;
 use serde::Serialize;
 
@@ -25,7 +26,12 @@ impl Fragmenter {
 
     pub fn make_fragments<T: Serialize>(&mut self, message: &T) -> Result<Vec<MessageFragment>, Error> {
         self.buf.clear();
+
+        warn!("empty len: {}", self.buf.len());
+
         rmp_serde::encode::write(&mut self.buf, message)?;
+
+        warn!("write len: {}", self.buf.len());
 
         let id = self.next_id;
 
@@ -41,6 +47,8 @@ impl Fragmenter {
         if self.buf.len() % fragment_payload_size != 0 {
             number_of_fragments = number_of_fragments + 1;
         }
+
+        warn!("len: {}, Num Frags: {}", self.buf.len(), number_of_fragments);
 
         /* 
         while self.fragment_bufs.len() < number_of_fragments {
@@ -82,9 +90,14 @@ impl Fragmenter {
 #[cfg(test)]
 mod tests {
 
+    use commons::logging::setup_test_logging;
+
     use crate::messaging::{FragmentAssembler, Fragmenter, messagefragment::FRAGMENT_HEADER_SIZE};
 
+    const MAX_MESSAGES: usize = 2;
     const DATAGRAM_SIZE: usize = 20;
+    const FRAGMENT_PAYLOAD_SIZE: usize = fragment_payload_size(DATAGRAM_SIZE);
+    const TEST_MESSAGE_VEC_LENGTH: usize = FRAGMENT_PAYLOAD_SIZE * 2 - 3;
 
     const fn fragment_payload_size(max_datagram_size: usize) -> usize {
         max_datagram_size - FRAGMENT_HEADER_SIZE
@@ -99,7 +112,7 @@ mod tests {
     }
 
     fn make_and_assemble_fragments(fragmenter: &mut Fragmenter, fragment_assembler: &mut FragmentAssembler) {
-        let message = make_message(fragment_payload_size(fragmenter.max_datagram_size) * 2);
+        let message = make_message(TEST_MESSAGE_VEC_LENGTH);
         let mut fragments = fragmenter.make_fragments(&message).unwrap();
 
         assert_eq!(2, fragments.len());
@@ -118,8 +131,10 @@ mod tests {
 
     #[test]
     fn assemble_fragments() {
+        setup_test_logging();
+        
         let mut fragmenter = Fragmenter::new(DATAGRAM_SIZE);
-        let mut fragment_assembler = FragmentAssembler::new(2);
+        let mut fragment_assembler = FragmentAssembler::new(MAX_MESSAGES);
 
         make_and_assemble_fragments(&mut fragmenter, &mut fragment_assembler);
         make_and_assemble_fragments(&mut fragmenter, &mut fragment_assembler);
@@ -127,13 +142,12 @@ mod tests {
 
     #[test]
     fn drop_oldest_fragment() {
+        setup_test_logging();
         
-        const MAX_MESSAGES: usize = 2;
-
         let mut fragmenter = Fragmenter::new(DATAGRAM_SIZE);
         let mut fragment_assembler = FragmentAssembler::new(MAX_MESSAGES);
 
-        let message = make_message(fragment_payload_size(fragmenter.max_datagram_size) * 2);
+        let message = make_message(TEST_MESSAGE_VEC_LENGTH);
         let mut fragments = fragmenter.make_fragments(&message).unwrap();
 
         assert_eq!(2, fragments.len());
@@ -145,7 +159,7 @@ mod tests {
 
         // Fragment enough messages so that the first one is dropped.
         for _ in 0..MAX_MESSAGES {
-            let message = make_message(fragment_payload_size(fragmenter.max_datagram_size) * 2);
+            let message = make_message(TEST_MESSAGE_VEC_LENGTH);
             let mut fragments = fragmenter.make_fragments(&message).unwrap();
 
             // Only add one fragment from the message to fill up the assembler
