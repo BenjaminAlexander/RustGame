@@ -9,7 +9,8 @@ use crate::messaging::{
 pub struct Fragmenter {
     next_id: u32,
     max_datagram_size: usize,
-    buf: Vec<u8>
+    buf: Vec<u8>,
+    //fragment_bufs: Vec<Vec<u8>>
 }
 
 impl Fragmenter {
@@ -17,7 +18,8 @@ impl Fragmenter {
         return Self {
             next_id: 0,
             max_datagram_size,
-            buf: Vec::with_capacity(max_datagram_size)
+            buf: Vec::with_capacity(max_datagram_size),
+            //fragment_bufs: Vec::new()
         };
     }
 
@@ -40,6 +42,14 @@ impl Fragmenter {
             number_of_fragments = number_of_fragments + 1;
         }
 
+        /* 
+        while self.fragment_bufs.len() < number_of_fragments {
+            let index = self.fragment_bufs.len();
+
+            self.fragment_bufs.push(Vec::with_capacity(capacity));
+        }
+        */
+        
         let mut fragments = Vec::new();
 
         for i in 0..number_of_fragments {
