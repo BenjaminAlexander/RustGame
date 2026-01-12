@@ -130,18 +130,9 @@ impl<Game: Play> HandleUdpRead for UdpReadHandler<Game> {
     fn on_read(&mut self, peer_addr: SocketAddr, buf: &[u8]) -> ControlFlow<()> {
         let fragment = MessageFragment::from_vec(buf.to_vec());
 
-        if let Some(message_buf) = self.fragment_assembler.add_fragment(fragment) {
-            match rmp_serde::from_slice(&message_buf) {
-                Ok(message) => {
-                    //Why does this crash the client?
-                    //info!("{:?}", message);
+        if let Some(message) = self.fragment_assembler.add_fragment(fragment) {
+            return self.handle_received_message(message);
 
-                    return self.handle_received_message(message);
-                }
-                Err(error) => {
-                    error!("Error: {:?}", error);
-                }
-            }
         }
 
         return ControlFlow::Continue(());

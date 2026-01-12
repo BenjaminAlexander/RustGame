@@ -1,4 +1,3 @@
-use log::warn;
 use rmp_serde::encode::Error;
 use serde::Serialize;
 
@@ -26,12 +25,7 @@ impl Fragmenter {
 
     pub fn make_fragments<T: Serialize>(&mut self, message: &T) -> Result<Vec<MessageFragment>, Error> {
         self.buf.clear();
-
-        warn!("empty len: {}", self.buf.len());
-
         rmp_serde::encode::write(&mut self.buf, message)?;
-
-        warn!("write len: {}", self.buf.len());
 
         let id = self.next_id;
 
@@ -47,8 +41,6 @@ impl Fragmenter {
         if self.buf.len() % fragment_payload_size != 0 {
             number_of_fragments = number_of_fragments + 1;
         }
-
-        warn!("len: {}, Num Frags: {}", self.buf.len(), number_of_fragments);
 
         /* 
         while self.fragment_bufs.len() < number_of_fragments {
@@ -121,10 +113,10 @@ mod tests {
         let second_fragment = fragments.remove(0);
 
         // Receive fragments out-of-order
-        let result = fragment_assembler.add_fragment(second_fragment);
+        let result: Option<Vec<u8>> = fragment_assembler.add_fragment(second_fragment);
         assert!(matches!(result, None));
 
-        let received_message = fragment_assembler.add_fragment(first_fragment).unwrap();
+        let received_message: Vec<u8> = fragment_assembler.add_fragment(first_fragment).unwrap();
 
         assert_eq!(message, received_message);
     }
@@ -154,7 +146,7 @@ mod tests {
         let first_fragment = fragments.remove(0);
         let second_fragment = fragments.remove(0);
 
-        let result = fragment_assembler.add_fragment(second_fragment);
+        let result: Option<Vec<u8>> = fragment_assembler.add_fragment(second_fragment);
         assert!(matches!(result, None));
 
         // Fragment enough messages so that the first one is dropped.
@@ -164,12 +156,12 @@ mod tests {
 
             // Only add one fragment from the message to fill up the assembler
             // and cause it to drop the first one
-            let result = fragment_assembler.add_fragment(fragments.pop().unwrap());
+            let result: Option<Vec<u8>> = fragment_assembler.add_fragment(fragments.pop().unwrap());
             assert!(matches!(result, None));
         }
 
         //Original fragment should be dropped, so this shouldn't return a message
-        let result = fragment_assembler.add_fragment(first_fragment);
+        let result: Option<Vec<u8>> = fragment_assembler.add_fragment(first_fragment);
         assert!(matches!(result, None));
     }
 }

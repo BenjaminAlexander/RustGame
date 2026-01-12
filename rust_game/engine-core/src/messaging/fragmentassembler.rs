@@ -1,6 +1,5 @@
 use {
-    crate::messaging::MessageFragment,
-    std::collections::HashMap,
+    crate::messaging::MessageFragment, serde::{de::DeserializeOwned}, std::collections::HashMap
 };
 
 pub struct FragmentAssembler {
@@ -9,6 +8,7 @@ pub struct FragmentAssembler {
     newest_and_oldest_id: Option<(u32,u32)>
 }
 
+//TODO: review buffer allocation in the fragment assembler
 impl FragmentAssembler {
     pub fn new(max_messages: usize) -> Self {
         return Self {
@@ -48,9 +48,11 @@ impl FragmentAssembler {
         partially_assembled_message
     }
 
-    pub fn add_fragment(&mut self, fragment: MessageFragment) -> Option<Vec<u8>> {
+    pub fn add_fragment<T: DeserializeOwned>(&mut self, fragment: MessageFragment) -> Option<T> {
         if fragment.get_count() == 1 {
-            return Some(fragment.move_buf());
+            //TODO: don't unwrap
+            let message =  rmp_serde::from_slice(fragment.move_buf().as_slice()).unwrap();
+            return Some(message);
         }
 
         let id = fragment.get_id();
@@ -87,7 +89,8 @@ impl FragmentAssembler {
 
         if partial.has_all_fragments() {
             let completed_message = self.removed_partially_assembled_message(&id);
-            let message = completed_message.get_full_message();
+            let buf = completed_message.get_full_message();
+            let message =  rmp_serde::from_slice(buf.as_slice()).unwrap();
             return Some(message);
         } else {
             return None;

@@ -79,24 +79,14 @@ impl<Game: Play> UdpHandler<Game> {
             return (None, None);
         }
 
-        if let Some(assembled) = self.handle_fragment(source, &buf) {
-            match rmp_serde::from_slice(assembled.as_slice()) {
-                Ok(message) => {
-                    return (self.handle_message(&message, source), Some(message));
-                }
-                Err(error) => {
-                    //TODO: is removing the fragement assembler on error right?
-                    self.fragment_assemblers.remove(&source);
-                    warn!("Failed to deserialize a ToServerMessageUDP: {:?}", error);
-                    return (None, None);
-                }
-            }
+        if let Some(message) = self.handle_fragment(source, &buf) {
+            return (self.handle_message(&message, source), Some(message));
         } else {
             return (None, None);
         }
     }
 
-    fn handle_fragment(&mut self, source: SocketAddr, fragment: &[u8]) -> Option<Vec<u8>> {
+    fn handle_fragment(&mut self, source: SocketAddr, fragment: &[u8]) -> Option<UdpToServerMessage<Game>> {
         let assembler = match self.fragment_assemblers.get_mut(&source) {
             None => {
                 //TODO: make max_messages more configurable
