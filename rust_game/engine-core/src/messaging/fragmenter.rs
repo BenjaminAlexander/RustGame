@@ -9,10 +9,9 @@ use crate::messaging::{
 pub struct Fragmenter {
     next_id: u32,
     max_datagram_size: usize,
+    fragment_payload_size: usize,
     buf: Vec<u8>,
-
-    //TODO: send bufs immediatly instead of building a list
-    fragments: Vec<MessageFragment>
+    fragment: MessageFragment
 }
 
 impl Fragmenter {
@@ -20,12 +19,13 @@ impl Fragmenter {
         return Self {
             next_id: 0,
             max_datagram_size,
+            fragment_payload_size: max_datagram_size - FRAGMENT_HEADER_SIZE,
             buf: Vec::with_capacity(max_datagram_size),
-            fragments: Vec::new()
+            fragment: MessageFragment::new(max_datagram_size)
         };
     }
 
-    pub fn make_fragments<T: Serialize>(&mut self, message: &T) -> Result<&[MessageFragment], Error> {
+    pub fn make_fragments<T: Serialize>(&mut self, message: &T) -> Result<FragmentIterator<'_>, Error> {
         self.buf.clear();
         rmp_serde::encode::write(&mut self.buf, message)?;
 
@@ -37,36 +37,56 @@ impl Fragmenter {
             self.next_id = self.next_id + 1;
         }
 
-        let fragment_payload_size = self.max_datagram_size - FRAGMENT_HEADER_SIZE;
-        let mut number_of_fragments = self.buf.len() / fragment_payload_size;
+        let mut number_of_fragments = self.buf.len() / self.fragment_payload_size;
 
-        if self.buf.len() % fragment_payload_size != 0 {
+        if self.buf.len() % self.fragment_payload_size != 0 {
             number_of_fragments = number_of_fragments + 1;
         }
 
-        while self.fragments.len() < number_of_fragments {
-            self.fragments.push(MessageFragment::new(self.max_datagram_size));
-        }
+        let iterator = FragmentIterator {
+            fragmenter: self,
+            id,
+            number_of_fragments,
+            next_index: 0
+        };
         
-        for i in 0..number_of_fragments {
-            let start = i * fragment_payload_size;
-            let end = (start + fragment_payload_size).min(self.buf.len());
+        return Ok(iterator);
+    }
+}
 
-            let fragment_buf = self.buf[start..end].to_vec().clone();
+pub struct FragmentIterator<'a> {
+    fragmenter: &'a mut Fragmenter,
+    id: u32,
+    number_of_fragments: usize,
+    next_index: usize
+}
 
-            self.fragments[i].write(id, i as u16, number_of_fragments as u16, fragment_buf.as_slice());
+impl FragmentIterator<'_> {
 
-
-            #[cfg(debug_assertions)]
-            if self.fragments[i].get_whole_buf().len() > self.max_datagram_size {
-                panic!(
-                    "Datagram is larger than MAX_UDP_DATAGRAM_SIZE: {:?}",
-                    self.fragments[i].get_whole_buf().len()
-                );
-            }
+    pub fn next(&mut self) -> Option<&MessageFragment> {
+        if self.next_index >= self.number_of_fragments {
+            return None;
         }
 
-        return Ok(&self.fragments[0..number_of_fragments]);
+        let start = self.next_index * self.fragmenter.fragment_payload_size;
+        let end = (start + self.fragmenter.fragment_payload_size).min(self.fragmenter.buf.len());
+
+        let fragment_buf = &self.fragmenter.buf[start..end];
+
+        self.fragmenter.fragment.write(self.id, self.next_index as u16, self.number_of_fragments as u16, fragment_buf);
+
+
+        #[cfg(debug_assertions)]
+        if self.fragmenter.fragment.get_whole_buf().len() > self.fragmenter.max_datagram_size {
+            panic!(
+                "Datagram is larger than MAX_UDP_DATAGRAM_SIZE: {:?}",
+                self.fragmenter.fragment.get_whole_buf().len()
+            );
+        }
+
+        self.next_index += 1;
+
+        Some(&self.fragmenter.fragment)
     }
 }
 
@@ -96,12 +116,11 @@ mod tests {
 
     fn make_and_assemble_fragments(fragmenter: &mut Fragmenter, fragment_assembler: &mut FragmentAssembler) {
         let message = make_message(TEST_MESSAGE_VEC_LENGTH);
-        let fragments = fragmenter.make_fragments(&message).unwrap();
+        let mut fragments = fragmenter.make_fragments(&message).unwrap();
 
-        assert_eq!(2, fragments.len());
-
-        let first_fragment = fragments[0].clone();
-        let second_fragment = fragments[1].clone();
+        let first_fragment = fragments.next().unwrap().clone();
+        let second_fragment = fragments.next().unwrap().clone();
+        assert!(matches!(fragments.next(), None));
 
         // Receive fragments out-of-order
         let result: Option<Vec<u8>> = fragment_assembler.add_fragment(second_fragment);
@@ -131,11 +150,11 @@ mod tests {
         let mut fragment_assembler = FragmentAssembler::new(MAX_MESSAGES);
 
         let message = make_message(TEST_MESSAGE_VEC_LENGTH);
-        let fragments = fragmenter.make_fragments(&message).unwrap();
+        let mut fragments = fragmenter.make_fragments(&message).unwrap();
 
-        assert_eq!(2, fragments.len());
-        let first_fragment = fragments[0].clone();
-        let second_fragment = fragments[1].clone();
+        let first_fragment = fragments.next().unwrap().clone();
+        let second_fragment = fragments.next().unwrap().clone();
+        assert!(matches!(fragments.next(), None));
 
         let result: Option<Vec<u8>> = fragment_assembler.add_fragment(second_fragment);
         assert!(matches!(result, None));
@@ -143,11 +162,11 @@ mod tests {
         // Fragment enough messages so that the first one is dropped.
         for _ in 0..MAX_MESSAGES {
             let message = make_message(TEST_MESSAGE_VEC_LENGTH);
-            let fragments = fragmenter.make_fragments(&message).unwrap();
+            let mut fragments = fragmenter.make_fragments(&message).unwrap();
 
             // Only add one fragment from the message to fill up the assembler
             // and cause it to drop the first one
-            let result: Option<Vec<u8>> = fragment_assembler.add_fragment(fragments[0].clone());
+            let result: Option<Vec<u8>> = fragment_assembler.add_fragment(fragments.next().unwrap().clone());
             assert!(matches!(result, None));
         }
 

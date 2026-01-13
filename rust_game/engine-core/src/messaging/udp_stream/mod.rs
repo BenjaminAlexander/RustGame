@@ -20,7 +20,7 @@ impl UdpStream {
 
     pub fn send<T: Serialize>(&mut self, udp_socket: &mut UdpSocket, destination: &SocketAddr, message: &T) -> Result<(), ()> {
 
-        let fragments = match self.fragmenter.make_fragments(message) {
+        let mut fragments = match self.fragmenter.make_fragments(message) {
             Ok(fragments) => fragments,
             Err(error) => {
                 warn!("An error occured while making message fragments: {:?}", error);
@@ -28,7 +28,7 @@ impl UdpStream {
             },
         };
 
-        for fragment in fragments {
+        while let Some(fragment) = fragments.next() {
             match udp_socket.send_to(&fragment.get_whole_buf(), destination) {
                 Ok(bytes_sent) => {
                     if bytes_sent != fragment.get_whole_buf().len() {
