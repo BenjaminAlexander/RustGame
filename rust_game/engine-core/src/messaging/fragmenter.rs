@@ -10,7 +10,9 @@ pub struct Fragmenter {
     next_id: u32,
     max_datagram_size: usize,
     buf: Vec<u8>,
-    //fragment_bufs: Vec<Vec<u8>>
+
+    //TODO: send bufs immediatly instead of building a list
+    fragments: Vec<MessageFragment>
 }
 
 impl Fragmenter {
@@ -19,11 +21,11 @@ impl Fragmenter {
             next_id: 0,
             max_datagram_size,
             buf: Vec::with_capacity(max_datagram_size),
-            //fragment_bufs: Vec::new()
+            fragments: Vec::new()
         };
     }
 
-    pub fn make_fragments<T: Serialize>(&mut self, message: &T) -> Result<Vec<MessageFragment>, Error> {
+    pub fn make_fragments<T: Serialize>(&mut self, message: &T) -> Result<&[MessageFragment], Error> {
         self.buf.clear();
         rmp_serde::encode::write(&mut self.buf, message)?;
 
@@ -42,40 +44,29 @@ impl Fragmenter {
             number_of_fragments = number_of_fragments + 1;
         }
 
-        /* 
-        while self.fragment_bufs.len() < number_of_fragments {
-            let index = self.fragment_bufs.len();
-
-            self.fragment_bufs.push(Vec::with_capacity(capacity));
+        while self.fragments.len() < number_of_fragments {
+            self.fragments.push(MessageFragment::new(self.max_datagram_size));
         }
-        */
         
-        let mut fragments = Vec::new();
-
         for i in 0..number_of_fragments {
             let start = i * fragment_payload_size;
             let end = (start + fragment_payload_size).min(self.buf.len());
 
             let fragment_buf = self.buf[start..end].to_vec().clone();
 
-            let fragment =
-                MessageFragment::new(id, i as u16, number_of_fragments as u16, fragment_buf);
+            self.fragments[i].write(id, i as u16, number_of_fragments as u16, fragment_buf.as_slice());
 
-            fragments.push(fragment);
-        }
 
-        #[cfg(debug_assertions)]
-        for fragment in &fragments {
-            
-            if fragment.get_whole_buf().len() > self.max_datagram_size {
+            #[cfg(debug_assertions)]
+            if self.fragments[i].get_whole_buf().len() > self.max_datagram_size {
                 panic!(
                     "Datagram is larger than MAX_UDP_DATAGRAM_SIZE: {:?}",
-                    fragment.get_whole_buf().len()
+                    self.fragments[i].get_whole_buf().len()
                 );
             }
         }
 
-        return Ok(fragments);
+        return Ok(&self.fragments[0..number_of_fragments]);
     }
 }
 
@@ -105,12 +96,12 @@ mod tests {
 
     fn make_and_assemble_fragments(fragmenter: &mut Fragmenter, fragment_assembler: &mut FragmentAssembler) {
         let message = make_message(TEST_MESSAGE_VEC_LENGTH);
-        let mut fragments = fragmenter.make_fragments(&message).unwrap();
+        let fragments = fragmenter.make_fragments(&message).unwrap();
 
         assert_eq!(2, fragments.len());
 
-        let first_fragment = fragments.remove(0);
-        let second_fragment = fragments.remove(0);
+        let first_fragment = fragments[0].clone();
+        let second_fragment = fragments[1].clone();
 
         // Receive fragments out-of-order
         let result: Option<Vec<u8>> = fragment_assembler.add_fragment(second_fragment);
@@ -140,11 +131,11 @@ mod tests {
         let mut fragment_assembler = FragmentAssembler::new(MAX_MESSAGES);
 
         let message = make_message(TEST_MESSAGE_VEC_LENGTH);
-        let mut fragments = fragmenter.make_fragments(&message).unwrap();
+        let fragments = fragmenter.make_fragments(&message).unwrap();
 
         assert_eq!(2, fragments.len());
-        let first_fragment = fragments.remove(0);
-        let second_fragment = fragments.remove(0);
+        let first_fragment = fragments[0].clone();
+        let second_fragment = fragments[1].clone();
 
         let result: Option<Vec<u8>> = fragment_assembler.add_fragment(second_fragment);
         assert!(matches!(result, None));
@@ -152,11 +143,11 @@ mod tests {
         // Fragment enough messages so that the first one is dropped.
         for _ in 0..MAX_MESSAGES {
             let message = make_message(TEST_MESSAGE_VEC_LENGTH);
-            let mut fragments = fragmenter.make_fragments(&message).unwrap();
+            let fragments = fragmenter.make_fragments(&message).unwrap();
 
             // Only add one fragment from the message to fill up the assembler
             // and cause it to drop the first one
-            let result: Option<Vec<u8>> = fragment_assembler.add_fragment(fragments.pop().unwrap());
+            let result: Option<Vec<u8>> = fragment_assembler.add_fragment(fragments[0].clone());
             assert!(matches!(result, None));
         }
 

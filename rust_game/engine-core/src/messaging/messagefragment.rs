@@ -3,19 +3,24 @@ const INDEX_INDEX: usize = ID_INDEX + size_of::<u32>();
 const COUNT_INDEX: usize = INDEX_INDEX + size_of::<u16>();
 pub const FRAGMENT_HEADER_SIZE: usize = COUNT_INDEX + size_of::<u16>();
 
+#[derive(Clone)]
 pub struct MessageFragment {
     buf: Vec<u8>,
 }
 
 impl MessageFragment {
-    pub fn new(id: u32, index: u16, count: u16, mut buf: Vec<u8>) -> Self {
-        let mut fragment: Vec<u8> = Vec::with_capacity(buf.len() + FRAGMENT_HEADER_SIZE);
-        fragment.append(&mut id.to_be_bytes().to_vec());
-        fragment.append(&mut index.to_be_bytes().to_vec());
-        fragment.append(&mut count.to_be_bytes().to_vec());
-        fragment.append(&mut buf);
+    pub fn new(max_datagram_size: usize) -> Self {
+        Self {
+            buf: Vec::with_capacity(max_datagram_size)
+        }
+    }
 
-        return Self { buf: fragment };
+    pub fn write(&mut self, id: u32, index: u16, count: u16, buf: &[u8]) {
+        self.buf.clear();
+        self.buf.extend_from_slice(&id.to_be_bytes());
+        self.buf.extend_from_slice(&index.to_be_bytes());
+        self.buf.extend_from_slice(&count.to_be_bytes());
+        self.buf.extend_from_slice(buf);
     }
 
     pub fn from_vec(buf: Vec<u8>) -> Self {
