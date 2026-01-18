@@ -60,4 +60,8 @@ impl MessageFragment {
     pub fn get_whole_buf(&self) -> &Vec<u8> {
         return &self.buf;
     }
+
+    pub fn payload(&self) -> &[u8] {
+        &self.buf[FRAGMENT_HEADER_SIZE..self.buf.len()]
+    }
 }

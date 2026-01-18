@@ -91,9 +91,9 @@ impl FragmentAssembler {
         };
 
         if partial.has_all_fragments() {
-            let completed_message = self.removed_partially_assembled_message(&id);
+            let mut completed_message = self.removed_partially_assembled_message(&id);
             let buf = completed_message.get_full_message();
-            let message =  rmp_serde::from_slice(buf.as_slice()).unwrap();
+            let message =  rmp_serde::from_slice(buf).unwrap();
             return Some(message);
         } else {
             return None;
@@ -156,7 +156,7 @@ impl PartiallyAssembledFragment {
         return self.outstanding_fragments == 0;
     }
 
-    fn get_full_message(mut self) -> Vec<u8> {
+    fn get_full_message(&mut self) -> &[u8] {
         let mut length = 0;
 
         for option in &self.fragments {
@@ -166,11 +166,11 @@ impl PartiallyAssembledFragment {
         // TODO: re-use buffers from partially assembled fragments
         self.buf = Vec::with_capacity(length);
 
-        for option in self.fragments {
-            let mut fragment_buf = option.unwrap().move_buf();
-            self.buf.append(&mut fragment_buf);
+        for option in &self.fragments {
+            let fragment_buf = option.as_ref().unwrap().payload();
+            self.buf.extend_from_slice(fragment_buf);
         }
 
-        return self.buf;
+        return self.buf.as_slice();
     }
 }
