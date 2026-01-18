@@ -48,7 +48,10 @@ impl FragmentAssembler {
         partially_assembled_message
     }
 
-    pub fn add_fragment<T: DeserializeOwned>(&mut self, fragment: MessageFragment) -> Option<T> {
+    pub fn add_fragment<T: DeserializeOwned>(&mut self, buf: &[u8]) -> Option<T> {
+
+        let fragment = MessageFragment::from_vec(buf.to_vec());
+
         if fragment.get_count() == 1 {
             //TODO: don't unwrap
             let message =  rmp_serde::from_slice(fragment.move_buf().as_slice()).unwrap();
@@ -103,6 +106,8 @@ struct PartiallyAssembledFragment {
     id: u32,
     count: u16,
     outstanding_fragments: u16,
+
+    //TODO: replace this with a buffer
     fragments: Vec<Option<MessageFragment>>,
     
     /// Points to an older partially assembled message
@@ -110,6 +115,9 @@ struct PartiallyAssembledFragment {
 
     /// Points to a newer partially assembled message
     previous_id: Option<u32>,
+
+    //TODO: allocate this to the right size at the begining
+    buf: Vec<u8>
 }
 
 impl PartiallyAssembledFragment {
@@ -126,7 +134,8 @@ impl PartiallyAssembledFragment {
             outstanding_fragments: fragment.get_count(),
             fragments: vec,
             next_id,
-            previous_id: None
+            previous_id: None,
+            buf: Vec::new()
         };
 
         new.add_fragment(fragment);
@@ -147,7 +156,7 @@ impl PartiallyAssembledFragment {
         return self.outstanding_fragments == 0;
     }
 
-    fn get_full_message(self) -> Vec<u8> {
+    fn get_full_message(mut self) -> Vec<u8> {
         let mut length = 0;
 
         for option in &self.fragments {
@@ -155,13 +164,13 @@ impl PartiallyAssembledFragment {
         }
 
         // TODO: re-use buffers from partially assembled fragments
-        let mut buf = Vec::with_capacity(length);
+        self.buf = Vec::with_capacity(length);
 
         for option in self.fragments {
             let mut fragment_buf = option.unwrap().move_buf();
-            buf.append(&mut fragment_buf);
+            self.buf.append(&mut fragment_buf);
         }
 
-        return buf;
+        return self.buf;
     }
 }

@@ -9,7 +9,6 @@ use {
         },
         messaging::{
             FragmentAssembler,
-            MessageFragment,
             UdpToClientMessage,
         },
     },
@@ -128,9 +127,7 @@ impl<Game: Play> UdpReadHandler<Game> {
 impl<Game: Play> HandleUdpRead for UdpReadHandler<Game> {
     //TODO: check peer address against server address
     fn on_read(&mut self, peer_addr: SocketAddr, buf: &[u8]) -> ControlFlow<()> {
-        let fragment = MessageFragment::from_vec(buf.to_vec());
-
-        if let Some(message) = self.fragment_assembler.add_fragment(fragment) {
+        if let Some(message) = self.fragment_assembler.add_fragment(buf) {
             return self.handle_received_message(message);
 
         }

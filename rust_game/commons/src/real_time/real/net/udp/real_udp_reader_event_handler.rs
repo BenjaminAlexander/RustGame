@@ -30,6 +30,7 @@ use {
 pub struct RealUdpReaderEventHandler<T: HandleUdpRead> {
     udp_socket: RealUdpSocket,
     udp_read_handler: T,
+    buf: [u8; MAX_UDP_DATAGRAM_SIZE]
 }
 
 impl<T: HandleUdpRead> RealUdpReaderEventHandler<T> {
@@ -43,25 +44,24 @@ impl<T: HandleUdpRead> RealUdpReaderEventHandler<T> {
         let event_handler = Self {
             udp_socket,
             udp_read_handler,
+            buf: [0; MAX_UDP_DATAGRAM_SIZE]
         };
 
         return real::spawn_event_handler(thread_name, receiver, event_handler, join_call_back);
     }
 
     fn read(&mut self) -> EventHandleResult {
-        let mut buf = [0; MAX_UDP_DATAGRAM_SIZE];
-        let result = self.udp_socket.recv_from(&mut buf);
-        return self.handle_read_result(result, &buf);
+        let result = self.udp_socket.recv_from(&mut self.buf);
+        return self.handle_read_result(result);
     }
 
     fn handle_read_result(
         &mut self,
         result: Result<(usize, std::net::SocketAddr), std::io::Error>,
-        buf: &[u8],
     ) -> EventHandleResult {
         match result {
             Ok((len, peer_addr)) => {
-                return match self.udp_read_handler.on_read(peer_addr, &buf[..len]) {
+                return match self.udp_read_handler.on_read(peer_addr, &self.buf[..len]) {
                     Continue(()) => EventHandleResult::TryForNextEvent,
                     Break(()) => EventHandleResult::StopThread,
                 };
@@ -133,6 +133,7 @@ mod tests {
         let mut read_handler = RealUdpReaderEventHandler {
             udp_socket,
             udp_read_handler,
+            buf: [0; MAX_UDP_DATAGRAM_SIZE]
         };
 
         let buf = [0];
@@ -144,7 +145,7 @@ mod tests {
 
         let result = Result::Err(Error::from(ErrorKind::NotConnected));
 
-        let handle_result_result = read_handler.handle_read_result(result, &buf);
+        let handle_result_result = read_handler.handle_read_result(result);
 
         assert!(matches!(
             handle_result_result,

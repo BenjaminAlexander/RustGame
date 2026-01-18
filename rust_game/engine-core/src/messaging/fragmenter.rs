@@ -123,10 +123,10 @@ mod tests {
         assert!(matches!(fragments.next(), None));
 
         // Receive fragments out-of-order
-        let result: Option<Vec<u8>> = fragment_assembler.add_fragment(second_fragment);
+        let result: Option<Vec<u8>> = fragment_assembler.add_fragment(second_fragment.get_whole_buf());
         assert!(matches!(result, None));
 
-        let received_message: Vec<u8> = fragment_assembler.add_fragment(first_fragment).unwrap();
+        let received_message: Vec<u8> = fragment_assembler.add_fragment(first_fragment.get_whole_buf()).unwrap();
 
         assert_eq!(message, received_message);
     }
@@ -156,7 +156,7 @@ mod tests {
         let second_fragment = fragments.next().unwrap().clone();
         assert!(matches!(fragments.next(), None));
 
-        let result: Option<Vec<u8>> = fragment_assembler.add_fragment(second_fragment);
+        let result: Option<Vec<u8>> = fragment_assembler.add_fragment(second_fragment.get_whole_buf());
         assert!(matches!(result, None));
 
         // Fragment enough messages so that the first one is dropped.
@@ -166,12 +166,12 @@ mod tests {
 
             // Only add one fragment from the message to fill up the assembler
             // and cause it to drop the first one
-            let result: Option<Vec<u8>> = fragment_assembler.add_fragment(fragments.next().unwrap().clone());
+            let result: Option<Vec<u8>> = fragment_assembler.add_fragment(fragments.next().unwrap().get_whole_buf());
             assert!(matches!(result, None));
         }
 
         //Original fragment should be dropped, so this shouldn't return a message
-        let result: Option<Vec<u8>> = fragment_assembler.add_fragment(first_fragment);
+        let result: Option<Vec<u8>> = fragment_assembler.add_fragment(first_fragment.get_whole_buf());
         assert!(matches!(result, None));
     }
 }

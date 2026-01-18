@@ -5,6 +5,8 @@ pub const FRAGMENT_HEADER_SIZE: usize = COUNT_INDEX + size_of::<u16>();
 
 #[derive(Clone)]
 pub struct MessageFragment {
+
+    //TODO: make this borrowed
     buf: Vec<u8>,
 }
 

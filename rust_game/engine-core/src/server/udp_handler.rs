@@ -3,7 +3,6 @@ use {
         Play,
         messaging::{
             FragmentAssembler,
-            MessageFragment,
             UdpToServerMessage,
         },
         server::{
@@ -97,7 +96,7 @@ impl<Game: Play> UdpHandler<Game> {
             Some(assembler) => assembler,
         };
 
-        return assembler.add_fragment(MessageFragment::from_vec(fragment.to_vec()));
+        return assembler.add_fragment(fragment);
     }
 
     fn handle_message(
