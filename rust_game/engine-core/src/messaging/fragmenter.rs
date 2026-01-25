@@ -1,10 +1,7 @@
 use rmp_serde::encode::Error;
 use serde::Serialize;
 
-use crate::messaging::{
-    MessageFragment,
-    messagefragment::FRAGMENT_HEADER_SIZE,
-};
+use crate::messaging::{MessageFragment, messagefragment::{IndexType, TotalLengthType}};
 
 pub struct Fragmenter {
     next_id: u32,
@@ -19,7 +16,7 @@ impl Fragmenter {
         return Self {
             next_id: 0,
             max_datagram_size,
-            fragment_payload_size: max_datagram_size - FRAGMENT_HEADER_SIZE,
+            fragment_payload_size: MessageFragment::fragment_payload_size(max_datagram_size),
             buf: Vec::with_capacity(max_datagram_size),
             fragment: MessageFragment::new(max_datagram_size)
         };
@@ -37,11 +34,7 @@ impl Fragmenter {
             self.next_id = self.next_id + 1;
         }
 
-        let mut number_of_fragments = self.buf.len() / self.fragment_payload_size;
-
-        if self.buf.len() % self.fragment_payload_size != 0 {
-            number_of_fragments = number_of_fragments + 1;
-        }
+        let number_of_fragments = MessageFragment::number_of_fragments(self.fragment_payload_size, self.buf.len());
 
         let iterator = FragmentIterator {
             fragmenter: self,
@@ -73,7 +66,7 @@ impl FragmentIterator<'_> {
 
         let fragment_buf = &self.fragmenter.buf[start..end];
 
-        self.fragmenter.fragment.write(self.id, self.next_index as u16, self.number_of_fragments as u16, fragment_buf);
+        self.fragmenter.fragment.write(self.id, self.next_index as IndexType, self.fragmenter.buf.len() as TotalLengthType, fragment_buf);
 
 
         #[cfg(debug_assertions)]

@@ -1,7 +1,17 @@
-const ID_INDEX: usize = 0;
-const INDEX_INDEX: usize = ID_INDEX + size_of::<u32>();
-const COUNT_INDEX: usize = INDEX_INDEX + size_of::<u16>();
-pub const FRAGMENT_HEADER_SIZE: usize = COUNT_INDEX + size_of::<u16>();
+type IdType = u32;
+pub type IndexType = u16;
+pub type TotalLengthType = u64;
+
+const ID_INDEX: usize = 0; 
+const ID_LENGTH: usize = size_of::<IdType>();
+
+const INDEX_INDEX: usize = ID_INDEX + ID_LENGTH; 
+const INDEX_LENGTH: usize = size_of::<IndexType>();
+
+const TOTAL_LENGTH_INDEX: usize = INDEX_INDEX + INDEX_LENGTH; 
+const TOTAL_LENGTH_LENGTH: usize = size_of::<TotalLengthType>(); 
+
+pub const FRAGMENT_HEADER_SIZE: usize = TOTAL_LENGTH_INDEX + TOTAL_LENGTH_LENGTH; 
 
 #[derive(Clone)]
 pub struct MessageFragment {
@@ -17,11 +27,11 @@ impl MessageFragment {
         }
     }
 
-    pub fn write(&mut self, id: u32, index: u16, count: u16, buf: &[u8]) {
+    pub fn write(&mut self, id: IdType, index: IndexType, total_length: TotalLengthType, buf: &[u8]) {
         self.buf.clear();
         self.buf.extend_from_slice(&id.to_be_bytes());
         self.buf.extend_from_slice(&index.to_be_bytes());
-        self.buf.extend_from_slice(&count.to_be_bytes());
+        self.buf.extend_from_slice(&total_length.to_be_bytes());
         self.buf.extend_from_slice(buf);
     }
 
@@ -29,24 +39,26 @@ impl MessageFragment {
         return Self { buf };
     }
 
-    pub fn get_id(&self) -> u32 {
-        let array: [u8; 4] = [
-            self.buf[ID_INDEX],
-            self.buf[ID_INDEX + 1],
-            self.buf[ID_INDEX + 2],
-            self.buf[ID_INDEX + 3],
-        ];
-        return u32::from_be_bytes(array);
+    pub fn get_id(&self) -> IdType {
+        let mut array =  [0; ID_LENGTH];
+        array.copy_from_slice(&self.buf[ID_INDEX..(ID_INDEX + ID_LENGTH)]);
+        return IdType::from_be_bytes(array);
     }
 
-    pub fn get_count(&self) -> u16 {
-        let array: [u8; 2] = [self.buf[COUNT_INDEX], self.buf[COUNT_INDEX + 1]];
-        return u16::from_be_bytes(array);
+    pub fn get_index(&self) -> IndexType {
+        let mut array =  [0; INDEX_LENGTH];
+        array.copy_from_slice(&self.buf[INDEX_INDEX..(INDEX_INDEX + INDEX_LENGTH)]);
+        return IndexType::from_be_bytes(array);
     }
 
-    pub fn get_index(&self) -> u16 {
-        let array: [u8; 2] = [self.buf[INDEX_INDEX], self.buf[INDEX_INDEX + 1]];
-        return u16::from_be_bytes(array);
+    pub fn get_total_length(&self) -> TotalLengthType {
+        let mut array =  [0; TOTAL_LENGTH_LENGTH];
+        array.copy_from_slice(&self.buf[TOTAL_LENGTH_INDEX..(TOTAL_LENGTH_INDEX + TOTAL_LENGTH_LENGTH)]);
+        return TotalLengthType::from_be_bytes(array);
+    }
+
+    pub fn get_count(&self, fragment_payload_size: usize) -> usize {
+        Self::number_of_fragments(fragment_payload_size, self.get_total_length() as usize)
     }
 
     pub fn get_fragment_length(&self) -> usize {
@@ -63,5 +75,19 @@ impl MessageFragment {
 
     pub fn payload(&self) -> &[u8] {
         &self.buf[FRAGMENT_HEADER_SIZE..self.buf.len()]
+    }
+
+    pub const fn fragment_payload_size(max_datagram_size: usize) -> usize {
+        max_datagram_size - FRAGMENT_HEADER_SIZE
+    }
+
+    pub const fn number_of_fragments(fragment_payload_size: usize, buffer_length: usize) -> usize {
+        let mut number_of_fragments = buffer_length / fragment_payload_size;
+
+        if buffer_length % fragment_payload_size != 0 {
+            number_of_fragments = number_of_fragments + 1;
+        }
+
+        number_of_fragments
     }
 }

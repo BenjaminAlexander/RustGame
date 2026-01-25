@@ -4,6 +4,7 @@ use {
 
 pub struct FragmentAssembler {
     max_datagram_size: usize,
+    fragment_payload_size: usize,
     max_messages: usize,
     messages: HashMap<u32, PartiallyAssembledFragment>,
     newest_and_oldest_id: Option<(u32,u32)>
@@ -14,6 +15,7 @@ impl FragmentAssembler {
     pub fn new(max_datagram_size: usize, max_messages: usize) -> Self {
         return Self {
             max_datagram_size,
+            fragment_payload_size: MessageFragment::fragment_payload_size(max_datagram_size),
             max_messages,
             messages: HashMap::new(),
             newest_and_oldest_id: None
@@ -53,8 +55,9 @@ impl FragmentAssembler {
     pub fn add_fragment<T: DeserializeOwned>(&mut self, buf: &[u8]) -> Option<T> {
 
         let fragment = MessageFragment::from_vec(buf.to_vec());
+        let fragment_count = fragment.get_count(self.fragment_payload_size);
 
-        if fragment.get_count() == 1 {
+        if fragment_count == 1 {
             //TODO: don't unwrap
             let message =  rmp_serde::from_slice(fragment.move_buf().as_slice()).unwrap();
             return Some(message);
@@ -81,7 +84,7 @@ impl FragmentAssembler {
                     },
                 };
 
-                let partial_message = PartiallyAssembledFragment::new(self.max_datagram_size, next_id, fragment);
+                let partial_message = PartiallyAssembledFragment::new(fragment_count, next_id, fragment);
 
                 self.messages.insert(id, partial_message);
                 self.messages.get_mut(&id).unwrap()
@@ -106,8 +109,8 @@ impl FragmentAssembler {
 //TODO: rename to message
 struct PartiallyAssembledFragment {
     id: u32,
-    count: u16,
-    outstanding_fragments: u16,
+    count: usize,
+    outstanding_fragments: usize,
 
     //TODO: replace this with a buffer
     fragments: Vec<Option<MessageFragment>>,
@@ -123,22 +126,22 @@ struct PartiallyAssembledFragment {
 }
 
 impl PartiallyAssembledFragment {
-    pub fn new(max_datagram_size: usize, next_id: Option<u32>, fragment: MessageFragment) -> Self {
-        let mut vec = Vec::with_capacity(fragment.get_count() as usize);
-        //let buf = Vec::with_capacity(fragment.get_count() as usize * max_datagram_size);
+    pub fn new(fragment_count: usize, next_id: Option<u32>, fragment: MessageFragment) -> Self {
+        let mut vec = Vec::with_capacity(fragment_count);
+        let buf = Vec::with_capacity(fragment.get_total_length() as usize);
 
-        for _i in 0..fragment.get_count() {
+        for _i in 0..fragment_count {
             vec.push(None);
         }
 
         let mut new = Self {
             id: fragment.get_id(),
-            count: fragment.get_count(),
-            outstanding_fragments: fragment.get_count(),
+            count: fragment_count,
+            outstanding_fragments: fragment_count,
             fragments: vec,
             next_id,
             previous_id: None,
-            buf: Vec::new()
+            buf,
         };
 
         new.add_fragment(fragment);
