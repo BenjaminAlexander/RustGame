@@ -36,6 +36,7 @@ impl MessageFragment {
     }
 
     pub fn from_vec(buf: Vec<u8>) -> Self {
+        //TODO: check if this buf is valid
         return Self { buf };
     }
 
@@ -57,7 +58,7 @@ impl MessageFragment {
         return TotalLengthType::from_be_bytes(array);
     }
 
-    pub fn get_count(&self, fragment_payload_size: usize) -> usize {
+    pub fn get_count(&self, fragment_payload_size: usize) -> IndexType {
         Self::number_of_fragments(fragment_payload_size, self.get_total_length() as usize)
     }
 
@@ -81,13 +82,17 @@ impl MessageFragment {
         max_datagram_size - FRAGMENT_HEADER_SIZE
     }
 
-    pub const fn number_of_fragments(fragment_payload_size: usize, buffer_length: usize) -> usize {
+    pub const fn number_of_fragments(fragment_payload_size: usize, buffer_length: usize) -> IndexType {
         let mut number_of_fragments = buffer_length / fragment_payload_size;
 
         if buffer_length % fragment_payload_size != 0 {
             number_of_fragments = number_of_fragments + 1;
         }
 
-        number_of_fragments
+        number_of_fragments as IndexType
+    }
+
+    pub const fn start_index(fragment_payload_size: usize, index: IndexType) -> usize {
+        index as usize * fragment_payload_size
     }
 }

@@ -1,5 +1,5 @@
 use {
-    crate::messaging::MessageFragment, serde::{de::DeserializeOwned}, std::collections::HashMap
+    crate::messaging::{MessageFragment, messagefragment::{IndexType, TotalLengthType}}, serde::de::DeserializeOwned, std::collections::HashMap
 };
 
 pub struct FragmentAssembler {
@@ -84,13 +84,13 @@ impl FragmentAssembler {
                     },
                 };
 
-                let partial_message = PartiallyAssembledFragment::new(fragment_count, next_id, fragment);
+                let partial_message = PartiallyAssembledFragment::new(self.fragment_payload_size, fragment_count, next_id, fragment);
 
                 self.messages.insert(id, partial_message);
                 self.messages.get_mut(&id).unwrap()
             }
             Some(partial) => {
-                partial.add_fragment(fragment);
+                partial.add_fragment(self.fragment_payload_size, fragment);
                 partial
             }
         };
@@ -109,8 +109,11 @@ impl FragmentAssembler {
 //TODO: rename to message
 struct PartiallyAssembledFragment {
     id: u32,
-    count: usize,
-    outstanding_fragments: usize,
+
+    //TODO: rename
+    count: IndexType,
+    //TODO: rename to count
+    outstanding_fragments: IndexType,
 
     //TODO: replace this with a buffer
     fragments: Vec<Option<MessageFragment>>,
@@ -126,9 +129,11 @@ struct PartiallyAssembledFragment {
 }
 
 impl PartiallyAssembledFragment {
-    pub fn new(fragment_count: usize, next_id: Option<u32>, fragment: MessageFragment) -> Self {
-        let mut vec = Vec::with_capacity(fragment_count);
-        let buf = Vec::with_capacity(fragment.get_total_length() as usize);
+    pub fn new(fragment_payload_size: usize, fragment_count: IndexType, next_id: Option<u32>, fragment: MessageFragment) -> Self {
+        let total_length = fragment.get_total_length();
+        let mut vec = Vec::with_capacity(fragment_count as usize);
+        let mut buf = Vec::with_capacity(total_length as usize);
+        buf.resize(total_length as usize, 0);
 
         for _i in 0..fragment_count {
             vec.push(None);
@@ -144,18 +149,35 @@ impl PartiallyAssembledFragment {
             buf,
         };
 
-        new.add_fragment(fragment);
+        new.add_fragment(fragment_payload_size, fragment);
 
         return new;
     }
 
-    fn add_fragment(&mut self, fragment: MessageFragment) {
+    fn add_fragment(&mut self, fragment_payload_size: usize, fragment: MessageFragment) {
+
+        //TODO: assert total length, if they don't match, stop trying to assemble this fragment
+
         if self.fragments[fragment.get_index() as usize].is_none() {
             self.outstanding_fragments = self.outstanding_fragments - 1;
         }
 
-        let index = fragment.get_index() as usize;
-        self.fragments[index] = Some(fragment);
+        let index = fragment.get_index();
+
+        let start_index = MessageFragment::start_index(fragment_payload_size, index);
+        let expected_end_index = if index == self.count - 1 {
+            self.buf.len()
+        } else {
+            start_index + fragment_payload_size 
+        };
+
+        //TODO: assert actual end index based of fragment buffer length, stop trying to assemble this fragment
+
+        //TODO: don't unwrap, stop trying to assemble this fragment
+        let dest = self.buf.get_mut(start_index..expected_end_index).unwrap();
+        dest.copy_from_slice(&fragment.payload());
+
+        self.fragments[index as usize] = Some(fragment);
     }
 
     fn has_all_fragments(&self) -> bool {
@@ -163,20 +185,6 @@ impl PartiallyAssembledFragment {
     }
 
     fn get_full_message(&mut self) -> &[u8] {
-        let mut length = 0;
-
-        for option in &self.fragments {
-            length = length + option.as_ref().unwrap().get_fragment_length();
-        }
-
-        // TODO: re-use buffers from partially assembled fragments
-        self.buf = Vec::with_capacity(length);
-
-        for option in &self.fragments {
-            let fragment_buf = option.as_ref().unwrap().payload();
-            self.buf.extend_from_slice(fragment_buf);
-        }
-
         return self.buf.as_slice();
     }
 }

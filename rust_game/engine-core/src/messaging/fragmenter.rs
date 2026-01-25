@@ -50,8 +50,8 @@ impl Fragmenter {
 pub struct FragmentIterator<'a> {
     fragmenter: &'a mut Fragmenter,
     id: u32,
-    number_of_fragments: usize,
-    next_index: usize
+    number_of_fragments: IndexType,
+    next_index: IndexType
 }
 
 impl FragmentIterator<'_> {
@@ -61,7 +61,7 @@ impl FragmentIterator<'_> {
             return None;
         }
 
-        let start = self.next_index * self.fragmenter.fragment_payload_size;
+        let start = MessageFragment::start_index(self.fragmenter.fragment_payload_size, self.next_index);
         let end = (start + self.fragmenter.fragment_payload_size).min(self.fragmenter.buf.len());
 
         let fragment_buf = &self.fragmenter.buf[start..end];
