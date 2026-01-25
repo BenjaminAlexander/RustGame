@@ -5,7 +5,7 @@ use {
         game_time::PingRequest,
         interface::InitialInformation,
         messaging::{
-            ToServerInputMessage, UdpStream, UdpToServerMessage
+            ToServerInputMessage, UdpStreamSender, UdpToServerMessage
         },
     },
     commons::{
@@ -59,7 +59,7 @@ impl<Game: Play> UdpOutput<Game> {
             ping_period_frames,
             next_ping: FrameIndex::zero(),
             //TODO: make max datagram size more configurable
-            udp_stream: UdpStream::new(MAX_UDP_DATAGRAM_SIZE),
+            udp_stream: UdpStreamSender::new(MAX_UDP_DATAGRAM_SIZE),
             initial_information,
             non_authoritative_input: None,
         };
@@ -93,7 +93,7 @@ struct EventHandler<Game: Play> {
     socket: UdpSocket,
     ping_period_frames: usize,
     next_ping: FrameIndex,
-    udp_stream: UdpStream,
+    udp_stream: UdpStreamSender,
     initial_information: InitialInformation<Game>,
     non_authoritative_input: Option<ToServerInputMessage<Game>>,
 }

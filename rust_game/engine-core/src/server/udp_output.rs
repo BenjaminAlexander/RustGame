@@ -7,7 +7,7 @@ use {
             PingResponse,
         },
         messaging::{
-            ToClientInputMessage, UdpStream, UdpToClientMessage
+            ToClientInputMessage, UdpStreamSender, UdpToClientMessage
         },
         server::player_udp_address::PlayerUdpAddress,
     },
@@ -113,7 +113,7 @@ struct EventHandler<Game: Play> {
     player_index: usize,
     socket: UdpSocket,
     remote_peer: Option<PlayerUdpAddress>,
-    udp_stream: UdpStream,
+    udp_stream: UdpStreamSender,
     phantom: PhantomData<Game>,
 }
 
@@ -129,7 +129,7 @@ impl<Game: Play> EventHandler<Game> {
             //TODO: move clone outside
             socket: socket.try_clone()?,
             //TODO: make max datagram size more configurable
-            udp_stream: UdpStream::new(MAX_UDP_DATAGRAM_SIZE),
+            udp_stream: UdpStreamSender::new(MAX_UDP_DATAGRAM_SIZE),
             phantom: PhantomData,
             time_source,
         })

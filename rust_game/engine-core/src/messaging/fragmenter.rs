@@ -136,7 +136,7 @@ mod tests {
         setup_test_logging();
         
         let mut fragmenter = Fragmenter::new(DATAGRAM_SIZE);
-        let mut fragment_assembler = FragmentAssembler::new(MAX_MESSAGES);
+        let mut fragment_assembler = FragmentAssembler::new(DATAGRAM_SIZE, MAX_MESSAGES);
 
         make_and_assemble_fragments(&mut fragmenter, &mut fragment_assembler);
         make_and_assemble_fragments(&mut fragmenter, &mut fragment_assembler);
@@ -147,7 +147,7 @@ mod tests {
         setup_test_logging();
         
         let mut fragmenter = Fragmenter::new(DATAGRAM_SIZE);
-        let mut fragment_assembler = FragmentAssembler::new(MAX_MESSAGES);
+        let mut fragment_assembler = FragmentAssembler::new(DATAGRAM_SIZE, MAX_MESSAGES);
 
         let message = make_message(TEST_MESSAGE_VEC_LENGTH);
         let mut fragments = fragmenter.make_fragments(&message).unwrap();

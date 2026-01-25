@@ -2,15 +2,16 @@ use std::net::SocketAddr;
 
 use commons::real_time::net::udp::UdpSocket;
 use log::warn;
-use serde::Serialize;
+use serde::{Serialize, de::DeserializeOwned};
 
-use crate::messaging::Fragmenter;
+use crate::messaging::{FragmentAssembler, Fragmenter};
 
-pub struct UdpStream {
+pub struct UdpStreamSender {
     fragmenter: Fragmenter
 }
 
-impl UdpStream {
+//TODO: add flush function
+impl UdpStreamSender {
 
     pub fn new(max_datagram_size: usize) -> Self {
         Self {
@@ -45,4 +46,22 @@ impl UdpStream {
 
         return Ok(());
     }
+}
+
+pub struct UdpStreamReceiver {
+    fragmenter_assembler: FragmentAssembler
+}
+
+impl UdpStreamReceiver {
+
+    pub fn new(max_datagram_size: usize, max_messages: usize) -> Self {
+        Self {
+            fragmenter_assembler: FragmentAssembler::new(max_datagram_size, max_messages)
+        }
+    }
+
+    pub fn receive<T: DeserializeOwned>(&mut self, buf: &[u8]) -> Option<T>{
+        self.fragmenter_assembler.add_fragment(buf)
+    }
+
 }

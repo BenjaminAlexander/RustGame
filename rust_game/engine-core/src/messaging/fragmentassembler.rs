@@ -3,6 +3,7 @@ use {
 };
 
 pub struct FragmentAssembler {
+    max_datagram_size: usize,
     max_messages: usize,
     messages: HashMap<u32, PartiallyAssembledFragment>,
     newest_and_oldest_id: Option<(u32,u32)>
@@ -10,8 +11,9 @@ pub struct FragmentAssembler {
 
 //TODO: review buffer allocation in the fragment assembler
 impl FragmentAssembler {
-    pub fn new(max_messages: usize) -> Self {
+    pub fn new(max_datagram_size: usize, max_messages: usize) -> Self {
         return Self {
+            max_datagram_size,
             max_messages,
             messages: HashMap::new(),
             newest_and_oldest_id: None
@@ -79,7 +81,7 @@ impl FragmentAssembler {
                     },
                 };
 
-                let partial_message = PartiallyAssembledFragment::new(next_id, fragment);
+                let partial_message = PartiallyAssembledFragment::new(self.max_datagram_size, next_id, fragment);
 
                 self.messages.insert(id, partial_message);
                 self.messages.get_mut(&id).unwrap()
@@ -121,8 +123,9 @@ struct PartiallyAssembledFragment {
 }
 
 impl PartiallyAssembledFragment {
-    pub fn new(next_id: Option<u32>, fragment: MessageFragment) -> Self {
+    pub fn new(max_datagram_size: usize, next_id: Option<u32>, fragment: MessageFragment) -> Self {
         let mut vec = Vec::with_capacity(fragment.get_count() as usize);
+        //let buf = Vec::with_capacity(fragment.get_count() as usize * max_datagram_size);
 
         for _i in 0..fragment.get_count() {
             vec.push(None);

@@ -2,19 +2,16 @@ use {
     crate::{
         Play,
         messaging::{
-            FragmentAssembler,
-            UdpToServerMessage,
+            UdpStreamReceiver, UdpToServerMessage
         },
         server::{
             player_address::PlayerAddress,
             player_udp_address::PlayerUdpAddress,
         },
-    },
-    log::{
+    }, commons::real_time::net::MAX_UDP_DATAGRAM_SIZE, log::{
         info,
         warn,
-    },
-    std::{
+    }, std::{
         collections::{
             HashMap,
             HashSet,
@@ -24,7 +21,7 @@ use {
             IpAddr,
             SocketAddr,
         },
-    },
+    }
 };
 
 //TODO: This struct could be combined with server udp input
@@ -34,7 +31,8 @@ pub struct UdpHandler<Game: Play> {
     client_ip_set: HashSet<IpAddr>,
 
     //TODO: timeout fragments or fragment assemblers
-    fragment_assemblers: HashMap<SocketAddr, FragmentAssembler>,
+    //TODO: rename
+    fragment_assemblers: HashMap<SocketAddr, UdpStreamReceiver>,
     phantom: PhantomData<Game>,
 }
 
@@ -90,13 +88,13 @@ impl<Game: Play> UdpHandler<Game> {
             None => {
                 //TODO: make max_messages more configurable
                 self.fragment_assemblers
-                    .insert(source, FragmentAssembler::new(5));
+                    .insert(source, UdpStreamReceiver::new(MAX_UDP_DATAGRAM_SIZE, 5));
                 self.fragment_assemblers.get_mut(&source).unwrap()
             }
             Some(assembler) => assembler,
         };
 
-        return assembler.add_fragment(fragment);
+        return assembler.receive(fragment);
     }
 
     fn handle_message(

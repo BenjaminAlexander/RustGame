@@ -8,19 +8,18 @@ use {
             PingResponse,
         },
         messaging::{
-            FragmentAssembler,
-            UdpToClientMessage,
+            UdpStreamReceiver, UdpToClientMessage
         },
     },
     commons::real_time::{
         EventHandlerStopper,
         Factory,
         TimeSource,
-        net::udp::{
+        net::{MAX_UDP_DATAGRAM_SIZE, udp::{
             HandleUdpRead,
             UdpReadHandlerBuilder,
             UdpSocket,
-        },
+        }},
     },
     log::{
         error,
@@ -47,7 +46,8 @@ impl UdpInput {
         let time_source = factory.get_time_source();
 
         let udp_read_handler = UdpReadHandler {
-            fragment_assembler: FragmentAssembler::new(
+            udp_streem_receiver: UdpStreamReceiver::new(
+                MAX_UDP_DATAGRAM_SIZE,
                 //TODO: make this more configurable
                 5,
             ),
@@ -73,7 +73,7 @@ impl UdpInput {
 
 struct UdpReadHandler<Game: Play> {
     time_source: TimeSource,
-    fragment_assembler: FragmentAssembler,
+    udp_streem_receiver: UdpStreamReceiver,
     client_core: ClientCore<Game>,
     frame_manager: FrameManager<Game>,
 }
@@ -127,7 +127,7 @@ impl<Game: Play> UdpReadHandler<Game> {
 impl<Game: Play> HandleUdpRead for UdpReadHandler<Game> {
     //TODO: check peer address against server address
     fn on_read(&mut self, peer_addr: SocketAddr, buf: &[u8]) -> ControlFlow<()> {
-        if let Some(message) = self.fragment_assembler.add_fragment(buf) {
+        if let Some(message) = self.udp_streem_receiver.receive(buf) {
             return self.handle_received_message(message);
 
         }

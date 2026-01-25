@@ -8,7 +8,10 @@ pub use self::{
     messagefragment::MessageFragment,
     toclientmessagetcp::ToClientMessageTCP,
     toservermessagetcp::ToServerMessageTCP,
-    udp_stream::UdpStream,
+    udp_stream::{
+        UdpStreamReceiver,
+        UdpStreamSender,
+    },
     udp_to_client_message::UdpToClientMessage,
     udp_to_server_message::UdpToServerMessage,
 };
