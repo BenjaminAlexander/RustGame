@@ -1,4 +1,4 @@
-type IdType = u32;
+pub type IdType = u32;
 pub type IndexType = u16;
 pub type TotalLengthType = u64;
 

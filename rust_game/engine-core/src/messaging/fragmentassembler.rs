@@ -1,36 +1,46 @@
 use {
-    crate::messaging::{MessageFragment, messagefragment::{IndexType, TotalLengthType}}, serde::de::DeserializeOwned, std::collections::HashMap
+    crate::messaging::{MessageFragment, messagefragment::{IdType, IndexType, TotalLengthType}}, log::warn, serde::de::DeserializeOwned, std::collections::HashMap
 };
 
 pub struct FragmentAssembler {
     max_datagram_size: usize,
     fragment_payload_size: usize,
     max_messages: usize,
-    messages: HashMap<u32, PartiallyAssembledFragment>,
-    newest_and_oldest_id: Option<(u32,u32)>
+    partial_messages: Vec<PartiallyAssembledFragment>,
+    id_to_message_array_index: HashMap<IdType, usize>,
+    newest_and_oldest_id: Option<(IdType,IdType)>
 }
 
 //TODO: review buffer allocation in the fragment assembler
 impl FragmentAssembler {
     pub fn new(max_datagram_size: usize, max_messages: usize) -> Self {
+
+        let fragment_payload_size = MessageFragment::fragment_payload_size(max_datagram_size);
+
+        let mut partial_messages = Vec::new();
+        partial_messages.resize_with(max_messages, ||{
+            PartiallyAssembledFragment::new(fragment_payload_size)
+        });
+
         return Self {
             max_datagram_size,
             fragment_payload_size: MessageFragment::fragment_payload_size(max_datagram_size),
             max_messages,
-            messages: HashMap::new(),
+            partial_messages,
+            id_to_message_array_index: HashMap::new(),
             newest_and_oldest_id: None
         };
     }
 
     fn removed_partially_assembled_message(&mut self, id: &u32) -> PartiallyAssembledFragment {
-        let partially_assembled_message = self.messages.remove(id).unwrap();
+        let partially_assembled_message = self.id_to_message_array_index.remove(id).unwrap();
 
         if let Some(next_id) = partially_assembled_message.next_id {
-            self.messages.get_mut(&next_id).unwrap().previous_id = partially_assembled_message.previous_id;
+            self.id_to_message_array_index.get_mut(&next_id).unwrap().previous_id = partially_assembled_message.previous_id;
         }
 
         if let Some(previous_id) = partially_assembled_message.previous_id {
-            self.messages.get_mut(&previous_id).unwrap().next_id = partially_assembled_message.next_id;
+            self.id_to_message_array_index.get_mut(&previous_id).unwrap().next_id = partially_assembled_message.next_id;
         }
 
         let (newest_id, oldest_id) = self.newest_and_oldest_id.unwrap();
@@ -65,16 +75,16 @@ impl FragmentAssembler {
 
         let id = fragment.get_id();
 
-        let partial = match self.messages.get_mut(&id) {
+        let partial = match self.id_to_message_array_index.get_mut(&id) {
             None => {
-                while self.messages.len() >= self.max_messages {
+                while self.id_to_message_array_index.len() >= self.max_messages {
                     let (_, oldest_id) = self.newest_and_oldest_id.unwrap();
                     self.removed_partially_assembled_message(&oldest_id);
                 }
 
                 let next_id = match self.newest_and_oldest_id {
                     Some((newest_id, oldest_id)) => {
-                        self.messages.get_mut(&newest_id).unwrap().previous_id = Some(id);
+                        self.id_to_message_array_index.get_mut(&newest_id).unwrap().previous_id = Some(id);
                         self.newest_and_oldest_id = Some((id, oldest_id));
                         Some(newest_id)
                     },
@@ -84,13 +94,13 @@ impl FragmentAssembler {
                     },
                 };
 
-                let partial_message = PartiallyAssembledFragment::new(self.fragment_payload_size, fragment_count, next_id, fragment);
+                let partial_message = PartiallyAssembledFragment::new(self.fragment_payload_size, fragment_count, next_id, &fragment);
 
-                self.messages.insert(id, partial_message);
-                self.messages.get_mut(&id).unwrap()
+                self.id_to_message_array_index.insert(id, partial_message);
+                self.id_to_message_array_index.get_mut(&id).unwrap()
             }
             Some(partial) => {
-                partial.add_fragment(self.fragment_payload_size, fragment);
+                partial.add_fragment(self.fragment_payload_size, &fragment);
                 partial
             }
         };
@@ -108,64 +118,73 @@ impl FragmentAssembler {
 
 //TODO: rename to message
 struct PartiallyAssembledFragment {
-    id: u32,
+    id: IdType,
 
-    //TODO: rename
-    count: IndexType,
-    //TODO: rename to count
-    outstanding_fragments: IndexType,
-
-    //TODO: replace this with a buffer
-    fragments: Vec<Option<MessageFragment>>,
+    total_fragment_count: IndexType,
+    outstanding_fragment_count: IndexType,
+    has_fragment: Vec<bool>,
     
     /// Points to an older partially assembled message
-    next_id: Option<u32>,
+    next_id: Option<IdType>,
 
     /// Points to a newer partially assembled message
-    previous_id: Option<u32>,
+    previous_id: Option<IdType>,
 
     //TODO: allocate this to the right size at the begining
     buf: Vec<u8>
 }
 
 impl PartiallyAssembledFragment {
-    pub fn new(fragment_payload_size: usize, fragment_count: IndexType, next_id: Option<u32>, fragment: MessageFragment) -> Self {
-        let total_length = fragment.get_total_length();
-        let mut vec = Vec::with_capacity(fragment_count as usize);
-        let mut buf = Vec::with_capacity(total_length as usize);
-        buf.resize(total_length as usize, 0);
 
-        for _i in 0..fragment_count {
-            vec.push(None);
-        }
-
-        let mut new = Self {
-            id: fragment.get_id(),
-            count: fragment_count,
-            outstanding_fragments: fragment_count,
-            fragments: vec,
-            next_id,
+    fn new(fragment_payload_size: usize) -> Self {
+        Self {
+            id: 0,
+            total_fragment_count: 0,
+            outstanding_fragment_count: 0,
+            has_fragment: Vec::with_capacity(fragment_payload_size * 2),
+            next_id: None,
             previous_id: None,
-            buf,
-        };
-
-        new.add_fragment(fragment_payload_size, fragment);
-
-        return new;
+            buf: Vec::with_capacity(fragment_payload_size * 2),
+        }
     }
 
-    fn add_fragment(&mut self, fragment_payload_size: usize, fragment: MessageFragment) {
+    pub fn set_first_fragment(&mut self, fragment_payload_size: usize, fragment_count: IndexType, next_id: Option<IdType>, fragment: &MessageFragment) {
+        let total_length = fragment.get_total_length();
+        self.buf.resize(total_length as usize, 0);
 
-        //TODO: assert total length, if they don't match, stop trying to assemble this fragment
 
-        if self.fragments[fragment.get_index() as usize].is_none() {
-            self.outstanding_fragments = self.outstanding_fragments - 1;
-        }
+        self.has_fragment.clear();
+        self.has_fragment.resize(fragment_count as usize, false);
+
+        self.id = fragment.get_id();
+        self.total_fragment_count = fragment_count;
+        self.outstanding_fragment_count = fragment_count;
+        self.next_id = next_id;
+        self.previous_id = None;
+
+        self.add_fragment(fragment_payload_size, fragment);
+    }
+
+    fn add_fragment(&mut self, fragment_payload_size: usize, fragment: &MessageFragment) {
 
         let index = fragment.get_index();
 
+        //TODO: assert total length, if they don't match, stop trying to assemble this fragment
+
+        if let Some(has_fragment) = self.has_fragment.get_mut(index as usize) {
+            if *has_fragment {
+                warn!("Received the same fragment more than once.  Subsequent fragment is being ignored.");
+                return;
+            } else {
+                self.outstanding_fragment_count -= 1;
+                *has_fragment = true;
+            }
+        } else {
+            todo!("stop trying to assemble this fragment if the index is out of bounds")
+        }
+
         let start_index = MessageFragment::start_index(fragment_payload_size, index);
-        let expected_end_index = if index == self.count - 1 {
+        let expected_end_index = if index == self.total_fragment_count - 1 {
             self.buf.len()
         } else {
             start_index + fragment_payload_size 
@@ -176,12 +195,10 @@ impl PartiallyAssembledFragment {
         //TODO: don't unwrap, stop trying to assemble this fragment
         let dest = self.buf.get_mut(start_index..expected_end_index).unwrap();
         dest.copy_from_slice(&fragment.payload());
-
-        self.fragments[index as usize] = Some(fragment);
     }
 
     fn has_all_fragments(&self) -> bool {
-        return self.outstanding_fragments == 0;
+        return self.outstanding_fragment_count == 0;
     }
 
     fn get_full_message(&mut self) -> &[u8] {
