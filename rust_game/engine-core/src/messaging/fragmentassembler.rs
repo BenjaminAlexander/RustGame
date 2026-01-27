@@ -23,37 +23,28 @@ impl From<IdType> for IdRange {
 }
 
 pub struct FragmentAssembler {
-    max_datagram_size: usize,
     fragment_payload_size: usize,
     max_messages: usize,
     current_id_range: IdRange,
-    available_messages: Vec<PartiallyAssembledFragment>,
-    partial_messages: HashMap<IdType, PartiallyAssembledFragment>,
+    available_messages: Vec<PartiallyAssembledMessage>,
+    partial_messages: HashMap<IdType, PartiallyAssembledMessage>,
     newest_and_oldest_id: Option<(IdType,IdType)>
 }
 
 //TODO: review buffer allocation in the fragment assembler
 impl FragmentAssembler {
     pub fn new(max_datagram_size: usize, max_messages: usize) -> Self {
-
-        let fragment_payload_size = MessageFragment::fragment_payload_size(max_datagram_size);
-
-        let mut available_messages = Vec::with_capacity(max_messages);
-        available_messages.resize_with(max_messages, ||{
-            PartiallyAssembledFragment::new(fragment_payload_size)
-        });
-
         return Self {
             current_id_range: IdRange::First,
-            max_datagram_size,
             fragment_payload_size: MessageFragment::fragment_payload_size(max_datagram_size),
             max_messages,
-            available_messages,
-            partial_messages: HashMap::with_capacity(max_messages),
+            available_messages: Vec::new(),
+            partial_messages: HashMap::new(),
             newest_and_oldest_id: None
         };
     }
 
+    /// Removes a partially assembled message from the map and maintains the link-list of partial messages
     fn removed_partially_assembled_message(&mut self, id: &IdType) {
         let removed_message = self.partial_messages.remove(id).unwrap();
         let removed_id = removed_message.id;
@@ -143,6 +134,11 @@ impl FragmentAssembler {
 
         let partial_message = match self.partial_messages.get_mut(&id) {
             None => {
+
+                if self.partial_messages.len() < self.max_messages && self.available_messages.len() == 0 {
+                    self.available_messages.push(PartiallyAssembledMessage::new(self.fragment_payload_size));
+                }
+
                 while self.partial_messages.len() >= self.max_messages {
                     let (_, oldest_id) = self.newest_and_oldest_id.unwrap();
                     self.removed_partially_assembled_message(&oldest_id);
@@ -166,7 +162,6 @@ impl FragmentAssembler {
 
                 self.partial_messages.insert(id, partial_message);
 
-                //TODO: just use the index here
                 self.partial_messages.get(&id).unwrap()
             }
             Some(partial_message) => {
@@ -187,8 +182,7 @@ impl FragmentAssembler {
     }
 }
 
-//TODO: rename to message
-struct PartiallyAssembledFragment {
+struct PartiallyAssembledMessage {
     id: IdType,
 
     total_fragment_count: IndexType,
@@ -205,14 +199,14 @@ struct PartiallyAssembledFragment {
     buf: Vec<u8>
 }
 
-impl PartiallyAssembledFragment {
+impl PartiallyAssembledMessage {
 
     fn new(fragment_payload_size: usize) -> Self {
         Self {
             id: 0,
             total_fragment_count: 0,
             outstanding_fragment_count: 0,
-            has_fragment: Vec::with_capacity(fragment_payload_size * 2),
+            has_fragment: Vec::with_capacity(2),
             next_id: None,
             previous_id: None,
             buf: Vec::with_capacity(fragment_payload_size * 2),
