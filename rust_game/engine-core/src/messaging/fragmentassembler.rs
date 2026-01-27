@@ -1,5 +1,5 @@
 use {
-    crate::messaging::{MessageFragment, messagefragment::{IdType, IndexType}}, log::warn, serde::de::DeserializeOwned, std::{cell::Cell, collections::{HashMap, VecDeque}}
+    crate::messaging::{MessageFragment, messagefragment::{IdType, IndexType}}, log::warn, serde::de::DeserializeOwned, std::{collections::HashMap}
 };
 
 #[derive(PartialEq)]
@@ -29,7 +29,6 @@ pub struct FragmentAssembler {
     current_id_range: IdRange,
     available_messages: Vec<PartiallyAssembledFragment>,
     partial_messages: HashMap<IdType, PartiallyAssembledFragment>,
-    partial_message_queue: VecDeque<IdType>,
     newest_and_oldest_id: Option<(IdType,IdType)>
 }
 
@@ -50,71 +49,86 @@ impl FragmentAssembler {
             fragment_payload_size: MessageFragment::fragment_payload_size(max_datagram_size),
             max_messages,
             available_messages,
-            partial_messages: HashMap::new(),
+            partial_messages: HashMap::with_capacity(max_messages),
             newest_and_oldest_id: None
         };
     }
 
-    fn removed_partially_assembled_message(
-        newest_and_oldest_id: &mut Option<(IdType,IdType)>,
-        partial_messages: &mut HashMap<IdType, PartiallyAssembledFragment>, 
-        removed_message: &PartiallyAssembledFragment
-    ) {
+    fn removed_partially_assembled_message(&mut self, id: &IdType) {
+        let removed_message = self.partial_messages.remove(id).unwrap();
         let removed_id = removed_message.id;
         let removed_next_id = removed_message.next_id;
         let removed_previous_id = removed_message.previous_id;
+        self.available_messages.push(removed_message);
 
         if let Some(next_id) = removed_next_id {
-            let next_partial_message = partial_messages.get_mut(&next_id).unwrap();
+            let next_partial_message = self.partial_messages.get_mut(&next_id).unwrap();
             next_partial_message.previous_id = removed_previous_id;
         }
 
         if let Some(previous_id) = removed_previous_id {
-            let previous_partial_message = partial_messages.get_mut(&previous_id).unwrap();
+            let previous_partial_message = self.partial_messages.get_mut(&previous_id).unwrap();
             previous_partial_message.next_id = removed_next_id;
         }
 
-        let (newest_id, oldest_id) = newest_and_oldest_id.unwrap();
+        let (newest_id, oldest_id) = self.newest_and_oldest_id.unwrap();
 
         if newest_id == removed_id {
             if let Some(next_id) = removed_next_id {
-                *newest_and_oldest_id = Some((next_id, oldest_id));
+                self.newest_and_oldest_id = Some((next_id, oldest_id));
             } else {
-                *newest_and_oldest_id = None;
+                self.newest_and_oldest_id = None;
             }
         } else if oldest_id == removed_id {
             if let Some(previous_id) = removed_previous_id {
-                *newest_and_oldest_id = Some((newest_id, previous_id));
+                self.newest_and_oldest_id = Some((newest_id, previous_id));
             } else {
-                *newest_and_oldest_id = None;
+                self.newest_and_oldest_id = None;
             }
         }
+    }
+
+    /// If this is a new range of IDs, clear out any residual fragments from
+    /// the last time we saw this range of IDs.  This is prevents a message that
+    /// was never assembled, from causing a subsequent message with the same ID
+    /// (this happens when the ID rolls over back to zero) from also failing to
+    /// assemble.
+    pub fn drop_partial_messages_in_new_id_range(&mut self, fragment: &MessageFragment) {
+        let next_id_range = IdRange::from(fragment.get_id());
+        if self.current_id_range == next_id_range {
+            return;
+        }
+
+        self.current_id_range = next_id_range;
+
+        let (newest_id, _) = match self.newest_and_oldest_id {
+            Some((newest_id, previous_id)) => (newest_id, previous_id),
+            None => return,
+        };
+
+        let mut current_id = newest_id;
+
+        loop {
+            let next_id = self.partial_messages.get_mut(&current_id).unwrap().next_id;
+            let range_of_current_id = IdRange::from(current_id);
+
+            if self.current_id_range == range_of_current_id {
+                self.removed_partially_assembled_message(&current_id);
+            }
+
+            match next_id {
+                Some(next_id) => current_id = next_id,
+                None => break,
+            }
+        }
+
     }
 
     pub fn add_fragment<T: DeserializeOwned>(&mut self, buf: &[u8]) -> Option<T> {
 
         let fragment = MessageFragment::from_vec(buf.to_vec());
 
-        // If this is a new range of IDs, clear out any residual fragments from 
-        // the last time we saw this range of IDs
-        let next_id_range = IdRange::from(fragment.get_id());
-        if self.current_id_range != next_id_range {
-            self.current_id_range = next_id_range;
-
-            todo!();
-
-            let x = self.partial_messages.extract_if(|_, partial_message|{
-                let message_id_range = IdRange::from(partial_message.id);
-                if message_id_range == self.current_id_range {
-                    Self::removed_partially_assembled_message(&mut self.newest_and_oldest_id, &mut self.partial_messages, &partial_message);
-                    true
-                } else {
-                    false
-                }
-            }).for_each(|(_, removed_message)|{
-                self.available_messages.push(removed_message);partial_message
-            });
-        }
+        self.drop_partial_messages_in_new_id_range(&fragment);
 
         let fragment_count = fragment.get_count(self.fragment_payload_size);
 
@@ -131,9 +145,7 @@ impl FragmentAssembler {
             None => {
                 while self.partial_messages.len() >= self.max_messages {
                     let (_, oldest_id) = self.newest_and_oldest_id.unwrap();
-                    let removed_message = self.partial_messages.remove(&oldest_id).unwrap();
-                    Self::removed_partially_assembled_message(&mut self.newest_and_oldest_id, &mut self.partial_messages, &removed_message);
-                    self.available_messages.push(removed_message);
+                    self.removed_partially_assembled_message(&oldest_id);
                 }
 
                 let next_id = match self.newest_and_oldest_id {
@@ -167,9 +179,7 @@ impl FragmentAssembler {
             let buf = partial_message.get_full_message();
             let message =  rmp_serde::from_slice(buf).unwrap();
 
-            let removed_message = self.partial_messages.remove(&id).unwrap();
-            Self::removed_partially_assembled_message(&mut self.newest_and_oldest_id, &mut self.partial_messages, &removed_message);
-            self.available_messages.push(removed_message);
+            self.removed_partially_assembled_message(&id);
             return Some(message);
         } else {
             return None;
