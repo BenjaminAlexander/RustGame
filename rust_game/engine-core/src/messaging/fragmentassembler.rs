@@ -115,6 +115,7 @@ impl FragmentAssembler {
 
     }
 
+    //TODO: return errors
     pub fn add_fragment<T: DeserializeOwned>(&mut self, buf: &[u8]) -> Option<T> {
 
         let fragment = MessageFragment::from_vec(buf.to_vec());
@@ -132,7 +133,7 @@ impl FragmentAssembler {
 
         let id = fragment.get_id();
 
-        let partial_message = match self.partial_messages.get_mut(&id) {
+        match self.partial_messages.get_mut(&id) {
             None => {
 
                 if self.partial_messages.len() < self.max_messages && self.available_messages.len() == 0 {
@@ -162,22 +163,30 @@ impl FragmentAssembler {
 
                 self.partial_messages.insert(id, partial_message);
 
-                self.partial_messages.get(&id).unwrap()
+                // Don't need to check if this message is assembled here, since this
+                // is the first fragment from this messages.  Messages with only
+                // one fragment are handled as a special case above.
+                None
             }
             Some(partial_message) => {
-                partial_message.add_fragment(self.fragment_payload_size, &fragment);
-                partial_message
+                match partial_message.add_fragment(self.fragment_payload_size, &fragment) {
+                    Ok(()) => {
+                        if partial_message.has_all_fragments() {
+                            let buf = partial_message.get_full_message();
+                            let message =  rmp_serde::from_slice(buf).unwrap();
+
+                            self.removed_partially_assembled_message(&id);
+                            Some(message)
+                        } else {
+                            None
+                        }
+                    },
+                    Err(()) => {
+                        self.removed_partially_assembled_message(&id);
+                        None
+                    },
+                }
             }
-        };
-
-        if partial_message.has_all_fragments() {
-            let buf = partial_message.get_full_message();
-            let message =  rmp_serde::from_slice(buf).unwrap();
-
-            self.removed_partially_assembled_message(&id);
-            return Some(message);
-        } else {
-            return None;
         }
     }
 }
@@ -217,7 +226,6 @@ impl PartiallyAssembledMessage {
         let total_length = fragment.get_total_length();
         self.buf.resize(total_length as usize, 0);
 
-
         self.has_fragment.clear();
         self.has_fragment.resize(fragment_count as usize, false);
 
@@ -227,19 +235,22 @@ impl PartiallyAssembledMessage {
         self.next_id = next_id;
         self.previous_id = None;
 
-        self.add_fragment(fragment_payload_size, fragment);
+        self.add_fragment(fragment_payload_size, fragment).unwrap();
     }
 
-    fn add_fragment(&mut self, fragment_payload_size: usize, fragment: &MessageFragment) {
+    fn add_fragment(&mut self, fragment_payload_size: usize, fragment: &MessageFragment) -> Result<(), ()> {
 
         let index = fragment.get_index();
 
-        //TODO: assert total length, if they don't match, stop trying to assemble this fragment
+        if self.buf.len() != fragment.get_total_length() as usize {
+            warn!("Received a fragment whose message length did not the expected value.");
+            return Err(())
+        }
 
         if let Some(has_fragment) = self.has_fragment.get_mut(index as usize) {
             if *has_fragment {
                 warn!("Received the same fragment more than once.  Subsequent fragment is being ignored.");
-                return;
+                return Ok(());
             } else {
                 self.outstanding_fragment_count -= 1;
                 *has_fragment = true;
@@ -255,11 +266,22 @@ impl PartiallyAssembledMessage {
             start_index + fragment_payload_size 
         };
 
-        //TODO: assert actual end index based of fragment buffer length, stop trying to assemble this fragment
+        let expected_length = expected_end_index - start_index;
+        if fragment.payload().len() != expected_length {
+            warn!("Received a fragment whose expected length did not match its actual length.  Expected: {}, Actual {}", expected_length, fragment.payload().len());
+            return Err(());
+        }
 
-        //TODO: don't unwrap, stop trying to assemble this fragment
-        let dest = self.buf.get_mut(start_index..expected_end_index).unwrap();
+        let dest = match self.buf.get_mut(start_index..expected_end_index) {
+            Some(dest) => dest,
+            None => {
+                warn!("Failed to get the destination slice for a fragment.");
+                return Err(());
+            },
+        };
+
         dest.copy_from_slice(&fragment.payload());
+        return Ok(());
     }
 
     fn has_all_fragments(&self) -> bool {

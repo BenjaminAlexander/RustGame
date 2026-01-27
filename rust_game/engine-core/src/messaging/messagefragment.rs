@@ -20,6 +20,7 @@ pub struct MessageFragment {
     buf: Vec<u8>,
 }
 
+//TODO: make a seperate struct for the fragment header
 impl MessageFragment {
     pub fn new(max_datagram_size: usize) -> Self {
         Self {
@@ -92,6 +93,7 @@ impl MessageFragment {
         number_of_fragments as IndexType
     }
 
+    //TODO: maybe this should be a member of the fragment header struct
     pub const fn start_index(fragment_payload_size: usize, index: IndexType) -> usize {
         index as usize * fragment_payload_size
     }
