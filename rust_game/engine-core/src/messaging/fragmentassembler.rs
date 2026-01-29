@@ -22,6 +22,7 @@ impl From<IdType> for IdRange {
     }
 }
 
+//TODO: rename to MessageAssembler
 pub struct FragmentAssembler {
     fragment_payload_size: usize,
     max_messages: usize,
@@ -118,7 +119,7 @@ impl FragmentAssembler {
     //TODO: return errors
     pub fn add_fragment<T: DeserializeOwned>(&mut self, buf: &[u8]) -> Option<T> {
 
-        let fragment = MessageFragment::from_vec(buf.to_vec());
+        let fragment = MessageFragment::from_slice(buf);
 
         self.drop_partial_messages_in_new_id_range(&fragment);
 
@@ -126,8 +127,8 @@ impl FragmentAssembler {
 
         if fragment_count == 1 {
             //TODO: don't unwrap
-            //TODO: don't move the buffer here
-            let message =  rmp_serde::from_slice(fragment.move_buf().as_slice()).unwrap();
+            //TODO: mabye move serde outside fragmenter/assembler layer
+            let message =  rmp_serde::from_slice(fragment.payload()).unwrap();
             return Some(message);
         }
 

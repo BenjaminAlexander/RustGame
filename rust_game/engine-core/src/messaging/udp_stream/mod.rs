@@ -30,10 +30,10 @@ impl UdpStreamSender {
         };
 
         while let Some(fragment) = fragments.next() {
-            match udp_socket.send_to(&fragment.get_whole_buf(), destination) {
+            match udp_socket.send_to(fragment.get_buffer(), destination) {
                 Ok(bytes_sent) => {
-                    if bytes_sent != fragment.get_whole_buf().len() {
-                        warn!("Failed to send all bytes: {}/{} sent", bytes_sent, fragment.get_whole_buf().len());
+                    if bytes_sent != fragment.get_buffer().len() {
+                        warn!("Failed to send all bytes: {}/{} sent", bytes_sent, fragment.get_buffer().len());
                         return Err(())
                     }
                 },

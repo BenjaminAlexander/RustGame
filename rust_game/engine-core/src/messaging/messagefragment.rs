@@ -13,31 +13,27 @@ const TOTAL_LENGTH_LENGTH: usize = size_of::<TotalLengthType>();
 
 pub const FRAGMENT_HEADER_SIZE: usize = TOTAL_LENGTH_INDEX + TOTAL_LENGTH_LENGTH; 
 
-#[derive(Clone)]
-pub struct MessageFragment {
-
-    //TODO: make this borrowed
-    buf: Vec<u8>,
+pub struct MessageFragment<'a> {
+    buf: &'a [u8],
 }
 
 //TODO: make a seperate struct for the fragment header
-impl MessageFragment {
-    pub fn new(max_datagram_size: usize) -> Self {
+impl<'a> MessageFragment<'a> {
+
+    pub fn new(buf: &'a mut Vec<u8>, id: IdType, index: IndexType, total_length: TotalLengthType, fragment_buf: &[u8]) -> Self {
+        buf.clear();
+        buf.extend_from_slice(&id.to_be_bytes());
+        buf.extend_from_slice(&index.to_be_bytes());
+        buf.extend_from_slice(&total_length.to_be_bytes());
+        buf.extend_from_slice(fragment_buf);
+
         Self {
-            buf: Vec::with_capacity(max_datagram_size)
+            buf: buf.as_slice()
         }
     }
 
-    pub fn write(&mut self, id: IdType, index: IndexType, total_length: TotalLengthType, buf: &[u8]) {
-        self.buf.clear();
-        self.buf.extend_from_slice(&id.to_be_bytes());
-        self.buf.extend_from_slice(&index.to_be_bytes());
-        self.buf.extend_from_slice(&total_length.to_be_bytes());
-        self.buf.extend_from_slice(buf);
-    }
-
-    pub fn from_vec(buf: Vec<u8>) -> Self {
-        //TODO: check if this buf is valid
+    pub fn from_slice(buf: &'a [u8]) -> Self {
+        //TODO: check if this buf is valid, i.e. contains at least the header plus 1 byte, maybe this should be on the method to extract the header struct
         return Self { buf };
     }
 
@@ -67,16 +63,13 @@ impl MessageFragment {
         return self.buf.len() - FRAGMENT_HEADER_SIZE;
     }
 
-    pub fn move_buf(self) -> Vec<u8> {
-        return self.buf[FRAGMENT_HEADER_SIZE..self.buf.len()].to_vec();
-    }
-
-    pub fn get_whole_buf(&self) -> &Vec<u8> {
-        return &self.buf;
-    }
-
+    //TODO: rename get_payload
     pub fn payload(&self) -> &[u8] {
         &self.buf[FRAGMENT_HEADER_SIZE..self.buf.len()]
+    }
+
+    pub fn get_buffer(&self) -> &[u8] {
+        &self.buf
     }
 
     pub const fn fragment_payload_size(max_datagram_size: usize) -> usize {
