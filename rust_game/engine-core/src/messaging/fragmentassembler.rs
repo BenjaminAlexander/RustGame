@@ -3,22 +3,12 @@ use {
 };
 
 #[derive(PartialEq)]
-enum IdRange {
-    First,
-    Second,
-    Third,
-    Fourth
-}
+struct IdRange(IdType);
 
 impl From<IdType> for IdRange {
     fn from(value: IdType) -> Self {
         const SHIFT: usize = size_of::<IdType>() - 2;
-        match value >> SHIFT {
-            0 => IdRange::First,
-            1 => IdRange::Second,
-            2 => IdRange::Third,
-            _ => IdRange::Fourth
-        }
+        IdRange(value >> SHIFT)
     }
 }
 
@@ -36,7 +26,7 @@ pub struct FragmentAssembler {
 impl FragmentAssembler {
     pub fn new(max_datagram_size: usize, max_messages: usize) -> Self {
         return Self {
-            current_id_range: IdRange::First,
+            current_id_range: IdRange(0),
             fragment_payload_size: MessageFragment::max_fragment_payload_size(max_datagram_size),
             max_messages,
             available_messages: Vec::new(),
@@ -128,7 +118,6 @@ impl FragmentAssembler {
 
         if fragment_count == 1 {
             //TODO: don't unwrap
-            //TODO: mabye move serde outside fragmenter/assembler layer
             let message =  rmp_serde::from_slice(fragment.get_payload()).unwrap();
             return Some(message);
         }
@@ -206,7 +195,6 @@ struct PartiallyAssembledMessage {
     /// Points to a newer partially assembled message
     previous_id: Option<IdType>,
 
-    //TODO: allocate this to the right size at the begining
     buf: Vec<u8>
 }
 

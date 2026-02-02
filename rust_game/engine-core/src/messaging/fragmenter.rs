@@ -27,7 +27,6 @@ impl Fragmenter {
     pub fn make_fragments<T: Serialize>(&mut self, message: &T) -> Result<FragmentIterator<'_>, Error> {
         self.buf.clear();
 
-        //TODO: move serde outside fragmenter
         rmp_serde::encode::write(&mut self.buf, message)?;
 
         let id = self.next_id;
