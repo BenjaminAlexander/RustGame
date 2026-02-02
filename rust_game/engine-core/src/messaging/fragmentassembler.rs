@@ -1,5 +1,5 @@
 use {
-    crate::messaging::{MessageFragment, messagefragment::{IdType, IndexType}}, log::warn, serde::de::DeserializeOwned, std::{collections::HashMap}
+    crate::messaging::{MessageFragment, messagefragment::{FragmentHeader, IdType, IndexType}}, log::warn, serde::de::DeserializeOwned, std::collections::HashMap
 };
 
 #[derive(PartialEq)]
@@ -37,7 +37,7 @@ impl FragmentAssembler {
     pub fn new(max_datagram_size: usize, max_messages: usize) -> Self {
         return Self {
             current_id_range: IdRange::First,
-            fragment_payload_size: MessageFragment::fragment_payload_size(max_datagram_size),
+            fragment_payload_size: MessageFragment::max_fragment_payload_size(max_datagram_size),
             max_messages,
             available_messages: Vec::new(),
             partial_messages: HashMap::new(),
@@ -85,8 +85,7 @@ impl FragmentAssembler {
     /// was never assembled, from causing a subsequent message with the same ID
     /// (this happens when the ID rolls over back to zero) from also failing to
     /// assemble.
-    pub fn drop_partial_messages_in_new_id_range(&mut self, fragment: &MessageFragment) {
-        let next_id_range = IdRange::from(fragment.get_id());
+    fn drop_partial_messages_in_new_id_range(&mut self, next_id_range: IdRange) {
         if self.current_id_range == next_id_range {
             return;
         }
@@ -120,19 +119,21 @@ impl FragmentAssembler {
     pub fn add_fragment<T: DeserializeOwned>(&mut self, buf: &[u8]) -> Option<T> {
 
         let fragment = MessageFragment::from_slice(buf);
+        let header = fragment.parse_header();
 
-        self.drop_partial_messages_in_new_id_range(&fragment);
+        let next_id_range = IdRange::from(header.get_id());
+        self.drop_partial_messages_in_new_id_range(next_id_range);
 
-        let fragment_count = fragment.get_count(self.fragment_payload_size);
+        let fragment_count = header.get_count(self.fragment_payload_size);
 
         if fragment_count == 1 {
             //TODO: don't unwrap
             //TODO: mabye move serde outside fragmenter/assembler layer
-            let message =  rmp_serde::from_slice(fragment.payload()).unwrap();
+            let message =  rmp_serde::from_slice(fragment.get_payload()).unwrap();
             return Some(message);
         }
 
-        let id = fragment.get_id();
+        let id = header.get_id();
 
         match self.partial_messages.get_mut(&id) {
             None => {
@@ -160,7 +161,7 @@ impl FragmentAssembler {
                 };
 
                 let mut partial_message = self.available_messages.pop().unwrap();
-                partial_message.set_first_fragment(self.fragment_payload_size, fragment_count, next_id, &fragment);
+                partial_message.set_first_fragment(self.fragment_payload_size, fragment_count, next_id, &header, &fragment);
 
                 self.partial_messages.insert(id, partial_message);
 
@@ -170,7 +171,7 @@ impl FragmentAssembler {
                 None
             }
             Some(partial_message) => {
-                match partial_message.add_fragment(self.fragment_payload_size, &fragment) {
+                match partial_message.add_fragment(self.fragment_payload_size, &header, &fragment) {
                     Ok(()) => {
                         if partial_message.has_all_fragments() {
                             let buf = partial_message.get_full_message();
@@ -223,27 +224,27 @@ impl PartiallyAssembledMessage {
         }
     }
 
-    pub fn set_first_fragment(&mut self, fragment_payload_size: usize, fragment_count: IndexType, next_id: Option<IdType>, fragment: &MessageFragment) {
-        let total_length = fragment.get_total_length();
+    pub fn set_first_fragment(&mut self, fragment_payload_size: usize, fragment_count: IndexType, next_id: Option<IdType>, header: &FragmentHeader, fragment: &MessageFragment) {
+        let total_length = header.get_total_length();
         self.buf.resize(total_length as usize, 0);
 
         self.has_fragment.clear();
         self.has_fragment.resize(fragment_count as usize, false);
 
-        self.id = fragment.get_id();
+        self.id = header.get_id();
         self.total_fragment_count = fragment_count;
         self.outstanding_fragment_count = fragment_count;
         self.next_id = next_id;
         self.previous_id = None;
 
-        self.add_fragment(fragment_payload_size, fragment).unwrap();
+        self.add_fragment(fragment_payload_size, header, fragment).unwrap();
     }
 
-    fn add_fragment(&mut self, fragment_payload_size: usize, fragment: &MessageFragment) -> Result<(), ()> {
+    fn add_fragment(&mut self, fragment_payload_size: usize, header: &FragmentHeader, fragment: &MessageFragment) -> Result<(), ()> {
 
-        let index = fragment.get_index();
+        let index = header.get_index();
 
-        if self.buf.len() != fragment.get_total_length() as usize {
+        if self.buf.len() != header.get_total_length() as usize {
             warn!("Received a fragment whose message length did not the expected value.");
             return Err(())
         }
@@ -260,7 +261,7 @@ impl PartiallyAssembledMessage {
             todo!("stop trying to assemble this fragment if the index is out of bounds")
         }
 
-        let start_index = MessageFragment::start_index(fragment_payload_size, index);
+        let start_index = header.start_index(fragment_payload_size);
         let expected_end_index = if index == self.total_fragment_count - 1 {
             self.buf.len()
         } else {
@@ -268,8 +269,8 @@ impl PartiallyAssembledMessage {
         };
 
         let expected_length = expected_end_index - start_index;
-        if fragment.payload().len() != expected_length {
-            warn!("Received a fragment whose expected length did not match its actual length.  Expected: {}, Actual {}", expected_length, fragment.payload().len());
+        if fragment.get_payload().len() != expected_length {
+            warn!("Received a fragment whose expected length did not match its actual length.  Expected: {}, Actual {}", expected_length, fragment.get_payload().len());
             return Err(());
         }
 
@@ -281,7 +282,7 @@ impl PartiallyAssembledMessage {
             },
         };
 
-        dest.copy_from_slice(&fragment.payload());
+        dest.copy_from_slice(&fragment.get_payload());
         return Ok(());
     }
 
