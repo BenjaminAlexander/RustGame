@@ -1,41 +1,86 @@
 use rmp_serde::encode::Error;
 use serde::Serialize;
 
-use crate::messaging::{MessageFragment, messagefragment::{FragmentHeader, IndexType, TotalLengthType}};
+use crate::messaging::{MessageFragment, messagefragment::{FragmentHeader, IdType, IndexType, TotalLengthType}};
+
+const IS_PACK: u8 = 0;
+const IS_FRAGMENT: u8 = IS_PACK + 1;
+const PACK_OR_FRAGMENT_HEADER_SIZE: usize = size_of::<u8>();
+
+type PackSegmentLengthType = u16;
+
+const LENGTH_OF_PACK_SEGMENT_SIZE: usize = size_of::<PackSegmentLengthType>();
+
+const PACK_HEADER_SIZE: usize = PACK_OR_FRAGMENT_HEADER_SIZE + LENGTH_OF_PACK_SEGMENT_SIZE;
+const MIN_SPACE_REQUIRED_TO_PACK: usize = LENGTH_OF_PACK_SEGMENT_SIZE + 1;
 
 pub struct Fragmenter {
-    next_id: u32,
+    next_fragment_id: IdType,
     max_datagram_size: usize,
     fragment_payload_size: usize,
     buf: Vec<u8>,
+    index_of_last_segment: usize,
     fragment_buf: Vec<u8>
 }
 
 impl Fragmenter {
     pub fn new(max_datagram_size: usize) -> Self {
-        let fragment_payload_size = MessageFragment::max_fragment_payload_size(max_datagram_size);
+        let fragment_payload_size = MessageFragment::max_fragment_payload_size(max_datagram_size - PACK_OR_FRAGMENT_HEADER_SIZE);
 
-        return Self {
-            next_id: 0,
+        let mut rtn = Self {
+            next_fragment_id: 0,
             max_datagram_size,
             fragment_payload_size,
-            buf: Vec::with_capacity(fragment_payload_size),
+            buf: Vec::with_capacity(max_datagram_size),
+            index_of_last_segment: 1,
             fragment_buf: Vec::with_capacity(max_datagram_size)
         };
+
+        rtn.clear();
+
+        rtn
+    }
+
+    fn take_next_fragment_id(&mut self) -> IdType {
+        let id = self.next_fragment_id;
+
+        if self.next_fragment_id == IdType::max_value() {
+            self.next_fragment_id = 0;
+        } else {
+            self.next_fragment_id = self.next_fragment_id + 1;
+        }
+
+        id
+    }
+
+    fn clear(&mut self) {
+        self.buf.clear();
+        self.buf.push(IS_PACK);
+        self.index_of_last_segment = 1;
     }
 
     pub fn make_fragments<T: Serialize>(&mut self, message: &T) -> Result<FragmentIterator<'_>, Error> {
-        self.buf.clear();
+
+        self.index_of_last_segment = self.buf.len();
+
+        for _ in 0..LENGTH_OF_PACK_SEGMENT_SIZE {
+            self.buf.push(0);
+        }
 
         rmp_serde::encode::write(&mut self.buf, message)?;
 
-        let id = self.next_id;
+        let buf_len = self.buf.len();
+        let pack_segment_len = (buf_len - self.index_of_last_segment - LENGTH_OF_PACK_SEGMENT_SIZE) as u16;
 
-        if self.next_id == u32::max_value() {
-            self.next_id = 0;
-        } else {
-            self.next_id = self.next_id + 1;
-        }
+        //TODO: don't unwrap here
+        let pack_segment_len_dest = self.buf.get_mut(buf_len..(self.index_of_last_segment + LENGTH_OF_PACK_SEGMENT_SIZE)).unwrap();
+        pack_segment_len_dest.copy_from_slice(&pack_segment_len.to_be_bytes());
+
+
+        //Just added message to the pack
+        //TODO: check if the pack is too big and if its time to flush
+
+        let id = self.take_next_fragment_id();
 
         let number_of_fragments = FragmentHeader::number_of_fragments(self.fragment_payload_size, self.buf.len());
 
@@ -48,6 +93,8 @@ impl Fragmenter {
         
         return Ok(iterator);
     }
+
+    pub fn flush(&mut self) -> 
 }
 
 pub struct FragmentIterator<'a> {
@@ -59,7 +106,13 @@ pub struct FragmentIterator<'a> {
 
 impl FragmentIterator<'_> {
 
-    pub fn next(&mut self) -> Option<MessageFragment<'_>> {
+    pub fn next(&mut self) -> Option<&[u8]> {
+        if self.fragmenter.index_of_last_segment > self.fragmenter.max_datagram_size - MIN_SPACE_REQUIRED_TO_PACK {
+
+        }
+
+
+
         if self.next_index >= self.number_of_fragments {
             return None;
         }
@@ -74,8 +127,6 @@ impl FragmentIterator<'_> {
         let end = (start + self.fragmenter.fragment_payload_size).min(self.fragmenter.buf.len());
 
         let fragment_buf = &self.fragmenter.buf[start..end];
-
-
 
         let fragment = MessageFragment::new(
             &mut self.fragmenter.fragment_buf, 
@@ -93,7 +144,7 @@ impl FragmentIterator<'_> {
 
         self.next_index += 1;
 
-        Some(fragment)
+        Some(fragment.get_buffer())
     }
 }
 
@@ -125,8 +176,8 @@ mod tests {
         let message = make_message(TEST_MESSAGE_VEC_LENGTH);
         let mut fragments = fragmenter.make_fragments(&message).unwrap();
 
-        let first_fragment = fragments.next().unwrap().get_buffer().to_vec();
-        let second_fragment = fragments.next().unwrap().get_buffer().to_vec();
+        let first_fragment = fragments.next().unwrap().to_vec();
+        let second_fragment = fragments.next().unwrap().to_vec();
         assert!(matches!(fragments.next(), None));
 
         // Receive fragments out-of-order
@@ -159,8 +210,8 @@ mod tests {
         let message = make_message(TEST_MESSAGE_VEC_LENGTH);
         let mut fragments = fragmenter.make_fragments(&message).unwrap();
 
-        let first_fragment = fragments.next().unwrap().get_buffer().to_vec();
-        let second_fragment = fragments.next().unwrap().get_buffer().to_vec();
+        let first_fragment = fragments.next().unwrap().to_vec();
+        let second_fragment = fragments.next().unwrap().to_vec();
         assert!(matches!(fragments.next(), None));
 
         let result: Option<Vec<u8>> = fragment_assembler.add_fragment(second_fragment.as_slice());
@@ -173,7 +224,7 @@ mod tests {
 
             // Only add one fragment from the message to fill up the assembler
             // and cause it to drop the first one
-            let result: Option<Vec<u8>> = fragment_assembler.add_fragment(fragments.next().unwrap().get_buffer());
+            let result: Option<Vec<u8>> = fragment_assembler.add_fragment(fragments.next().unwrap());
             assert!(matches!(result, None));
         }
 

@@ -114,11 +114,11 @@ impl<'a> MessageFragment<'a> {
         FragmentHeader::from_slice(self.buf)
     }
 
-    pub fn get_payload(&self) -> &[u8] {
+    pub fn get_payload(&self) -> &'a [u8] {
         &self.buf[FRAGMENT_HEADER_SIZE..self.buf.len()]
     }
 
-    pub fn get_buffer(&self) -> &[u8] {
+    pub fn get_buffer(&self) -> &'a [u8] {
         &self.buf
     }
 
