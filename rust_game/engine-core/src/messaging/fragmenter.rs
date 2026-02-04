@@ -19,7 +19,7 @@ pub struct Fragmenter {
     max_datagram_size: usize,
     fragment_payload_size: usize,
     buf: Vec<u8>,
-    index_of_last_segment: usize,
+    index_of_last_segment: Option<usize>,
     fragment_buf: Vec<u8>
 }
 
@@ -27,18 +27,14 @@ impl Fragmenter {
     pub fn new(max_datagram_size: usize) -> Self {
         let fragment_payload_size = MessageFragment::max_fragment_payload_size(max_datagram_size - PACK_OR_FRAGMENT_HEADER_SIZE);
 
-        let mut rtn = Self {
+        Self {
             next_fragment_id: 0,
             max_datagram_size,
             fragment_payload_size,
             buf: Vec::with_capacity(max_datagram_size),
-            index_of_last_segment: 1,
+            index_of_last_segment: None,
             fragment_buf: Vec::with_capacity(max_datagram_size)
-        };
-
-        rtn.clear();
-
-        rtn
+        }
     }
 
     fn take_next_fragment_id(&mut self) -> IdType {
@@ -53,15 +49,16 @@ impl Fragmenter {
         id
     }
 
-    fn clear(&mut self) {
-        self.buf.clear();
-        self.buf.push(IS_PACK);
-        self.index_of_last_segment = 1;
-    }
-
     pub fn make_fragments<T: Serialize>(&mut self, message: &T) -> Result<FragmentIterator<'_>, Error> {
 
-        self.index_of_last_segment = self.buf.len();
+
+        if self.index_of_last_segment.is_none() {
+            self.buf.clear();
+            self.buf.push(IS_PACK);
+        }
+
+        let index_of_last_segment = self.buf.len();
+        self.index_of_last_segment = Some(index_of_last_segment);
 
         for _ in 0..LENGTH_OF_PACK_SEGMENT_SIZE {
             self.buf.push(0);
@@ -70,56 +67,140 @@ impl Fragmenter {
         rmp_serde::encode::write(&mut self.buf, message)?;
 
         let buf_len = self.buf.len();
-        let pack_segment_len = (buf_len - self.index_of_last_segment - LENGTH_OF_PACK_SEGMENT_SIZE) as u16;
+        let pack_segment_len = (buf_len - index_of_last_segment - LENGTH_OF_PACK_SEGMENT_SIZE) as u16;
 
         //TODO: don't unwrap here
-        let pack_segment_len_dest = self.buf.get_mut(buf_len..(self.index_of_last_segment + LENGTH_OF_PACK_SEGMENT_SIZE)).unwrap();
+        let pack_segment_len_dest = self.buf.get_mut(buf_len..(index_of_last_segment + LENGTH_OF_PACK_SEGMENT_SIZE)).unwrap();
         pack_segment_len_dest.copy_from_slice(&pack_segment_len.to_be_bytes());
 
 
         //Just added message to the pack
         //TODO: check if the pack is too big and if its time to flush
 
-        let id = self.take_next_fragment_id();
-
-        let number_of_fragments = FragmentHeader::number_of_fragments(self.fragment_payload_size, self.buf.len());
 
         let iterator = FragmentIterator {
+            should_flush_all: false,
             fragmenter: self,
-            id,
-            number_of_fragments,
-            next_index: 0
+            is_pack_sent: false,
+            fragmenter_vars: None
         };
         
         return Ok(iterator);
     }
-
-    pub fn flush(&mut self) -> 
 }
 
+//TODO: add impl for drop
 pub struct FragmentIterator<'a> {
+    should_flush_all: bool,
     fragmenter: &'a mut Fragmenter,
+    is_pack_sent: bool,
+    fragmenter_vars: Option<FragmenterVars>
+}
+
+struct FragmenterVars {
     id: u32,
     number_of_fragments: IndexType,
-    next_index: IndexType
+    next_index: IndexType,
 }
 
 impl FragmentIterator<'_> {
 
     pub fn next(&mut self) -> Option<&[u8]> {
-        if self.fragmenter.index_of_last_segment > self.fragmenter.max_datagram_size - MIN_SPACE_REQUIRED_TO_PACK {
+        let index_of_last_segment = match self.fragmenter.index_of_last_segment {
+            Some(index_of_last_segment) => index_of_last_segment,
+            None => {
+                return None;
+            },
+        };
 
+        //TODO: maybe make this a debug assert
+        let max_last_index = self.fragmenter.max_datagram_size - MIN_SPACE_REQUIRED_TO_PACK;
+        if index_of_last_segment > max_last_index {
+            panic!("Illegal State: index {:?} cannot be greater than {:?}", index_of_last_segment, max_last_index);
         }
 
+        if index_of_last_segment != PACK_OR_FRAGMENT_HEADER_SIZE {
+            if self.is_pack_sent {
+
+                // Clear the pack part of the buffer
+                let end = self.fragmenter.buf.len();
+                let new_len = end - index_of_last_segment + PACK_OR_FRAGMENT_HEADER_SIZE;
+                self.fragmenter.buf.copy_within(index_of_last_segment..end, PACK_OR_FRAGMENT_HEADER_SIZE);
+                self.fragmenter.buf.truncate(new_len);
+                self.fragmenter.index_of_last_segment = Some(PACK_OR_FRAGMENT_HEADER_SIZE);
+            } else {
+                self.is_pack_sent = true;
+                return Some(&self.fragmenter.buf[0..index_of_last_segment]);
+            }
+        }
+
+        // At this point, we know there is either only one message left in the
+        // buffer or all messages in the buffer can be sent in a pack without
+        // fragmenting
+        
+        if self.fragmenter.buf.len() <= max_last_index {
+
+            // At this point, we know the messages in the buffer leave space for
+            // another message to be packed in with it
+
+            if self.should_flush_all {
+
+                // We're supposed to flush everything, so send out the messages
+                // even though more could be packed
+
+                let end = self.fragmenter.buf.len();
+
+                self.fragmenter.index_of_last_segment = None;
+                
+                return Some(&self.fragmenter.buf[0..end]);
+            } else {
+
+                // We're not supposed to flush everything, so hold on to the
+                // messages to let more be packed with it
+
+                return None;
+            }
+        } else if self.fragmenter.buf.len() <= self.fragmenter.max_datagram_size {
+
+            // At this point, we know the messages in the buffer do not leave
+            // space for more messages to be packed with them, but they're small
+            // enought to send it without fragmenting.  There's not point
+            // waiting for another message to pack it with.
+
+            let end = self.fragmenter.buf.len();
+
+            self.fragmenter.index_of_last_segment = None;
+
+            return Some(&self.fragmenter.buf[0..end]);
+        }
+
+        // At this point, we know there is only one message in the buffer and we
+        // have to fragment it
+
+        let slice_to_fragment = &self.fragmenter.buf[PACK_HEADER_SIZE..];
+
+        let fragmenter_vars = match self.fragmenter_vars {
+            Some(ref mut fragmenter_vars) => fragmenter_vars,
+            None => {
+                self.fragmenter_vars = Some(FragmenterVars{
+                    id: self.fragmenter.take_next_fragment_id(),
+                    number_of_fragments: FragmentHeader::number_of_fragments(self.fragmenter.fragment_payload_size, slice_to_fragment.len()),
+                    next_index: 0,
+                });
+
+                self.fragmenter_vars.as_mut().unwrap()
+            },
+        };
 
 
-        if self.next_index >= self.number_of_fragments {
+        if fragmenter_vars.next_index >= fragmenter_vars.number_of_fragments {
+            self.fragmenter.index_of_last_segment = None;
             return None;
         }
 
         let header = FragmentHeader::new(
-            self.id, 
-            self.next_index as IndexType, 
+            fragmenter_vars.id, 
+            fragmenter_vars.next_index as IndexType, 
             self.fragmenter.buf.len() as TotalLengthType
         );
 
