@@ -1,10 +1,11 @@
+use log::info;
 use rmp_serde::encode::Error;
 use serde::Serialize;
 
 use crate::messaging::{MessageFragment, messagefragment::{FragmentHeader, IdType, IndexType, TotalLengthType}};
 
-const IS_PACK: u8 = 0;
-const IS_FRAGMENT: u8 = IS_PACK + 1;
+pub const IS_PACK: u8 = 0;
+pub const IS_FRAGMENT: u8 = IS_PACK + 1;
 const PACK_OR_FRAGMENT_HEADER_SIZE: usize = size_of::<u8>();
 
 type PackSegmentLengthType = u16;
@@ -25,7 +26,7 @@ pub struct Fragmenter {
 
 impl Fragmenter {
     pub fn new(max_datagram_size: usize) -> Self {
-        let fragment_payload_size = MessageFragment::max_fragment_payload_size(max_datagram_size - PACK_OR_FRAGMENT_HEADER_SIZE);
+        let fragment_payload_size = MessageFragment::max_fragment_payload_size(max_datagram_size);
 
         Self {
             next_fragment_id: 0,
@@ -70,7 +71,7 @@ impl Fragmenter {
         let pack_segment_len = (buf_len - index_of_last_segment - LENGTH_OF_PACK_SEGMENT_SIZE) as u16;
 
         //TODO: don't unwrap here
-        let pack_segment_len_dest = self.buf.get_mut(buf_len..(index_of_last_segment + LENGTH_OF_PACK_SEGMENT_SIZE)).unwrap();
+        let pack_segment_len_dest = self.buf.get_mut(index_of_last_segment..(index_of_last_segment + LENGTH_OF_PACK_SEGMENT_SIZE)).unwrap();
         pack_segment_len_dest.copy_from_slice(&pack_segment_len.to_be_bytes());
 
 
@@ -109,6 +110,7 @@ impl FragmentIterator<'_> {
         let index_of_last_segment = match self.fragmenter.index_of_last_segment {
             Some(index_of_last_segment) => index_of_last_segment,
             None => {
+                info!("index_of_last_segment is None");
                 return None;
             },
         };
@@ -127,7 +129,7 @@ impl FragmentIterator<'_> {
                 let new_len = end - index_of_last_segment + PACK_OR_FRAGMENT_HEADER_SIZE;
                 self.fragmenter.buf.copy_within(index_of_last_segment..end, PACK_OR_FRAGMENT_HEADER_SIZE);
                 self.fragmenter.buf.truncate(new_len);
-                self.fragmenter.index_of_last_segment = Some(PACK_OR_FRAGMENT_HEADER_SIZE);
+                self.fragmenter.index_of_last_segment = Some(index_of_last_segment - (end - new_len));
             } else {
                 self.is_pack_sent = true;
                 return Some(&self.fragmenter.buf[0..index_of_last_segment]);
@@ -158,6 +160,7 @@ impl FragmentIterator<'_> {
                 // We're not supposed to flush everything, so hold on to the
                 // messages to let more be packed with it
 
+                info!("More can be packed and we're not flushing");
                 return None;
             }
         } else if self.fragmenter.buf.len() <= self.fragmenter.max_datagram_size {
@@ -177,14 +180,14 @@ impl FragmentIterator<'_> {
         // At this point, we know there is only one message in the buffer and we
         // have to fragment it
 
-        let slice_to_fragment = &self.fragmenter.buf[PACK_HEADER_SIZE..];
+        
 
         let fragmenter_vars = match self.fragmenter_vars {
             Some(ref mut fragmenter_vars) => fragmenter_vars,
             None => {
                 self.fragmenter_vars = Some(FragmenterVars{
                     id: self.fragmenter.take_next_fragment_id(),
-                    number_of_fragments: FragmentHeader::number_of_fragments(self.fragmenter.fragment_payload_size, slice_to_fragment.len()),
+                    number_of_fragments: FragmentHeader::number_of_fragments(self.fragmenter.fragment_payload_size, self.fragmenter.buf.len() - PACK_HEADER_SIZE),
                     next_index: 0,
                 });
 
@@ -192,22 +195,26 @@ impl FragmentIterator<'_> {
             },
         };
 
+        //TODO: use this
+        let slice_to_fragment = &self.fragmenter.buf[PACK_HEADER_SIZE..];
 
         if fragmenter_vars.next_index >= fragmenter_vars.number_of_fragments {
             self.fragmenter.index_of_last_segment = None;
+            info!("Was fragmenting and last fragment was sent");
+            //TODO: set index_of_last_segment to None on last fragment
             return None;
         }
 
         let header = FragmentHeader::new(
             fragmenter_vars.id, 
             fragmenter_vars.next_index as IndexType, 
-            self.fragmenter.buf.len() as TotalLengthType
+            slice_to_fragment.len() as TotalLengthType
         );
 
         let start = header.start_index(self.fragmenter.fragment_payload_size);
-        let end = (start + self.fragmenter.fragment_payload_size).min(self.fragmenter.buf.len());
+        let end = (start + self.fragmenter.fragment_payload_size).min(slice_to_fragment.len());
 
-        let fragment_buf = &self.fragmenter.buf[start..end];
+        let fragment_buf = &slice_to_fragment[start..end];
 
         let fragment = MessageFragment::new(
             &mut self.fragmenter.fragment_buf, 
@@ -223,7 +230,7 @@ impl FragmentIterator<'_> {
             );
         }
 
-        self.next_index += 1;
+        fragmenter_vars.next_index += 1;
 
         Some(fragment.get_buffer())
     }
@@ -234,16 +241,12 @@ mod tests {
 
     use commons::logging::setup_test_logging;
 
-    use crate::messaging::{FragmentAssembler, Fragmenter, messagefragment::FRAGMENT_HEADER_SIZE};
+    use crate::messaging::{FragmentAssembler, Fragmenter, MessageFragment, fragmenter::PACK_HEADER_SIZE};
 
     const MAX_MESSAGES: usize = 2;
     const DATAGRAM_SIZE: usize = 20;
-    const FRAGMENT_PAYLOAD_SIZE: usize = fragment_payload_size(DATAGRAM_SIZE);
-    const TEST_MESSAGE_VEC_LENGTH: usize = FRAGMENT_PAYLOAD_SIZE * 2 - 3;
-
-    const fn fragment_payload_size(max_datagram_size: usize) -> usize {
-        max_datagram_size - FRAGMENT_HEADER_SIZE
-    }
+    const FRAGMENT_PAYLOAD_SIZE: usize = MessageFragment::max_fragment_payload_size(DATAGRAM_SIZE);
+    const TEST_MESSAGE_VEC_LENGTH: usize = DATAGRAM_SIZE - PACK_HEADER_SIZE + 1;
 
     fn make_message(length: usize) -> Vec<u8> {
         let mut buf = Vec::with_capacity(length);

@@ -1,5 +1,5 @@
 use {
-    crate::messaging::{MessageFragment, messagefragment::{FragmentHeader, IdType, IndexType}}, log::warn, serde::de::DeserializeOwned, std::collections::HashMap
+    crate::messaging::{MessageFragment, fragmenter::IS_PACK, messagefragment::{FragmentHeader, IdType, IndexType}}, log::warn, serde::de::DeserializeOwned, std::collections::HashMap
 };
 
 #[derive(PartialEq)]
@@ -107,6 +107,13 @@ impl FragmentAssembler {
 
     //TODO: return errors
     pub fn add_fragment<T: DeserializeOwned>(&mut self, buf: &[u8]) -> Option<T> {
+
+        if buf.len() < 2 {
+            return None;
+        } else if buf[0] == IS_PACK {
+            let index = 1;
+            todo!("Parse pack")
+        }
 
         let fragment = MessageFragment::from_slice(buf);
         let header = fragment.parse_header();
